@@ -12,6 +12,7 @@
 /* MAX IFE CSID instance */
 #define CAM_IFE_CSID_HW_NUM_MAX                        7
 #define CAM_IFE_CSID_UDI_MAX                           3
+#define RT_BASE_IDX                                    2
 
 /**
  * enum cam_ife_csid_input_core_type - Specify the csid input core
