@@ -6,7 +6,7 @@
 #ifndef __UAPI_CAM_CUSTOM_H__
 #define __UAPI_CAM_CUSTOM_H__
 
-#include <camera/media/cam_defs.h>
+#include <media/cam_defs.h>
 
 /* Custom driver name */
 #define CAM_CUSTOM_DEV_NAME                    "cam-custom"

@@ -6,8 +6,8 @@
 #ifndef __UAPI_OPE_H__
 #define __UAPI_OPE_H__
 
-#include <camera/media/cam_defs.h>
-#include <camera/media/cam_cpas.h>
+#include <media/cam_defs.h>
+#include <media/cam_cpas.h>
 
 #define OPE_DEV_NAME_SIZE                  128
 
