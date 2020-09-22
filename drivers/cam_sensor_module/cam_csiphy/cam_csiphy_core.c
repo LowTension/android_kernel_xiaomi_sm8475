@@ -43,6 +43,7 @@ module_param(csiphy_dump, int, 0644);
 struct g_csiphy_data {
 	void __iomem *base_address;
 	uint8_t is_3phase;
+	uint32_t cpas_handle;
 };
 
 static struct g_csiphy_data g_phy_data[MAX_CSIPHY] = {{0, 0}};
@@ -1065,6 +1066,101 @@ static int cam_csiphy_update_lane(
 	return 0;
 }
 
+static int cam_csiphy_cpas_ops(
+	uint32_t cpas_handle, bool start)
+{
+	int rc = 0;
+	struct cam_ahb_vote ahb_vote;
+	struct cam_axi_vote axi_vote = {0};
+
+	if (start) {
+		ahb_vote.type = CAM_VOTE_ABSOLUTE;
+		ahb_vote.vote.level = CAM_LOWSVS_VOTE;
+		axi_vote.num_paths = 1;
+		axi_vote.axi_path[0].path_data_type =
+			CAM_AXI_PATH_DATA_ALL;
+		axi_vote.axi_path[0].transac_type =
+			CAM_AXI_TRANSACTION_WRITE;
+		axi_vote.axi_path[0].camnoc_bw =
+			CAM_CPAS_DEFAULT_AXI_BW;
+		axi_vote.axi_path[0].mnoc_ab_bw =
+			CAM_CPAS_DEFAULT_AXI_BW;
+		axi_vote.axi_path[0].mnoc_ib_bw =
+			CAM_CPAS_DEFAULT_AXI_BW;
+
+		rc = cam_cpas_start(cpas_handle,
+			&ahb_vote, &axi_vote);
+		if (rc < 0) {
+			CAM_ERR(CAM_CSIPHY, "voting CPAS: %d", rc);
+			return rc;
+		}
+		CAM_DBG(CAM_CSIPHY, "CPAS START");
+	} else {
+		rc = cam_cpas_stop(cpas_handle);
+		if (rc < 0) {
+			CAM_ERR(CAM_CSIPHY, "de-voting CPAS: %d", rc);
+			return rc;
+		}
+		CAM_DBG(CAM_CSIPHY, "CPAS STOPPED");
+	}
+
+	return rc;
+}
+
+int cam_csiphy_util_update_aon_ops(
+	bool get_access, uint32_t phy_idx)
+{
+	uint32_t aon_config = 0;
+	uint32_t cpas_hdl = 0;
+	int rc = 0;
+
+	if (phy_idx > MAX_CSIPHY) {
+		CAM_ERR(CAM_CSIPHY, "Null device");
+		return -ENODEV;
+	}
+
+	cpas_hdl = g_phy_data[phy_idx].cpas_handle;
+
+	CAM_DBG(CAM_CSIPHY, "PHY idx: %d", phy_idx);
+	rc = cam_csiphy_cpas_ops(cpas_hdl, true);
+	if (rc) {
+		if (rc == -EPERM) {
+			CAM_WARN(CAM_CSIPHY,
+				"CPHY: %d is already in start state");
+		} else {
+			CAM_ERR(CAM_CSIPHY, "voting CPAS: %d failed", rc);
+			return rc;
+		}
+	}
+
+	cam_cpas_reg_read(cpas_hdl, CAM_CPAS_REG_CPASTOP,
+		CAM_CSIPHY_CPAS_AON_SEL_ADDR, true,	&aon_config);
+
+	if (get_access) {
+		aon_config &= ~(CAM_CSIPHY_CPAS_MAIN_CAM_SEL |
+			CAM_CSIPHY_CPAS_MCLK_SEL);
+		CAM_DBG(CAM_CSIPHY,
+			"Selecting MainCamera over AON Camera");
+	} else if (!get_access) {
+		aon_config |= (CAM_CSIPHY_CPAS_MAIN_CAM_SEL |
+			CAM_CSIPHY_CPAS_MCLK_SEL);
+		CAM_DBG(CAM_CSIPHY,
+			"Releasing MainCamera to AON Camera");
+	}
+
+	CAM_DBG(CAM_CSIPHY, "value of aon_config = %u", aon_config);
+	if (cam_cpas_reg_write(cpas_hdl, CAM_CPAS_REG_CPASTOP,
+		CAM_CSIPHY_CPAS_AON_SEL_ADDR, true, aon_config)) {
+		CAM_ERR(CAM_CSIPHY,
+				"CPAS AON sel register write failed");
+	}
+
+	if (rc != -EPERM)
+		cam_csiphy_cpas_ops(cpas_hdl, false);
+
+	return rc;
+}
+
 int32_t cam_csiphy_core_cfg(void *phy_dev,
 			void *arg)
 {
@@ -1145,14 +1241,16 @@ int32_t cam_csiphy_core_cfg(void *phy_dev,
 		if (csiphy_acq_params.combo_mode == 1) {
 			CAM_DBG(CAM_CSIPHY, "combo mode stream detected");
 			csiphy_dev->combo_mode = 1;
-			if (csiphy_acq_params.csiphy_3phase)
+			if (csiphy_acq_params.csiphy_3phase) {
+				CAM_DBG(CAM_CSIPHY, "3Phase ComboMode");
 				csiphy_dev->session_max_device_support =
 					CSIPHY_MAX_INSTANCES_PER_PHY;
-			else
+			} else {
 				csiphy_dev->session_max_device_support =
 					CSIPHY_MAX_INSTANCES_PER_PHY - 1;
+				CAM_DBG(CAM_CSIPHY, "2Phase ComboMode");
+			}
 		}
-
 		if (csiphy_acq_params.cphy_dphy_combo_mode == 1) {
 			CAM_DBG(CAM_CSIPHY,
 				"cphy_dphy_combo_mode stream detected");
@@ -1206,6 +1304,7 @@ int32_t cam_csiphy_core_cfg(void *phy_dev,
 		csiphy_dev->acquire_count++;
 		CAM_DBG(CAM_CSIPHY, "ACQUIRE_CNT: %d",
 			csiphy_dev->acquire_count);
+
 		if (csiphy_dev->csiphy_state == CAM_CSIPHY_INIT)
 			csiphy_dev->csiphy_state = CAM_CSIPHY_ACQUIRE;
 	}
@@ -1226,6 +1325,7 @@ int32_t cam_csiphy_core_cfg(void *phy_dev,
 		int32_t offset, rc = 0;
 		struct cam_start_stop_dev_cmd config;
 
+		CAM_DBG(CAM_CSIPHY, "STOP_DEV CALLED");
 		rc = copy_from_user(&config, (void __user *)cmd->handle,
 					sizeof(config));
 		if (rc < 0) {
@@ -1287,9 +1387,10 @@ int32_t cam_csiphy_core_cfg(void *phy_dev,
 		if (rc < 0)
 			CAM_ERR(CAM_CSIPHY, "Failed in csiphy release");
 
-		rc = cam_cpas_stop(csiphy_dev->cpas_handle);
-		if (rc < 0)
-			CAM_ERR(CAM_CSIPHY, "de-voting CPAS: %d", rc);
+		if (cam_csiphy_cpas_ops(csiphy_dev->cpas_handle, false)) {
+			CAM_ERR(CAM_CSIPHY, "Failed in de-voting CPAS");
+			rc = -EFAULT;
+		}
 
 		CAM_DBG(CAM_CSIPHY, "All PHY devices stopped");
 		csiphy_dev->csiphy_state = CAM_CSIPHY_ACQUIRE;
@@ -1304,6 +1405,8 @@ int32_t cam_csiphy_core_cfg(void *phy_dev,
 	case CAM_RELEASE_DEV: {
 		int32_t offset;
 		struct cam_release_dev_cmd release;
+
+		CAM_DBG(CAM_CSIPHY, "RELEASE_DEV Called");
 
 		if (!csiphy_dev->acquire_count) {
 			CAM_ERR(CAM_CSIPHY, "No valid devices to release");
@@ -1361,6 +1464,7 @@ int32_t cam_csiphy_core_cfg(void *phy_dev,
 	case CAM_CONFIG_DEV: {
 		struct cam_config_dev_cmd config;
 
+		CAM_DBG(CAM_CSIPHY, "CONFIG_DEV Called");
 		if (copy_from_user(&config,
 			u64_to_user_ptr(cmd->handle),
 					sizeof(config))) {
@@ -1375,12 +1479,11 @@ int32_t cam_csiphy_core_cfg(void *phy_dev,
 		break;
 	}
 	case CAM_START_DEV: {
-		struct cam_ahb_vote ahb_vote;
-		struct cam_axi_vote axi_vote = {0};
 		struct cam_start_stop_dev_cmd config;
 		int32_t offset;
 		int clk_vote_level = -1;
 
+		CAM_DBG(CAM_CSIPHY, "START_DEV Called");
 		rc = copy_from_user(&config, (void __user *)cmd->handle,
 			sizeof(config));
 		if (rc < 0) {
@@ -1466,21 +1569,8 @@ int32_t cam_csiphy_core_cfg(void *phy_dev,
 			goto release_mutex;
 		}
 
-		CAM_DBG(CAM_CSIPHY, "Start_dev_cnt: %d",
-			csiphy_dev->start_dev_count);
-
-		ahb_vote.type = CAM_VOTE_ABSOLUTE;
-		ahb_vote.vote.level = CAM_LOWSVS_VOTE;
-		axi_vote.num_paths = 1;
-		axi_vote.axi_path[0].path_data_type = CAM_AXI_PATH_DATA_ALL;
-		axi_vote.axi_path[0].transac_type = CAM_AXI_TRANSACTION_WRITE;
-		axi_vote.axi_path[0].camnoc_bw = CAM_CPAS_DEFAULT_AXI_BW;
-		axi_vote.axi_path[0].mnoc_ab_bw = CAM_CPAS_DEFAULT_AXI_BW;
-		axi_vote.axi_path[0].mnoc_ib_bw = CAM_CPAS_DEFAULT_AXI_BW;
-
-		rc = cam_cpas_start(csiphy_dev->cpas_handle,
-			&ahb_vote, &axi_vote);
-		if (rc < 0) {
+		rc = cam_csiphy_cpas_ops(csiphy_dev->cpas_handle, true);
+		if (rc) {
 			CAM_ERR(CAM_CSIPHY, "voting CPAS: %d", rc);
 			goto release_mutex;
 		}
@@ -1491,9 +1581,8 @@ int32_t cam_csiphy_core_cfg(void *phy_dev,
 					CAM_CPAS_HW_IDX_ANY, NULL)) {
 				CAM_ERR(CAM_CSIPHY,
 					"sec_cam: camera fuse bit not set");
-				cam_cpas_stop(csiphy_dev->cpas_handle);
 				rc = -EINVAL;
-				goto release_mutex;
+				goto cpas_stop;
 			}
 
 			rc = cam_csiphy_notify_secure_mode(
@@ -1502,16 +1591,14 @@ int32_t cam_csiphy_core_cfg(void *phy_dev,
 			if (rc < 0) {
 				csiphy_dev->csiphy_info[offset].secure_mode =
 					CAM_SECURE_MODE_NON_SECURE;
-				cam_cpas_stop(csiphy_dev->cpas_handle);
-				goto release_mutex;
+				goto cpas_stop;
 			}
 		}
 
 		rc = cam_csiphy_enable_hw(csiphy_dev, offset);
 		if (rc != 0) {
 			CAM_ERR(CAM_CSIPHY, "cam_csiphy_enable_hw failed");
-			cam_cpas_stop(csiphy_dev->cpas_handle);
-			goto release_mutex;
+			goto cpas_stop;
 		}
 		rc = cam_csiphy_config_dev(csiphy_dev, config.dev_handle);
 		if (csiphy_dump == 1)
@@ -1520,8 +1607,7 @@ int32_t cam_csiphy_core_cfg(void *phy_dev,
 		if (rc < 0) {
 			CAM_ERR(CAM_CSIPHY, "cam_csiphy_config_dev failed");
 			cam_csiphy_disable_hw(csiphy_dev);
-			cam_cpas_stop(csiphy_dev->cpas_handle);
-			goto release_mutex;
+			goto cpas_stop;
 		}
 		csiphy_dev->start_dev_count++;
 
@@ -1554,8 +1640,15 @@ int32_t cam_csiphy_core_cfg(void *phy_dev,
 			sizeof(struct cam_config_dev_cmd))) {
 			CAM_ERR(CAM_CSIPHY, "failed copy config ext\n");
 			rc = -EFAULT;
+			goto release_mutex;
 		} else {
 			rc = cam_csiphy_external_cmd(csiphy_dev, &submit_cmd);
+			if (rc) {
+				CAM_ERR(CAM_CSIPHY,
+					"exteranal command configuration failed rc: %d",
+					rc);
+				goto release_mutex;
+			}
 		}
 		break;
 	}
@@ -1565,6 +1658,12 @@ int32_t cam_csiphy_core_cfg(void *phy_dev,
 		goto release_mutex;
 	}
 
+	mutex_unlock(&csiphy_dev->mutex);
+	return rc;
+
+cpas_stop:
+	if (cam_csiphy_cpas_ops(csiphy_dev->cpas_handle, false))
+		CAM_ERR(CAM_CSIPHY, "cpas stop failed");
 release_mutex:
 	mutex_unlock(&csiphy_dev->mutex);
 
@@ -1586,4 +1685,6 @@ void cam_csiphy_register_baseaddress(struct csiphy_device *csiphy_dev)
 
 	g_phy_data[csiphy_dev->soc_info.index].base_address =
 		csiphy_dev->soc_info.reg_map[0].mem_base;
+	g_phy_data[csiphy_dev->soc_info.index].cpas_handle =
+		csiphy_dev->cpas_handle;
 }

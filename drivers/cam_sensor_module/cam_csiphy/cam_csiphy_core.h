@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2017-2018, 2020 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2018, 2020-2021 The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CAM_CSIPHY_CORE_H_
@@ -56,4 +56,13 @@ void cam_csiphy_shutdown(struct csiphy_device *csiphy_dev);
  */
 void cam_csiphy_register_baseaddress(struct csiphy_device *csiphy_dev);
 
+/**
+ * @get_access : Get Access for the Main Camera over AON Camera
+ * @phy_idx    : To acquire the correct PHY hw to do the operation with
+ *
+ * This API provides Utility/helper function to program the MUX for
+ * correct PHY hw.
+ *
+ */
+int cam_csiphy_util_update_aon_ops(bool get_access, uint32_t phy_idx);
 #endif /* _CAM_CSIPHY_CORE_H_ */

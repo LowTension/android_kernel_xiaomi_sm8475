@@ -1288,6 +1288,20 @@ int cam_sensor_power_up(struct cam_sensor_ctrl_t *s_ctrl)
 		}
 	}
 
+	if (s_ctrl->is_aon_user) {
+		CAM_DBG(CAM_SENSOR,
+			"Setup for Main Camera with csiphy index: %d",
+			s_ctrl->sensordata->subdev_id[SUB_MODULE_CSIPHY]);
+		rc = cam_sensor_util_aon_ops(true,
+			s_ctrl->sensordata->subdev_id[SUB_MODULE_CSIPHY]);
+		if (rc) {
+			CAM_WARN(CAM_SENSOR,
+				"Main camera access opertion is not successful rc: %d",
+				rc);
+			return rc;
+		}
+	}
+
 	rc = cam_sensor_core_power_up(power_info, soc_info);
 	if (rc < 0) {
 		CAM_ERR(CAM_SENSOR, "power up the core is failed:%d", rc);
@@ -1327,6 +1341,7 @@ int cam_sensor_power_down(struct cam_sensor_ctrl_t *s_ctrl)
 		CAM_ERR(CAM_SENSOR, "failed: power_info %pK", power_info);
 		return -EINVAL;
 	}
+
 	rc = cam_sensor_util_power_down(power_info, soc_info);
 	if (rc < 0) {
 		CAM_ERR(CAM_SENSOR, "power down the core is failed:%d", rc);
@@ -1340,6 +1355,20 @@ int cam_sensor_power_down(struct cam_sensor_ctrl_t *s_ctrl)
 			CAM_WARN(CAM_SENSOR,
 				"BoB PWM setup failed rc: %d", rc);
 			rc = 0;
+		}
+	}
+
+	if (s_ctrl->is_aon_user) {
+		CAM_DBG(CAM_SENSOR,
+			"Setup for AON FW with csiphy index: %d",
+			s_ctrl->sensordata->subdev_id[SUB_MODULE_CSIPHY]);
+		rc = cam_sensor_util_aon_ops(false,
+			s_ctrl->sensordata->subdev_id[SUB_MODULE_CSIPHY]);
+		if (rc) {
+			CAM_WARN(CAM_SENSOR,
+				"AON FW access opertion is not successful rc: %d",
+				rc);
+			return rc;
 		}
 	}
 
