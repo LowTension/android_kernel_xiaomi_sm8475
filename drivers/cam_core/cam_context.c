@@ -663,6 +663,7 @@ int cam_context_init(struct cam_context *ctx,
 		INIT_LIST_HEAD(&ctx->req_list[i].list);
 		list_add_tail(&ctx->req_list[i].list, &ctx->free_req_list);
 		ctx->req_list[i].ctx = ctx;
+		ctx->req_list[i].index = i;
 	}
 	ctx->state = CAM_CTX_AVAILABLE;
 	ctx->state_machine = NULL;

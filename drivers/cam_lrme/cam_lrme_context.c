@@ -248,6 +248,10 @@ int cam_lrme_context_init(struct cam_lrme_context *lrme_ctx,
 	base_ctx->ctx_priv = lrme_ctx;
 	base_ctx->state_machine = cam_lrme_ctx_state_machine;
 
+	base_ctx->max_hw_update_entries = CAM_CTX_CFG_MAX;
+	base_ctx->max_in_map_entries = CAM_CTX_CFG_MAX;
+	base_ctx->max_out_map_entries = CAM_CTX_CFG_MAX;
+
 	return rc;
 }
 

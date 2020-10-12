@@ -242,6 +242,9 @@ int cam_fd_context_init(struct cam_fd_context *fd_ctx,
 	fd_ctx->base = base_ctx;
 	base_ctx->ctx_priv = fd_ctx;
 	base_ctx->state_machine = cam_fd_ctx_state_machine;
+	base_ctx->max_hw_update_entries = CAM_CTX_CFG_MAX;
+	base_ctx->max_in_map_entries = CAM_CTX_CFG_MAX;
+	base_ctx->max_out_map_entries = CAM_CTX_CFG_MAX;
 
 	return rc;
 }
