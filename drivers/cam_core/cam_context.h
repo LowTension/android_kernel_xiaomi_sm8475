@@ -9,6 +9,7 @@
 #include <linux/mutex.h>
 #include <linux/spinlock.h>
 #include <linux/kref.h>
+#include <media/v4l2-subdev.h>
 #include "cam_req_mgr_interface.h"
 #include "cam_hw_mgr_intf.h"
 #include "cam_smmu_api.h"
@@ -97,6 +98,7 @@ struct cam_ctx_request {
  * @acquire_hw:            Function pointer for acquire hw
  * @release_hw:            Function pointer for release hw
  * @dump_dev:              Function pointer for dump dev
+ * @shutdown_dev:          Function pointer for shutdown dev
  *
  */
 struct cam_ctx_ioctl_ops {
@@ -116,6 +118,8 @@ struct cam_ctx_ioctl_ops {
 	int (*release_hw)(struct cam_context *ctx, void *args);
 	int (*dump_dev)(struct cam_context *ctx,
 			struct cam_dump_req_cmd *cmd);
+	int (*shutdown_dev)(struct v4l2_subdev *sd,
+			struct v4l2_subdev_fh *fh);
 };
 
 /**
@@ -482,6 +486,19 @@ int cam_context_handle_start_dev(struct cam_context *ctx,
  */
 int cam_context_handle_stop_dev(struct cam_context *ctx,
 		struct cam_start_stop_dev_cmd *cmd);
+
+/**
+ * cam_context_handle_shutdown_dev()
+ *
+ * @brief:        Handle shutdown device command
+ *
+ * @ctx:          Object pointer for cam_context
+ * @cmd:          Shutdown device command payload
+ * @fh:           Pointer to struct v4l2_subdev_fh
+ *
+ */
+int cam_context_handle_shutdown_dev(struct cam_context *ctx,
+	struct cam_control *cmd, struct v4l2_subdev_fh *fh);
 
 /**
  * cam_context_handle_dump_dev()
