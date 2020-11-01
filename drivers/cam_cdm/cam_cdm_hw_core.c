@@ -1306,8 +1306,10 @@ static void cam_hw_cdm_work(struct work_struct *work)
 		return;
 	}
 
-	cam_req_mgr_thread_switch_delay_detect(cdm_hw->soc_info.dev_name,
-		payload->workq_scheduled_ts);
+	cam_common_util_thread_switch_delay_detect(
+		"CDM workq schedule",
+		payload->workq_scheduled_ts,
+		CAM_WORKQ_SCHEDULE_TIME_THRESHOLD);
 
 	CAM_DBG(CAM_CDM, "IRQ status=0x%x", payload->irq_status);
 	if (payload->irq_status &

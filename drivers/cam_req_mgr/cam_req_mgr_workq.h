@@ -16,6 +16,12 @@
 
 #include "cam_req_mgr_core.h"
 
+/* Threshold for scheduling delay in ms */
+#define CAM_WORKQ_SCHEDULE_TIME_THRESHOLD   5
+
+/* Threshold for execution delay in ms */
+#define CAM_WORKQ_EXE_TIME_THRESHOLD        10
+
 /* Flag to create a high priority workq */
 #define CAM_WORKQ_FLAG_HIGH_PRIORITY             (1 << 0)
 
@@ -25,13 +31,6 @@
  * given CPU.
  */
 #define CAM_WORKQ_FLAG_SERIAL                    (1 << 1)
-
-/*
- * Response time threshold in ms beyond which it is considered
- * as workq scheduling/processing delay.
- */
-#define CAM_WORKQ_RESPONSE_TIME_THRESHOLD   5
-
 
 /* Task priorities, lower the number higher the priority*/
 enum crm_task_priority {
@@ -78,6 +77,7 @@ struct crm_workq_task {
  * @in_irq      : set true if workque can be used in irq context
  * @flush       : used to track if flush has been called on workqueue
  * @work_q_name : name of the workq
+ * @workq_scheduled_ts: enqueue time of workq
  * task -
  * @lock        : Current task's lock handle
  * @pending_cnt : # of tasks left in queue
@@ -153,15 +153,6 @@ void cam_req_mgr_workq_destroy(struct cam_req_mgr_core_workq **workq);
  */
 int cam_req_mgr_workq_enqueue_task(struct crm_workq_task *task,
 	void *priv, int32_t prio);
-
-/**
- * cam_req_mgr_thread_switch_delay_detect()
- * @brief: Detects if workq delay has occurred or not
- * @name : Name of the workq
- * @timestamp: workq scheduled timestamp
- */
-void cam_req_mgr_thread_switch_delay_detect(const char *name,
-	ktime_t timestamp);
 
 /**
  * cam_req_mgr_workq_get_task()
