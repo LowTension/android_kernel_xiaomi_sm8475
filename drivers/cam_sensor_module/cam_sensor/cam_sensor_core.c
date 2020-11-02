@@ -835,6 +835,7 @@ int32_t cam_sensor_driver_cmd(struct cam_sensor_ctrl_t *s_ctrl,
 		bridge_params.v4l2_sub_dev_flag = 0;
 		bridge_params.media_entity_flag = 0;
 		bridge_params.priv = s_ctrl;
+		bridge_params.dev_id = CAM_SENSOR;
 
 		sensor_acq_dev.device_handle =
 			cam_create_device_hdl(&bridge_params);
@@ -1196,10 +1197,18 @@ int cam_sensor_power_up(struct cam_sensor_ctrl_t *s_ctrl)
 	}
 
 	rc = camera_io_init(&(s_ctrl->io_master_info));
-	if (rc < 0)
+	if (rc < 0) {
 		CAM_ERR(CAM_SENSOR, "cci_init failed: rc: %d", rc);
+		goto cci_failure;
+	}
 
 	return rc;
+cci_failure:
+	if (cam_sensor_util_power_down(power_info, soc_info))
+		CAM_ERR(CAM_SENSOR, "power down failure");
+
+	return rc;
+
 }
 
 int cam_sensor_power_down(struct cam_sensor_ctrl_t *s_ctrl)

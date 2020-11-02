@@ -1110,6 +1110,7 @@ int32_t cam_csiphy_core_cfg(void *phy_dev,
 		bridge_params.v4l2_sub_dev_flag = 0;
 		bridge_params.media_entity_flag = 0;
 		bridge_params.priv = csiphy_dev;
+		bridge_params.dev_id = CAM_CSIPHY;
 		index = csiphy_dev->acquire_count;
 		csiphy_acq_dev.device_handle =
 			cam_create_device_hdl(&bridge_params);
@@ -1338,7 +1339,7 @@ int32_t cam_csiphy_core_cfg(void *phy_dev,
 				csiphy_dev->ctrl_reg->getclockvoting(
 					csiphy_dev, offset);
 			rc = cam_soc_util_set_clk_rate_level(
-				&csiphy_dev->soc_info, clk_vote_level);
+				&csiphy_dev->soc_info, clk_vote_level, false);
 			if (rc) {
 				CAM_WARN(CAM_CSIPHY,
 					"Failed to set the clk_rate level: %d",

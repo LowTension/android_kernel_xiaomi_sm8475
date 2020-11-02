@@ -106,8 +106,15 @@ static int32_t cam_actuator_power_up(struct cam_actuator_ctrl_t *a_ctrl)
 	}
 
 	rc = camera_io_init(&a_ctrl->io_master_info);
-	if (rc < 0)
+	if (rc < 0) {
 		CAM_ERR(CAM_ACTUATOR, "cci init failed: rc: %d", rc);
+		goto cci_failure;
+	}
+
+	return rc;
+cci_failure:
+	if (cam_sensor_util_power_down(power_info, soc_info))
+		CAM_ERR(CAM_ACTUATOR, "Power down failure");
 
 	return rc;
 }
@@ -848,6 +855,7 @@ int32_t cam_actuator_driver_cmd(struct cam_actuator_ctrl_t *a_ctrl,
 		bridge_params.v4l2_sub_dev_flag = 0;
 		bridge_params.media_entity_flag = 0;
 		bridge_params.priv = a_ctrl;
+		bridge_params.dev_id = CAM_ACTUATOR;
 
 		actuator_acq_dev.device_handle =
 			cam_create_device_hdl(&bridge_params);

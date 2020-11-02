@@ -82,6 +82,7 @@ static int cam_ois_get_dev_handle(struct cam_ois_ctrl_t *o_ctrl,
 	bridge_params.v4l2_sub_dev_flag = 0;
 	bridge_params.media_entity_flag = 0;
 	bridge_params.priv = o_ctrl;
+	bridge_params.dev_id = CAM_OIS;
 
 	ois_acq_dev.device_handle =
 		cam_create_device_hdl(&bridge_params);
@@ -152,8 +153,15 @@ static int cam_ois_power_up(struct cam_ois_ctrl_t *o_ctrl)
 	}
 
 	rc = camera_io_init(&o_ctrl->io_master_info);
-	if (rc)
+	if (rc) {
 		CAM_ERR(CAM_OIS, "cci_init failed: rc: %d", rc);
+		goto cci_failure;
+	}
+
+	return rc;
+cci_failure:
+	if (cam_sensor_util_power_down(power_info, soc_info))
+		CAM_ERR(CAM_OIS, "Power Down failed");
 
 	return rc;
 }
