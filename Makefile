@@ -4,7 +4,9 @@ KBUILD_OPTIONS += CAMERA_KERNEL_ROOT=$(shell pwd)
 KBUILD_OPTIONS += KERNEL_ROOT=$(ROOT_DIR)/$(KERNEL_DIR)
 KBUILD_OPTIONS += MODNAME=camera
 
-modules:
+all: modules
+
+modules dtbs:
 	$(MAKE) -C $(KERNEL_SRC) M=$(M) modules $(KBUILD_OPTIONS)
 
 modules_install:

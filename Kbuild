@@ -41,11 +41,11 @@ cam_include_dirs := $(shell dirname `find $(CAMERA_KERNEL_ROOT) -name '*.h'` | u
 USERINCLUDE +=                              \
 	-I$(CAMERA_KERNEL_ROOT)/include/uapi/
 # Include Kernel headers
-LINUXINCLUDE +=                                     \
-	-I$(KERNEL_ROOT)                                \
-	$(addprefix -I,$(cam_include_dirs))             \
-	-I$(CAMERA_KERNEL_ROOT)/include/uapi/camera
-
+LINUXINCLUDE +=                                 \
+	-I$(KERNEL_ROOT)                            \
+	$(addprefix -I,$(cam_include_dirs))         \
+	-I$(CAMERA_KERNEL_ROOT)/include/uapi/camera \
+	-I$(CAMERA_KERNEL_ROOT)/
 # Optional include directories
 ccflags-$(CONFIG_MSM_GLOBAL_SYNX) += -I$(KERNEL_ROOT)/drivers/media/platform/msm/synx
 

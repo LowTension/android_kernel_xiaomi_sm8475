@@ -9,7 +9,7 @@
 #include <media/cam_isp.h>
 #include <media/cam_defs.h>
 
-#include <dt-bindings/msm/msm-camera.h>
+#include <dt-bindings/msm-camera.h>
 
 #include "cam_ife_csid_common.h"
 #include "cam_ife_csid_hw_ver1.h"

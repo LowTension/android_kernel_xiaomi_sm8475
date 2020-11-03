@@ -9,7 +9,8 @@
 #include <media/cam_isp.h>
 #include <media/cam_defs.h>
 
-#include <dt-bindings/msm/msm-camera.h>
+#include <dt-bindings/msm-camera.h>
+
 #include "cam_soc_util.h"
 #include "cam_io_util.h"
 #include "cam_debug_util.h"

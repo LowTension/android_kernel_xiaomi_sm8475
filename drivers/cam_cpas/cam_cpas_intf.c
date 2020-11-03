@@ -7,12 +7,14 @@
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/platform_device.h>
+
 #include <media/v4l2-event.h>
 #include <media/v4l2-ioctl.h>
 #include <media/v4l2-subdev.h>
 #include <media/cam_cpas.h>
 #include <media/cam_req_mgr.h>
-#include <dt-bindings/msm/msm-camera.h>
+
+#include <dt-bindings/msm-camera.h>
 
 #include "cam_subdev.h"
 #include "cam_cpas_hw_intf.h"

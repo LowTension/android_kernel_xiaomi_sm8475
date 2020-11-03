@@ -9,7 +9,7 @@
 #include <media/cam_isp.h>
 #include <media/cam_defs.h>
 
-#include <dt-bindings/msm/msm-camera.h>
+#include <dt-bindings/msm-camera.h>
 
 #include "cam_ife_csid_common.h"
 #include "cam_ife_csid_hw_ver2.h"
@@ -3964,7 +3964,7 @@ static int cam_ife_csid_hw_init_irq(
 	return rc;
 }
 
-int cam_ife_csid_hw_ver2_init(struct cam_hw_intf  *hw_intf,
+int cam_ife_csid_hw_ver2_init(struct cam_hw_intf *hw_intf,
 	struct cam_ife_csid_core_info *core_info,
 	bool is_custom)
 {
