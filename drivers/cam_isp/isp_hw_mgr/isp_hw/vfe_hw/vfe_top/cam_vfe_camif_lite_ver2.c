@@ -36,7 +36,7 @@ struct cam_vfe_mux_camif_lite_data {
 		evt_payload[CAM_VFE_CAMIF_LITE_EVT_MAX];
 	struct list_head                      free_payload_list;
 	spinlock_t                            spin_lock;
-	struct timeval                        error_ts;
+	struct timespec64                     error_ts;
 };
 
 static int cam_vfe_camif_lite_get_evt_payload(
@@ -137,8 +137,8 @@ static int cam_vfe_camif_lite_err_irq_top_half(
 	if (error_flag) {
 		camif_lite_priv->error_ts.tv_sec =
 			evt_payload->ts.mono_time.tv_sec;
-		camif_lite_priv->error_ts.tv_usec =
-			evt_payload->ts.mono_time.tv_usec;
+		camif_lite_priv->error_ts.tv_nsec =
+			evt_payload->ts.mono_time.tv_nsec;
 	}
 
 	for (i = 0; i < th_payload->num_registers; i++)
@@ -309,7 +309,7 @@ static int cam_vfe_camif_lite_resource_start(
 	}
 
 	rsrc_data->error_ts.tv_sec = 0;
-	rsrc_data->error_ts.tv_usec = 0;
+	rsrc_data->error_ts.tv_nsec = 0;
 
 	CAM_DBG(CAM_ISP, "Start Camif Lite IFE %d Done",
 		camif_lite_res->hw_intf->hw_idx);
@@ -555,11 +555,11 @@ static int cam_vfe_camif_lite_handle_irq_bottom_half(
 		ktime_get_boottime_ts64(&ts);
 		CAM_INFO(CAM_ISP,
 			"current monotonic time stamp seconds %lld:%lld",
-			ts.tv_sec, ts.tv_nsec/1000);
+			ts.tv_sec, ts.tv_nsec);
 		CAM_INFO(CAM_ISP,
 			"ERROR time %lld:%lld",
 			camif_lite_priv->error_ts.tv_sec,
-			camif_lite_priv->error_ts.tv_usec);
+			camif_lite_priv->error_ts.tv_nsec);
 		CAM_INFO(CAM_ISP, "ife_clk_src:%lld",
 			soc_private->ife_clk_src);
 

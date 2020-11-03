@@ -6,7 +6,7 @@
 #ifndef _CAM_HW_MGR_INTF_H_
 #define _CAM_HW_MGR_INTF_H_
 
-#include <linux/time.h>
+#include <linux/time64.h>
 #include <linux/types.h>
 #include <media/cam_defs.h>
 #include "cam_smmu_api.h"
@@ -98,7 +98,7 @@ struct cam_hw_fence_map_entry {
 struct cam_hw_done_event_data {
 	uint32_t           num_handles;
 	uint32_t           resource_handle[CAM_NUM_OUT_PER_COMP_IRQ_MAX];
-	struct timeval     timestamp;
+	struct timespec64  timestamp;
 	uint64_t           request_id;
 	uint32_t           evt_param;
 };

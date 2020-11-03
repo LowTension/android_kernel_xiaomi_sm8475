@@ -48,11 +48,11 @@ struct cam_tfe_top_priv {
 		axi_vote_control[CAM_TFE_TOP_IN_PORT_MAX];
 	uint32_t                          irq_prepared_mask[3];
 	void                            *tasklet_info;
-	struct timeval                    sof_ts;
-	struct timeval                    epoch_ts;
-	struct timeval                    eof_ts;
-	struct timeval                    error_ts;
-	uint32_t                          top_debug;
+	struct timespec64                    sof_ts;
+	struct timespec64                    epoch_ts;
+	struct timespec64                    eof_ts;
+	struct timespec64                    error_ts;
+	uint32_t                             top_debug;
 };
 
 struct cam_tfe_camif_data {
@@ -175,11 +175,11 @@ int cam_tfe_get_hw_caps(void *hw_priv, void *get_hw_cap_args,
 
 void cam_tfe_get_timestamp(struct cam_isp_timestamp *time_stamp)
 {
-	struct timespec ts;
+	struct timespec64 ts;
 
-	ts = ktime_to_timespec(ktime_get_boottime());
+	ktime_get_boottime_ts64(&ts);
 	time_stamp->mono_time.tv_sec    = ts.tv_sec;
-	time_stamp->mono_time.tv_usec   = ts.tv_nsec/1000;
+	time_stamp->mono_time.tv_nsec   = ts.tv_nsec;
 }
 
 int cam_tfe_irq_config(void     *tfe_core_data,
@@ -322,7 +322,7 @@ static void cam_tfe_log_error_irq_status(
 	soc_private = top_priv->common_data.soc_info->soc_private;
 
 	CAM_INFO(CAM_ISP, "current monotonic time stamp seconds %lld:%lld",
-		ts.tv_sec, ts.tv_nsec/1000);
+		ts.tv_sec, ts.tv_nsec);
 	CAM_INFO(CAM_ISP,
 		"ERROR time %lld:%lld SOF %lld:%lld EPOCH %lld:%lld EOF %lld:%lld",
 		top_priv->error_ts.tv_sec,
