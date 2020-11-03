@@ -132,8 +132,8 @@ int cam_req_mgr_debug_register(struct cam_req_mgr_core_device *core_dev)
 		debugfs_root, core_dev, &bubble_recovery);
 	dbgfileptr = debugfs_create_bool("recovery_on_apply_fail", 0644,
 		debugfs_root, &core_dev->recovery_on_apply_fail);
-	dbgfileptr = debugfs_create_u32("delay_detect_count", 0644,
-		debugfs_root, &cam_debug_mgr_delay_detect);
+	debugfs_create_u32("delay_detect_count", 0644, debugfs_root,
+		&cam_debug_mgr_delay_detect);
 	if (IS_ERR(dbgfileptr)) {
 		if (PTR_ERR(dbgfileptr) == -ENODEV)
 			CAM_WARN(CAM_MEM, "DebugFS not enabled in kernel!");
