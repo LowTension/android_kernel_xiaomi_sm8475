@@ -5880,135 +5880,154 @@ end:
 	return rc;
 }
 
-static int cam_icp_mgr_alloc_devs(struct device_node *of_node)
+static int cam_icp_mgr_alloc_devs(struct device_node *np)
 {
-	int rc;
-	uint32_t num_dev;
+	struct cam_hw_intf **devices;
+	int rc, icp_hw_type;
+	uint32_t num;
 
-	rc = of_property_read_u32(of_node, "num-a5", &num_dev);
-	if (rc) {
-		CAM_ERR(CAM_ICP, "getting num of a5 failed");
-		goto num_a5_failed;
+	memset(icp_hw_mgr.devices, 0, sizeof(icp_hw_mgr.devices));
+
+	if (!of_property_read_u32(np, "num-a5", &num)) {
+		icp_hw_type = CAM_ICP_DEV_A5;
+	} else if (!of_property_read_u32(np, "num-lx7", &num)) {
+		icp_hw_type = CAM_ICP_DEV_LX7;
+	} else {
+		CAM_ERR(CAM_ICP, "missing processor device num prop");
+		return -ENODEV;
 	}
 
-	icp_hw_mgr.devices[CAM_ICP_DEV_A5] = kzalloc(
-		sizeof(struct cam_hw_intf *) * num_dev, GFP_KERNEL);
-	if (!icp_hw_mgr.devices[CAM_ICP_DEV_A5]) {
-		rc = -ENOMEM;
-		CAM_ERR(CAM_ICP, "a5 allocation fail: rc = %d", rc);
-		goto num_a5_failed;
+	devices = kcalloc(num, sizeof(*devices), GFP_KERNEL);
+	if (!devices) {
+		CAM_ERR(CAM_ICP, "icp device allocation failed");
+		return -ENOMEM;
 	}
 
-	rc = of_property_read_u32(of_node, "num-ipe", &num_dev);
+	CAM_DBG(CAM_ICP, "allocated device iface for %s",
+		icp_hw_type == CAM_ICP_DEV_A5 ? "A5" : "LX7");
+	icp_hw_mgr.devices[icp_hw_type] = devices;
+
+	rc = of_property_read_u32(np, "num-ipe", &num);
 	if (rc) {
-		CAM_ERR(CAM_ICP, "getting number of ipe dev nodes failed");
-		goto num_ipe_failed;
+		CAM_ERR(CAM_ICP, "number of ipe devices not found rc=%d", rc);
+		goto free_icp;
 	}
 
 	if (!icp_hw_mgr.ipe1_enable)
-		num_dev = 1;
+		num = 1;
 
-	icp_hw_mgr.devices[CAM_ICP_DEV_IPE] = kcalloc(num_dev,
-		sizeof(struct cam_hw_intf *), GFP_KERNEL);
-	if (!icp_hw_mgr.devices[CAM_ICP_DEV_IPE]) {
-		rc = -ENOMEM;
-		CAM_ERR(CAM_ICP, "ipe device allocation fail : rc= %d", rc);
-		goto num_ipe_failed;
+	devices = kcalloc(num, sizeof(*devices), GFP_KERNEL);
+	if (!devices) {
+		CAM_ERR(CAM_ICP, "ipe device allocation failed");
+		goto free_icp;
 	}
 
-	rc = of_property_read_u32(of_node, "num-bps", &num_dev);
+	icp_hw_mgr.devices[CAM_ICP_DEV_IPE] = devices;
+
+	rc = of_property_read_u32(np, "num-bps", &num);
 	if (rc) {
-		CAM_ERR(CAM_ICP, "read num bps devices failed");
-		goto num_bps_failed;
-	}
-	icp_hw_mgr.devices[CAM_ICP_DEV_BPS] = kcalloc(num_dev,
-		sizeof(struct cam_hw_intf *), GFP_KERNEL);
-	if (!icp_hw_mgr.devices[CAM_ICP_DEV_BPS]) {
-		rc = -ENOMEM;
-		CAM_ERR(CAM_ICP, "bps device allocation fail : rc= %d", rc);
-		goto num_bps_failed;
+		CAM_ERR(CAM_ICP, "number of bps devices not found rc=%d", rc);
+		goto free_ipe;
 	}
 
-	icp_hw_mgr.ipe_bps_pc_flag = of_property_read_bool(of_node,
-		"ipe_bps_pc_en");
+	devices = kcalloc(num, sizeof(*devices), GFP_KERNEL);
+	if (!devices) {
+		CAM_ERR(CAM_ICP, "bps device allocation failed");
+		goto free_ipe;
+	}
 
-	icp_hw_mgr.icp_pc_flag = of_property_read_bool(of_node,
-		"icp_pc_en");
+	icp_hw_mgr.devices[CAM_ICP_DEV_BPS] = devices;
+
+	icp_hw_mgr.ipe_bps_pc_flag = of_property_read_bool(np, "ipe_bps_pc_en");
+	icp_hw_mgr.icp_pc_flag = of_property_read_bool(np, "icp_pc_en");
 
 	return 0;
-num_bps_failed:
+
+free_ipe:
 	kfree(icp_hw_mgr.devices[CAM_ICP_DEV_IPE]);
-num_ipe_failed:
-	kfree(icp_hw_mgr.devices[CAM_ICP_DEV_A5]);
-num_a5_failed:
+free_icp:
+	kfree(icp_hw_mgr.devices[icp_hw_type]);
+
 	return rc;
 }
 
-static int cam_icp_mgr_init_devs(struct device_node *of_node)
+static void cam_icp_mgr_free_devs(void)
 {
-	int rc = 0;
-	int count, i;
-	const char *name = NULL;
-	struct device_node *child_node = NULL;
-	struct platform_device *child_pdev = NULL;
-	struct cam_hw_intf *child_dev_intf = NULL;
+	int i;
 
-	rc = cam_icp_mgr_alloc_devs(of_node);
+	for (i = 0; i < CAM_ICP_DEV_MAX; i++)
+		kfree(icp_hw_mgr.devices[i]);
+}
+
+static int cam_icp_mgr_init_devs(struct device_node *np)
+{
+	int rc;
+	int i, count;
+
+	rc = cam_icp_mgr_alloc_devs(np);
 	if (rc) {
-		CAM_ERR(CAM_ICP, "alloc_devs fail : rc = %d", rc);
+		CAM_ERR(CAM_ICP, "devices allocation failed rc=%d", rc);
 		return rc;
 	}
-	count = of_property_count_strings(of_node, "compat-hw-name");
-	if (!count) {
-		CAM_ERR(CAM_ICP, "no compat hw found in dev tree, cnt = %d",
-			count);
-		rc = -EINVAL;
-		goto compat_hw_name_failed;
+
+	count = of_property_count_strings(np, "compat-hw-name");
+	if (count < 0) {
+		CAM_ERR(CAM_ICP, "invalid compat-hw-name count=%d", count);
+		rc = count;
+		goto free_devices;
 	}
 
 	for (i = 0; i < count; i++) {
-		rc = of_property_read_string_index(of_node, "compat-hw-name",
-			i, &name);
+		const char *name = NULL;
+		struct platform_device *pdev;
+		struct device_node *node;
+		struct cam_hw_intf *iface;
+
+		rc = of_property_read_string_index(np, "compat-hw-name",
+						i, &name);
 		if (rc) {
-			CAM_ERR(CAM_ICP, "getting dev object name failed");
-			goto compat_hw_name_failed;
+			CAM_ERR(CAM_ICP,
+				"unable to get property name: idx=%d rc=%d",
+				i, rc);
+			goto free_devices;
 		}
 
-		child_node = of_find_node_by_name(NULL, name);
-		if (!child_node) {
-			CAM_ERR(CAM_ICP, "Cannot find node in dtsi %s", name);
+		node = of_find_node_by_name(NULL, name);
+		if (!node) {
+			CAM_ERR(CAM_ICP, "missing node %s", name);
 			rc = -ENODEV;
-			goto compat_hw_name_failed;
+			goto free_devices;
 		}
 
-		child_pdev = of_find_device_by_node(child_node);
-		if (!child_pdev) {
-			CAM_ERR(CAM_ICP, "failed to find device on bus %s",
-				child_node->name);
+		pdev = of_find_device_by_node(node);
+		of_node_put(node);
+		if (!pdev) {
+			CAM_ERR(CAM_ICP,
+				"platform device not found for %s", name);
 			rc = -ENODEV;
-			of_node_put(child_node);
-			goto compat_hw_name_failed;
+			goto free_devices;
 		}
 
-		child_dev_intf = (struct cam_hw_intf *)platform_get_drvdata(
-			child_pdev);
-		if (!child_dev_intf) {
-			CAM_ERR(CAM_ICP, "no child device");
-			of_node_put(child_node);
+		iface = platform_get_drvdata(pdev);
+		if (!iface || !iface->hw_ops.process_cmd) {
+			CAM_ERR(CAM_ICP,
+				"invalid interface: iface=%pK process_cmd=%pK",
+				iface, (iface ? iface->hw_ops.process_cmd : NULL));
+
 			if (!icp_hw_mgr.ipe1_enable)
 				continue;
-			goto compat_hw_name_failed;
+
+			rc = -EINVAL;
+			goto free_devices;
 		}
-		icp_hw_mgr.devices[child_dev_intf->hw_type]
-			[child_dev_intf->hw_idx] = child_dev_intf;
 
-		if (!child_dev_intf->hw_ops.process_cmd)
-			goto compat_hw_name_failed;
-
-		of_node_put(child_node);
+		icp_hw_mgr.devices[iface->hw_type][iface->hw_idx] = iface;
 	}
 
-	icp_hw_mgr.icp_dev_intf = icp_hw_mgr.devices[CAM_ICP_DEV_A5][0];
+	icp_hw_mgr.icp_dev_intf = icp_hw_mgr.devices[CAM_ICP_DEV_A5] ?
+				icp_hw_mgr.devices[CAM_ICP_DEV_A5][0] :
+				icp_hw_mgr.devices[CAM_ICP_DEV_LX7][0];
+
 	icp_hw_mgr.bps_dev_intf = icp_hw_mgr.devices[CAM_ICP_DEV_BPS][0];
 	icp_hw_mgr.ipe0_dev_intf = icp_hw_mgr.devices[CAM_ICP_DEV_IPE][0];
 	if (icp_hw_mgr.ipe1_enable)
@@ -6016,10 +6035,9 @@ static int cam_icp_mgr_init_devs(struct device_node *of_node)
 			icp_hw_mgr.devices[CAM_ICP_DEV_IPE][1];
 
 	return 0;
-compat_hw_name_failed:
-	kfree(icp_hw_mgr.devices[CAM_ICP_DEV_BPS]);
-	kfree(icp_hw_mgr.devices[CAM_ICP_DEV_IPE]);
-	kfree(icp_hw_mgr.devices[CAM_ICP_DEV_A5]);
+
+free_devices:
+	cam_icp_mgr_free_devs();
 	return rc;
 }
 
@@ -6260,9 +6278,7 @@ secure_hdl_failed:
 	cam_smmu_destroy_handle(icp_hw_mgr.iommu_hdl);
 	icp_hw_mgr.iommu_hdl = -1;
 icp_get_hdl_failed:
-	kfree(icp_hw_mgr.devices[CAM_ICP_DEV_BPS]);
-	kfree(icp_hw_mgr.devices[CAM_ICP_DEV_IPE]);
-	kfree(icp_hw_mgr.devices[CAM_ICP_DEV_A5]);
+	cam_icp_mgr_free_devs();
 destroy_mutex:
 	mutex_destroy(&icp_hw_mgr.hw_mgr_mutex);
 	for (i = 0; i < CAM_ICP_CTX_MAX; i++)
@@ -6278,9 +6294,7 @@ void cam_icp_hw_mgr_deinit(void)
 	debugfs_remove_recursive(icp_hw_mgr.dentry);
 	icp_hw_mgr.dentry = NULL;
 	cam_icp_mgr_destroy_wq();
-	kfree(icp_hw_mgr.devices[CAM_ICP_DEV_BPS]);
-	kfree(icp_hw_mgr.devices[CAM_ICP_DEV_IPE]);
-	kfree(icp_hw_mgr.devices[CAM_ICP_DEV_A5]);
+	cam_icp_mgr_free_devs();
 	mutex_destroy(&icp_hw_mgr.hw_mgr_mutex);
 	for (i = 0; i < CAM_ICP_CTX_MAX; i++)
 		mutex_destroy(&icp_hw_mgr.ctx_data[i].ctx_mutex);
