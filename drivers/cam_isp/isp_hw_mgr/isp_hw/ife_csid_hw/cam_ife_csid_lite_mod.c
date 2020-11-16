@@ -1,23 +1,32 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2020, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/module.h>
+#include "camera_main.h"
+#include "cam_ife_csid_dev.h"
+#include "cam_ife_csid_common.h"
+#include "cam_ife_csid_hw_ver1.h"
 #include "cam_ife_csid_lite17x.h"
 #include "cam_ife_csid_lite480.h"
-#include "cam_ife_csid_core.h"
-#include "cam_ife_csid_dev.h"
-#include "camera_main.h"
+#include "cam_ife_csid_lite680.h"
 
 #define CAM_CSID_LITE_DRV_NAME                    "csid_lite"
 
-static struct cam_ife_csid_hw_info cam_ife_csid_lite_17x_hw_info = {
-	.csid_reg = &cam_ife_csid_lite_17x_reg_offset,
+static struct cam_ife_csid_core_info cam_ife_csid_lite_17x_hw_info = {
+	.csid_reg = &cam_ife_csid_lite_17x_reg_info,
+	.sw_version  = CAM_IFE_CSID_VER_1_0,
 };
 
-static struct cam_ife_csid_hw_info cam_ife_csid_lite_480_hw_info = {
-	.csid_reg = &cam_ife_csid_lite_480_reg_offset,
+static struct cam_ife_csid_core_info cam_ife_csid_lite_480_hw_info = {
+	.csid_reg = &cam_ife_csid_lite_480_reg_info,
+	.sw_version  = CAM_IFE_CSID_VER_1_0,
+};
+
+static struct cam_ife_csid_core_info cam_ife_csid_lite_680_hw_info = {
+	.csid_reg = &cam_ife_csid_lite_680_reg_info,
+	.sw_version  = CAM_IFE_CSID_VER_2_0,
 };
 
 static const struct of_device_id cam_ife_csid_lite_dt_match[] = {
@@ -30,6 +39,10 @@ static const struct of_device_id cam_ife_csid_lite_dt_match[] = {
 		.data = &cam_ife_csid_lite_17x_hw_info,
 	},
 	{
+		.compatible = "qcom,csid-lite165",
+		.data = &cam_ife_csid_lite_17x_hw_info,
+	},
+	{
 		.compatible = "qcom,csid-lite480",
 		.data = &cam_ife_csid_lite_480_hw_info,
 	},
@@ -37,8 +50,13 @@ static const struct of_device_id cam_ife_csid_lite_dt_match[] = {
 		.compatible = "qcom,csid-lite580",
 		.data = &cam_ife_csid_lite_480_hw_info,
 	},
+	{
+		.compatible = "qcom,csid-lite680",
+		.data = &cam_ife_csid_lite_680_hw_info,
+	},
 	{}
 };
+
 MODULE_DEVICE_TABLE(of, cam_ife_csid_lite_dt_match);
 
 struct platform_driver cam_ife_csid_lite_driver = {

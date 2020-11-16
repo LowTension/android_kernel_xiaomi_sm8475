@@ -249,4 +249,22 @@ int cam_isp_add_go_cmd(
 	uint32_t                              base_idx,
 	struct cam_kmd_buf_info              *kmd_buf_info);
 
+/* cam_isp_csid_add_reg_update()
+ *
+ * @brief                  Add csid reg update in the hw entries list
+ *                         processe the isp source list get the reg update from
+ *                         ISP HW instance
+ *
+ * @prepare:               Contain the  packet and HW update variables
+ * @res_list_isp_src:      Resource list for IFE/VFE source
+ * @base_idx:              Base or dev index of the IFE/VFE HW instance
+ * @kmd_buf_info:          Kmd buffer to store the change base command
+ * @return:                0 for success
+ *                         -EINVAL for Fail
+ */
+int cam_isp_add_csid_reg_update(
+	struct cam_hw_prepare_update_args    *prepare,
+	struct list_head                     *res_list,
+	uint32_t                              base_idx,
+	struct cam_kmd_buf_info              *kmd_buf_info);
 #endif /*_CAM_ISP_HW_PARSER_H */

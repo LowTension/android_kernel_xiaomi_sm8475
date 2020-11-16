@@ -11,8 +11,18 @@
 
 /* MAX IFE CSID instance */
 #define CAM_IFE_CSID_HW_NUM_MAX                        7
-#define CAM_IFE_CSID_RDI_MAX                           4
 #define CAM_IFE_CSID_UDI_MAX                           3
+
+/**
+ * enum cam_ife_csid_input_core_type - Specify the csid input core
+ */
+enum cam_ife_csid_input_core_type {
+	CAM_IFE_CSID_INPUT_CORE_NONE,
+	CAM_IFE_CSID_INPUT_CORE_IFE,
+	CAM_IFE_CSID_INPUT_CORE_SFE_IFE,
+	CAM_IFE_CSID_INPUT_CORE_SFE,
+	CAM_IFE_CSID_INPUT_CORE_CUST_IFE,
+};
 
 /**
  * enum cam_ife_pix_path_res_id - Specify the csid patch
@@ -22,6 +32,7 @@ enum cam_ife_pix_path_res_id {
 	CAM_IFE_PIX_PATH_RES_RDI_1,
 	CAM_IFE_PIX_PATH_RES_RDI_2,
 	CAM_IFE_PIX_PATH_RES_RDI_3,
+	CAM_IFE_PIX_PATH_RES_RDI_4,
 	CAM_IFE_PIX_PATH_RES_IPP,
 	CAM_IFE_PIX_PATH_RES_PPP,
 	CAM_IFE_PIX_PATH_RES_UDI_0,
@@ -43,13 +54,15 @@ enum cam_ife_cid_res_id {
 
 /**
  * struct cam_ife_csid_hw_caps- get the CSID hw capability
- * @num_rdis:       number of rdis supported by CSID HW device
- * @num_pix:        number of pxl paths supported by CSID HW device
- * @num_ppp:        number of ppp paths supported by CSID HW device
- * @major_version : major version
- * @minor_version:  minor version
- * @version_incr:   version increment
- * @is_lite:        is the ife_csid lite
+ * @num_rdis:          number of rdis supported by CSID HW device
+ * @num_pix:           number of pxl paths supported by CSID HW device
+ * @num_ppp:           number of ppp paths supported by CSID HW device
+ * @major_version :    major version
+ * @minor_version:     minor version
+ * @version_incr:      version increment
+ * @is_lite:           is the ife_csid lite
+ * @global_reset_en:   flag to indicate if global reset is enabled
+ * @rup_en:            flag to indicate if rup is on csid side
  */
 struct cam_ife_csid_hw_caps {
 	uint32_t      num_rdis;
@@ -59,6 +72,8 @@ struct cam_ife_csid_hw_caps {
 	uint32_t      minor_version;
 	uint32_t      version_incr;
 	bool          is_lite;
+	bool          global_reset_en;
+	bool          rup_en;
 };
 
 struct cam_isp_out_port_generic_info {
@@ -115,26 +130,33 @@ struct cam_isp_in_port_generic_info {
 
 /**
  * struct cam_csid_hw_reserve_resource- hw reserve
- * @res_type :    Reource type CID or PATH
- *                if type is CID, then res_id is not required,
- *                if type is path then res id need to be filled
- * @res_id  :     Resource id to be reserved
- * @in_port :     Input port resource info
- * @out_port:     Output port resource info, used for RDI path only
- * @sync_mode:    Sync mode
- *                Sync mode could be master, slave or none
- * @master_idx:   Master device index to be configured in the slave path
- *                for master path, this value is not required.
- *                only slave need to configure the master index value
- * @cid:          cid (DT_ID) value for path, this is applicable for CSID path
- *                reserve
- * @node_res :    Reserved resource structure pointer
- * @crop_enable : Flag to indicate CSID crop enable
- * @drop_enable : Flag to indicate CSID drop enable
- * @priv:         private data to be sent in callback
- * @event_cb:     CSID event callback to hw manager
- * @phy_sel:      Phy selection number if tpg is enabled from userspace
- * @can_use_lite: Flag to indicate if current call qualifies for acquire lite
+ * @res_type :           Reource type CID or PATH
+ *                       if type is CID, then res_id is not required,
+ *                       if type is path then res id need to be filled
+ * @res_id  :            Resource id to be reserved
+ * @in_port :            Input port resource info
+ * @out_port:            Output port resource info, used for RDI path only
+ * @sync_mode:           Sync mode
+ *                       Sync mode could be master, slave or none
+ * @master_idx:          Master device index to be configured in the
+ *                       slave path
+ *                       for master path, this value is not required.
+ *                       only slave need to configure the master index value
+ * @dual_core_id:        In case of dual csid, core id of another hw
+ *                       reserve
+ * @node_res :           Reserved resource structure pointer
+ * @crop_enable :        Flag to indicate CSID crop enable
+ * @drop_enable :        Flag to indicate CSID drop enable
+ * @sfe_inline_shdr:     Flag to indicate if sfe is inline shdr
+ * @need_top_cfg:        Flag to indicate if top cfg is needed
+ * @tasklet:             Tasklet to schedule bottom halves
+ * @buf_done_controller: IRQ controller for buf done for version 680 hw
+ * @cdm_ops:             CDM Ops
+ * @event_cb:            Callback function to hw mgr in case of hw events
+ * @cb_priv:             Private pointer to return to callback
+ * @phy_sel:             Phy selection number if tpg is enabled from userspace
+ * @can_use_lite:        Flag to indicate if current call qualifies for
+ *                       acquire lite
  *
  */
 struct cam_csid_hw_reserve_resource_args {
@@ -144,14 +166,19 @@ struct cam_csid_hw_reserve_resource_args {
 	struct cam_isp_out_port_generic_info     *out_port;
 	enum cam_isp_hw_sync_mode                 sync_mode;
 	uint32_t                                  master_idx;
-	uint32_t                                  cid;
+	uint32_t                                  dual_core_id;
 	struct cam_isp_resource_node             *node_res;
 	bool                                      crop_enable;
 	bool                                      drop_enable;
-	void                                     *priv;
+	bool                                      sfe_inline_shdr;
+	bool                                      need_top_cfg;
+	void                                     *tasklet;
+	void                                     *buf_done_controller;
+	void                                     *cdm_ops;
 	cam_hw_mgr_event_cb_func                  event_cb;
 	uint32_t                                  phy_sel;
 	bool                                      can_use_lite;
+	void                                     *cb_priv;
 };
 
 /**
@@ -241,19 +268,6 @@ struct cam_csid_get_time_stamp_args {
 };
 
 /**
- * enum cam_ife_csid_cmd_type - Specify the csid command
- */
-enum cam_ife_csid_cmd_type {
-	CAM_IFE_CSID_CMD_GET_TIME_STAMP,
-	CAM_IFE_CSID_SET_CSID_DEBUG,
-	CAM_IFE_CSID_SOF_IRQ_DEBUG,
-	CAM_IFE_CSID_SET_CONFIG,
-	CAM_IFE_CSID_SET_SENSOR_DIMENSION_CFG,
-	CAM_IFE_CSID_LOG_ACQUIRE_DATA,
-	CAM_IFE_CSID_CMD_MAX,
-};
-
-/**
  * cam_ife_csid_hw_init()
  *
  * @brief:               Initialize function for the CSID hardware
@@ -276,9 +290,11 @@ struct cam_ife_csid_clock_update_args {
 /*
  * struct cam_ife_csid_qcfa_update_args:
  *
+ * @res:                         Res node pointer
  * @qcfa_binning:                QCFA binning supported
  */
 struct cam_ife_csid_qcfa_update_args {
+	struct cam_isp_resource_node      *res;
 	uint32_t                           qcfa_binning;
 };
 
@@ -294,14 +310,50 @@ struct cam_ife_csid_epd_update_args {
 /*
  * struct cam_ife_sensor_dim_update_args:
  *
- * @ppp_path:             expected ppp path configuration
- * @ipp_path:             expected ipp path configuration
- * @rdi_path:             expected rdi path configuration
+ * @res:                          Resource for which data is updated
+ * @sensor_data:                  expected path configuration
  */
 struct cam_ife_sensor_dimension_update_args {
-	struct cam_isp_sensor_dimension  ppp_path;
-	struct cam_isp_sensor_dimension  ipp_path;
-	struct cam_isp_sensor_dimension  rdi_path[CAM_IFE_CSID_RDI_MAX];
+	struct cam_isp_resource_node         *res;
+	struct cam_isp_sensor_dimension       sensor_data;
 };
 
+/* struct cam_ife_csid_top_config_args:
+ *
+ * @input_core_type:              Input core type for CSID
+ * @core_idx:                     Core idx for out core
+ * @is_sfe_offline:               flag to indicate if sfe is offline
+ */
+struct cam_ife_csid_top_config_args {
+	uint32_t   input_core_type;
+	uint32_t   core_idx;
+	bool       is_sfe_offline;
+};
+
+/*
+ * struct cam_ife_csid_dual_sync_args:
+ *
+ * @sync_mode:                Sync mode for dual csid master/slave
+ * @dual_core_id:             Core idx for another core in case of dual isp
+ *
+ */
+struct cam_ife_csid_dual_sync_args {
+	enum cam_isp_hw_sync_mode   sync_mode;
+	uint32_t                    dual_core_id;
+};
+
+/*
+ * struct cam_ife_csid_get_cmd_reg_update:
+ *
+ * @cmd:           cmd buf update args
+ * @node_res:      Node res pointer
+ * @num_res:       Num of resources
+ * @is_mup_update: Flag to indicate if mup update
+ */
+struct cam_ife_csid_reg_update_args {
+	struct cam_isp_hw_cmd_buf_update  cmd;
+	struct cam_isp_resource_node     *res[CAM_IFE_PIX_PATH_RES_MAX];
+	uint32_t                          num_res;
+	bool                              is_mup_update;
+};
 #endif /* _CAM_CSID_HW_INTF_H_ */

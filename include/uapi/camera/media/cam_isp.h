@@ -163,7 +163,7 @@
 #define CAM_ISP_ACQ_CUSTOM_PRIMARY    1
 #define CAM_ISP_ACQ_CUSTOM_SECONDARY  2
 
-#define CAM_IFE_CSID_RDI_MAX          4
+#define CAM_IFE_CSID_RDI_MAX          5
 
 /* Feature Flag indicators */
 #define CAM_ISP_PARAM_FETCH_SECURITY_MODE  BIT(0)

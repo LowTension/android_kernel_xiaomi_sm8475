@@ -18,6 +18,7 @@
 #define CAM_ISP_HW_DUMP_TAG_MAX_LEN 32
 /* Max isp hw pid values number */
 #define CAM_ISP_HW_MAX_PID_VAL      4
+
 /*
  * struct cam_isp_timestamp:
  *
@@ -136,6 +137,15 @@ enum cam_isp_hw_cmd_type {
 	CAM_ISP_HW_CMD_DISABLE_UBWC_COMP,
 	CAM_ISP_HW_CMD_SET_SFE_DEBUG_CFG,
 	CAM_ISP_HW_CMD_QUERY_BUS_CAP,
+	CAM_IFE_CSID_CMD_GET_TIME_STAMP,
+	CAM_IFE_CSID_SET_CSID_DEBUG,
+	CAM_IFE_CSID_SOF_IRQ_DEBUG,
+	CAM_IFE_CSID_SET_CONFIG,
+	CAM_IFE_CSID_SET_SENSOR_DIMENSION_CFG,
+	CAM_IFE_CSID_LOG_ACQUIRE_DATA,
+	CAM_IFE_CSID_TOP_CONFIG,
+	CAM_IFE_CSID_PROGRAM_OFFLINE_CMD,
+	CAM_IFE_CSID_SET_DUAL_SYNC_CONFIG,
 	CAM_ISP_HW_CMD_MAX,
 };
 
@@ -289,13 +299,18 @@ struct cam_isp_hw_get_res_for_mid {
 /*
  * struct cam_isp_hw_get_cmd_update:
  *
- * @Brief:         Get cmd buffer update for different CMD types
+ * @Brief:          Get cmd buffer update for different CMD types
  *
  * @res:             Resource node
  * @cmd_type:        Command type for which to get update
- * @cdm_id:          CDM id
+ * @cdm_id  :        CDM id
+ * @cmd:             Command buffer information
+ * @res:             Resource node
+ * @cmd_type:        Command type for which to get update
  * @cmd:             Command buffer information
  * @use_scratch_cfg: To indicate if it's scratch buffer config
+ * @trigger_cdm_en:  Flag to indicate if cdm is trigger
+ * @is_mup_update:   Flag to indicate if MUP is updated
  *
  */
 struct cam_isp_hw_get_cmd_update {
@@ -310,6 +325,7 @@ struct cam_isp_hw_get_cmd_update {
 		struct cam_isp_hw_get_wm_update      *rm_update;
 	};
 	bool trigger_cdm_en;
+	bool is_mup_update;
 };
 
 /*

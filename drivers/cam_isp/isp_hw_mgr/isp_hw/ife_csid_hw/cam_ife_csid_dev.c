@@ -6,7 +6,7 @@
 #include <linux/slab.h>
 #include <linux/mod_devicetable.h>
 #include <linux/of_device.h>
-#include "cam_ife_csid_core.h"
+#include "cam_ife_csid_common.h"
 #include "cam_ife_csid_dev.h"
 #include "cam_ife_csid_hw_intf.h"
 #include "cam_debug_util.h"
@@ -20,33 +20,26 @@ static char csid_dev_name[8];
 static int cam_ife_csid_component_bind(struct device *dev,
 	struct device *master_dev, void *data)
 {
-	struct cam_hw_intf             *csid_hw_intf;
-	struct cam_hw_info             *csid_hw_info;
-	struct cam_ife_csid_hw         *csid_dev = NULL;
+	struct cam_hw_intf             *hw_intf;
+	struct cam_hw_info             *hw_info;
 	const struct of_device_id      *match_dev = NULL;
-	struct cam_ife_csid_hw_info    *csid_hw_data = NULL;
+	struct cam_ife_csid_core_info  *csid_core_info = NULL;
 	uint32_t                        csid_dev_idx;
 	int                             rc = 0;
 	struct platform_device *pdev = to_platform_device(dev);
 
 	CAM_DBG(CAM_ISP, "Binding IFE CSID component");
 
-	csid_hw_intf = kzalloc(sizeof(*csid_hw_intf), GFP_KERNEL);
-	if (!csid_hw_intf) {
+	hw_intf = kzalloc(sizeof(*hw_intf), GFP_KERNEL);
+	if (!hw_intf) {
 		rc = -ENOMEM;
 		goto err;
 	}
 
-	csid_hw_info = kzalloc(sizeof(struct cam_hw_info), GFP_KERNEL);
-	if (!csid_hw_info) {
+	hw_info = kzalloc(sizeof(struct cam_hw_info), GFP_KERNEL);
+	if (!hw_info) {
 		rc = -ENOMEM;
 		goto free_hw_intf;
-	}
-
-	csid_dev = kzalloc(sizeof(struct cam_ife_csid_hw), GFP_KERNEL);
-	if (!csid_dev) {
-		rc = -ENOMEM;
-		goto free_hw_info;
 	}
 
 	/* get ife csid hw index */
@@ -57,49 +50,49 @@ static int cam_ife_csid_component_bind(struct device *dev,
 	if (!match_dev) {
 		CAM_ERR(CAM_ISP, "No matching table for the IFE CSID HW!");
 		rc = -EINVAL;
-		goto free_dev;
+		goto free_hw_info;
 	}
 
 	memset(csid_dev_name, 0, sizeof(csid_dev_name));
 	snprintf(csid_dev_name, sizeof(csid_dev_name),
 		"csid%1u", csid_dev_idx);
 
-	csid_hw_intf->hw_idx = csid_dev_idx;
-	csid_hw_intf->hw_type = CAM_ISP_HW_TYPE_IFE_CSID;
-	csid_hw_intf->hw_priv = csid_hw_info;
+	hw_intf->hw_idx = csid_dev_idx;
+	hw_intf->hw_type = CAM_ISP_HW_TYPE_IFE_CSID;
+	hw_intf->hw_priv = hw_info;
 
-	csid_hw_info->core_info = csid_dev;
-	csid_hw_info->soc_info.pdev = pdev;
-	csid_hw_info->soc_info.dev = &pdev->dev;
-	csid_hw_info->soc_info.dev_name = csid_dev_name;
-	csid_hw_info->soc_info.index = csid_dev_idx;
+	hw_info->soc_info.pdev = pdev;
+	hw_info->soc_info.dev = &pdev->dev;
+	hw_info->soc_info.dev_name = csid_dev_name;
+	hw_info->soc_info.index = csid_dev_idx;
 
-	csid_hw_data = (struct cam_ife_csid_hw_info  *)match_dev->data;
-	/* need to setup the pdev before call the ife hw probe init */
-	csid_dev->csid_info = csid_hw_data;
+	csid_core_info = (struct cam_ife_csid_core_info  *)match_dev->data;
 
-	rc = cam_ife_csid_hw_probe_init(csid_hw_intf, csid_dev_idx, false);
-	if (rc)
-		goto free_dev;
+	/* call the driver init and fill csid_hw_info->core_info */
+	rc = cam_ife_csid_hw_probe_init(hw_intf, csid_core_info, false);
 
-	platform_set_drvdata(pdev, csid_dev);
+	if (rc) {
+		CAM_ERR(CAM_ISP, "CSID[%d] probe init failed",
+		    csid_dev_idx);
+		goto free_hw_info;
+	}
+
+	platform_set_drvdata(pdev, hw_intf);
 	CAM_DBG(CAM_ISP, "CSID:%d component bound successfully",
-		csid_hw_intf->hw_idx);
+		hw_intf->hw_idx);
 
 
-	if (csid_hw_intf->hw_idx < CAM_IFE_CSID_HW_NUM_MAX)
-		cam_ife_csid_hw_list[csid_hw_intf->hw_idx] = csid_hw_intf;
+	if (hw_intf->hw_idx < CAM_IFE_CSID_HW_NUM_MAX)
+		cam_ife_csid_hw_list[hw_intf->hw_idx] = hw_intf;
 	else
-		goto free_dev;
+		goto free_hw_info;
 
 	return 0;
 
-free_dev:
-	kfree(csid_dev);
 free_hw_info:
-	kfree(csid_hw_info);
+	kfree(hw_info);
 free_hw_intf:
-	kfree(csid_hw_intf);
+	kfree(hw_intf);
 err:
 	return rc;
 }
@@ -107,24 +100,30 @@ err:
 static void cam_ife_csid_component_unbind(struct device *dev,
 	struct device *master_dev, void *data)
 {
-	struct cam_ife_csid_hw         *csid_dev = NULL;
-	struct cam_hw_intf             *csid_hw_intf;
-	struct cam_hw_info             *csid_hw_info;
+	struct cam_hw_intf             *hw_intf;
+	struct cam_hw_info             *hw_info;
+	struct cam_ife_csid_core_info    *core_info = NULL;
 	struct platform_device *pdev = to_platform_device(dev);
+	const struct of_device_id      *match_dev = NULL;
 
-	csid_dev = (struct cam_ife_csid_hw *)platform_get_drvdata(pdev);
-	csid_hw_intf = csid_dev->hw_intf;
-	csid_hw_info = csid_dev->hw_info;
-
+	hw_intf = (struct cam_hw_intf *)platform_get_drvdata(pdev);
+	hw_info = hw_intf->hw_priv;
 	CAM_DBG(CAM_ISP, "CSID:%d component unbind",
-		csid_dev->hw_intf->hw_idx);
+		hw_intf->hw_idx);
+	match_dev = of_match_device(pdev->dev.driver->of_match_table,
+		&pdev->dev);
 
-	cam_ife_csid_hw_deinit(csid_dev);
+	if (!match_dev) {
+		CAM_ERR(CAM_ISP, "No matching table for the IFE CSID HW!");
+		goto free_mem;
+	}
 
+	cam_ife_csid_hw_deinit(hw_intf, core_info);
+
+free_mem:
 	/*release the csid device memory */
-	kfree(csid_dev);
-	kfree(csid_hw_info);
-	kfree(csid_hw_intf);
+	kfree(hw_info);
+	kfree(hw_intf);
 }
 
 const static struct component_ops cam_ife_csid_component_ops = {

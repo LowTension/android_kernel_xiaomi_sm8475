@@ -777,7 +777,6 @@ static int cam_custom_hw_mgr_acquire_csid_res(
 		memset(&custom_csid_acquire, 0, sizeof(custom_csid_acquire));
 		custom_csid_acquire.res_id = path_res_id;
 		custom_csid_acquire.res_type = CAM_ISP_RESOURCE_PIX_PATH;
-		custom_csid_acquire.cid = cid_rsrc_node->res_id;
 		custom_csid_acquire.in_port = in_port_info;
 		custom_csid_acquire.out_port = out_port;
 		custom_csid_acquire.sync_mode = 0;

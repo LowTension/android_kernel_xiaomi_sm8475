@@ -64,9 +64,11 @@ camera-$(CONFIG_SPECTRA_ISP) += \
 	cam_isp/isp_hw_mgr/hw_utils/irq_controller/cam_irq_controller.o \
 	cam_isp/isp_hw_mgr/isp_hw/ife_csid_hw/cam_ife_csid_dev.o \
 	cam_isp/isp_hw_mgr/isp_hw/ife_csid_hw/cam_ife_csid_soc.o \
-	cam_isp/isp_hw_mgr/isp_hw/ife_csid_hw/cam_ife_csid_core.o \
-	cam_isp/isp_hw_mgr/isp_hw/ife_csid_hw/cam_ife_csid17x.o \
-	cam_isp/isp_hw_mgr/isp_hw/ife_csid_hw/cam_ife_csid_lite17x.o \
+	cam_isp/isp_hw_mgr/isp_hw/ife_csid_hw/cam_ife_csid_common.o \
+	cam_isp/isp_hw_mgr/isp_hw/ife_csid_hw/cam_ife_csid_hw_ver1.o \
+	cam_isp/isp_hw_mgr/isp_hw/ife_csid_hw/cam_ife_csid_hw_ver2.o \
+	cam_isp/isp_hw_mgr/isp_hw/ife_csid_hw/cam_ife_csid_mod.o \
+	cam_isp/isp_hw_mgr/isp_hw/ife_csid_hw/cam_ife_csid_lite_mod.o \
 	cam_isp/isp_hw_mgr/isp_hw/vfe_hw/cam_vfe_soc.o \
 	cam_isp/isp_hw_mgr/isp_hw/vfe_hw/cam_vfe_dev.o \
 	cam_isp/isp_hw_mgr/isp_hw/vfe_hw/cam_vfe_core.o \
@@ -218,7 +220,6 @@ camera-$(CONFIG_SPECTRA_TFE) += \
 	cam_isp/isp_hw_mgr/isp_hw/tfe_csid_hw/cam_tfe_csid_core.o \
 	cam_isp/isp_hw_mgr/isp_hw/tfe_csid_hw/cam_tfe_csid530.o \
 	cam_isp/isp_hw_mgr/cam_tfe_hw_mgr.o
-
 
 camera-y += camera_main.o
 

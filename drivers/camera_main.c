@@ -89,7 +89,7 @@ static const struct camera_submodule_component camera_tfe[] = {
 static const struct camera_submodule_component camera_isp[] = {
 #ifdef CONFIG_SPECTRA_ISP
 	{&cam_top_tpg_init_module, &cam_top_tpg_exit_module},
-	{&cam_ife_csid17x_init_module, &cam_ife_csid17x_exit_module},
+	{&cam_ife_csid_init_module, &cam_ife_csid_exit_module},
 	{&cam_ife_csid_lite_init_module, &cam_ife_csid_lite_exit_module},
 	{&cam_vfe_init_module, &cam_vfe_exit_module},
 #ifdef CONFIG_SPECTRA_SFE

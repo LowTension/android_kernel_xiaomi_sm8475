@@ -42,8 +42,8 @@ struct cam_ife_hw_mgr_debug {
 	struct dentry  *dentry;
 	uint64_t       csid_debug;
 	uint32_t       enable_recovery;
-	uint32_t       enable_csid_recovery;
 	uint32_t       camif_debug;
+	uint32_t       enable_csid_recovery;
 	bool           enable_req_dump;
 	bool           per_req_reg_dump;
 	bool           disable_ubwc_comp;
@@ -105,6 +105,9 @@ struct cam_ife_hw_mgr_debug {
  * @hw_enabled              Array to indicate active HW
  * @internal_cdm            Indicate whether context uses internal CDM
  * @pf_mid_found            in page fault, mid found for this ctx.
+ * @buf_done_controller     Buf done controller.
+ * @need_csid_top_cfg       Flag to indicate if CSID top cfg is  needed.
+ *
  */
 struct cam_ife_hw_mgr_ctx {
 	struct list_head                list;
@@ -118,7 +121,6 @@ struct cam_ife_hw_mgr_ctx {
 
 	struct cam_isp_hw_mgr_res       res_list_ife_in;
 	struct cam_isp_hw_mgr_res       res_list_tpg;
-	struct list_head                res_list_ife_cid;
 	struct list_head                res_list_ife_csid;
 	struct list_head                res_list_ife_src;
 	struct list_head                res_list_ife_in_rd;
@@ -160,6 +162,8 @@ struct cam_ife_hw_mgr_ctx {
 	bool                            dsp_enabled;
 	bool                            internal_cdm;
 	bool                            pf_mid_found;
+	bool                            need_csid_top_cfg;
+	void                           *buf_done_controller;
 };
 
 /**
@@ -182,6 +186,8 @@ struct cam_ife_hw_mgr_ctx {
  * @support_consumed_addr  indicate whether hw supports last consumed address
  * @hw_pid_support         hw pid support for this target
  * @max_vfe_out_res_type   max ife out res type value from hw
+ * @csid_rup_en            Reg update at CSID side
+ * @csid_global_reset_en   CSID global reset enable
  */
 struct cam_ife_hw_mgr {
 	struct cam_isp_hw_mgr          mgr_common;
@@ -205,6 +211,8 @@ struct cam_ife_hw_mgr {
 	bool                           support_consumed_addr;
 	bool                           hw_pid_support;
 	uint32_t                       max_vfe_out_res_type;
+	bool                           csid_rup_en;
+	bool                           csid_global_reset_en;
 };
 
 /**
