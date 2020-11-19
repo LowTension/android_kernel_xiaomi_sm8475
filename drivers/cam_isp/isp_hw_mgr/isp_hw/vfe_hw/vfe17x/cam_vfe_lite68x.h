@@ -379,7 +379,7 @@ static struct cam_vfe_bus_ver3_hw_info vfe680x_bus_hw_info = {
 		},
 		{
 			.vfe_out_type  =
-				CAM_VFE_BUS_VER3_VFE_OUT_GAMMA,
+				CAM_VFE_BUS_VER3_VFE_OUT_PREPROCESS_RAW,
 			.max_width     = 1920,
 			.max_height    = 1080,
 			.source_group  = CAM_VFE_BUS_VER3_SRC_GRP_0,
@@ -389,7 +389,7 @@ static struct cam_vfe_bus_ver3_hw_info vfe680x_bus_hw_info = {
 			},
 		},
 		{
-			.vfe_out_type  = CAM_VFE_BUS_VER3_VFE_OUT_STATS_BE,
+			.vfe_out_type  = CAM_VFE_BUS_VER3_VFE_OUT_STATS_BG,
 			.max_width     = -1,
 			.max_height    = -1,
 			.source_group  = CAM_VFE_BUS_VER3_SRC_GRP_0,

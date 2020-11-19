@@ -580,10 +580,10 @@ static const char *__cam_isp_resource_handle_id_to_type(
 		return "LTM_STATS";
 	case CAM_ISP_IFE_OUT_RES_STATS_GTM_BHIST:
 		return "STATS_GTM_BHIST";
-	case CAM_ISP_IFE_LITE_OUT_RES_STATS_BE:
-		return "STATS_BE";
-	case CAM_ISP_IFE_LITE_OUT_RES_GAMMA:
-		return "GAMMA";
+	case CAM_ISP_IFE_LITE_OUT_RES_STATS_BG:
+		return "STATS_BG";
+	case CAM_ISP_IFE_LITE_OUT_RES_PREPROCESS_RAW:
+		return "PREPROCESS_RAW";
 	default:
 		return "CAM_ISP_Invalid_Resource_Type";
 	}

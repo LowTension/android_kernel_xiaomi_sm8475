@@ -2177,6 +2177,34 @@ err:
 	return rc;
 }
 
+static bool cam_ife_mgr_check_can_use_lite(
+	struct cam_csid_hw_reserve_resource_args  *csid_acquire,
+	struct cam_ife_hw_mgr_ctx                 *ife_ctx)
+{
+	bool can_use_lite = false;
+
+	if (ife_ctx->is_rdi_only_context ||
+		csid_acquire->in_port->can_use_lite) {
+		can_use_lite = true;
+		goto end;
+	}
+
+	switch (csid_acquire->res_id) {
+
+	case CAM_ISP_IFE_OUT_RES_RDI_0:
+	case CAM_ISP_IFE_OUT_RES_RDI_1:
+	case CAM_ISP_IFE_OUT_RES_RDI_2:
+	case CAM_ISP_IFE_OUT_RES_RDI_3:
+		can_use_lite = true;
+		break;
+	default:
+		can_use_lite = false;
+		goto end;
+	}
+end:
+	return can_use_lite;
+}
+
 static int cam_ife_hw_mgr_acquire_res_ife_bus_rd(
 	struct cam_ife_hw_mgr_ctx                  *ife_ctx,
 	struct cam_isp_in_port_generic_info        *in_port)
@@ -2731,6 +2759,8 @@ static int cam_ife_hw_mgr_acquire_csid_hw(
 	bool is_start_lower_idx = false;
 	struct cam_isp_hw_mgr_res *csid_res_iterator;
 	struct cam_isp_out_port_generic_info *out_port = NULL;
+	struct cam_ife_csid_hw_caps *csid_caps = NULL;
+	bool can_use_lite = false;
 
 	if (!ife_ctx || !csid_acquire) {
 		CAM_ERR(CAM_ISP,
@@ -2759,6 +2789,8 @@ static int cam_ife_hw_mgr_acquire_csid_hw(
 	if (in_port->num_out_res)
 		out_port = &(in_port->data[0]);
 	ife_ctx->is_dual = (bool)in_port->usage_type;
+	can_use_lite = cam_ife_mgr_check_can_use_lite(
+			csid_acquire, ife_ctx);
 
 	/* Try acquiring CSID from previously acquired HW */
 	list_for_each_entry(csid_res_iterator, &ife_ctx->res_list_ife_csid,
@@ -2778,6 +2810,15 @@ static int cam_ife_hw_mgr_acquire_csid_hw(
 				continue;
 
 			hw_intf = csid_res_iterator->hw_res[i]->hw_intf;
+			csid_caps =
+				&ife_hw_mgr->csid_hw_caps[hw_intf->hw_idx];
+
+			if (csid_caps->is_lite && !can_use_lite) {
+				CAM_DBG(CAM_ISP, "CSID[%u] cannot use lite",
+					hw_intf->hw_idx);
+				continue;
+			}
+
 			rc = hw_intf->hw_ops.reserve(hw_intf->hw_priv,
 				csid_acquire, sizeof(*csid_acquire));
 			if (rc) {
@@ -2794,27 +2835,46 @@ static int cam_ife_hw_mgr_acquire_csid_hw(
 		}
 	}
 
-	if (is_start_lower_idx) {
-		for (i =  0; i < CAM_IFE_CSID_HW_NUM_MAX; i++) {
-			if (!ife_hw_mgr->csid_devices[i])
-				continue;
-
-			hw_intf = ife_hw_mgr->csid_devices[i];
-			rc = hw_intf->hw_ops.reserve(hw_intf->hw_priv,
-				csid_acquire,
-				sizeof(struct
-					cam_csid_hw_reserve_resource_args));
-			if (!rc)
-				return rc;
-		}
-		return rc;
-	}
+	if (is_start_lower_idx)
+		goto start_acquire_lower_idx;
 
 	for (i = CAM_IFE_CSID_HW_NUM_MAX - 1; i >= 0; i--) {
 		if (!ife_hw_mgr->csid_devices[i])
 			continue;
+		hw_intf = ife_hw_mgr->csid_devices[i];
+
+		if (ife_hw_mgr->csid_hw_caps[hw_intf->hw_idx].is_lite &&
+			!can_use_lite) {
+			CAM_DBG(CAM_ISP, "CSID[%u] cannot use lite",
+				hw_intf->hw_idx);
+			continue;
+		}
+
+		rc = hw_intf->hw_ops.reserve(hw_intf->hw_priv,
+			csid_acquire,
+			sizeof(struct
+				cam_csid_hw_reserve_resource_args));
+		if (!rc)
+			return rc;
+	}
+
+	return rc;
+
+start_acquire_lower_idx:
+
+	for (i =  0; i < CAM_IFE_CSID_HW_NUM_MAX; i++) {
+		if (!ife_hw_mgr->csid_devices[i])
+			continue;
 
 		hw_intf = ife_hw_mgr->csid_devices[i];
+
+		if (ife_hw_mgr->csid_hw_caps[hw_intf->hw_idx].is_lite &&
+			!can_use_lite) {
+			CAM_DBG(CAM_ISP, "CSID[%u] cannot use lite",
+				hw_intf->hw_idx);
+			continue;
+		}
+
 		rc = hw_intf->hw_ops.reserve(hw_intf->hw_priv,
 			csid_acquire,
 			sizeof(struct
@@ -4214,6 +4274,8 @@ static int cam_ife_mgr_acquire_get_unified_structure_v2(
 		                           CAM_ISP_PARAM_FETCH_SECURITY_MODE);
 	in_port->dynamic_sensor_switch_en = (in->feature_flag &
 		                           CAM_ISP_DYNAMIC_SENOR_SWITCH_EN);
+	in_port->can_use_lite             =  in->feature_flag &
+						CAM_ISP_CAN_USE_LITE_MODE;
 
 	in_port->data = kcalloc(in->num_out_res,
 		sizeof(struct cam_isp_out_port_generic_info),
