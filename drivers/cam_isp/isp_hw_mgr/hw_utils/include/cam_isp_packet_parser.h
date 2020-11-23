@@ -302,17 +302,15 @@ int cam_isp_add_go_cmd(
  *                         ISP HW instance
  *
  * @prepare:               Contain the  packet and HW update variables
- * @res_list_isp_src:      Resource list for IFE/VFE source
- * @base_idx:              Base or dev index of the IFE/VFE HW instance
  * @kmd_buf_info:          Kmd buffer to store the change base command
+ * @rup_args:              Reg Update args
  * @return:                0 for success
  *                         -EINVAL for Fail
  */
 int cam_isp_add_csid_reg_update(
 	struct cam_hw_prepare_update_args    *prepare,
-	struct list_head                     *res_list,
-	uint32_t                              base_idx,
-	struct cam_kmd_buf_info              *kmd_buf_info);
+	struct cam_kmd_buf_info              *kmd_buf_info,
+	void                                 *args);
 
 
 /* cam_isp_add_csid_offline_cmd()
@@ -331,4 +329,22 @@ int cam_isp_add_csid_offline_cmd(
 	struct list_head                     *res_list,
 	uint32_t                              base_idx,
 	struct cam_kmd_buf_info              *kmd_buf_info);
+
+/*
+ * cam_isp_add_csid_command_buffers()
+ *
+ * @brief                  Add command buffer in the HW entries list for given
+ *                         left or right CSID instance.
+ *
+ * @prepare:               Contain the packet and HW update variables
+ * @kmd_buf_info:          KMD buffer to store the custom cmd data
+ * @base_info:             base hardware information
+ *
+ * @return:                0 for success
+ *                         Negative for Failure
+ */
+int cam_isp_add_csid_command_buffers(
+	struct cam_hw_prepare_update_args   *prepare,
+	struct cam_kmd_buf_info             *kmd_buf_info,
+	struct cam_isp_ctx_base_info        *base_info);
 #endif /*_CAM_ISP_HW_PARSER_H */

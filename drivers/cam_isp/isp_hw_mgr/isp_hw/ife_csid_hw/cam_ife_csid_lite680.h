@@ -74,6 +74,8 @@ static struct cam_ife_csid_ver2_common_reg_info
 	.top_reset_irq_shift_val                      = 0,
 	.global_reset                                 = 1,
 	.rup_supported                                = 1,
+	.only_master_rup                              = 1,
+	.need_separate_base                           = 0,
 };
 
 static struct cam_ife_csid_csi2_rx_reg_info

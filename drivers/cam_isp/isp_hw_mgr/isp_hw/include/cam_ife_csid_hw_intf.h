@@ -55,15 +55,17 @@ enum cam_ife_cid_res_id {
 
 /**
  * struct cam_ife_csid_hw_caps- get the CSID hw capability
- * @num_rdis:          number of rdis supported by CSID HW device
- * @num_pix:           number of pxl paths supported by CSID HW device
- * @num_ppp:           number of ppp paths supported by CSID HW device
- * @major_version :    major version
- * @minor_version:     minor version
- * @version_incr:      version increment
- * @is_lite:           is the ife_csid lite
- * @global_reset_en:   flag to indicate if global reset is enabled
- * @rup_en:            flag to indicate if rup is on csid side
+ * @num_rdis:             number of rdis supported by CSID HW device
+ * @num_pix:              number of pxl paths supported by CSID HW device
+ * @num_ppp:              number of ppp paths supported by CSID HW device
+ * @major_version :       major version
+ * @minor_version:        minor version
+ * @version_incr:         version increment
+ * @is_lite:              is the ife_csid lite
+ * @global_reset_en:      flag to indicate if global reset is enabled
+ * @rup_en:               flag to indicate if rup is on csid side
+ * @only_master_rup:      flag to indicate if only master RUP
+ * @need_separate_base:   flag to indicate is separate base is needed
  */
 struct cam_ife_csid_hw_caps {
 	uint32_t      num_rdis;
@@ -75,6 +77,8 @@ struct cam_ife_csid_hw_caps {
 	bool          is_lite;
 	bool          global_reset_en;
 	bool          rup_en;
+	bool          only_master_rup;
+	bool          need_separate_base;
 };
 
 struct cam_isp_out_port_generic_info {
@@ -350,18 +354,16 @@ struct cam_ife_csid_dual_sync_args {
 };
 
 /*
- * struct cam_ife_csid_get_cmd_reg_update:
+ * struct cam_isp_csid_reg_update_args:
  *
  * @cmd:           cmd buf update args
  * @node_res:      Node res pointer
  * @num_res:       Num of resources
- * @is_mup_update: Flag to indicate if mup update
  */
-struct cam_ife_csid_reg_update_args {
+struct cam_isp_csid_reg_update_args {
 	struct cam_isp_hw_cmd_buf_update  cmd;
 	struct cam_isp_resource_node     *res[CAM_IFE_PIX_PATH_RES_MAX];
 	uint32_t                          num_res;
-	bool                              is_mup_update;
 };
 
 /*

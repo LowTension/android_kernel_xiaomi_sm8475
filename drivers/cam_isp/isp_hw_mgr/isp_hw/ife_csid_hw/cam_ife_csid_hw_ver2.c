@@ -986,6 +986,8 @@ int cam_ife_csid_ver2_get_hw_caps(void *hw_priv,
 	hw_caps->version_incr = csid_reg->cmn_reg->version_incr;
 	hw_caps->global_reset_en = csid_reg->cmn_reg->global_reset;
 	hw_caps->rup_en = csid_reg->cmn_reg->rup_supported;
+	hw_caps->only_master_rup = csid_reg->cmn_reg->only_master_rup;
+	hw_caps->need_separate_base = csid_reg->cmn_reg->need_separate_base;
 
 	CAM_DBG(CAM_ISP,
 		"CSID:%d No rdis:%d, no pix:%d, major:%d minor:%d ver :%d",
@@ -1098,7 +1100,6 @@ wait_only:
 		mem_base + csid_reg->cmn_reg->top_irq_mask_addr);
 
 	rc = cam_ife_csid_ver2_wait_for_reset(csid_hw);
-	cam_io_r_mb(mem_base + csid_reg->cmn_reg->top_irq_status_addr);
 	if (rc)
 		CAM_ERR(CAM_ISP,
 			"CSID[%d] Reset failed mode %d cmd %d loc %d",
@@ -2558,7 +2559,8 @@ static int cam_ife_csid_ver2_enable_csi2(struct cam_ife_csid_ver2_hw *csid_hw)
 
 	cam_io_w_mb(val, mem_base + csi2_reg->cfg0_addr);
 
-	CAM_DBG(CAM_ISP, "CSID[%d] rx_cfg0: 0x%x", val);
+	CAM_DBG(CAM_ISP, "CSID[%d] rx_cfg0: 0x%x",
+		csid_hw->hw_intf->hw_idx, val);
 
 	val = 0;
 	/*Configure Rx cfg1*/
@@ -2577,7 +2579,8 @@ static int cam_ife_csid_ver2_enable_csi2(struct cam_ife_csid_ver2_hw *csid_hw)
 	}
 
 	cam_io_w_mb(val, mem_base + csi2_reg->cfg1_addr);
-	CAM_DBG(CAM_ISP, "CSID[%d] rx_cfg1: 0x%x", val);
+	CAM_DBG(CAM_ISP, "CSID[%d] rx_cfg1: 0x%x",
+		csid_hw->hw_intf->hw_idx, val);
 
 	val = 0;
 
@@ -3233,7 +3236,7 @@ static int cam_ife_csid_ver2_reg_update(
 	void *cmd_args, uint32_t arg_size)
 {
 	const struct cam_ife_csid_ver2_rdi_reg_info *rdi_reg;
-	struct cam_ife_csid_reg_update_args         *rup_args = cmd_args;
+	struct cam_isp_csid_reg_update_args         *rup_args = cmd_args;
 	struct cam_cdm_utils_ops                    *cdm_util_ops;
 	struct cam_ife_csid_ver2_reg_info           *csid_reg;
 	uint32_t                                     size, i;
@@ -3241,9 +3244,9 @@ static int cam_ife_csid_ver2_reg_update(
 	uint32_t                                     rup_aup_mask = 0;
 	int rc                                       = 0;
 
-	if (arg_size != sizeof(struct cam_ife_csid_reg_update_args)) {
+	if (arg_size != sizeof(struct cam_isp_csid_reg_update_args)) {
 		CAM_ERR(CAM_ISP, "Invalid arg size: %d expected:%ld",
-			arg_size, sizeof(struct cam_ife_csid_reg_update_args));
+			arg_size, sizeof(struct cam_isp_csid_reg_update_args));
 		return -EINVAL;
 	}
 

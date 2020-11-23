@@ -311,7 +311,6 @@ struct cam_isp_hw_get_res_for_mid {
  * @cmd:             Command buffer information
  * @use_scratch_cfg: To indicate if it's scratch buffer config
  * @trigger_cdm_en:  Flag to indicate if cdm is trigger
- * @is_mup_update:   Flag to indicate if MUP is updated
  *
  */
 struct cam_isp_hw_get_cmd_update {
@@ -326,7 +325,6 @@ struct cam_isp_hw_get_cmd_update {
 		struct cam_isp_hw_get_wm_update      *rm_update;
 	};
 	bool trigger_cdm_en;
-	bool is_mup_update;
 };
 
 /*
