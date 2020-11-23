@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2014-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2021, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/module.h>
@@ -2100,8 +2100,9 @@ static int cam_smmu_map_buffer_validate(struct dma_buf *buf,
 	}
 
 	CAM_DBG(CAM_SMMU,
-		"iova=%pK, region_id=%d, paddr=%pK, len=%d, dma_map_attrs=%d",
-		iova, region_id, *paddr_ptr, *len_ptr, attach->dma_map_attrs);
+		"iova=%pK, region_id=%d, paddr=0x%x, len=%d, dma_map_attrs=%d",
+		iova, region_id, (uint64_t)*paddr_ptr, *len_ptr,
+		attach->dma_map_attrs);
 
 	if (iommu_cb_set.map_profile_enable) {
 		CAM_GET_TIMESTAMP(ts2);
@@ -2148,7 +2149,8 @@ static int cam_smmu_map_buffer_validate(struct dma_buf *buf,
 		rc = -ENOSPC;
 		goto err_alloc;
 	}
-	CAM_DBG(CAM_SMMU, "idx=%d, dma_buf=%pK, dev=%pK, paddr=%pK, len=%u",
+
+	CAM_DBG(CAM_SMMU, "idx=%d, dma_buf=%pK, dev=%pK, paddr=0x%x, len=%u",
 		idx, buf, (void *)iommu_cb_set.cb_info[idx].dev,
 		(void *)*paddr_ptr, (unsigned int)*len_ptr);
 
@@ -2267,7 +2269,7 @@ static int cam_smmu_unmap_buf_and_remove_from_list(
 		mapping_info);
 
 	CAM_DBG(CAM_SMMU,
-		"region_id=%d, paddr=%pK, len=%d, dma_map_attrs=%d",
+		"region_id=%d, paddr=0x%x, len=%d, dma_map_attrs=%d",
 		mapping_info->region_id, mapping_info->paddr, mapping_info->len,
 		mapping_info->attach->dma_map_attrs);
 

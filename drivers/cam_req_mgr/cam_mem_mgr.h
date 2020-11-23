@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2016-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CAM_MEM_MGR_H_
@@ -8,6 +8,9 @@
 
 #include <linux/mutex.h>
 #include <linux/dma-buf.h>
+#if IS_REACHABLE(CONFIG_DMABUF_HEAPS)
+#include <linux/dma-heap.h>
+#endif
 #include <media/cam_req_mgr.h>
 #include "cam_mem_mgr_api.h"
 
@@ -81,6 +84,14 @@ struct cam_mem_table {
 	bool alloc_profile_enable;
 	size_t dbg_buf_idx;
 	bool force_cache_allocs;
+#if IS_REACHABLE(CONFIG_DMABUF_HEAPS)
+	struct dma_heap *system_heap;
+	struct dma_heap *system_uncached_heap;
+	struct dma_heap *camera_heap;
+	struct dma_heap *camera_uncached_heap;
+	struct dma_heap *secure_display_heap;
+#endif
+
 };
 
 /**
