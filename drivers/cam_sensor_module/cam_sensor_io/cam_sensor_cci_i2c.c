@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2018, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2018, 2021 The Linux Foundation. All rights reserved.
  */
 
 #include "cam_sensor_cmn_header.h"
@@ -149,10 +149,10 @@ int32_t cam_cci_i2c_write_continuous_table(
 {
 	int32_t rc = 0;
 
-	if (cam_sensor_i2c_write_flag == 1)
+	if (cam_sensor_i2c_write_flag == CAM_SENSOR_I2C_WRITE_BURST)
 		rc = cam_cci_i2c_write_table_cmd(client, write_setting,
 			MSM_CCI_I2C_WRITE_BURST);
-	else if (cam_sensor_i2c_write_flag == 0)
+	else if (cam_sensor_i2c_write_flag == CAM_SENSOR_I2C_WRITE_SEQ)
 		rc = cam_cci_i2c_write_table_cmd(client, write_setting,
 			MSM_CCI_I2C_WRITE_SEQ);
 

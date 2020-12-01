@@ -830,7 +830,7 @@ int cam_sensor_util_i2c_apply_setting(
 	}
 	case CAM_SENSOR_I2C_WRITE_SEQ: {
 		rc = camera_io_dev_write_continuous(
-			io_master_info, &(i2c_list->i2c_settings), 0);
+			io_master_info, &(i2c_list->i2c_settings), CAM_SENSOR_I2C_WRITE_SEQ);
 		if (rc < 0) {
 			CAM_ERR(CAM_SENSOR,
 				"Failed to seq write I2C settings: %d",
@@ -841,7 +841,7 @@ int cam_sensor_util_i2c_apply_setting(
 	}
 	case CAM_SENSOR_I2C_WRITE_BURST: {
 		rc = camera_io_dev_write_continuous(
-			io_master_info, &(i2c_list->i2c_settings), 1);
+			io_master_info, &(i2c_list->i2c_settings), CAM_SENSOR_I2C_WRITE_BURST);
 		if (rc < 0) {
 			CAM_ERR(CAM_SENSOR,
 				"Failed to burst write I2C settings: %d",
