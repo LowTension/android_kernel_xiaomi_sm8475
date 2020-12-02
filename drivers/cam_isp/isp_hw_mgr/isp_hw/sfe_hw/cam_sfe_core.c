@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/slab.h>
@@ -327,6 +327,7 @@ int cam_sfe_process_cmd(void *hw_priv, uint32_t cmd_type,
 			cmd_args, arg_size);
 		break;
 	case CAM_ISP_HW_CMD_GET_BUF_UPDATE:
+	case CAM_ISP_HW_CMD_BUF_UPDATE:
 	case CAM_ISP_HW_CMD_GET_HFR_UPDATE:
 	case CAM_ISP_HW_CMD_STRIPE_UPDATE:
 	case CAM_ISP_HW_CMD_WM_CONFIG_UPDATE:
@@ -337,6 +338,7 @@ int cam_sfe_process_cmd(void *hw_priv, uint32_t cmd_type,
 		break;
 	case CAM_ISP_HW_CMD_GET_HFR_UPDATE_RM:
 	case CAM_ISP_HW_CMD_GET_BUF_UPDATE_RM:
+	case CAM_ISP_HW_CMD_BUF_UPDATE_RM:
 	case CAM_ISP_HW_CMD_FE_UPDATE_BUS_RD:
 		rc = core_info->sfe_bus_rd->hw_ops.process_cmd(
 			core_info->sfe_bus_rd->bus_priv, cmd_type,

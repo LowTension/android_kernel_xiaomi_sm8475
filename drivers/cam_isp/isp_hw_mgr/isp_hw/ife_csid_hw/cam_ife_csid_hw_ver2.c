@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/iopoll.h>
@@ -3334,6 +3334,7 @@ static int cam_ife_csid_ver2_reg_update(
 	struct cam_isp_csid_reg_update_args         *rup_args = cmd_args;
 	struct cam_cdm_utils_ops                    *cdm_util_ops;
 	struct cam_ife_csid_ver2_reg_info           *csid_reg;
+	struct cam_hw_soc_info                      *soc_info;
 	uint32_t                                     size, i;
 	uint32_t                                     reg_val_pair[2];
 	uint32_t                                     rup_aup_mask = 0;
@@ -3366,7 +3367,7 @@ static int cam_ife_csid_ver2_reg_update(
 
 	size = cdm_util_ops->cdm_required_size_reg_random(1);
 	/* since cdm returns dwords, we need to convert it into bytes */
-	if ((size * 4) > rup_args->cmd.size) {
+	if ((!rup_args->reg_write) && ((size * 4) > rup_args->cmd.size)) {
 		CAM_ERR(CAM_ISP, "buf size:%d is not sufficient, expected: %d",
 			rup_args->cmd.size, (size*4));
 		return -EINVAL;
@@ -3420,10 +3421,16 @@ static int cam_ife_csid_ver2_reg_update(
 		csid_hw->hw_intf->hw_idx,
 		reg_val_pair[1], reg_val_pair[0]);
 
-	cdm_util_ops->cdm_write_regrandom(rup_args->cmd.cmd_buf_addr,
-		1, reg_val_pair);
-
-	rup_args->cmd.used_bytes = size * 4;
+	if (rup_args->reg_write) {
+		soc_info = &csid_hw->hw_info->soc_info;
+		cam_io_w_mb(reg_val_pair[1],
+			soc_info->reg_map[CAM_IFE_CSID_CLC_MEM_BASE_ID].mem_base +
+			reg_val_pair[0]);
+	} else {
+		cdm_util_ops->cdm_write_regrandom(rup_args->cmd.cmd_buf_addr,
+			1, reg_val_pair);
+		rup_args->cmd.used_bytes = size * 4;
+	}
 
 	return rc;
 err:

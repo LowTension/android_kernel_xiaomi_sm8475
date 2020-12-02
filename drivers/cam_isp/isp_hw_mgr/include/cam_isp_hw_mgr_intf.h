@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2016-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CAM_ISP_HW_MGR_INTF_H_
@@ -31,6 +31,12 @@
 
 /* Appliacble vote paths for dual ife, based on no. of UAPI definitions */
 #define CAM_ISP_MAX_PER_PATH_VOTES 40
+
+/* Output params for acquire from hw_mgr to ctx */
+#define CAM_IFE_CTX_CUSTOM_EN          BIT(0)
+#define CAM_IFE_CTX_FRAME_HEADER_EN    BIT(1)
+#define CAM_IFE_CTX_CONSUME_ADDR_EN    BIT(2)
+#define CAM_IFE_CTX_APPLY_DEFAULT_CFG  BIT(3)
 
 /**
  *  enum cam_isp_hw_event_type - Collection of the ISP hardware events
@@ -240,6 +246,7 @@ enum cam_isp_hw_mgr_command {
 	CAM_ISP_HW_MGR_CMD_CTX_TYPE,
 	CAM_ISP_HW_MGR_GET_PACKET_OPCODE,
 	CAM_ISP_HW_MGR_GET_LAST_CDM_DONE,
+	CAM_ISP_HW_MGR_CMD_PROG_DEFAULT_CFG,
 	CAM_ISP_HW_MGR_CMD_MAX,
 };
 

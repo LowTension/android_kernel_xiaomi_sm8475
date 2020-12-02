@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/debugfs.h>
@@ -3275,6 +3275,32 @@ static int __cam_isp_ctx_apply_req_in_bubble(
 	return rc;
 }
 
+static int __cam_isp_ctx_apply_default_req_settings(
+	struct cam_context *ctx, struct cam_req_mgr_apply_request *apply)
+{
+	int rc = 0;
+	struct cam_isp_context *isp_ctx =
+		(struct cam_isp_context *) ctx->ctx_priv;
+	struct cam_hw_cmd_args        hw_cmd_args;
+	struct cam_isp_hw_cmd_args    isp_hw_cmd_args;
+
+	hw_cmd_args.ctxt_to_hw_map = isp_ctx->hw_ctx;
+	hw_cmd_args.cmd_type = CAM_HW_MGR_CMD_INTERNAL;
+	isp_hw_cmd_args.cmd_type =
+		CAM_ISP_HW_MGR_CMD_PROG_DEFAULT_CFG;
+	hw_cmd_args.u.internal_args = (void *)&isp_hw_cmd_args;
+
+	rc = ctx->hw_mgr_intf->hw_cmd(ctx->hw_mgr_intf->hw_mgr_priv,
+			&hw_cmd_args);
+	if (rc)
+		CAM_ERR(CAM_ISP,
+			"Failed to apply default settings rc %d", rc);
+	else
+		CAM_DBG(CAM_ISP, "Applied default settings rc %d", rc);
+
+	return rc;
+}
+
 static int __cam_isp_ctx_dump_req_info(
 	struct cam_context     *ctx,
 	struct cam_ctx_request *req,
@@ -3670,6 +3696,8 @@ static struct cam_ctx_ops
 		.ioctl_ops = {},
 		.crm_ops = {
 			.apply_req = __cam_isp_ctx_apply_req_in_sof,
+			.notify_frame_skip =
+				__cam_isp_ctx_apply_default_req_settings,
 		},
 		.irq_ops = NULL,
 	},
@@ -3684,6 +3712,8 @@ static struct cam_ctx_ops
 		.ioctl_ops = {},
 		.crm_ops = {
 			.apply_req = __cam_isp_ctx_apply_req_in_epoch,
+			.notify_frame_skip =
+				__cam_isp_ctx_apply_default_req_settings,
 		},
 		.irq_ops = NULL,
 	},
@@ -3692,6 +3722,8 @@ static struct cam_ctx_ops
 		.ioctl_ops = {},
 		.crm_ops = {
 			.apply_req = __cam_isp_ctx_apply_req_in_bubble,
+			.notify_frame_skip =
+				__cam_isp_ctx_apply_default_req_settings,
 		},
 		.irq_ops = NULL,
 	},
@@ -4306,6 +4338,7 @@ static int __cam_isp_ctx_release_hw_in_top_state(struct cam_context *ctx,
 	ctx->last_flush_req = 0;
 	ctx_isp->custom_enabled = false;
 	ctx_isp->use_frame_header_ts = false;
+	ctx_isp->use_default_apply = false;
 	ctx_isp->frame_id = 0;
 	ctx_isp->active_req_cnt = 0;
 	ctx_isp->reported_req_id = 0;
@@ -4928,7 +4961,7 @@ static int __cam_isp_ctx_acquire_hw_v1(struct cam_context *ctx,
 	}
 
 	ctx_isp->support_consumed_addr =
-		param.support_consumed_addr;
+		(param.op_flags & CAM_IFE_CTX_FRAME_HEADER_EN);
 
 	/* Query the context has rdi only resource */
 	hw_cmd_args.ctxt_to_hw_map = param.ctxt_to_hw_map;
@@ -5077,13 +5110,18 @@ static int __cam_isp_ctx_acquire_hw_v2(struct cam_context *ctx,
 		goto free_res;
 	}
 
-	/* Set custom flag if applicable
+	/*
+	 * Set feature flag if applicable
 	 * custom hw is supported only on v2
 	 */
-	ctx_isp->custom_enabled = param.custom_enabled;
-	ctx_isp->use_frame_header_ts = param.use_frame_header_ts;
+	ctx_isp->custom_enabled =
+		(param.op_flags & CAM_IFE_CTX_CUSTOM_EN);
+	ctx_isp->use_frame_header_ts =
+		(param.op_flags & CAM_IFE_CTX_FRAME_HEADER_EN);
+	ctx_isp->use_default_apply =
+		(param.op_flags & CAM_IFE_CTX_APPLY_DEFAULT_CFG);
 	ctx_isp->support_consumed_addr =
-		param.support_consumed_addr;
+		(param.op_flags & CAM_IFE_CTX_CONSUME_ADDR_EN);
 
 	/* Query the context has rdi only resource */
 	hw_cmd_args.ctxt_to_hw_map = param.ctxt_to_hw_map;
@@ -5761,6 +5799,39 @@ static int __cam_isp_ctx_apply_req(struct cam_context *ctx,
 	return rc;
 }
 
+static int __cam_isp_ctx_apply_default_settings(
+	struct cam_context *ctx,
+	struct cam_req_mgr_apply_request *apply)
+{
+	int rc = 0;
+	struct cam_ctx_ops *ctx_ops = NULL;
+	struct cam_isp_context *ctx_isp =
+		(struct cam_isp_context *) ctx->ctx_priv;
+
+	if (!ctx_isp->use_default_apply)
+		return 0;
+
+	CAM_DBG(CAM_ISP,
+		"Enter: apply req in Substate %d request _id:%lld",
+		 ctx_isp->substate_activated, apply->request_id);
+
+	ctx_ops = &ctx_isp->substate_machine[
+		ctx_isp->substate_activated];
+	if (ctx_ops->crm_ops.notify_frame_skip) {
+		rc = ctx_ops->crm_ops.notify_frame_skip(ctx, apply);
+	} else {
+		CAM_WARN_RATE_LIMIT(CAM_ISP,
+			"No handle function in activated substate %d",
+			ctx_isp->substate_activated);
+		rc = -EFAULT;
+	}
+
+	if (rc)
+		CAM_WARN_RATE_LIMIT(CAM_ISP,
+			"Apply default failed in active substate %d rc %d",
+			ctx_isp->substate_activated, rc);
+	return rc;
+}
 
 
 static int __cam_isp_ctx_handle_irq_in_activated(void *context,
@@ -5878,6 +5949,8 @@ static struct cam_ctx_ops
 		.crm_ops = {
 			.unlink = __cam_isp_ctx_unlink_in_activated,
 			.apply_req = __cam_isp_ctx_apply_req,
+			.notify_frame_skip =
+				__cam_isp_ctx_apply_default_settings,
 			.flush_req = __cam_isp_ctx_flush_req_in_top_state,
 			.process_evt = __cam_isp_ctx_process_evt,
 			.dump_req = __cam_isp_ctx_dump_in_top_state,
@@ -6078,6 +6151,7 @@ int cam_isp_context_init(struct cam_isp_context *ctx,
 	ctx->frame_id = 0;
 	ctx->custom_enabled = false;
 	ctx->use_frame_header_ts = false;
+	ctx->use_default_apply = false;
 	ctx->active_req_cnt = 0;
 	ctx->reported_req_id = 0;
 	ctx->bubble_frame_cnt = 0;

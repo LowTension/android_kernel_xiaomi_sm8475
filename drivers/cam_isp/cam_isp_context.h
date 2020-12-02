@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CAM_ISP_CONTEXT_H_
@@ -270,6 +270,7 @@ struct cam_isp_context_event_record {
  * @use_frame_header_ts:       Use frame header for qtimer ts
  * @support_consumed_addr:     Indicate whether HW has last consumed addr reg
  * @apply_in_progress          Whether request apply is in progress
+ * @use_default_apply:         Use default settings in case of frame skip
  * @init_timestamp:            Timestamp at which this context is initialized
  * @isp_device_type:           ISP device type
  * @rxd_epoch:                 Indicate whether epoch has been received. Used to
@@ -318,6 +319,7 @@ struct cam_isp_context {
 	bool                                  use_frame_header_ts;
 	bool                                  support_consumed_addr;
 	atomic_t                              apply_in_progress;
+	bool                                  use_default_apply;
 	unsigned int                          init_timestamp;
 	uint32_t                              isp_device_type;
 	atomic_t                              rxd_epoch;

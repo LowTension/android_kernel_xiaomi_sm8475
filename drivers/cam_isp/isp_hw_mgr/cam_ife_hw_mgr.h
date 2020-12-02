@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CAM_IFE_HW_MGR_H_
@@ -33,9 +33,11 @@ enum cam_ife_ctx_master_type {
 #define CAM_SFE_HW_OUT_RES_MAX           (CAM_ISP_SFE_OUT_RES_MAX & 0xFF)
 #define CAM_IFE_HW_RES_POOL_MAX          64
 
-/* IFE_HW_MGR custom config */
-#define CAM_IFE_CUSTOM_CFG_FRAME_HEADER_TS   BIT(0)
-#define CAM_IFE_CUSTOM_CFG_SW_SYNC_ON        BIT(1)
+/* IFE_HW_MGR ctx config */
+#define CAM_IFE_CTX_CFG_FRAME_HEADER_TS   BIT(0)
+#define CAM_IFE_CTX_CFG_SW_SYNC_ON        BIT(1)
+#define CAM_IFE_CTX_CFG_SFE_FE_MODE       BIT(2)
+#define CAM_IFE_CTX_CFG_DYNAMIC_SWITCH_ON BIT(3)
 
 #define CAM_IFE_UBWC_COMP_EN                 BIT(1)
 
@@ -89,12 +91,14 @@ struct cam_sfe_scratch_buf_info {
  *
  * @config_done: To indicate if stream received it's scratch cfg
  * @num_configs: Number of buffer configs [max of 3 currently]
+ * @curr_num_exp: Current num of exposures
  * @buf_info: Info on each of the buffers
  *
  */
 struct cam_sfe_scratch_buf_cfg {
 	bool                            config_done;
 	uint32_t                        num_config;
+	uint32_t                        curr_num_exp;
 	struct cam_sfe_scratch_buf_info buf_info[
 		CAM_SFE_FE_RDI_NUM_MAX];
 };
@@ -212,7 +216,7 @@ struct cam_ife_hw_mgr_ctx {
 	bool                            is_fe_enabled;
 	bool                            is_dual;
 	enum cam_ife_ctx_master_type    ctx_type;
-	uint32_t                        custom_config;
+	uint32_t                        ctx_config;
 	struct timespec64               ts;
 	bool                            is_tpg;
 	bool                            is_offline;
