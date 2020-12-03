@@ -89,10 +89,9 @@
 #define CAM_ISP_PACKET_META_REG_DUMP_PER_REQUEST  13
 #define CAM_ISP_PACKET_META_REG_DUMP_ON_FLUSH     14
 #define CAM_ISP_PACKET_META_REG_DUMP_ON_ERROR     15
-#define CAM_ISP_PACKET_META_MODE_SWITCH_CONFIG    16
-#define CAM_ISP_PACKET_META_CSID_LEFT             17
-#define CAM_ISP_PACKET_META_CSID_RIGHT            18
-#define CAM_ISP_PACKET_META_CSID_COMMON           19
+#define CAM_ISP_PACKET_META_CSID_LEFT             16
+#define CAM_ISP_PACKET_META_CSID_RIGHT            17
+#define CAM_ISP_PACKET_META_CSID_COMMON           18
 
 /* SFE packet meta_data type for command buffer */
 #define CAM_ISP_SFE_PACKET_META_LEFT              0x15
@@ -121,6 +120,7 @@
 #define CAM_ISP_GENERIC_BLOB_TYPE_CSID_QCFA_CONFIG          12
 #define CAM_ISP_GENERIC_BLOB_TYPE_SENSOR_BLANKING_CONFIG    13
 #define CAM_ISP_GENERIC_BLOB_TYPE_TPG_CORE_CONFIG           14
+#define CAM_ISP_GENERIC_BLOB_TYPE_DYNAMIC_MODE_SWITCH       15
 #define CAM_ISP_GENERIC_BLOB_TYPE_SFE_CLOCK_CONFIG          21
 #define CAM_ISP_GENERIC_BLOB_TYPE_SFE_CORE_CONFIG           22
 #define CAM_ISP_GENERIC_BLOB_TYPE_SFE_OUT_CONFIG            23
@@ -166,7 +166,8 @@
 #define CAM_IFE_CSID_RDI_MAX          5
 
 /* Feature Flag indicators */
-#define CAM_ISP_PARAM_FETCH_SECURITY_MODE  BIT(0)
+#define CAM_ISP_PARAM_FETCH_SECURITY_MODE      BIT(0)
+#define CAM_ISP_DYNAMIC_SENOR_SWITCH_EN        BIT(2)
 
 /* ISP core cfg flag params */
 #define CAM_ISP_PARAM_CORE_CFG_HDR_MUX_SEL BIT(0)
@@ -365,9 +366,9 @@ struct cam_isp_in_port_info {
  *                                        CAM_ISP_SFE_INLINE_PIX)
  *                              This will acquire SFE inline IPP and IFE IPP
  *                              PPP is an exception CSID PPP -> IFE PPP
- * @vc_dt_pattern_id:           TPG pattern - SparsePD, sHDR etc.
  * @feature_flag:               See the macros defined under feature flag above
- * @ife_res_2:                  payload for future use
+ * @ife_res_1:                  payload for future use.
+ * @ife_res_2:                  payload for future use.
  * @data:                       payload that contains the output resources
  *
  */
@@ -401,8 +402,8 @@ struct cam_isp_in_port_info_v2 {
 	__u32                           horizontal_bin;
 	__u32                           qcfa_bin;
 	__u32                           sfe_in_path_type;
-	__u32                           vc_dt_pattern_id;
 	__u32                           feature_flag;
+	__u32                           ife_res_1;
 	__u32                           ife_res_2;
 	struct cam_isp_out_port_info_v2 data[1];
 };
@@ -867,6 +868,19 @@ struct cam_isp_vfe_out_config {
 struct cam_isp_csid_epd_config {
 	__u32                      is_epd_supported;
 };
+
+/**
+ * struct cam_isp_mode_switch_info  -  Dynamic mode switch info
+ *
+ * @mup                     : MUP for incoming VC of next frame
+ * @num_expoures            : Number of exposures
+ * @reserved                : Reserved
+ */
+struct cam_isp_mode_switch_info{
+	__u32                                mup;
+	__u32                                num_expoures;
+	__u32                                reserved;
+} __attribute__((packed));
 
 #define CAM_ISP_ACQUIRE_COMMON_VER0         0x1000
 
