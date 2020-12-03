@@ -56,6 +56,17 @@ enum cam_sfe_bus_rd_irq_regs {
 };
 
 /*
+ * struct cam_sfe_debug_cfg_params:
+ *
+ * @sfe_debug_cfg : SFE debug cfg value
+ * @sfe_sensor_sel: SFE sensor sel for diag data
+ */
+struct cam_sfe_debug_cfg_params {
+	uint32_t sfe_debug_cfg;
+	uint32_t sfe_sensor_sel;
+};
+
+/*
  * struct cam_sfe_bw_control_args:
  *
  * @node_res:             Resource node info
@@ -171,6 +182,7 @@ struct cam_sfe_bus_wr_irq_evt_payload {
  *                           BUS related to SFE resources
  *
  * @list:                    list_head node for the payload
+ * @core_index:              Index of SFE HW that generated this IRQ event
  * @irq_reg_val              Bus irq register status
  * @constraint_violation     constraint violation
  * @error_type:              Identify different errors
@@ -179,6 +191,7 @@ struct cam_sfe_bus_wr_irq_evt_payload {
  */
 struct cam_sfe_bus_rd_irq_evt_payload {
 	struct list_head           list;
+	uint32_t                   core_index;
 	uint32_t                   irq_reg_val[
 		CAM_SFE_BUS_RD_IRQ_REGISTERS_MAX];
 	uint32_t                   constraint_violation;

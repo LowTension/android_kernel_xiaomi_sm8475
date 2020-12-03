@@ -72,34 +72,16 @@ int cam_sfe_init_hw(void *hw_priv, void *init_hw_args, uint32_t arg_size)
 
 	CAM_DBG(CAM_SFE, "SFE SOC resource enabled");
 
-	/* Async Reset as part of power ON */
-	/* Sync Reset in CSID */
-
-	/* INIT SFE BUS WR */
-	rc = core_info->sfe_bus_wr->hw_ops.init(
-		core_info->sfe_bus_wr->bus_priv, NULL, 0);
-	if (rc) {
-		CAM_ERR(CAM_SFE,
-			"SFE bus wr init failed rc: %d", rc);
-		goto disable_soc;
-	}
-
-	/* INIT SFE BUS RD */
-	rc = core_info->sfe_bus_rd->hw_ops.init(
-		core_info->sfe_bus_rd->bus_priv, NULL, 0);
-	if (rc) {
-		CAM_ERR(CAM_SFE, "SFE bus rd init failed rc: %d", rc);
-		goto deinit_bus_wr;
-	}
+	/*
+	 * Async Reset as part of power ON
+	 * Any register write in bus_wr_init/bus_rd_init
+	 * will be cleared by sync reset in CSID.
+	 *
+	 */
 
 	sfe_hw->hw_state = CAM_HW_STATE_POWER_UP;
 	return rc;
 
-deinit_bus_wr:
-	core_info->sfe_bus_wr->hw_ops.deinit(
-		core_info->sfe_bus_wr->bus_priv, NULL, 0);
-disable_soc:
-	cam_sfe_disable_soc_resources(soc_info);
 decrement_open_cnt:
 	mutex_lock(&sfe_hw->hw_mutex);
 	sfe_hw->open_count--;
@@ -111,7 +93,6 @@ int cam_sfe_deinit_hw(void *hw_priv, void *deinit_hw_args, uint32_t arg_size)
 {
 	struct cam_hw_info                *sfe_hw = hw_priv;
 	struct cam_hw_soc_info            *soc_info = NULL;
-	struct cam_sfe_hw_core_info       *core_info = NULL;
 	int rc = 0;
 
 	if (!hw_priv) {
@@ -136,19 +117,6 @@ int cam_sfe_deinit_hw(void *hw_priv, void *deinit_hw_args, uint32_t arg_size)
 	mutex_unlock(&sfe_hw->hw_mutex);
 
 	soc_info = &sfe_hw->soc_info;
-	core_info = (struct cam_sfe_hw_core_info *)sfe_hw->core_info;
-
-	rc = core_info->sfe_bus_wr->hw_ops.deinit(
-		core_info->sfe_bus_wr->bus_priv, NULL, 0);
-	if (rc)
-		CAM_ERR(CAM_SFE, "SFE bus wr deinit failed rc: %d",
-			rc);
-
-	rc = core_info->sfe_bus_rd->hw_ops.deinit(
-		core_info->sfe_bus_rd->bus_priv, NULL, 0);
-	if (rc)
-		CAM_ERR(CAM_SFE, "SFE bus rd deinit failed rc: %d",
-			rc);
 
 	/* Turn OFF Regulators, Clocks and other SOC resources */
 	CAM_DBG(CAM_SFE, "Disable SFE SOC resource");
@@ -376,6 +344,22 @@ int cam_sfe_process_cmd(void *hw_priv, uint32_t cmd_type,
 		break;
 	case  CAM_ISP_HW_CMD_UNMASK_BUS_WR_IRQ:
 		/* Needs to be handled based on hw_mgr change */
+		break;
+	case CAM_ISP_HW_CMD_SET_SFE_DEBUG_CFG:
+		/* propagate to SFE top */
+		core_info->sfe_top->hw_ops.process_cmd(
+			core_info->sfe_top->top_priv, cmd_type,
+			cmd_args, arg_size);
+
+		/* propagate to SFE bus wr */
+		core_info->sfe_bus_wr->hw_ops.process_cmd(
+			core_info->sfe_bus_wr->bus_priv, cmd_type,
+			cmd_args, arg_size);
+
+		/* propagate to SFE bus rd */
+		core_info->sfe_bus_rd->hw_ops.process_cmd(
+			core_info->sfe_bus_rd->bus_priv, cmd_type,
+			cmd_args, arg_size);
 		break;
 	default:
 		CAM_ERR(CAM_SFE, "Invalid cmd type: %d", cmd_type);

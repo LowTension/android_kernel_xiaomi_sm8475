@@ -69,18 +69,23 @@ struct cam_sfe_modules_common_reg_offset {
 	uint32_t qcfa_hdrc_remo_out_mux_cfg;
 };
 
+struct cam_sfe_top_common_reg_data {
+	uint32_t error_irq_mask;
+	uint32_t enable_diagnostic_hw;
+	uint32_t top_debug_cfg_en;
+	uint32_t sensor_sel_shift;
+};
+
 struct cam_sfe_path_common_reg_data {
 	uint32_t sof_irq_mask;
 	uint32_t eof_irq_mask;
-	uint32_t error_irq_mask;
 	uint32_t subscribe_irq_mask;
-	uint32_t enable_diagnostic_hw;
-	uint32_t top_debug_cfg_en;
 };
 
 struct cam_sfe_top_hw_info {
 	struct cam_sfe_top_common_reg_offset     *common_reg;
 	struct cam_sfe_modules_common_reg_offset *modules_hw_info;
+	struct cam_sfe_top_common_reg_data       *common_reg_data;
 	struct cam_sfe_path_common_reg_data      *pix_reg_data;
 	struct cam_sfe_path_common_reg_data      *rdi_reg_data[CAM_SFE_RDI_MAX];
 	uint32_t                                  num_inputs;

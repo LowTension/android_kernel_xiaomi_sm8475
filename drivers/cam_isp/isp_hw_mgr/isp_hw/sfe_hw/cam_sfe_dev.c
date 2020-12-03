@@ -228,7 +228,7 @@ int cam_sfe_hw_init(struct cam_hw_intf **sfe_hw, uint32_t hw_idx)
 
 static const struct of_device_id cam_sfe_dt_match[] = {
 	{
-		.compatible = "",
+		.compatible = "qcom,sfe680",
 		.data = &cam_sfe680_hw_info,
 	},
 	{}
