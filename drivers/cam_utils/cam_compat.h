@@ -13,7 +13,13 @@
 #include "cam_csiphy_dev.h"
 #include "cam_cpastop_hw.h"
 
-#if KERNEL_VERSION(5, 4, 0) <= LINUX_VERSION_CODE
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 7, 0)
+
+#define VFL_TYPE_VIDEO VFL_TYPE_GRABBER
+
+#endif
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
 
 #include <linux/msm_ion.h>
 #include <linux/ion.h>
@@ -41,5 +47,6 @@ int camera_component_match_add_drivers(struct device *master_dev,
 	struct component_match **match_list);
 int cam_csiphy_notify_secure_mode(struct csiphy_device *csiphy_dev,
 	bool protect, int32_t offset);
+void cam_free_clear(const void *);
 
 #endif /* _CAM_COMPAT_H_ */

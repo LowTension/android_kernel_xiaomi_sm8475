@@ -5,13 +5,14 @@
 
 #include <linux/dma-mapping.h>
 #include <linux/of_address.h>
+#include <linux/slab.h>
 
 #include "cam_compat.h"
 #include "cam_debug_util.h"
 #include "cam_cpas_api.h"
 #include "camera_main.h"
 
-#if KERNEL_VERSION(5, 4, 0) <= LINUX_VERSION_CODE
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
 int cam_reserve_icp_fw(struct cam_fw_alloc_info *icp_fw, size_t fw_length)
 {
 	int rc = 0;
@@ -189,6 +190,18 @@ static int camera_platform_compare_dev(struct device *dev, void *data)
 }
 #endif
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)
+void cam_free_clear(const void * ptr)
+{
+	kfree_sensitive(ptr);
+}
+#else
+void cam_free_clear(const void * ptr)
+{
+	kzfree(ptr);
+}
+#endif
+
 /* Callback to compare device from match list before adding as component */
 static inline int camera_component_compare_dev(struct device *dev, void *data)
 {
@@ -209,7 +222,7 @@ int camera_component_match_add_drivers(struct device *master_dev,
 	}
 
 	for (i = 0; i < ARRAY_SIZE(cam_component_drivers); i++) {
-#if KERNEL_VERSION(5, 4, 0) <= LINUX_VERSION_CODE
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
 		struct device_driver const *drv =
 			&cam_component_drivers[i]->driver;
 		const void *drv_ptr = (const void *)drv;

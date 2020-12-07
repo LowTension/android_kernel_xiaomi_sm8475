@@ -8,6 +8,7 @@
 #include <linux/uaccess.h>
 #include <linux/debugfs.h>
 #include <media/cam_tfe.h>
+
 #include "cam_smmu_api.h"
 #include "cam_req_mgr_workq.h"
 #include "cam_isp_hw_mgr_intf.h"
@@ -25,6 +26,7 @@
 #include "cam_compat.h"
 #include "cam_req_mgr_debug.h"
 #include "cam_trace.h"
+#include "cam_compat.h"
 
 #define CAM_TFE_HW_ENTRIES_MAX  20
 #define CAM_TFE_HW_CONFIG_TIMEOUT 60
@@ -2428,7 +2430,7 @@ static int cam_isp_tfe_blob_bw_update(
 	}
 
 end:
-	kzfree(bw_upd_args);
+	cam_free_clear((void *)bw_upd_args);
 	bw_upd_args = NULL;
 	return rc;
 }

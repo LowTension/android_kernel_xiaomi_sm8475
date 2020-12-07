@@ -13,6 +13,7 @@
 #include <linux/timer.h>
 #include <linux/iopoll.h>
 #include <media/cam_ope.h>
+
 #include "cam_io_util.h"
 #include "cam_hw.h"
 #include "cam_hw_intf.h"
@@ -27,6 +28,7 @@
 #include "cam_cdm_util.h"
 #include "ope_bus_rd.h"
 #include "ope_bus_wr.h"
+#include "cam_compat.h"
 
 static int cam_ope_caps_vote(struct cam_ope_device_core_info *core_info,
 	struct cam_ope_dev_bw_update *cpas_vote)
@@ -250,7 +252,7 @@ enable_soc_resource_failed:
 	else
 		core_info->cpas_start = false;
 free_cpas_vote:
-	kzfree(cpas_vote);
+	cam_free_clear((void *)cpas_vote);
 	cpas_vote = NULL;
 end:
 	return rc;

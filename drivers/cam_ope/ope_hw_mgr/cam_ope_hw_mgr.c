@@ -40,6 +40,7 @@
 #include "cam_cdm_util.h"
 #include "cam_cdm.h"
 #include "ope_dev_intf.h"
+#include "cam_compat.h"
 
 static struct cam_ope_hw_mgr *ope_hw_mgr;
 
@@ -180,7 +181,7 @@ static void cam_ope_free_io_config(struct cam_ope_request *req)
 	for (i = 0; i < OPE_MAX_BATCH_SIZE; i++) {
 		for (j = 0; j < OPE_MAX_IO_BUFS; j++) {
 			if (req->io_buf[i][j]) {
-				kzfree(req->io_buf[i][j]);
+				cam_free_clear((void *)req->io_buf[i][j]);
 				req->io_buf[i][j] = NULL;
 			}
 		}
@@ -1686,10 +1687,10 @@ static void cam_ope_ctx_cdm_callback(uint32_t handle, void *userdata,
 
 	buf_data.request_id = ope_req->request_id;
 	ope_req->request_id = 0;
-	kzfree(ctx->req_list[cookie]->cdm_cmd);
+	cam_free_clear((void *)ctx->req_list[cookie]->cdm_cmd);
 	ctx->req_list[cookie]->cdm_cmd = NULL;
 	cam_ope_free_io_config(ctx->req_list[cookie]);
-	kzfree(ctx->req_list[cookie]);
+	cam_free_clear((void *)ctx->req_list[cookie]);
 	ctx->req_list[cookie] = NULL;
 	clear_bit(cookie, ctx->bitmap);
 	ctx->ctxt_event_cb(ctx->context_priv, evt_id, &buf_data);
@@ -2761,7 +2762,7 @@ static int cam_ope_mgr_acquire_hw(void *hw_priv, void *hw_acquire_args)
 	return rc;
 
 free_bw_update:
-	kzfree(bw_update);
+	cam_free_clear((void *)bw_update);
 	bw_update = NULL;
 ope_clk_update_failed:
 	ope_dev_release.ctx_id = ctx_id;
@@ -2805,7 +2806,7 @@ cdm_stream_on_failure:
 
 cdm_acquire_failed:
 free_cdm_acquire:
-	kzfree(cdm_acquire);
+	cam_free_clear((void *)cdm_acquire);
 	cdm_acquire = NULL;
 end:
 	args->ctxt_to_hw_map = NULL;
@@ -2917,11 +2918,11 @@ static int cam_ope_mgr_release_ctx(struct cam_ope_hw_mgr *hw_mgr, int ctx_id)
 			continue;
 
 		if (hw_mgr->ctx[ctx_id].req_list[i]->cdm_cmd) {
-			kzfree(hw_mgr->ctx[ctx_id].req_list[i]->cdm_cmd);
+			cam_free_clear((void *)hw_mgr->ctx[ctx_id].req_list[i]->cdm_cmd);
 			hw_mgr->ctx[ctx_id].req_list[i]->cdm_cmd = NULL;
 		}
 		cam_ope_free_io_config(hw_mgr->ctx[ctx_id].req_list[i]);
-		kzfree(hw_mgr->ctx[ctx_id].req_list[i]);
+		cam_free_clear((void *)hw_mgr->ctx[ctx_id].req_list[i]);
 		hw_mgr->ctx[ctx_id].req_list[i] = NULL;
 		clear_bit(i, hw_mgr->ctx[ctx_id].bitmap);
 	}
@@ -3289,10 +3290,10 @@ static int cam_ope_mgr_prepare_hw_update(void *hw_priv,
 	return rc;
 
 end:
-	kzfree(ctx_data->req_list[request_idx]->cdm_cmd);
+	cam_free_clear((void *)ctx_data->req_list[request_idx]->cdm_cmd);
 	ctx_data->req_list[request_idx]->cdm_cmd = NULL;
 req_cdm_mem_alloc_failed:
-	kzfree(ctx_data->req_list[request_idx]);
+	cam_free_clear((void *)ctx_data->req_list[request_idx]);
 	ctx_data->req_list[request_idx] = NULL;
 req_mem_alloc_failed:
 	clear_bit(request_idx, ctx_data->bitmap);
@@ -3317,10 +3318,10 @@ static int cam_ope_mgr_handle_config_err(
 
 	req_idx = ope_req->req_idx;
 	ope_req->request_id = 0;
-	kzfree(ctx_data->req_list[req_idx]->cdm_cmd);
+	cam_free_clear((void *)ctx_data->req_list[req_idx]->cdm_cmd);
 	ctx_data->req_list[req_idx]->cdm_cmd = NULL;
 	cam_ope_free_io_config(ctx_data->req_list[req_idx]);
-	kzfree(ctx_data->req_list[req_idx]);
+	cam_free_clear((void *)ctx_data->req_list[req_idx]);
 	ctx_data->req_list[req_idx] = NULL;
 	clear_bit(req_idx, ctx_data->bitmap);
 
@@ -3588,10 +3589,10 @@ static int cam_ope_mgr_flush_req(struct cam_ope_ctx *ctx_data,
 			continue;
 
 		ctx_data->req_list[idx]->request_id = 0;
-		kzfree(ctx_data->req_list[idx]->cdm_cmd);
+		cam_free_clear((void *)ctx_data->req_list[idx]->cdm_cmd);
 		ctx_data->req_list[idx]->cdm_cmd = NULL;
 		cam_ope_free_io_config(ctx_data->req_list[idx]);
-		kzfree(ctx_data->req_list[idx]);
+		cam_free_clear((void *)ctx_data->req_list[idx]);
 		ctx_data->req_list[idx] = NULL;
 		clear_bit(idx, ctx_data->bitmap);
 	}
@@ -3621,10 +3622,10 @@ static int cam_ope_mgr_flush_all(struct cam_ope_ctx *ctx_data,
 			continue;
 
 		ctx_data->req_list[i]->request_id = 0;
-		kzfree(ctx_data->req_list[i]->cdm_cmd);
+		cam_free_clear((void *)ctx_data->req_list[i]->cdm_cmd);
 		ctx_data->req_list[i]->cdm_cmd = NULL;
 		cam_ope_free_io_config(ctx_data->req_list[i]);
-		kzfree(ctx_data->req_list[i]);
+		cam_free_clear((void *)ctx_data->req_list[i]);
 		ctx_data->req_list[i] = NULL;
 		clear_bit(i, ctx_data->bitmap);
 	}
@@ -4117,24 +4118,24 @@ secure_hdl_failed:
 	cam_smmu_destroy_handle(ope_hw_mgr->iommu_hdl);
 	ope_hw_mgr->iommu_hdl = -1;
 ope_get_hdl_failed:
-	kzfree(ope_hw_mgr->ctx_bitmap);
+	cam_free_clear((void *)ope_hw_mgr->ctx_bitmap);
 	ope_hw_mgr->ctx_bitmap = NULL;
 	ope_hw_mgr->ctx_bitmap_size = 0;
 	ope_hw_mgr->ctx_bits = 0;
 ctx_bitmap_alloc_failed:
-	kzfree(ope_hw_mgr->devices[OPE_DEV_OPE]);
+	cam_free_clear((void *)ope_hw_mgr->devices[OPE_DEV_OPE]);
 	ope_hw_mgr->devices[OPE_DEV_OPE] = NULL;
 dev_init_failed:
 ope_ctx_bitmap_failed:
 	mutex_destroy(&ope_hw_mgr->hw_mgr_mutex);
 	for (j = i - 1; j >= 0; j--) {
 		mutex_destroy(&ope_hw_mgr->ctx[j].ctx_mutex);
-		kzfree(ope_hw_mgr->ctx[j].bitmap);
+		cam_free_clear((void *)ope_hw_mgr->ctx[j].bitmap);
 		ope_hw_mgr->ctx[j].bitmap = NULL;
 		ope_hw_mgr->ctx[j].bitmap_size = 0;
 		ope_hw_mgr->ctx[j].bits = 0;
 	}
-	kzfree(ope_hw_mgr);
+	cam_free_clear((void *)ope_hw_mgr);
 	ope_hw_mgr = NULL;
 
 	return rc;
