@@ -31,7 +31,7 @@
 #define CAM_IFE_CSID_HW_IDX_1                             0x2
 #define CAM_IFE_CSID_HW_IDX_2                             0x4
 
-#define CAM_IFE_CSID_LOG_BUF_LEN			  512
+#define CAM_IFE_CSID_LOG_BUF_LEN                          512
 
 /*
  * Debug values enable the corresponding interrupts and debug logs provide
@@ -46,6 +46,7 @@
 #define CAM_IFE_CSID_DEBUG_ENABLE_CPHY_PKT_CAPTURE        BIT(6)
 #define CAM_IFE_CSID_DEBUG_ENABLE_HBI_VBI_INFO            BIT(7)
 #define CAM_IFE_CSID_DEBUG_DISABLE_EARLY_EOF              BIT(8)
+#define CAM_IFE_DEBUG_ENABLE_UNMAPPED_VC_DT_IRQ           BIT(9)
 
 /* Binning supported masks. Binning support changes for specific paths
  * and also for targets. With the mask, we handle the supported features
@@ -257,15 +258,15 @@ struct cam_ife_csid_debug_info {
 /*
  * struct cam_ife_csid_hw_flags: place holder for flags
  *
- * @device_enabled:       flag to indicate if device enabled
- * @binning_enabled:      flag to indicate if binning enabled
- * @sof_irq_triggered:    flag to indicate if sof irq triggered
- * @fatal_err_detected:   flag to indicate if fatal err detected
- * @rx_enabled:           flag to indicate if rx is enabled
- * @tpg_configured:       flag to indicate if internal_tpg is configured
- * @sfe_inline_shdr:      flag to indicate if sfe is inline shdr
- * @reset_awaited:        flag to indicate if reset is awaited
- * @offline_mode:         flag to indicate if csid in offline mode
+ * @device_enabled:         flag to indicate if device enabled
+ * @binning_enabled:        flag to indicate if binning enabled
+ * @sof_irq_triggered:      flag to indicate if sof irq triggered
+ * @fatal_err_detected:     flag to indicate if fatal err detected
+ * @rx_enabled:             flag to indicate if rx is enabled
+ * @tpg_configured:         flag to indicate if internal_tpg is configured
+ * @sfe_inline_shdr:        flag to indicate if sfe is inline shdr
+ * @reset_awaited:          flag to indicate if reset is awaited
+ * @offline_mode:           flag to indicate if csid in offline mode
  */
 struct cam_ife_csid_hw_flags {
 	bool                  device_enabled;

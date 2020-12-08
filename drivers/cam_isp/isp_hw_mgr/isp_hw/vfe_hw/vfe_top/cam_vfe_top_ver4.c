@@ -246,6 +246,29 @@ static int cam_vfe_top_ver4_clock_update(
 	return rc;
 }
 
+static int cam_vfe_top_ver4_dump_info(
+	struct cam_vfe_top_ver4_priv *top_priv, uint32_t cmd_type)
+{
+	struct cam_hw_soc_info *soc_info = top_priv->common_data.soc_info;
+
+	if (!soc_info) {
+		CAM_ERR(CAM_ISP, "Null soc_info");
+		return -EINVAL;
+	}
+
+	switch (cmd_type) {
+	case CAM_ISP_HW_DUMP_HW_SRC_CLK_RATE:
+		CAM_INFO_RATE_LIMIT(CAM_ISP, "VFE%d src_clk_rate:%luHz",
+			soc_info->index, soc_info->applied_src_clk_rate);
+		break;
+	default:
+		CAM_ERR(CAM_ISP, "cmd_type: %u not supported", cmd_type);
+		break;
+	}
+
+	return 0;
+}
+
 static int cam_vfe_core_config_control(
 	struct cam_vfe_top_ver4_priv *top_priv,
 	 void *cmd_args, uint32_t arg_size)
@@ -632,6 +655,9 @@ int cam_vfe_top_ver4_process_cmd(void *device_priv, uint32_t cmd_type,
 	case CAM_ISP_HW_CMD_CLOCK_UPDATE:
 		rc = cam_vfe_top_ver4_clock_update(top_priv, cmd_args,
 			arg_size);
+		break;
+	case CAM_ISP_HW_DUMP_HW_SRC_CLK_RATE:
+		rc = cam_vfe_top_ver4_dump_info(top_priv, cmd_type);
 		break;
 	case CAM_ISP_HW_CMD_FE_UPDATE_IN_RD:
 		rc = cam_vfe_top_fs_update(top_priv, cmd_args,

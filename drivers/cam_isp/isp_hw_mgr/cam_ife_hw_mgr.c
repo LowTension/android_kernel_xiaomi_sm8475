@@ -345,6 +345,41 @@ static int cam_ife_hw_mgr_is_rdi_res(uint32_t res_id)
 	return rc;
 }
 
+static int cam_ife_hw_mgr_dump_hw_src_clock(uint8_t hw_idx,
+	enum cam_isp_hw_type hw_type)
+{
+
+	struct cam_isp_hw_intf_data               *hw_intf_data = NULL;
+	struct cam_hw_intf                        *hw_intf = NULL;
+	uint8_t                                    dummy_args;
+
+	switch (hw_type) {
+	case CAM_ISP_HW_TYPE_VFE:
+		if (!g_ife_hw_mgr.ife_devices[hw_idx]) {
+			CAM_ERR(CAM_ISP, "No vfe device added yet");
+			return -ENODEV;
+		}
+
+		hw_intf_data = g_ife_hw_mgr.ife_devices[hw_idx];
+		if (!hw_intf_data->hw_intf) {
+			CAM_ERR(CAM_ISP, "hw_intf is null");
+			return -EINVAL;
+		}
+
+		hw_intf = hw_intf_data->hw_intf;
+		if (hw_intf->hw_ops.process_cmd) {
+			hw_intf->hw_ops.process_cmd(hw_intf->hw_priv,
+				CAM_ISP_HW_DUMP_HW_SRC_CLK_RATE,
+				(void *)&dummy_args, sizeof(uint8_t));
+		}
+		break;
+	default:
+		CAM_ERR(CAM_ISP, "Unsupported HW Type: %u", hw_type);
+	}
+
+	return 0;
+}
+
 static enum cam_ife_pix_path_res_id
 	cam_ife_hw_mgr_get_csid_rdi_type_for_offline(
 	uint32_t                 rd_res_type)
@@ -10116,20 +10151,26 @@ static int cam_ife_hw_mgr_handle_csid_error(
 	struct cam_isp_hw_error_event_data error_event_data = {0};
 	struct cam_ife_hw_event_recovery_data    recovery_data = {0};
 
-	switch (event_info->err_type) {
+	if ((event_info->err_type & CAM_ISP_HW_ERROR_CSID_FATAL) &&
+		g_ife_hw_mgr.debug_cfg.enable_csid_recovery) {
 
-	case CAM_ISP_HW_ERROR_CSID_FATAL:
-		if (!g_ife_hw_mgr.debug_cfg.enable_csid_recovery)
-			break;
 		error_event_data.error_type = event_info->err_type;
 		cam_ife_hw_mgr_find_affected_ctx(&error_event_data,
 			event_info->hw_idx, &recovery_data);
-		break;
-	default:
-		CAM_ERR(CAM_ISP, "Invalid event ID %d",
+	}
+
+	if (event_info->err_type & CAM_ISP_HW_ERROR_CSID_OVERFLOW) {
+		if (cam_ife_hw_mgr_dump_hw_src_clock(event_info->hw_idx,
+			CAM_ISP_HW_TYPE_VFE))
+			CAM_ERR_RATE_LIMIT(CAM_ISP,
+				"VFE%d src_clk_rate dump failed");
+	}
+
+	if (event_info->err_type & ~(CAM_ISP_HW_ERROR_CSID_FATAL |
+		CAM_ISP_HW_ERROR_CSID_OVERFLOW)) {
+		CAM_ERR(CAM_ISP, "Invalid event ID 0x%x",
 			event_info->err_type);
 		rc = -EINVAL;
-		break;
 	}
 
 	return rc;
@@ -10197,8 +10238,9 @@ static int cam_ife_hw_mgr_handle_csid_event(
 {
 	int rc = 0;
 
-	switch (evt_id) {
+	CAM_DBG(CAM_ISP, "CSID event %u", evt_id);
 
+	switch (evt_id) {
 	case CAM_ISP_HW_EVENT_ERROR:
 		rc = cam_ife_hw_mgr_handle_csid_error(event_info);
 		break;
@@ -10208,8 +10250,6 @@ static int cam_ife_hw_mgr_handle_csid_event(
 		rc = -EINVAL;
 		break;
 	}
-
-	CAM_DBG(CAM_ISP, "CSID event %u", evt_id);
 
 	return rc;
 }
@@ -10298,16 +10338,17 @@ static int cam_ife_hw_mgr_handle_hw_err(
 	void                                *ctx,
 	void                                *evt_info)
 {
-	struct cam_ife_hw_mgr_ctx           *ife_hw_mgr_ctx;
-	struct cam_isp_hw_event_info        *event_info = evt_info;
-	uint32_t                             core_idx;
-	struct cam_isp_hw_error_event_data   error_event_data = {0};
+	struct cam_ife_hw_mgr_ctx               *ife_hw_mgr_ctx;
+	struct cam_isp_hw_event_info            *event_info = evt_info;
+	uint32_t                                 core_idx;
+	struct cam_isp_hw_error_event_data       error_event_data = {0};
 	struct cam_ife_hw_event_recovery_data    recovery_data = {0};
-	int                                  rc = -EINVAL;
+	int                                      rc = -EINVAL;
 
 	spin_lock(&g_ife_hw_mgr.ctx_lock);
 
-	if (event_info->err_type == CAM_ISP_HW_ERROR_CSID_FATAL) {
+	if (event_info->err_type & (CAM_ISP_HW_ERROR_CSID_FATAL |
+					CAM_ISP_HW_ERROR_CSID_OVERFLOW)) {
 		rc = cam_ife_hw_mgr_handle_csid_event(ctx, event_info,
 			evt_id);
 		goto end;

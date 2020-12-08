@@ -25,7 +25,7 @@
 #define IFE_CSID_VER1_RX_LANE1_FIFO_OVERFLOW               BIT(16)
 #define IFE_CSID_VER1_RX_LANE2_FIFO_OVERFLOW               BIT(17)
 #define IFE_CSID_VER1_RX_LANE3_FIFO_OVERFLOW               BIT(18)
-#define IFE_CSID_VER1_RX_CRC                               BIT(19)
+#define IFE_CSID_VER1_RX_ERROR_CRC                         BIT(19)
 #define IFE_CSID_VER1_RX_ERROR_ECC                         BIT(20)
 #define IFE_CSID_VER1_RX_MMAPPED_VC_DT                     BIT(21)
 #define IFE_CSID_VER1_RX_UNMAPPED_VC_DT                    BIT(22)
