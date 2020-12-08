@@ -6,6 +6,7 @@
 #include <linux/firmware.h>
 #include <linux/of_address.h>
 #include <linux/qcom_scm.h>
+#include <linux/soc/qcom/mdt_loader.h>
 
 #include "cam_cpas_api.h"
 #include "cam_debug_util.h"
@@ -21,7 +22,7 @@
 #define TZ_STATE_RESUME  0
 #define TZ_STATE_SUSPEND 1
 
-#define LX7_FW_NAME "CAMERA_ICP.elf"
+#define LX7_FW_NAME "CAMERA_ICP.mdt"
 
 #define LX7_GEN_PURPOSE_REG_OFFSET 0x20
 
@@ -261,7 +262,149 @@ int cam_lx7_hw_deinit(void *priv, void *args, uint32_t arg_size)
 	return cam_lx7_cpas_stop(lx7_info->core_info);
 }
 
-static int __tz_set_icp_state(uint32_t state)
+static void prepare_boot(struct cam_hw_info *lx7_info,
+			struct cam_icp_boot_args *args)
+{
+	struct cam_lx7_core_info *core_info = lx7_info->core_info;
+	unsigned long flags;
+
+	spin_lock_irqsave(&lx7_info->hw_lock, flags);
+	core_info->irq_cb.data = args->irq_cb.data;
+	core_info->irq_cb.cb = args->irq_cb.cb;
+	spin_unlock_irqrestore(&lx7_info->hw_lock, flags);
+}
+
+static void prepare_shutdown(struct cam_hw_info *lx7_info)
+{
+	struct cam_lx7_core_info *core_info = lx7_info->core_info;
+	unsigned long flags;
+
+	spin_lock_irqsave(&lx7_info->hw_lock, flags);
+	core_info->irq_cb.data = NULL;
+	core_info->irq_cb.cb = NULL;
+	spin_unlock_irqrestore(&lx7_info->hw_lock, flags);
+}
+
+#if IS_REACHABLE(CONFIG_QCOM_MDT_LOADER)
+static int __load_firmware(struct platform_device *pdev)
+{
+	const struct firmware *firmware = NULL;
+	void *vaddr = NULL;
+	struct device_node *node;
+	struct resource res;
+	phys_addr_t res_start;
+	size_t res_size;
+	ssize_t fw_size;
+	int rc;
+
+	node = of_parse_phandle(pdev->dev.of_node, "memory-region", 0);
+	if (!node) {
+		CAM_ERR(CAM_ICP, "firmware memory region not found");
+		return -ENODEV;
+	}
+
+	rc = of_address_to_resource(node, 0, &res);
+	of_node_put(node);
+	if (rc) {
+		CAM_ERR(CAM_ICP, "missing firmware resource address rc=%d", rc);
+		return rc;
+	}
+
+	res_start = res.start;
+	res_size = (size_t)resource_size(&res);
+
+	rc = request_firmware(&firmware, LX7_FW_NAME, &pdev->dev);
+	if (rc) {
+		CAM_ERR(CAM_ICP,
+			"error requesting %s firmware rc=%d",
+			LX7_FW_NAME, rc);
+		return rc;
+	}
+
+	/* Make sure carveout and binary sizes are compatible */
+	fw_size = qcom_mdt_get_size(firmware);
+	if (fw_size < 0 || res_size < (size_t)fw_size) {
+		CAM_ERR(CAM_ICP,
+			"carveout[sz=%zu] not big enough for firmware[sz=%zd]",
+			res_size, fw_size);
+		rc = -EINVAL;
+		goto out;
+	}
+
+	vaddr = ioremap_wc(res_start, res_size);
+	if (!vaddr) {
+		CAM_ERR(CAM_ICP, "unable to map firmware carveout");
+		rc = -ENOMEM;
+		goto out;
+	}
+
+	rc = qcom_mdt_load(&pdev->dev, firmware, LX7_FW_NAME, CAM_FW_PAS_ID,
+			vaddr, res_start, res_size, NULL);
+	if (rc) {
+		CAM_ERR(CAM_ICP, "failed to load firmware rc=%d", rc);
+		goto out;
+	}
+
+out:
+	if (vaddr)
+		iounmap(vaddr);
+
+	release_firmware(firmware);
+	return rc;
+}
+#endif
+
+static int cam_lx7_boot(struct cam_hw_info *lx7_info,
+			struct cam_icp_boot_args *args,
+			uint32_t arg_size)
+{
+	int rc;
+
+	if (!IS_REACHABLE(CONFIG_QCOM_MDT_LOADER))
+		return -EOPNOTSUPP;
+
+	if (!lx7_info || !args) {
+		CAM_ERR(CAM_ICP,
+			"invalid args: lx7_info=%pK args=%pK",
+			lx7_info, args);
+		return -EINVAL;
+	}
+
+	if (arg_size != sizeof(struct cam_icp_boot_args)) {
+		CAM_ERR(CAM_ICP, "invalid boot args size");
+		return -EINVAL;
+	}
+
+	prepare_boot(lx7_info, args);
+
+#if IS_REACHABLE(CONFIG_QCOM_MDT_LOADER)
+	rc = __load_firmware(lx7_info->soc_info.pdev);
+	if (rc) {
+		CAM_ERR(CAM_ICP, "firmware loading failed rc=%d", rc);
+		goto err;
+	}
+#endif
+
+	rc = qcom_scm_pas_auth_and_reset(CAM_FW_PAS_ID);
+	if (rc) {
+		CAM_ERR(CAM_ICP, "auth and reset failed rc=%d", rc);
+		goto err;
+	}
+
+	return 0;
+err:
+	prepare_shutdown(lx7_info);
+	return rc;
+}
+
+static int cam_lx7_shutdown(struct cam_hw_info *lx7_info)
+{
+	prepare_shutdown(lx7_info);
+
+	return qcom_scm_pas_shutdown(CAM_FW_PAS_ID);
+}
+
+static int set_remote_state(uint32_t state)
 {
 	int rc;
 
@@ -285,11 +428,17 @@ int cam_lx7_process_cmd(void *priv, uint32_t cmd_type,
 	}
 
 	switch (cmd_type) {
+	case CAM_ICP_CMD_PROC_SHUTDOWN:
+		rc = cam_lx7_shutdown(lx7_info);
+		break;
+	case CAM_ICP_CMD_PROC_BOOT:
+		rc = cam_lx7_boot(lx7_info, args, arg_size);
+		break;
 	case CAM_ICP_CMD_POWER_COLLAPSE:
-		rc = __tz_set_icp_state(TZ_STATE_SUSPEND);
+		rc = set_remote_state(TZ_STATE_SUSPEND);
 		break;
 	case CAM_ICP_CMD_POWER_RESUME:
-		rc = __tz_set_icp_state(TZ_STATE_RESUME);
+		rc = set_remote_state(TZ_STATE_RESUME);
 		break;
 	case CAM_ICP_CMD_VOTE_CPAS:
 		rc = cam_lx7_cpas_vote(lx7_info->core_info, args);
