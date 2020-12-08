@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
  */
 
 #ifndef CAMERA_MAIN_H
@@ -44,6 +44,7 @@ extern struct platform_driver cam_flash_platform_driver;
 #endif
 #ifdef CONFIG_SPECTRA_ICP
 extern struct platform_driver cam_a5_driver;
+extern struct platform_driver cam_lx7_driver;
 extern struct platform_driver cam_ipe_driver;
 extern struct platform_driver cam_bps_driver;
 extern struct platform_driver cam_icp_driver;
@@ -112,6 +113,7 @@ static struct platform_driver *const cam_component_drivers[] = {
 #endif
 #ifdef CONFIG_SPECTRA_ICP
 	&cam_a5_driver,
+	&cam_lx7_driver,
 	&cam_ipe_driver,
 	&cam_bps_driver,
 	&cam_icp_driver,

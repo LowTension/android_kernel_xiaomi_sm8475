@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  */
 
 #ifndef CAM_ICP_HW_MGR_H
@@ -115,12 +115,12 @@ struct hfi_cmd_work_data {
  * struct hfi_msg_work_data
  * @type: Task type
  * @data: Pointer to message data
- * @irq_status: IRQ status
+ * @recover: Device needs recovery
  */
 struct hfi_msg_work_data {
 	uint32_t type;
 	void *data;
-	uint32_t irq_status;
+	bool recover;
 };
 
 /**
