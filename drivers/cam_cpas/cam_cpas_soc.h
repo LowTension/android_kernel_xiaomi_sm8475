@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CAM_CPAS_SOC_H_
@@ -10,7 +10,7 @@
 #include "cam_cpas_hw.h"
 
 #define CAM_REGULATOR_LEVEL_MAX 16
-#define CAM_CPAS_MAX_TREE_NODES 50
+#define CAM_CPAS_MAX_TREE_NODES 56
 #define CAM_CPAS_MAX_FUSE_FEATURE 10
 
 /**
