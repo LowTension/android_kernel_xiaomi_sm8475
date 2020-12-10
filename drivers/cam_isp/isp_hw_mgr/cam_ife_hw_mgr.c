@@ -4152,31 +4152,33 @@ static int cam_ife_mgr_acquire_get_unified_structure_v2(
 		in_port->dt[i]        =  in->dt[i];
 	}
 
-	in_port->format           =  in->format;
-	in_port->test_pattern     =  in->test_pattern;
-	in_port->usage_type       =  in->usage_type;
-	in_port->left_start       =  in->left_start;
-	in_port->left_stop        =  in->left_stop;
-	in_port->left_width       =  in->left_width;
-	in_port->right_start      =  in->right_start;
-	in_port->right_stop       =  in->right_stop;
-	in_port->right_width      =  in->right_width;
-	in_port->line_start       =  in->line_start;
-	in_port->line_stop        =  in->line_stop;
-	in_port->height           =  in->height;
-	in_port->pixel_clk        =  in->pixel_clk;
-	in_port->batch_size       =  in->batch_size;
-	in_port->dsp_mode         =  in->dsp_mode;
-	in_port->fe_unpacker_fmt  =  in->format;
-	in_port->hbi_cnt          =  in->hbi_cnt;
-	in_port->cust_node        =  in->cust_node;
-	in_port->horizontal_bin   =  in->horizontal_bin;
-	in_port->qcfa_bin         =  in->qcfa_bin;
-	in_port->num_out_res      =  in->num_out_res;
-	in_port->sfe_in_path_type =  (in->sfe_in_path_type & 0xFFFF);
-	in_port->sfe_ife_enable   =  in->sfe_in_path_type >> 16;
-	in_port->secure_mode      = (in->feature_flag &
-		CAM_ISP_PARAM_FETCH_SECURITY_MODE);
+	in_port->format                   =  in->format;
+	in_port->test_pattern             =  in->test_pattern;
+	in_port->usage_type               =  in->usage_type;
+	in_port->left_start               =  in->left_start;
+	in_port->left_stop                =  in->left_stop;
+	in_port->left_width               =  in->left_width;
+	in_port->right_start              =  in->right_start;
+	in_port->right_stop               =  in->right_stop;
+	in_port->right_width              =  in->right_width;
+	in_port->line_start               =  in->line_start;
+	in_port->line_stop                =  in->line_stop;
+	in_port->height                   =  in->height;
+	in_port->pixel_clk                =  in->pixel_clk;
+	in_port->batch_size               =  in->batch_size;
+	in_port->dsp_mode                 =  in->dsp_mode;
+	in_port->fe_unpacker_fmt          =  in->format;
+	in_port->hbi_cnt                  =  in->hbi_cnt;
+	in_port->cust_node                =  in->cust_node;
+	in_port->horizontal_bin           =  in->horizontal_bin;
+	in_port->qcfa_bin                 =  in->qcfa_bin;
+	in_port->num_out_res              =  in->num_out_res;
+	in_port->sfe_in_path_type         =  (in->sfe_in_path_type & 0xFFFF);
+	in_port->sfe_ife_enable           =  in->sfe_in_path_type >> 16;
+	in_port->secure_mode              = (in->feature_flag &
+		                           CAM_ISP_PARAM_FETCH_SECURITY_MODE);
+	in_port->dynamic_sensor_switch_en = (in->feature_flag &
+		                           CAM_ISP_DYNAMIC_SENOR_SWITCH_EN);
 
 	in_port->data = kcalloc(in->num_out_res,
 		sizeof(struct cam_isp_out_port_generic_info),
@@ -5180,7 +5182,7 @@ static int cam_ife_mgr_config_hw(void *hw_mgr_priv,
 			return rc;
 		}
 
-		if (cfg->init_packet ||
+		if (cfg->init_packet || hw_update_data->mup_en ||
 			(ctx->custom_config & CAM_IFE_CUSTOM_CFG_SW_SYNC_ON)) {
 			rem_jiffies = wait_for_completion_timeout(
 				&ctx->config_done_complete,
@@ -5197,6 +5199,7 @@ static int cam_ife_mgr_config_hw(void *hw_mgr_priv,
 				CAM_DBG(CAM_ISP,
 					"config done Success for req_id=%llu ctx_index %d",
 					cfg->request_id, ctx->ctx_index);
+			hw_update_data->mup_en = false;
 		}
 	} else {
 		CAM_ERR(CAM_ISP, "No commands to config");
@@ -6644,6 +6647,60 @@ static int cam_isp_blob_hfr_update(
 		kmd_buf_info->used_bytes += total_used_bytes;
 		kmd_buf_info->offset     += total_used_bytes;
 		prepare->num_hw_update_entries = num_ent;
+	}
+
+	return rc;
+}
+
+static int cam_isp_blob_csid_mup_update(
+	uint32_t                               blob_type,
+	struct cam_isp_generic_blob_info      *blob_info,
+	struct cam_isp_mode_switch_info       *mup_config,
+	struct cam_hw_prepare_update_args     *prepare)
+{
+	struct cam_ife_hw_mgr_ctx             *ctx = NULL;
+	struct cam_isp_hw_mgr_res             *hw_mgr_res;
+	struct cam_hw_intf                    *hw_intf;
+	struct cam_ife_csid_mup_update_args    csid_mup_upd_args;
+	struct cam_isp_prepare_hw_update_data *prepare_hw_data;
+	uint64_t                               mup_val = 0;
+	int                                    rc = -EINVAL;
+	uint32_t                               i;
+
+	ctx = prepare->ctxt_to_hw_map;
+
+	CAM_DBG(CAM_ISP,
+		"csid mup value=%u", mup_config->mup);
+
+	prepare_hw_data = (struct cam_isp_prepare_hw_update_data  *)
+			prepare->priv;
+	prepare_hw_data->mup_en = true;
+
+	list_for_each_entry(hw_mgr_res, &ctx->res_list_ife_csid, list) {
+		for (i = 0; i < CAM_ISP_HW_SPLIT_MAX; i++) {
+			mup_val = 0;
+			if (!hw_mgr_res->hw_res[i])
+				continue;
+			if (i == CAM_ISP_HW_SPLIT_RIGHT)
+				continue;
+			mup_val = mup_config->mup;
+			hw_intf = hw_mgr_res->hw_res[i]->hw_intf;
+			if (hw_intf && hw_intf->hw_ops.process_cmd) {
+				csid_mup_upd_args.mup = mup_val;
+				CAM_DBG(CAM_ISP, "i= %d mup=%llu\n ctx %d",
+				i, csid_mup_upd_args.mup, ctx->ctx_index);
+
+				rc = hw_intf->hw_ops.process_cmd(
+					hw_intf->hw_priv,
+					CAM_ISP_HW_CMD_CSID_MUP_UPDATE,
+					&csid_mup_upd_args,
+					sizeof(
+					struct cam_ife_csid_mup_update_args));
+				if (rc)
+					CAM_ERR(CAM_ISP, "MUP Update failed");
+			} else
+				CAM_ERR(CAM_ISP, "NULL hw_intf!");
+		}
 	}
 
 	return rc;
@@ -8206,6 +8263,23 @@ static int cam_sfe_packet_generic_blob_handler(void *user_data,
 	case CAM_ISP_GENERIC_BLOB_TYPE_CSID_QCFA_CONFIG:
 	case CAM_ISP_GENERIC_BLOB_TYPE_SENSOR_BLANKING_CONFIG:
 	case CAM_ISP_GENERIC_BLOB_TYPE_TPG_CORE_CONFIG:
+	case CAM_ISP_GENERIC_BLOB_TYPE_DYNAMIC_MODE_SWITCH: {
+		struct cam_isp_mode_switch_info    *mup_config;
+
+		if (blob_size < sizeof(struct cam_isp_mode_switch_info)) {
+			CAM_ERR(CAM_ISP, "Invalid blob size %u expected %lu",
+				blob_size,
+				sizeof(struct cam_isp_mode_switch_info));
+			return -EINVAL;
+		}
+
+		mup_config = (struct cam_isp_mode_switch_info *)blob_data;
+
+		rc = cam_isp_blob_csid_mup_update(blob_type, blob_info,
+			mup_config, prepare);
+		if (rc)
+			CAM_ERR(CAM_ISP, "MUP Update Failed");
+	}
 		break;
 	default:
 		CAM_WARN(CAM_ISP, "Invalid blob type: %u", blob_type);

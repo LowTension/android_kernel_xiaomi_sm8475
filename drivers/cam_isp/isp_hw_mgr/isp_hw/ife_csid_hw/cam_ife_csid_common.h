@@ -299,12 +299,14 @@ struct cam_ife_csid_cid_data {
 /*
  * struct cam_ife_csid_hw_flags: place holder for flags
  *
- * @phy_sel:       selected phy
- * @lane_type:     type of lane selected
- * @lane_num:      number of lanes
- * @lane_cfg:      lane configuration
- * @tpg_mux_sel:   TPG mux sel
- * @tpg_num_sel:   TPG num sel
+ * @phy_sel:                  Selected phy
+ * @lane_type:                type of lane selected
+ * @lane_num:                 number of lanes
+ * @lane_cfg:                 lane configuration
+ * @tpg_mux_sel:              TPG mux sel
+ * @tpg_num_sel:              TPG num sel
+ * @dynamic_senso_switch_en:  Flag if dynamic sensor switch is enabled
+ * @mup:                      Mode Update bit. 0 for odd vc, 1 for even VC
  */
 struct cam_ife_csid_rx_cfg  {
 	uint32_t                        phy_sel;
@@ -313,6 +315,8 @@ struct cam_ife_csid_rx_cfg  {
 	uint32_t                        lane_cfg;
 	uint32_t                        tpg_mux_sel;
 	uint32_t                        tpg_num_sel;
+	uint32_t                        dynamic_sensor_switch_en;
+	uint32_t                        mup;
 };
 
 int cam_ife_csid_is_pix_res_format_supported(

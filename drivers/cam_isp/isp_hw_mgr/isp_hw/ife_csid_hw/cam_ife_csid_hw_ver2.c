@@ -1313,6 +1313,8 @@ static int cam_ife_csid_hw_ver2_config_rx(
 	csid_hw->rx_cfg.lane_num =
 		reserve->in_port->lane_num;
 	csid_hw->res_type = reserve->in_port->res_type;
+	csid_hw->rx_cfg.dynamic_sensor_switch_en =
+		reserve->in_port->dynamic_sensor_switch_en;
 
 	switch (reserve->in_port->res_type) {
 	case CAM_ISP_IFE_IN_RES_TPG:
@@ -2562,6 +2564,8 @@ static int cam_ife_csid_ver2_enable_csi2(struct cam_ife_csid_ver2_hw *csid_hw)
 	/*Configure Rx cfg1*/
 	val = 1 << csi2_reg->misr_enable_shift_val;
 	val |= 1 << csi2_reg->ecc_correction_shift_en;
+	val |= (rx_cfg->dynamic_sensor_switch_en
+			<< csi2_reg->dyn_sensor_switch_shift_en);
 
 	vc_full_width = cam_ife_csid_is_vc_full_width(csid_hw->cid_data);
 
@@ -3311,8 +3315,8 @@ static int cam_ife_csid_ver2_reg_update(
 	reg_val_pair[0] = csid_reg->cmn_reg->rup_aup_cmd_addr;
 	reg_val_pair[1] = rup_aup_mask;
 
-	if (rup_args->is_mup_update)
-		reg_val_pair[1] |= 1 << csid_reg->cmn_reg->mup_shift_val;
+	reg_val_pair[1] |= csid_hw->rx_cfg.mup <<
+			csid_reg->cmn_reg->mup_shift_val;
 
 	CAM_DBG(CAM_ISP, "CSID:%d reg_update_cmd 0x%X offset 0x%X",
 		csid_hw->hw_intf->hw_idx,
@@ -3540,6 +3544,25 @@ static int cam_ife_csid_ver2_print_hbi_vbi(
 	return 0;
 }
 
+static int cam_ife_csid_ver2_set_mup_config(
+	struct cam_ife_csid_ver2_hw          *csid_hw,
+	void *cmd_args)
+{
+	struct cam_ife_csid_mup_update_args *mup_update = NULL;
+
+	if (!csid_hw)
+		return -EINVAL;
+
+	mup_update =
+		(struct cam_ife_csid_mup_update_args *)cmd_args;
+
+	csid_hw->rx_cfg.mup = mup_update->mup;
+	CAM_INFO(CAM_ISP, "CSID[%u] MUP %u", csid_hw->hw_intf->hw_idx,
+		csid_hw->rx_cfg.mup);
+
+	return 0;
+}
+
 static int cam_ife_csid_ver2_set_csid_clock(
 	struct cam_ife_csid_ver2_hw          *csid_hw,
 	void *cmd_args)
@@ -3720,6 +3743,9 @@ static int cam_ife_csid_ver2_process_cmd(void *hw_priv,
 	case CAM_IFE_CSID_PROGRAM_OFFLINE_CMD:
 		rc = cam_ife_csid_ver2_program_offline_go_cmd(
 			csid_hw, cmd_args, arg_size);
+		break;
+	case CAM_ISP_HW_CMD_CSID_MUP_UPDATE:
+		rc = cam_ife_csid_ver2_set_mup_config(csid_hw, cmd_args);
 		break;
 	default:
 		CAM_ERR(CAM_ISP, "CSID:%d unsupported cmd:%d",

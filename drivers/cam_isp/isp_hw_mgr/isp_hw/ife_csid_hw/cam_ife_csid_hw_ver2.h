@@ -593,6 +593,7 @@ struct cam_ife_csid_ver2_reg_info {
  * @reset_irq_handle:         Reset irq handle
  * @buf_done_irq_handle:      Buf done irq handle
  * @sync_mode:                Master/Slave modes
+ * @mup:                      MUP for incoming VC of next frame
  *
  */
 struct cam_ife_csid_ver2_hw {
@@ -636,6 +637,7 @@ struct cam_ife_csid_ver2_hw {
 	int                                    reset_irq_handle;
 	int                                    buf_done_irq_handle;
 	enum cam_isp_hw_sync_mode              sync_mode;
+	uint32_t                               mup;
 };
 
 int cam_ife_csid_hw_ver2_init(struct cam_hw_intf  *csid_hw_intf,
