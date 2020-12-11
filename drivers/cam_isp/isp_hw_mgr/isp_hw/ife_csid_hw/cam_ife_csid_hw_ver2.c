@@ -1427,11 +1427,13 @@ static int cam_ife_csid_ver2_in_port_validate(
 	csid_reg = (struct cam_ife_csid_ver2_reg_info *)
 			csid_hw->core_info->csid_reg;
 
-	/* check in port args */
-	rc  = cam_ife_csid_check_in_port_args(reserve,
-		csid_hw->hw_intf->hw_idx);
-	if (rc)
-		goto err;
+	/* check in port args for RT streams*/
+	if (!reserve->is_offline) {
+		rc  = cam_ife_csid_check_in_port_args(reserve,
+			csid_hw->hw_intf->hw_idx);
+		if (rc)
+			goto err;
+	}
 
 	if (csid_hw->counters.csi2_reserve_cnt) {
 
@@ -1536,16 +1538,18 @@ int cam_ife_csid_ver2_reserve(void *hw_priv,
 		return rc;
 	}
 
-	rc = cam_ife_csid_hw_ver2_hw_cfg(csid_hw, path_cfg,
-		reserve, cid);
-
-	if (rc) {
-		CAM_ERR(CAM_ISP, "CSID[%d] res %d hw_cfg fail",
-			csid_hw->hw_intf->hw_idx, reserve->res_id);
-		goto release;
+	/* Skip rx and csid cfg for offline */
+	if (!reserve->is_offline) {
+		rc = cam_ife_csid_hw_ver2_hw_cfg(csid_hw, path_cfg,
+			reserve, cid);
+		if (rc) {
+			CAM_ERR(CAM_ISP, "CSID[%d] res %d hw_cfg fail",
+				csid_hw->hw_intf->hw_idx, reserve->res_id);
+			goto release;
+		}
 	}
-	reserve->node_res = res;
 
+	reserve->node_res = res;
 	res->res_state = CAM_ISP_RESOURCE_STATE_RESERVED;
 	csid_hw->event_cb = reserve->event_cb;
 	csid_hw->tasklet  = reserve->tasklet;
@@ -1553,6 +1557,7 @@ int cam_ife_csid_ver2_reserve(void *hw_priv,
 	reserve->buf_done_controller = csid_hw->buf_done_irq_controller;
 	res->cdm_ops = reserve->cdm_ops;
 	csid_hw->flags.sfe_inline_shdr = reserve->sfe_inline_shdr;
+	csid_hw->flags.offline_mode = reserve->is_offline;
 
 	reserve->need_top_cfg = csid_reg->need_top_cfg;
 
@@ -1680,7 +1685,7 @@ static int cam_ife_csid_ver2_shdr_cfg(
 	cam_io_w_mb(val, mem_base +
 		csid_reg->cmn_reg->shdr_master_slave_cfg_addr);
 
-	CAM_DBG(CAM_ISP, "CSID %d shdr cfg %x", csid_hw->hw_intf->hw_idx,
+	CAM_DBG(CAM_ISP, "CSID %d shdr cfg 0x%x", csid_hw->hw_intf->hw_idx,
 		val);
 
 	return 0;
@@ -1717,6 +1722,18 @@ static int cam_ife_csid_ver2_init_config_rdi_path(
 	path_cfg = (struct cam_ife_csid_ver2_path_cfg *)res->res_priv;
 	cid_data = &csid_hw->cid_data[path_cfg->cid];
 	mem_base = soc_info->reg_map[CAM_IFE_CSID_CLC_MEM_BASE_ID].mem_base;
+
+	/* Enable client & cfg offline mode */
+	if (csid_hw->flags.offline_mode) {
+		val = (1 <<
+			path_reg->offline_mode_en_shift_val);
+		val |= (1 << cmn_reg->path_en_shift_val);
+		cam_io_w_mb(val, mem_base + path_reg->cfg0_addr);
+		CAM_DBG(CAM_ISP, "CSID:%d RDI:%d cfg0: 0x%x for offline",
+			csid_hw->hw_intf->hw_idx, res->res_id, val);
+		return 0;
+	}
+
 	is_rpp = path_cfg->crop_enable || path_cfg->drop_enable;
 	rc = cam_ife_csid_get_format_rdi(path_cfg->in_format,
 		path_cfg->out_format, &path_format, is_rpp);
@@ -1737,9 +1754,7 @@ static int cam_ife_csid_ver2_init_config_rdi_path(
 		(cid_data->vc_dt[CAM_IFE_CSID_MULTI_VC_DT_GRP_0].dt <<
 			cmn_reg->dt_shift_val) |
 		(path_cfg->cid << cmn_reg->dt_id_shift_val) |
-		(path_format.decode_fmt << cmn_reg->decode_format_shift_val) |
-		(path_cfg->offline_mode <<
-			 path_reg->offline_mode_en_shift_val);
+		(path_format.decode_fmt << cmn_reg->decode_format_shift_val);
 
 	if (csid_reg->cmn_reg->vfr_supported)
 		val |= path_cfg->vfr_en << cmn_reg->vfr_en_shift_val;
@@ -2091,23 +2106,25 @@ static int cam_ife_csid_ver2_start_rdi_path(
 	}
 
 	mem_base = soc_info->reg_map[CAM_IFE_CSID_CLC_MEM_BASE_ID].mem_base;
-	 /* Resume at frame boundary */
-	cam_io_w_mb(path_reg->resume_frame_boundary,
-		mem_base + path_reg->ctrl_addr);
-
-	CAM_DBG(CAM_ISP, "CSID:%d Rdi res: %d",
-		csid_hw->hw_intf->hw_idx, res->res_id);
-
 	path_cfg = (struct cam_ife_csid_ver2_path_cfg *)res->res_priv;
-	/*Program the camif part */
-	val =  (path_cfg->camif_data.pix_pattern <<
+	if (!csid_hw->flags.offline_mode) {
+		/* Resume at frame boundary */
+		cam_io_w_mb(path_reg->resume_frame_boundary,
+			mem_base + path_reg->ctrl_addr);
+
+		CAM_DBG(CAM_ISP, "CSID:%d Rdi res: %d",
+			csid_hw->hw_intf->hw_idx, res->res_id);
+
+		/*Program the camif part */
+		val =  (path_cfg->camif_data.pix_pattern <<
 			path_reg->pix_pattern_shift_val) |
 			(path_cfg->camif_data.stripe_loc <<
-			 path_reg->stripe_loc_shift_val);
+			path_reg->stripe_loc_shift_val);
 
-	cam_io_w_mb(val, mem_base + path_reg->camif_frame_cfg_addr);
-	cam_io_w_mb(path_cfg->camif_data.epoch0,
-		mem_base + path_reg->epoch_irq_cfg_addr);
+		cam_io_w_mb(val, mem_base + path_reg->camif_frame_cfg_addr);
+		cam_io_w_mb(path_cfg->camif_data.epoch0,
+			mem_base + path_reg->epoch_irq_cfg_addr);
+	}
 
 	val = path_reg->fatal_err_mask | path_reg->non_fatal_err_mask |
 		csid_hw->debug_info.path_mask;
@@ -2115,6 +2132,13 @@ static int cam_ife_csid_ver2_start_rdi_path(
 	if (res->rdi_only_ctx) {
 		path_cfg->handle_camif_irq = true;
 		val |= path_reg->camif_irq_mask;
+	}
+
+	if ((csid_hw->flags.offline_mode ||
+		csid_hw->flags.sfe_inline_shdr) &&
+		(res->res_id == CAM_IFE_PIX_PATH_RES_RDI_0)) {
+		val |= path_reg->camif_irq_mask;
+		path_cfg->handle_camif_irq = true;
 	}
 
 	res->res_state = CAM_ISP_RESOURCE_STATE_STREAMING;
@@ -2507,6 +2531,9 @@ static int cam_ife_csid_ver2_enable_csi2(struct cam_ife_csid_ver2_hw *csid_hw)
 	uint32_t irq_mask[CAM_IFE_CSID_IRQ_REG_MAX] = {0};
 
 	if (csid_hw->flags.rx_enabled)
+		return 0;
+
+	if (csid_hw->flags.offline_mode)
 		return 0;
 
 	csid_reg = (struct cam_ife_csid_ver2_reg_info *)
@@ -3302,6 +3329,61 @@ err:
 	return rc;
 }
 
+static int cam_ife_csid_ver2_program_offline_go_cmd(
+	struct cam_ife_csid_ver2_hw   *csid_hw,
+	void *cmd_args, uint32_t arg_size)
+{
+	struct cam_ife_csid_offline_cmd_update_args *go_args = cmd_args;
+	struct cam_cdm_utils_ops                    *cdm_util_ops;
+	struct cam_ife_csid_ver2_reg_info           *csid_reg;
+	uint32_t                                     size;
+	uint32_t                                     reg_val_pair[2];
+
+	if (!go_args) {
+		CAM_ERR(CAM_ISP, "Invalid args");
+		return -EINVAL;
+	}
+
+	if (arg_size !=
+		sizeof(struct cam_ife_csid_offline_cmd_update_args)) {
+		CAM_ERR(CAM_ISP, "Invalid arg size: %d expected:%ld",
+			arg_size, sizeof(struct cam_ife_csid_offline_cmd_update_args));
+		return -EINVAL;
+	}
+
+	cdm_util_ops = (struct cam_cdm_utils_ops *)go_args->res->cdm_ops;
+
+	if (!cdm_util_ops) {
+		CAM_ERR(CAM_ISP, "Invalid CDM ops");
+		return -EINVAL;
+	}
+
+	size = cdm_util_ops->cdm_required_size_reg_random(1);
+	/* since cdm returns dwords, we need to convert it into bytes */
+	if ((size * 4) > go_args->cmd.size) {
+		CAM_ERR(CAM_ISP, "buf size:%d is not sufficient, expected: %d",
+			go_args->cmd.size, (size*4));
+		return -EINVAL;
+	}
+
+	csid_reg = (struct cam_ife_csid_ver2_reg_info *)
+			csid_hw->core_info->csid_reg;
+
+	reg_val_pair[0] = csid_reg->cmn_reg->offline_cmd_addr;
+	reg_val_pair[1] = 0x1;
+
+	CAM_DBG(CAM_ISP, "CSID:%d offline_cmd 0x%x offset 0x%X",
+		csid_hw->hw_intf->hw_idx,
+		reg_val_pair[1], reg_val_pair[0]);
+
+	cdm_util_ops->cdm_write_regrandom(go_args->cmd.cmd_buf_addr,
+		1, reg_val_pair);
+
+	go_args->cmd.used_bytes = size * 4;
+
+	return 0;
+}
+
 static int cam_ife_csid_ver2_get_time_stamp(
 	struct cam_ife_csid_ver2_hw  *csid_hw, void *cmd_args)
 {
@@ -3569,36 +3651,6 @@ static int cam_ife_csid_ver2_dual_sync_cfg(
 	return 0;
 }
 
-static int cam_ife_csid_ver2_program_offline_go_cmd(
-	struct cam_ife_csid_ver2_hw *csid_hw,
-	void *args)
-{
-	struct cam_ife_csid_ver2_reg_info *csid_reg;
-	uint32_t *val;
-	void __iomem                      *mem_base;
-	struct cam_hw_soc_info            *soc_info;
-
-	if (!csid_hw || !args) {
-		CAM_ERR(CAM_ISP, "CSID go cmd invalid args %pK %pK",
-			csid_hw, args);
-		return -EINVAL;
-	}
-
-	csid_reg = (struct cam_ife_csid_ver2_reg_info *)
-			csid_hw->core_info->csid_reg;
-	soc_info = &csid_hw->hw_info->soc_info;
-	mem_base = soc_info->reg_map[CAM_IFE_CSID_CLC_MEM_BASE_ID].mem_base;
-	val = (uint32_t *)(args);
-
-	cam_io_w_mb(*val, mem_base + csid_reg->cmn_reg->offline_cmd_addr);
-
-	CAM_DBG(CAM_ISP, "CSID %d go cmd %u", csid_hw->hw_intf->hw_idx,
-		*val);
-
-	return 0;
-}
-
-
 static int cam_ife_csid_ver2_process_cmd(void *hw_priv,
 	uint32_t cmd_type, void *cmd_args, uint32_t arg_size)
 {
@@ -3661,7 +3713,7 @@ static int cam_ife_csid_ver2_process_cmd(void *hw_priv,
 		break;
 	case CAM_IFE_CSID_PROGRAM_OFFLINE_CMD:
 		rc = cam_ife_csid_ver2_program_offline_go_cmd(
-			csid_hw, cmd_args);
+			csid_hw, cmd_args, arg_size);
 		break;
 	default:
 		CAM_ERR(CAM_ISP, "CSID:%d unsupported cmd:%d",

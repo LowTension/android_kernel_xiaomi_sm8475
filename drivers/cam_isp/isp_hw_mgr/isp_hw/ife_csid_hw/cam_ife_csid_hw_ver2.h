@@ -168,7 +168,6 @@ struct cam_ife_csid_ver2_camif_data {
  * @frame_id_dec_en:  flag to indicate if frame id decoding is enabled
  * @crop_enable:      flag to indicate crop enable
  * @drop_enable:      flag to indicate drop enable
- * @offline_mode:     flag to indicate if path working in offline mode
  *
  */
 struct cam_ife_csid_ver2_path_cfg {
@@ -195,7 +194,6 @@ struct cam_ife_csid_ver2_path_cfg {
 	bool                                frame_id_dec_en;
 	bool                                crop_enable;
 	bool                                drop_enable;
-	bool                                offline_mode;
 	bool                                handle_camif_irq;
 };
 

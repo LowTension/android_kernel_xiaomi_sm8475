@@ -148,6 +148,7 @@ struct cam_isp_in_port_generic_info {
  * @crop_enable :        Flag to indicate CSID crop enable
  * @drop_enable :        Flag to indicate CSID drop enable
  * @sfe_inline_shdr:     Flag to indicate if sfe is inline shdr
+ * @is_offline :         Flag to indicate offline
  * @need_top_cfg:        Flag to indicate if top cfg is needed
  * @tasklet:             Tasklet to schedule bottom halves
  * @buf_done_controller: IRQ controller for buf done for version 680 hw
@@ -171,6 +172,7 @@ struct cam_csid_hw_reserve_resource_args {
 	bool                                      crop_enable;
 	bool                                      drop_enable;
 	bool                                      sfe_inline_shdr;
+	bool                                      is_offline;
 	bool                                      need_top_cfg;
 	void                                     *tasklet;
 	void                                     *buf_done_controller;
@@ -355,5 +357,16 @@ struct cam_ife_csid_reg_update_args {
 	struct cam_isp_resource_node     *res[CAM_IFE_PIX_PATH_RES_MAX];
 	uint32_t                          num_res;
 	bool                              is_mup_update;
+};
+
+/*
+ * struct cam_ife_csid_offline_cmd_update_args:
+ *
+ * @cmd:           cmd buf update args
+ * @node_res:      Node res pointer for offline RDI
+ */
+struct cam_ife_csid_offline_cmd_update_args {
+	struct cam_isp_hw_cmd_buf_update  cmd;
+	struct cam_isp_resource_node     *res;
 };
 #endif /* _CAM_CSID_HW_INTF_H_ */
