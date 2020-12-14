@@ -40,8 +40,6 @@
 
 #define CAM_IFE_CSID_VER2_PAYLOAD_MAX           256
 
-#define IFE_CSID_VER2_TOP_IRQ_DONE                               BIT(0)
-#define IFE_CSID_VER2_PATH_INFO_RST_DONE                         BIT(1)
 #define IFE_CSID_VER2_PATH_ERROR_FIFO_OVERFLOW                   BIT(2)
 #define IFE_CSID_VER2_PATH_CAMIF_EOF                             BIT(3)
 #define IFE_CSID_VER2_PATH_CAMIF_SOF                             BIT(4)
@@ -59,7 +57,7 @@
 #define IFE_CSID_VER2_PATH_VCDT_GRP1_SEL                         BIT(16)
 #define IFE_CSID_VER2_PATH_VCDT_GRP_CHANGE                       BIT(17)
 #define IFE_CSID_VER2_PATH_FRAME_DROP                            BIT(18)
-#define IFE_CSID_VER2_PATH_OVERFLOW                              BIT(19)
+#define IFE_CSID_VER2_PATH_OVERFLOW_RECOVERY                     BIT(19)
 #define IFE_CSID_VER2_PATH_ERROR_REC_CCIF_VIOLATION              BIT(20)
 #define IFE_CSID_VER2_PATH_CAMIF_EPOCH0                          BIT(21)
 #define IFE_CSID_VER2_PATH_CAMIF_EPOCH1                          BIT(22)

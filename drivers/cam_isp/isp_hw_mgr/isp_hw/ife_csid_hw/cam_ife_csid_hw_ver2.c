@@ -132,6 +132,12 @@ static const struct cam_ife_csid_irq_desc ver2_rx_irq_desc[] = {
 
 static const struct cam_ife_csid_irq_desc ver2_path_irq_desc[] = {
 	{
+		.desc = "",
+	},
+	{
+		.desc = "",
+	},
+	{
 		.desc = "ERROR_FIFO_OVERFLOW",
 	},
 	{
@@ -183,7 +189,7 @@ static const struct cam_ife_csid_irq_desc ver2_path_irq_desc[] = {
 		.desc = "FRAME_DROP",
 	},
 	{
-		.desc = "OVERFLOW",
+		.desc = "OVERFLOW_RECOVERY",
 	},
 	{
 		.desc = "ERROR_REC_CCIF_VIOLATION",
@@ -363,14 +369,14 @@ static int cam_ife_csid_ver2_path_top_half(
 
 	for (i = 0; i < th_payload->num_registers; i++)
 		CAM_DBG(CAM_ISP, "CSID:%d status_%d: 0x%X",
-			csid_hw->hw_intf->hw_idx,
+			csid_hw->hw_intf->hw_idx, i,
 			th_payload->evt_status_arr[i]);
 	if (rc) {
 		for (i = 0; i < th_payload->num_registers; i++)
 			CAM_INFO(CAM_ISP, "CSID:%d status_%d: 0x%X",
-				csid_hw->hw_intf->hw_idx,
+				csid_hw->hw_intf->hw_idx, i,
 				th_payload->evt_status_arr[i]);
-		return rc;
+		return IRQ_HANDLED;
 	}
 
 	for (i = 0; i < th_payload->num_registers; i++)
@@ -378,7 +384,7 @@ static int cam_ife_csid_ver2_path_top_half(
 
 	th_payload->evt_payload_priv = evt_payload;
 
-	return rc;
+	return IRQ_HANDLED;
 }
 
 static int cam_ife_csid_ver2_rx_err_top_half(
@@ -404,7 +410,7 @@ static int cam_ife_csid_ver2_rx_err_top_half(
 	if (rc) {
 		for (i = 0; i < th_payload->num_registers; i++)
 			CAM_INFO(CAM_ISP, "CSID:%d status_%d: 0x%X",
-				csid_hw->hw_intf->hw_idx,
+				csid_hw->hw_intf->hw_idx, i,
 				th_payload->evt_status_arr[i]);
 		return IRQ_HANDLED;
 	}
@@ -497,6 +503,7 @@ static int cam_ife_csid_ver2_handle_rx_debug_event(
 
 	return 0;
 }
+
 static int cam_ife_csid_ver2_rx_top_half(
 	uint32_t                                   evt_id,
 	struct cam_irq_th_payload                 *th_payload)
@@ -697,15 +704,14 @@ static int cam_ife_csid_ver2_rx_err_bottom_half(
 }
 
 static int cam_ife_csid_ver2_parse_path_irq_status(
-	uint32_t    index,
-	uint32_t    irq_status,
-	uint32_t    debug_mask,
-	uint32_t    err_mask,
-	uint32_t    hw_idx)
+	struct cam_ife_csid_ver2_hw *csid_hw,
+	uint32_t                     index,
+	uint32_t                     err_mask,
+	uint32_t                     irq_status)
 {
-	uint32_t bit_pos = 0;
-	uint32_t temp_status;
-	const uint8_t **irq_reg_tag;
+	const uint8_t                        **irq_reg_tag;
+	uint32_t                               bit_pos = 0;
+	uint32_t                               temp_status;
 
 	irq_reg_tag = cam_ife_csid_get_irq_reg_tag_ptr();
 	temp_status = irq_status & err_mask;
@@ -715,21 +721,22 @@ static int cam_ife_csid_ver2_parse_path_irq_status(
 		if (temp_status & 0x1)
 			CAM_ERR_RATE_LIMIT(CAM_ISP,
 				"CSID[%d] IRQ %s %s ",
-				hw_idx, irq_reg_tag[index],
+				csid_hw->hw_intf->hw_idx, irq_reg_tag[index],
 				ver2_path_irq_desc[bit_pos].desc);
 
 		bit_pos++;
 		temp_status >>= 1;
 	}
 
-	temp_status = irq_status & debug_mask;
+	temp_status = irq_status & csid_hw->debug_info.path_mask;
 	bit_pos = 0;
+
 	while (temp_status) {
 
 		if (temp_status & 0x1)
 			CAM_INFO_RATE_LIMIT(CAM_ISP,
 				"CSID[%d] IRQ %s %s ",
-				hw_idx, irq_reg_tag[index],
+				csid_hw->hw_intf->hw_idx, irq_reg_tag[index],
 				ver2_path_irq_desc[bit_pos].desc);
 
 		bit_pos++;
@@ -801,11 +808,9 @@ static int cam_ife_csid_ver2_ipp_bottom_half(
 			csid_reg->ipp_reg->non_fatal_err_mask;
 
 	cam_ife_csid_ver2_parse_path_irq_status(
+		csid_hw,
 		CAM_IFE_CSID_IRQ_REG_IPP,
-		irq_status_ipp,
-		csid_hw->debug_info.path_mask,
-		err_mask,
-		csid_hw->hw_intf->hw_idx);
+		err_mask, irq_status_ipp);
 
 	cam_ife_csid_ver2_put_evt_payload(csid_hw, &payload,
 			&csid_hw->path_free_payload_list,
@@ -841,11 +846,8 @@ static int cam_ife_csid_ver2_ppp_bottom_half(
 			csid_reg->ppp_reg->non_fatal_err_mask;
 
 	cam_ife_csid_ver2_parse_path_irq_status(
-		CAM_IFE_CSID_IRQ_REG_PPP,
-		irq_status_ppp,
-		csid_hw->debug_info.path_mask,
-		err_mask,
-		csid_hw->hw_intf->hw_idx);
+		csid_hw, CAM_IFE_CSID_IRQ_REG_PPP,
+		err_mask, irq_status_ppp);
 
 	cam_ife_csid_ver2_put_evt_payload(csid_hw, &payload,
 			&csid_hw->path_free_payload_list,
@@ -909,11 +911,8 @@ static int cam_ife_csid_ver2_rdi_bottom_half(
 		if (!path_cfg->handle_camif_irq) {
 			err_mask = rdi_reg->non_fatal_err_mask |
 					rdi_reg->fatal_err_mask;
-			cam_ife_csid_ver2_parse_path_irq_status(i,
-				irq_status_rdi,
-				csid_hw->debug_info.path_mask,
-				err_mask,
-				csid_hw->hw_intf->hw_idx);
+			cam_ife_csid_ver2_parse_path_irq_status(csid_hw, i,
+				err_mask, irq_status_rdi);
 			continue;
 		}
 
@@ -3190,6 +3189,10 @@ static int cam_ife_csid_ver2_top_cfg(
 
 	csid_hw->top_cfg.dual_en = true;
 	csid_hw->top_cfg.dual_sync_core_sel = csid_hw->dual_core_idx + 1;
+	CAM_DBG(CAM_ISP,
+		"CSID[%u] Top dual sync config core_sel: %d sync_mode: %d",
+		hw_idx, csid_hw->sync_mode,
+		csid_hw->top_cfg.dual_sync_core_sel);
 
 	return rc;
 }
@@ -3564,6 +3567,10 @@ static int cam_ife_csid_ver2_dual_sync_cfg(
 	dual_sync_args = (struct cam_ife_csid_dual_sync_args *)cmd_args;
 	csid_hw->sync_mode = dual_sync_args->sync_mode;
 	csid_hw->dual_core_idx = dual_sync_args->dual_core_id;
+
+	CAM_DBG(CAM_ISP, "CSID[%u] sync_mode %d dual_core_idx: %d",
+		csid_hw->hw_intf->hw_idx, csid_hw->sync_mode,
+		csid_hw->dual_core_idx);
 
 	return 0;
 }
