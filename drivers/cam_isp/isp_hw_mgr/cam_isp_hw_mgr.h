@@ -85,10 +85,12 @@ struct cam_isp_hw_mgr_res {
  *
  * @idx:                 Base resource index
  * @split_id:            Split info for the base resource
+ * @hw_type:             HW type [IFE/SFE/..] for the base resource
  *
  */
 struct cam_isp_ctx_base_info {
 	uint32_t                       idx;
 	enum cam_isp_hw_split_id       split_id;
+	enum cam_isp_hw_type           hw_type;
 };
 #endif /* _CAM_ISP_HW_MGR_H_ */

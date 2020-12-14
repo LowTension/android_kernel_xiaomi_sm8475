@@ -4499,6 +4499,8 @@ static int __cam_isp_ctx_config_dev_in_top_state(
 	cfg.in_map_entries = req_isp->fence_map_in;
 	cfg.priv  = &req_isp->hw_update_data;
 	cfg.pf_data = &(req->pf_data);
+	cfg.num_out_map_entries = 0;
+	cfg.num_in_map_entries = 0;
 
 	CAM_DBG(CAM_ISP, "try to prepare config packet......");
 
