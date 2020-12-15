@@ -136,6 +136,7 @@ struct cam_isp_in_port_generic_info {
 	uint32_t                        dynamic_sensor_switch_en;
 	uint32_t                        can_use_lite;
 	uint32_t                        sfe_binned_epoch_cfg;
+	uint32_t                        epd_supported;
 	struct cam_isp_out_port_generic_info    *data;
 };
 
@@ -309,15 +310,6 @@ struct cam_ife_csid_clock_update_args {
 struct cam_ife_csid_qcfa_update_args {
 	struct cam_isp_resource_node      *res;
 	uint32_t                           qcfa_binning;
-};
-
-/*
- * struct cam_ife_csid_epd_update_args:
- *
- * @epd_supported:                flag to check epd supported or not
- */
-struct cam_ife_csid_epd_update_args {
-	uint32_t                           epd_supported;
 };
 
 /*

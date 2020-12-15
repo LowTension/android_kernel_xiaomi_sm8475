@@ -1407,6 +1407,8 @@ static int cam_ife_csid_hw_ver2_config_rx(
 	csid_hw->res_type = reserve->in_port->res_type;
 	csid_hw->rx_cfg.dynamic_sensor_switch_en =
 		reserve->in_port->dynamic_sensor_switch_en;
+	csid_hw->rx_cfg.epd_supported =
+		reserve->in_port->epd_supported;
 
 	switch (reserve->in_port->res_type) {
 	case CAM_ISP_IFE_IN_RES_TPG:
@@ -2665,6 +2667,8 @@ static int cam_ife_csid_ver2_enable_csi2(struct cam_ife_csid_ver2_hw *csid_hw)
 	val |= 1 << csi2_reg->ecc_correction_shift_en;
 	val |= (rx_cfg->dynamic_sensor_switch_en
 			<< csi2_reg->dyn_sensor_switch_shift_en);
+	val |= (rx_cfg->epd_supported
+			<< csi2_reg->epd_mode_shift_en);
 
 	vc_full_width = cam_ife_csid_is_vc_full_width(csid_hw->cid_data);
 
@@ -2704,12 +2708,6 @@ static int cam_ife_csid_ver2_enable_csi2(struct cam_ife_csid_ver2_hw *csid_hw)
 
 	val = csi2_reg->fatal_err_mask | csi2_reg->part_fatal_err_mask |
 		csi2_reg->non_fatal_err_mask;
-
-	/*EPD supported sensors do not send EOT, error will be generated
-	 * if this irq is enabled
-	 */
-	if (csid_hw->flags.epd_supported)
-		val = val & ~IFE_CSID_VER2_RX_CPHY_EOT_RECEPTION;
 
 	irq_mask[CAM_IFE_CSID_IRQ_REG_RX] = val;
 
@@ -3743,10 +3741,6 @@ static int cam_ife_csid_ver2_process_cmd(void *hw_priv,
 		break;
 	case CAM_ISP_HW_CMD_DUMP_HW:
 		//rc = cam_ife_csid_ver2_dump_hw(csid_hw, cmd_args);
-		break;
-	case CAM_IFE_CSID_SET_CONFIG:
-		rc = cam_ife_csid_set_epd_config(&csid_hw->flags, cmd_args,
-			csid_hw->hw_intf->hw_idx);
 		break;
 	case CAM_IFE_CSID_TOP_CONFIG:
 		rc = cam_ife_csid_ver2_top_cfg(csid_hw, cmd_args);

@@ -524,24 +524,6 @@ int cam_ife_csid_check_in_port_args(
 	return 0;
 }
 
-int cam_ife_csid_set_epd_config(struct cam_ife_csid_hw_flags  *flags,
-	void *cmd_args, uint32_t hw_idx)
-{
-	struct cam_ife_csid_epd_update_args *epd_update = NULL;
-
-	if ((!flags) || (!cmd_args))
-		return -EINVAL;
-
-	epd_update =
-		(struct cam_ife_csid_epd_update_args *)cmd_args;
-
-	flags->epd_supported = epd_update->epd_supported;
-	CAM_DBG(CAM_ISP, "CSID[%u] EPD supported %d", hw_idx,
-		flags->epd_supported);
-
-	return 0;
-}
-
 int cam_ife_csid_get_rt_irq_idx(
 	uint32_t irq_reg, uint32_t num_ipp,
 	uint32_t num_ppp, uint32_t num_rdi)

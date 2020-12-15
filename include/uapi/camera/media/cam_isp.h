@@ -115,7 +115,6 @@
 #define CAM_ISP_GENERIC_BLOB_TYPE_IFE_CORE_CONFIG           7
 #define CAM_ISP_GENERIC_BLOB_TYPE_VFE_OUT_CONFIG            8
 #define CAM_ISP_GENERIC_BLOB_TYPE_BW_CONFIG_V2              9
-#define CAM_ISP_GENERIC_BLOB_TYPE_CSID_CONFIG               10
 #define CAM_ISP_GENERIC_BLOB_TYPE_SENSOR_DIMENSION_CONFIG   11
 #define CAM_ISP_GENERIC_BLOB_TYPE_CSID_QCFA_CONFIG          12
 #define CAM_ISP_GENERIC_BLOB_TYPE_SENSOR_BLANKING_CONFIG    13
@@ -170,6 +169,7 @@
 #define CAM_ISP_CAN_USE_LITE_MODE              BIT(1)
 #define CAM_ISP_DYNAMIC_SENOR_SWITCH_EN        BIT(2)
 #define CAM_ISP_SFE_BINNED_EPOCH_CFG_ENABLE    BIT(3)
+#define CAM_ISP_EPD_SUPPORT                    BIT(4)
 
 /* ISP core cfg flag params */
 #define CAM_ISP_PARAM_CORE_CFG_HDR_MUX_SEL BIT(0)
@@ -860,15 +860,6 @@ struct cam_isp_vfe_out_config {
 	__u32                        num_ports;
 	__u32                        reserved;
 	struct cam_isp_vfe_wm_config wm_config[1];
-};
-
-/**
- * struct cam_isp_csid_epd_config  -  Support for EPD Packet config
- *
- * @is_epd_sensor      : flag to check if epd supported
- */
-struct cam_isp_csid_epd_config {
-	__u32                      is_epd_supported;
 };
 
 /**
