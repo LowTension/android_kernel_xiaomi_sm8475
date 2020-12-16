@@ -2529,9 +2529,7 @@ static int cam_ife_mgr_acquire_hw_for_offline_ctx(
 	uint32_t                            *acquired_hw_id,
 	uint32_t                            *acquired_hw_path)
 {
-	int                                  rc = -1;
-
-	cam_ife_hw_mgr_preprocess_port(ife_ctx, in_port);
+	int                                  rc = -EINVAL;
 
 	if ((!in_port->ipp_count && !in_port->lcr_count) ||
 		!in_port->ife_rd_count) {
@@ -2540,12 +2538,14 @@ static int cam_ife_mgr_acquire_hw_for_offline_ctx(
 			"Invalid %d BUS RD %d PIX %d LCR ports for FE ctx");
 		return -EINVAL;
 	}
+
 	ife_ctx->is_dual = (bool)in_port->usage_type;
 
 	if (in_port->rdi_count || in_port->ppp_count) {
 		CAM_ERR(CAM_ISP,
 			"%d RDI %d PPP ports invalid for FE ctx",
 			in_port->rdi_count, in_port->ppp_count);
+		return -EINVAL;
 	}
 
 	rc = cam_ife_hw_mgr_acquire_res_ife_bus_rd(ife_ctx, in_port);
@@ -2606,8 +2606,6 @@ static int cam_ife_mgr_acquire_hw_for_ctx(
 		CAM_ERR(CAM_ISP, "Can not acquire root resource");
 		goto err;
 	}
-
-	cam_ife_hw_mgr_preprocess_port(ife_ctx, in_port);
 
 	if (!in_port->ipp_count && !in_port->rdi_count &&
 		!in_port->ppp_count && !in_port->lcr_count) {
@@ -5474,6 +5472,7 @@ static int cam_isp_blob_sensor_config(
 	struct cam_ife_sensor_dimension_update_args  update_args;
 	int                                          rc = -EINVAL;
 	uint32_t                                     i;
+	uint32_t                                     res_id;
 	struct cam_isp_sensor_dimension             *path_config;
 
 	ctx = prepare->ctxt_to_hw_map;
@@ -5483,7 +5482,19 @@ static int cam_isp_blob_sensor_config(
 			if (!hw_mgr_res->hw_res[i])
 				continue;
 
-			path_config = &(dim_config->ipp_path);
+			res_id = hw_mgr_res->hw_res[i]->res_id;
+
+			if (res_id == CAM_IFE_PIX_PATH_RES_IPP) {
+				path_config = &dim_config->ipp_path;
+			} else if (res_id == CAM_IFE_PIX_PATH_RES_PPP) {
+				path_config = &dim_config->ppp_path;
+			} else if (res_id >= CAM_IFE_PIX_PATH_RES_RDI_0 ||
+					res_id <= CAM_IFE_PIX_PATH_RES_RDI_4) {
+				path_config = &dim_config->rdi_path[res_id];
+			} else {
+				CAM_DBG(CAM_ISP, "Invalid res id %u", res_id);
+				continue;
+			}
 
 			if (!path_config->measure_enabled)
 				continue;
@@ -5501,9 +5512,12 @@ static int cam_isp_blob_sensor_config(
 				CAM_IFE_CSID_SET_SENSOR_DIMENSION_CFG,
 				&update_args,
 				sizeof(update_args));
-			if (rc)
-				CAM_ERR(CAM_ISP,
-					"Dimension Update failed");
+
+			if (rc) {
+				CAM_ERR(CAM_ISP, "Dimension Update failed %u",
+					res_id);
+				break;
+			}
 		}
 	}
 
