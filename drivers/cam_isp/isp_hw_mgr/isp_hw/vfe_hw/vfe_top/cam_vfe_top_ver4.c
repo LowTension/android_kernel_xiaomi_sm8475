@@ -30,7 +30,6 @@ struct cam_vfe_mux_ver4_data {
 	void __iomem                                *mem_base;
 	struct cam_hw_intf                          *hw_intf;
 	struct cam_vfe_top_ver4_reg_offset_common   *common_reg;
-	struct cam_hw_soc_info                      *soc_info;
 	struct cam_vfe_top_common_cfg                cam_common_cfg;
 	struct cam_vfe_ver4_path_reg_data      *reg_data;
 
@@ -62,7 +61,7 @@ struct cam_vfe_mux_ver4_data {
 	uint32_t                           is_dual;
 	bool                               is_fe_enabled;
 	bool                               is_offline;
-
+	bool                               is_lite;
 	bool                               is_pixel_path;
 	bool                               sfe_binned_epoch_cfg;
 
@@ -946,7 +945,6 @@ static int cam_vfe_resource_start(
 	int                             rc = 0;
 	uint32_t                        err_irq_mask[CAM_IFE_IRQ_REGISTERS_MAX];
 	uint32_t                        irq_mask[CAM_IFE_IRQ_REGISTERS_MAX];
-	struct cam_vfe_soc_private     *soc_private;
 
 	if (!vfe_res) {
 		CAM_ERR(CAM_ISP, "Error, Invalid input arguments");
@@ -964,20 +962,12 @@ static int cam_vfe_resource_start(
 
 	rsrc_data = (struct cam_vfe_mux_ver4_data *)vfe_res->res_priv;
 
-	soc_private = rsrc_data->soc_info->soc_private;
-
-	if (!soc_private) {
-		CAM_ERR(CAM_ISP, "Error, soc_private NULL");
-		return -ENODEV;
-	}
-
 	/* config debug status registers */
 	cam_io_w_mb(rsrc_data->reg_data->top_debug_cfg_en, rsrc_data->mem_base +
 		rsrc_data->common_reg->top_debug_cfg);
 
-	if (soc_private->is_ife_lite | !rsrc_data->is_pixel_path)
+	if (rsrc_data->is_lite || !rsrc_data->is_pixel_path)
 		goto skip_core_cfg;
-
 
 	val = cam_io_r_mb(rsrc_data->mem_base +
 		rsrc_data->common_reg->core_cfg_0);
@@ -1008,7 +998,6 @@ static int cam_vfe_resource_start(
 
 	cam_io_w_mb(val, rsrc_data->mem_base +
 		rsrc_data->common_reg->core_cfg_0);
-
 
 	/* pixel fmt */
 	val = cam_io_r_mb(rsrc_data->mem_base +
@@ -1050,8 +1039,12 @@ skip_core_cfg:
 			rsrc_data->common_reg->diag_config);
 	}
 
-	if ((rsrc_data->sync_mode == CAM_ISP_HW_SYNC_SLAVE) &&
-		rsrc_data->is_dual)
+	/* Skip subscribing to timing irqs in these scenarios:
+	 *     1. Resource is dual IFE slave
+	 *     2. Resource is not primary RDI
+	 */
+	if (((rsrc_data->sync_mode == CAM_ISP_HW_SYNC_SLAVE) && rsrc_data->is_dual) ||
+		(!rsrc_data->is_pixel_path && !vfe_res->rdi_only_ctx))
 		goto subscribe_err;
 
 	irq_mask[CAM_IFE_IRQ_CAMIF_REG_STATUS1] =
@@ -1140,8 +1133,8 @@ static int cam_vfe_resource_stop(
 
 	vfe_priv = (struct cam_vfe_mux_ver4_data *)vfe_res->res_priv;
 
-	if (!vfe_priv->is_pixel_path)
-		goto unsub_irq;
+	if (vfe_priv->is_lite || !vfe_priv->is_pixel_path)
+		goto skip_core_decfg;
 
 	if ((vfe_priv->dsp_mode >= CAM_ISP_DSP_MODE_ONE_WAY) &&
 		(vfe_priv->dsp_mode <= CAM_ISP_DSP_MODE_ROUND)) {
@@ -1152,6 +1145,7 @@ static int cam_vfe_resource_stop(
 			vfe_priv->common_reg->core_cfg_0);
 	}
 
+skip_core_decfg:
 	if (vfe_res->res_state == CAM_ISP_RESOURCE_STATE_STREAMING)
 		vfe_res->res_state = CAM_ISP_RESOURCE_STATE_RESERVED;
 
@@ -1163,7 +1157,6 @@ static int cam_vfe_resource_stop(
 			vfe_priv->common_reg->diag_config);
 	}
 
-unsub_irq:
 	if (vfe_priv->irq_handle) {
 		cam_irq_controller_unsubscribe_irq(
 			vfe_priv->vfe_irq_controller, vfe_priv->irq_handle);
@@ -1196,6 +1189,7 @@ int cam_vfe_res_init(
 {
 	struct cam_vfe_mux_ver4_data           *vfe_priv = NULL;
 	struct cam_vfe_ver4_path_hw_info       *hw_info = vfe_hw_info;
+	struct cam_vfe_soc_private    *soc_priv = soc_info->soc_private;
 	int i;
 
 	vfe_priv = kzalloc(sizeof(struct cam_vfe_mux_ver4_data),
@@ -1208,7 +1202,7 @@ int cam_vfe_res_init(
 	vfe_priv->common_reg  = hw_info->common_reg;
 	vfe_priv->reg_data    = hw_info->reg_data;
 	vfe_priv->hw_intf     = hw_intf;
-	vfe_priv->soc_info    = soc_info;
+	vfe_priv->is_lite     = soc_priv->is_ife_lite;
 	vfe_priv->vfe_irq_controller = vfe_irq_controller;
 	vfe_priv->is_pixel_path = (vfe_res->res_id == CAM_ISP_HW_VFE_IN_CAMIF);
 
