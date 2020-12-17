@@ -1025,8 +1025,14 @@ static struct cam_vfe_bus_ver2_hw_info vfe175_bus_hw_info = {
 	.max_out_res = CAM_ISP_IFE_OUT_RES_BASE + 23,
 };
 
+static struct cam_vfe_irq_hw_info vfe175_irq_hw_info = {
+	.reset_mask    = BIT(31),
+	.supported_irq = CAM_VFE_HW_IRQ_CAP_INT_CSID,
+	.top_irq_reg   = &vfe175_top_irq_reg_info,
+};
+
 static struct cam_vfe_hw_info cam_vfe175_hw_info = {
-	.irq_reg_info                  = &vfe175_top_irq_reg_info,
+	.irq_hw_info                  = &vfe175_irq_hw_info,
 
 	.bus_version                   = CAM_VFE_BUS_VER_2_0,
 	.bus_hw_info                   = &vfe175_bus_hw_info,

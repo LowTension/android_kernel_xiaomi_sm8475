@@ -422,8 +422,14 @@ static struct cam_vfe_bus_ver3_hw_info vfe48x_bus_hw_info = {
 	.comp_cfg_needed = true,
 };
 
+static struct cam_vfe_irq_hw_info vfe48x_irq_hw_info = {
+	.reset_mask    = BIT(17),
+	.supported_irq = CAM_VFE_HW_IRQ_CAP_LITE_INT_CSID,
+	.top_irq_reg       = &vfe48x_top_irq_reg_info,
+};
+
 static struct cam_vfe_hw_info cam_vfe_lite48x_hw_info = {
-	.irq_reg_info                  = &vfe48x_top_irq_reg_info,
+	.irq_hw_info                  = &vfe48x_irq_hw_info,
 
 	.bus_version                   = CAM_VFE_BUS_VER_3_0,
 	.bus_hw_info                   = &vfe48x_bus_hw_info,

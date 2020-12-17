@@ -20,23 +20,6 @@
 
 static const char drv_name[] = "vfe";
 
-#define CAM_VFE_17X_CLEAR_0_REG_OFFSET              0x00000064
-#define CAM_VFE_17X_CLEAR_1_REG_OFFSET              0x00000068
-#define CAM_VFE_17X_IRQ_CMD_REG_OFFSET              0x00000058
-#define CAM_VFE_17X_TOP_RESET_MASK                  0x80000000
-
-#define CAM_VFE_48X_CLEAR_0_REG_OFFSET              0x00000048
-#define CAM_VFE_48X_CLEAR_1_REG_OFFSET              0x0000004C
-#define CAM_VFE_48X_CLEAR_2_REG_OFFSET              0x00000050
-#define CAM_VFE_48X_IRQ_CMD_REG_OFFSET              0x00000038
-#define CAM_VFE_48X_TOP_RESET_MASK                  0x00000001
-
-#define CAM_VFE_LITE_48X_CLEAR_0_REG_OFFSET         0x00000034
-#define CAM_VFE_LITE_48X_CLEAR_1_REG_OFFSET         0x00000038
-#define CAM_VFE_LITE_48X_CLEAR_2_REG_OFFSET         0x0000003C
-#define CAM_VFE_LITE_48X_IRQ_CMD_REG_OFFSET         0x00000024
-#define CAM_VFE_LITE_48X_TOP_RESET_MASK             0x00020000
-
 int cam_vfe_get_hw_caps(void *hw_priv, void *get_hw_cap_args, uint32_t arg_size)
 {
 	struct cam_hw_info                *vfe_dev = hw_priv;
@@ -65,81 +48,14 @@ int cam_vfe_reset_irq_top_half(uint32_t    evt_id,
 {
 	int32_t                            rc = -EINVAL;
 	struct cam_hw_info                *vfe_hw;
-	struct cam_hw_soc_info            *soc_info = NULL;
-	struct cam_vfe_soc_private        *soc_private = NULL;
-	void __iomem                      *mem_base;
 
 	vfe_hw = th_payload->handler_priv;
-	soc_info = &vfe_hw->soc_info;
-	soc_private = soc_info->soc_private;
-	if (!soc_private) {
-		CAM_ERR(CAM_ISP, "Invalid soc_private");
-		return -ENODEV;
-	}
 
-	CAM_DBG(CAM_ISP, "Enter");
-
-	/*
-	 * Clear All IRQs to avoid spurious IRQs immediately
-	 * after Reset Done.
-	 */
 	CAM_DBG(CAM_ISP, "TOP_IRQ_STATUS_0 = 0x%x",
-		th_payload->evt_status_arr[0]);
+		th_payload->evt_status_arr[CAM_IFE_IRQ_CAMIF_REG_STATUS0]);
 
-	mem_base = soc_info->reg_map[VFE_CORE_BASE_IDX].mem_base;
+	complete(&vfe_hw->hw_complete);
 
-	switch (soc_info->hw_version) {
-	case CAM_CPAS_TITAN_480_V100:
-	case CAM_CPAS_TITAN_580_V100:
-	case CAM_CPAS_TITAN_570_V200:
-		if (!soc_private->is_ife_lite) {
-			if (th_payload->evt_status_arr[0] & 0x1) {
-				cam_io_w(0xFFFFFFFF, mem_base +
-					CAM_VFE_48X_CLEAR_0_REG_OFFSET);
-				cam_io_w(0xFFFFFFFF, mem_base +
-					CAM_VFE_48X_CLEAR_1_REG_OFFSET);
-				cam_io_w(0xFFFFFFFF, mem_base +
-					CAM_VFE_48X_CLEAR_2_REG_OFFSET);
-				cam_io_w(0x00000001, mem_base +
-					CAM_VFE_48X_IRQ_CMD_REG_OFFSET);
-				CAM_DBG(CAM_ISP,
-					"Calling Complete for RESET CMD");
-				complete(&vfe_hw->hw_complete);
-				rc = 0;
-			}
-		} else {
-			if (th_payload->evt_status_arr[0] & (1<<17)) {
-				cam_io_w(0xFFFFFFFF, mem_base +
-					CAM_VFE_LITE_48X_CLEAR_0_REG_OFFSET);
-				cam_io_w(0xFFFFFFFF, mem_base +
-					CAM_VFE_LITE_48X_CLEAR_1_REG_OFFSET);
-				cam_io_w(0xFFFFFFFF, mem_base +
-					CAM_VFE_LITE_48X_CLEAR_2_REG_OFFSET);
-				cam_io_w(0x00000001, mem_base +
-					CAM_VFE_LITE_48X_IRQ_CMD_REG_OFFSET);
-				CAM_DBG(CAM_ISP,
-					"Calling Complete for RESET CMD");
-				complete(&vfe_hw->hw_complete);
-				rc = 0;
-			}
-		}
-		break;
-	default:
-		if (th_payload->evt_status_arr[0] & (1<<31)) {
-			cam_io_w(0xFFFFFFFF, mem_base +
-				CAM_VFE_17X_CLEAR_0_REG_OFFSET);
-			cam_io_w(0xFFFFFFFF, mem_base +
-				CAM_VFE_17X_CLEAR_1_REG_OFFSET);
-			cam_io_w(0x00000001, mem_base +
-				CAM_VFE_17X_IRQ_CMD_REG_OFFSET);
-			CAM_DBG(CAM_ISP, "Calling Complete for RESET CMD");
-			complete(&vfe_hw->hw_complete);
-			rc = 0;
-		}
-		break;
-	}
-
-	CAM_DBG(CAM_ISP, "Exit");
 	return rc;
 }
 
@@ -306,60 +222,47 @@ int cam_vfe_deinit_hw(void *hw_priv, void *deinit_hw_args, uint32_t arg_size)
 
 int cam_vfe_reset(void *hw_priv, void *reset_core_args, uint32_t arg_size)
 {
-	struct cam_hw_info *vfe_hw  = hw_priv;
-	struct cam_hw_soc_info *soc_info = NULL;
-	struct cam_vfe_soc_private *soc_private = NULL;
-	struct cam_vfe_hw_core_info *core_info = NULL;
+	struct cam_hw_info          *vfe_hw     = hw_priv;
+	struct cam_vfe_hw_core_info *core_info;
+	struct cam_vfe_irq_hw_info  *irq_info;
 	uint32_t top_reset_irq_reg_mask[CAM_IFE_IRQ_REGISTERS_MAX];
-	int rc;
+	int rc = 0;
 
 	CAM_DBG(CAM_ISP, "Enter");
+
 
 	if (!hw_priv) {
 		CAM_ERR(CAM_ISP, "Invalid input arguments");
 		return -EINVAL;
 	}
 
-	soc_info = &vfe_hw->soc_info;
-	soc_private = soc_info->soc_private;
-	if (!soc_private) {
-		CAM_ERR(CAM_ISP, "Invalid soc_private");
-		return -ENODEV;
-	}
 	core_info = (struct cam_vfe_hw_core_info *)vfe_hw->core_info;
+	irq_info = core_info->vfe_hw_info->irq_hw_info;
+
+	if(!(irq_info->supported_irq & CAM_VFE_HW_IRQ_CAP_RESET))
+		goto skip_reset;
 
 	memset(top_reset_irq_reg_mask, 0, sizeof(top_reset_irq_reg_mask));
+	top_reset_irq_reg_mask[CAM_IFE_IRQ_CAMIF_REG_STATUS0] =
+				irq_info->reset_mask;
 
-	switch (soc_info->hw_version) {
-	case CAM_CPAS_TITAN_480_V100:
-	case CAM_CPAS_TITAN_580_V100:
-	case CAM_CPAS_TITAN_570_V200:
-		if (!soc_private->is_ife_lite)
-			top_reset_irq_reg_mask[CAM_IFE_IRQ_CAMIF_REG_STATUS0]
-				= CAM_VFE_48X_TOP_RESET_MASK;
-		else
-			top_reset_irq_reg_mask[CAM_IFE_IRQ_CAMIF_REG_STATUS0]
-				= CAM_VFE_LITE_48X_TOP_RESET_MASK;
-		break;
-	default:
-		top_reset_irq_reg_mask[CAM_IFE_IRQ_CAMIF_REG_STATUS0]
-			= CAM_VFE_17X_TOP_RESET_MASK;
-		break;
-	}
+	irq_info->reset_irq_handle = cam_irq_controller_subscribe_irq(
+		core_info->vfe_irq_controller,
+		CAM_IRQ_PRIORITY_0,
+		top_reset_irq_reg_mask,
+		vfe_hw,
+		cam_vfe_reset_irq_top_half,
+		NULL, NULL, NULL);
 
-	core_info->reset_irq_handle = cam_irq_controller_subscribe_irq(
-		core_info->vfe_irq_controller, CAM_IRQ_PRIORITY_0,
-		top_reset_irq_reg_mask, vfe_hw,
-		cam_vfe_reset_irq_top_half, NULL, NULL, NULL);
-	if (core_info->reset_irq_handle < 1) {
+	if (irq_info->reset_irq_handle < 1) {
 		CAM_ERR(CAM_ISP, "subscribe irq controller failed");
-		core_info->reset_irq_handle = 0;
+		irq_info->reset_irq_handle = 0;
 		return -EFAULT;
 	}
 
 	reinit_completion(&vfe_hw->hw_complete);
 
-	CAM_DBG(CAM_ISP, "calling RESET on VFE:%d", soc_info->index);
+	CAM_DBG(CAM_ISP, "Calling RESET on VFE");
 
 	core_info->vfe_top->hw_ops.reset(core_info->vfe_top->top_priv,
 		reset_core_args, arg_size);
@@ -370,13 +273,16 @@ int cam_vfe_reset(void *hw_priv, void *reset_core_args, uint32_t arg_size)
 	if (!rc)
 		CAM_ERR(CAM_ISP, "Reset Timeout");
 	else
-		CAM_DBG(CAM_ISP, "reset complete done (%d)", rc);
+		CAM_DBG(CAM_ISP, "Reset complete (%d)", rc);
 
 	rc = cam_irq_controller_unsubscribe_irq(
-		core_info->vfe_irq_controller, core_info->reset_irq_handle);
+			core_info->vfe_irq_controller,
+			irq_info->reset_irq_handle);
 	if (rc)
 		CAM_ERR(CAM_ISP, "Error. Unsubscribe failed");
+	irq_info->reset_irq_handle = 0;
 
+skip_reset:
 	CAM_DBG(CAM_ISP, "Exit");
 	return rc;
 }
@@ -521,6 +427,7 @@ int cam_vfe_start(void *hw_priv, void *start_args, uint32_t arg_size)
 int cam_vfe_stop(void *hw_priv, void *stop_args, uint32_t arg_size)
 {
 	struct cam_vfe_hw_core_info       *core_info = NULL;
+	struct cam_vfe_irq_hw_info        *irq_info = NULL;
 	struct cam_hw_info                *vfe_hw  = hw_priv;
 	struct cam_isp_resource_node      *isp_res;
 	int rc = -EINVAL;
@@ -533,6 +440,7 @@ int cam_vfe_stop(void *hw_priv, void *stop_args, uint32_t arg_size)
 
 	core_info = (struct cam_vfe_hw_core_info *)vfe_hw->core_info;
 	isp_res = (struct cam_isp_resource_node  *)stop_args;
+	irq_info = core_info->vfe_hw_info->irq_hw_info;
 
 	mutex_lock(&vfe_hw->hw_mutex);
 	if (isp_res->res_type == CAM_ISP_RESOURCE_VFE_IN) {
@@ -549,11 +457,11 @@ int cam_vfe_stop(void *hw_priv, void *stop_args, uint32_t arg_size)
 		CAM_ERR(CAM_ISP, "Invalid res type:%d", isp_res->res_type);
 	}
 
-	if (core_info->reset_irq_handle > 0) {
+	if (irq_info->reset_irq_handle > 0) {
 		cam_irq_controller_unsubscribe_irq(
 			core_info->vfe_irq_controller,
-			core_info->reset_irq_handle);
-		core_info->reset_irq_handle = 0;
+			irq_info->reset_irq_handle);
+		irq_info->reset_irq_handle = 0;
 	}
 
 	mutex_unlock(&vfe_hw->hw_mutex);
@@ -684,7 +592,7 @@ int cam_vfe_core_init(struct cam_vfe_hw_core_info  *core_info,
 
 	rc = cam_irq_controller_init(drv_name,
 		CAM_SOC_GET_REG_MAP_START(soc_info, VFE_CORE_BASE_IDX),
-		vfe_hw_info->irq_reg_info, &core_info->vfe_irq_controller,
+		vfe_hw_info->irq_hw_info->top_irq_reg, &core_info->vfe_irq_controller,
 		true);
 	if (rc) {
 		CAM_ERR(CAM_ISP,

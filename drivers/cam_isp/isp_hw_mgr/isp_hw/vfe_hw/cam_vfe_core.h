@@ -12,15 +12,28 @@
 #include "cam_vfe_bus.h"
 #include "cam_vfe_hw_intf.h"
 
-#define CAM_VFE_HW_IRQ_CAP_SOF             0x1
-#define CAM_VFE_HW_IRQ_CAP_EPOCH_0         0x2
-#define CAM_VFE_HW_IRQ_CAP_EPOCH_1         0x4
-#define CAM_VFE_HW_IRQ_CAP_RUP             0x8
-#define CAM_VFE_HW_IRQ_CAP_BUF_DONE        0x10
-#define CAM_VFE_HW_IRQ_CAP_EOF             0x20
+#define CAM_VFE_HW_IRQ_CAP_SOF             BIT(0)
+#define CAM_VFE_HW_IRQ_CAP_EPOCH_0         BIT(1)
+#define CAM_VFE_HW_IRQ_CAP_EPOCH_1         BIT(2)
+#define CAM_VFE_HW_IRQ_CAP_RUP             BIT(3)
+#define CAM_VFE_HW_IRQ_CAP_BUF_DONE        BIT(4)
+#define CAM_VFE_HW_IRQ_CAP_EOF             BIT(5)
+#define CAM_VFE_HW_IRQ_CAP_RESET           BIT(6)
+
+#define CAM_VFE_HW_IRQ_CAP_INT_CSID        0x7F
+#define CAM_VFE_HW_IRQ_CAP_LITE_INT_CSID   0x79
+#define CAM_VFE_HW_IRQ_CAP_EXT_CSID        0x27
+#define CAM_VFE_HW_IRQ_CAP_LITE_EXT_CSID   0x21
+
+struct cam_vfe_irq_hw_info {
+	int                                   reset_irq_handle;
+	uint32_t                              reset_mask;
+	struct cam_irq_controller_reg_info   *top_irq_reg;
+	uint32_t                              supported_irq;
+};
 
 struct cam_vfe_hw_info {
-	struct cam_irq_controller_reg_info *irq_reg_info;
+	struct cam_vfe_irq_hw_info       *irq_hw_info;
 
 	uint32_t                          bus_version;
 	void                             *bus_hw_info;
@@ -59,7 +72,6 @@ struct cam_vfe_hw_core_info {
 	struct cam_vfe_bus                 *vfe_rd_bus;
 	void                               *tasklet_info;
 	spinlock_t                          spin_lock;
-	int                                 reset_irq_handle;
 };
 
 int cam_vfe_get_hw_caps(void *device_priv,
