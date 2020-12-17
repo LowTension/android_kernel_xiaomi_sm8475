@@ -5488,8 +5488,7 @@ static int cam_isp_blob_sensor_config(
 				path_config = &dim_config->ipp_path;
 			} else if (res_id == CAM_IFE_PIX_PATH_RES_PPP) {
 				path_config = &dim_config->ppp_path;
-			} else if (res_id >= CAM_IFE_PIX_PATH_RES_RDI_0 ||
-					res_id <= CAM_IFE_PIX_PATH_RES_RDI_4) {
+			} else if (res_id <= CAM_IFE_PIX_PATH_RES_RDI_4) {
 				path_config = &dim_config->rdi_path[res_id];
 			} else {
 				CAM_DBG(CAM_ISP, "Invalid res id %u", res_id);
