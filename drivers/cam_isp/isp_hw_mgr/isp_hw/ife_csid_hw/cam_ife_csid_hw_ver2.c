@@ -2565,12 +2565,11 @@ static int cam_ife_csid_ver2_enable_csi2(struct cam_ife_csid_ver2_hw *csid_hw)
 					    NULL,
 					    NULL,
 					    NULL);
-	}
-
-	if (csid_hw->irq_handle[CAM_IFE_CSID_IRQ_REG_RX] < 1) {
-		CAM_ERR(CAM_ISP, "CSID[%d] RX debug irq register fail",
-			csid_hw->hw_intf->hw_idx);
-		return -EINVAL;
+		if (csid_hw->irq_handle[CAM_IFE_CSID_IRQ_REG_RX] < 1) {
+			CAM_ERR(CAM_ISP, "CSID[%d] RX debug irq register fail",
+				csid_hw->hw_intf->hw_idx);
+			return -EINVAL;
+		}
 	}
 
 	val = csi2_reg->fatal_err_mask | csi2_reg->part_fatal_err_mask |
