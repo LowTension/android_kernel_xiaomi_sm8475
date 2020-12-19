@@ -15,6 +15,7 @@
 #include "cam_isp_hw_mgr_intf.h"
 #include "cam_irq_controller.h"
 #include "cam_tasklet_util.h"
+#include "cam_cdm_intf_api.h"
 
 #define CAM_VFE_HW_RESET_HW_AND_REG_VAL       0x00000001
 #define CAM_VFE_HW_RESET_HW_VAL               0x00010000
@@ -121,8 +122,13 @@ static int cam_vfe_top_ver4_mux_get_base(struct cam_vfe_top_ver4_priv *top_priv,
 
 	mem_base = CAM_SOC_GET_REG_MAP_CAM_BASE(
 		top_priv->common_data.soc_info, VFE_CORE_BASE_IDX);
-	CAM_DBG(CAM_ISP, "core %d mem_base 0x%x",
-		top_priv->common_data.soc_info->index, mem_base);
+	if (cdm_args->cdm_id == CAM_CDM_RT)
+		mem_base -= CAM_SOC_GET_REG_MAP_CAM_BASE(
+			top_priv->common_data.soc_info, RT_BASE_IDX);
+
+	CAM_DBG(CAM_ISP, "core %d mem_base 0x%x, cdm_id: %u",
+		top_priv->common_data.soc_info->index, mem_base,
+		cdm_args->cdm_id);
 
 	cdm_util_ops->cdm_write_changebase(
 		cdm_args->cmd.cmd_buf_addr, mem_base);

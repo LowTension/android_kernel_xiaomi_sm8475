@@ -21,6 +21,7 @@
 #include "cam_ife_csid_common.h"
 #include "cam_ife_csid_hw_ver1.h"
 #include "cam_ife_csid_hw_ver2.h"
+#include "cam_cdm_intf_api.h"
 
 const uint8_t *cam_ife_csid_irq_reg_tag[CAM_IFE_CSID_IRQ_REG_MAX] = {
 	"TOP",
@@ -642,10 +643,12 @@ int cam_ife_csid_get_base(struct cam_hw_soc_info *soc_info,
 		return -EINVAL;
 	}
 
-	mem_base = CAM_SOC_GET_REG_MAP_CAM_BASE(
-		soc_info, base_id);
-	CAM_DBG(CAM_ISP, "core %d mem_base 0x%x",
-		soc_info->index, mem_base);
+	mem_base = CAM_SOC_GET_REG_MAP_CAM_BASE(soc_info, base_id);
+	if (cdm_args->cdm_id == CAM_CDM_RT)
+		mem_base -= CAM_SOC_GET_REG_MAP_CAM_BASE(soc_info, RT_BASE_IDX);
+
+	CAM_DBG(CAM_ISP, "core %d mem_base 0x%x, cdm_id:%u",
+		soc_info->index, mem_base, cdm_args->cdm_id);
 
 	cdm_util_ops->cdm_write_changebase(
 	cdm_args->cmd.cmd_buf_addr, mem_base);
