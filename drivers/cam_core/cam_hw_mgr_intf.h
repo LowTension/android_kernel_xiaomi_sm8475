@@ -65,6 +65,10 @@ typedef int (*cam_ctx_recovery_cb_func)(void *context,
 typedef int (*cam_ctx_mini_dump_cb_func)(void *context,
 	void *args);
 
+/* message callback function type */
+typedef int (*cam_ctx_message_cb_func)(void *context,
+	uint32_t message_type, void *data);
+
 /**
  * struct cam_hw_update_entry - Entry for hardware config
  *

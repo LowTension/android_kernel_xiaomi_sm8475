@@ -107,6 +107,7 @@ struct cam_tfe_csid_hw_caps {
 	uint32_t      major_version;
 	uint32_t      minor_version;
 	uint32_t      version_incr;
+	bool          sync_clk;
 };
 
 /**

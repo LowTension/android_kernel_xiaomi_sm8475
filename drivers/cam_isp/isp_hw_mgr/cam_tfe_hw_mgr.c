@@ -1956,6 +1956,63 @@ static int cam_tfe_mgr_acquire_get_unified_structure(
 		CAM_ERR(CAM_ISP, "Invalid ver of i/p port info from user");
 		return -EINVAL;
 	}
+	return 0;
+}
+
+int cam_tfe_hw_mgr_csiphy_clk_sync(
+	struct cam_tfe_hw_mgr_ctx *ctx, void *cmd_args)
+{
+	int                          rc = -EINVAL;
+	unsigned long                phy_clock_rate = 0;
+	unsigned long                csid_clk_rate = 0, tfe_clk_rate = 0, temp_clk_rate = 0;
+	struct cam_hw_intf           *hw_intf;
+	int                          i;
+
+	if (!ctx || !cmd_args) {
+		CAM_ERR(CAM_ISP, "Invalid arguments");
+		return -EINVAL;
+	}
+
+	phy_clock_rate = (*((unsigned long *)cmd_args));
+	for (i = 0; i < ctx->num_base; i++) {
+		if (!ctx->hw_mgr->tfe_csid_dev_caps[ctx->base[i].idx].sync_clk)
+			continue;
+
+		hw_intf = g_tfe_hw_mgr.csid_devices[ctx->base[i].idx];
+
+		temp_clk_rate = phy_clock_rate;
+		rc = hw_intf->hw_ops.process_cmd(hw_intf->hw_priv,
+			CAM_ISP_HW_CMD_DYNAMIC_CLOCK_UPDATE,
+			&temp_clk_rate, sizeof(unsigned long));
+		if (rc) {
+			CAM_ERR(CAM_ISP, "Failed to set CSID Clock rate");
+			return rc;
+		}
+		csid_clk_rate = temp_clk_rate;
+
+		hw_intf = g_tfe_hw_mgr.tfe_devices[hw_intf->hw_idx]->hw_intf;
+		rc = hw_intf->hw_ops.process_cmd(
+			hw_intf->hw_priv,
+			CAM_ISP_HW_CMD_DYNAMIC_CLOCK_UPDATE,
+			&temp_clk_rate, sizeof(unsigned long));
+		if (rc) {
+			CAM_ERR(CAM_ISP, "Failed to set TFE Clock rate");
+			return rc;
+		}
+		tfe_clk_rate = temp_clk_rate;
+	}
+
+	CAM_DBG(CAM_ISP, "Clock rates: phy:%llu csid:%llu tfe:%llu",
+		phy_clock_rate, csid_clk_rate, tfe_clk_rate);
+
+	if ((phy_clock_rate > csid_clk_rate) || (csid_clk_rate > tfe_clk_rate) ||
+		(phy_clock_rate > tfe_clk_rate)) {
+		CAM_ERR(CAM_ISP,
+			"Invalid clock rates, phy:%llu csid:%llu tfe:%llu",
+			phy_clock_rate, csid_clk_rate, tfe_clk_rate);
+
+		return -EINVAL;
+	}
 
 	return 0;
 }
@@ -4935,6 +4992,9 @@ static int cam_tfe_mgr_cmd(void *hw_mgr_priv, void *cmd_args)
 				&isp_hw_cmd_args->u.sof_ts.curr,
 				&isp_hw_cmd_args->u.sof_ts.boot,
 				&isp_hw_cmd_args->u.sof_ts.prev);
+			break;
+		case CAM_ISP_HW_MGR_CMD_UPDATE_CLOCK:
+			rc = cam_tfe_hw_mgr_csiphy_clk_sync(ctx, isp_hw_cmd_args->cmd_data);
 			break;
 		default:
 			CAM_ERR(CAM_ISP, "Invalid HW mgr command:0x%x, ISP HW mgr cmd:0x%x",
