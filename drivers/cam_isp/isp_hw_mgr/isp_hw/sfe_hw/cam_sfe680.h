@@ -54,63 +54,53 @@ static struct cam_sfe_modules_common_reg_offset sfe680_modules_common_reg = {
 	.qcfa_hdrc_remo_out_mux_cfg    = 0x00005A74,
 };
 
+static struct cam_sfe_top_common_reg_data sfe_680_top_common_reg_data = {
+	.error_irq_mask                = 0x1C000,
+	.enable_diagnostic_hw          = 0x1,
+	.top_debug_cfg_en              = 0x3,
+	.sensor_sel_shift              = 0x1,
+};
+
 static struct cam_sfe_path_common_reg_data sfe_680_pix_reg_data = {
 	.sof_irq_mask                  = 0x4,
 	.eof_irq_mask                  = 0x8,
-	.error_irq_mask                = 0x1C000,
 	.subscribe_irq_mask            = 0xC,
-	.enable_diagnostic_hw          = 0x1,
-	.top_debug_cfg_en              = 0x3,
 };
 
 static struct cam_sfe_path_common_reg_data sfe_680_rdi0_reg_data = {
 	.sof_irq_mask                  = 0x10,
 	.eof_irq_mask                  = 0x20,
-	.error_irq_mask                = 0x1C000,
 	.subscribe_irq_mask            = 0x30,
-	.enable_diagnostic_hw          = 0x1,
-	.top_debug_cfg_en              = 0x3,
 };
 
 static struct cam_sfe_path_common_reg_data sfe_680_rdi1_reg_data = {
 	.sof_irq_mask                  = 0x40,
 	.eof_irq_mask                  = 0x80,
-	.error_irq_mask                = 0x1C000,
 	.subscribe_irq_mask            = 0xC0,
-	.enable_diagnostic_hw          = 0x1,
-	.top_debug_cfg_en              = 0x3,
 };
 
 static struct cam_sfe_path_common_reg_data sfe_680_rdi2_reg_data = {
 	.sof_irq_mask                  = 0x100,
 	.eof_irq_mask                  = 0x200,
-	.error_irq_mask                = 0x1C000,
 	.subscribe_irq_mask            = 0x300,
-	.enable_diagnostic_hw          = 0x1,
-	.top_debug_cfg_en              = 0x3,
 };
 
 static struct cam_sfe_path_common_reg_data sfe_680_rdi3_reg_data = {
 	.sof_irq_mask                  = 0x400,
 	.eof_irq_mask                  = 0x800,
-	.error_irq_mask                = 0x1C000,
 	.subscribe_irq_mask            = 0xC00,
-	.enable_diagnostic_hw          = 0x1,
-	.top_debug_cfg_en              = 0x3,
 };
 
 static struct cam_sfe_path_common_reg_data sfe_680_rdi4_reg_data = {
 	.sof_irq_mask                  = 0x1000,
 	.eof_irq_mask                  = 0x2000,
-	.error_irq_mask                = 0x1C000,
 	.subscribe_irq_mask            = 0x3000,
-	.enable_diagnostic_hw          = 0x1,
-	.top_debug_cfg_en              = 0x3,
 };
 
 static struct cam_sfe_top_hw_info sfe680_top_hw_info = {
 	.common_reg = &sfe680_top_commong_reg,
 	.modules_hw_info = &sfe680_modules_common_reg,
+	.common_reg_data = &sfe_680_top_common_reg_data,
 	.pix_reg_data = &sfe_680_pix_reg_data,
 	.rdi_reg_data[0] = &sfe_680_rdi0_reg_data,
 	.rdi_reg_data[1] = &sfe_680_rdi1_reg_data,
@@ -705,6 +695,7 @@ static struct cam_sfe_bus_wr_hw_info sfe680_bus_wr_hw_info = {
 	},
 	.num_comp_grp    = 10,
 	.comp_done_shift = 17,
+	.line_done_cfg   = 0x11,
 	.top_irq_shift   = 0x0,
 };
 

@@ -46,6 +46,7 @@ struct cam_sfe_top_priv {
 	struct cam_axi_vote             applied_axi_vote;
 	struct cam_sfe_core_cfg         core_cfg;
 	uint32_t                        sfe_debug_cfg;
+	uint32_t                        sensor_sel_diag_cfg;
 	spinlock_t                      spin_lock;
 };
 
@@ -55,6 +56,7 @@ struct cam_sfe_path_data {
 	struct cam_hw_intf                       *hw_intf;
 	struct cam_sfe_top_priv                  *top_priv;
 	struct cam_sfe_top_common_reg_offset     *common_reg;
+	struct cam_sfe_top_common_reg_data       *common_reg_data;
 	struct cam_sfe_modules_common_reg_offset *modules_reg;
 	struct cam_sfe_path_common_reg_data      *path_reg_data;
 	struct cam_hw_soc_info                   *soc_info;
@@ -63,6 +65,8 @@ struct cam_sfe_path_data {
 	int                                       sof_eof_handle;
 	cam_hw_mgr_event_cb_func                  event_cb;
 };
+
+static int start_stop_cnt;
 
 static const char *cam_sfe_top_res_id_to_string(
 	uint32_t res_id)
@@ -544,7 +548,6 @@ static int cam_sfe_top_clock_update(
 			"SFE: %d not ready to set clocks yet :%d",
 			res->hw_intf->hw_idx,
 			hw_info->hw_state);
-		rc = -EAGAIN;
 	} else
 		rc = cam_sfe_top_set_hw_clk_rate(top_priv);
 
@@ -555,10 +558,11 @@ static int cam_sfe_set_top_debug(
 	struct cam_sfe_top_priv *top_priv,
 	void *cmd_args)
 {
-	uint32_t *sfe_debug;
+	struct cam_sfe_debug_cfg_params *debug_cfg;
 
-	sfe_debug = (uint32_t *)cmd_args;
-	top_priv->sfe_debug_cfg = *sfe_debug;
+	debug_cfg = (struct cam_sfe_debug_cfg_params *)cmd_args;
+	top_priv->sfe_debug_cfg = debug_cfg->sfe_debug_cfg;
+	top_priv->sensor_sel_diag_cfg = debug_cfg->sfe_sensor_sel;
 
 	return 0;
 }
@@ -802,7 +806,7 @@ static int cam_sfe_top_handle_err_irq_top_half(
 	irq_status = th_payload->evt_status_arr[0];
 
 	base = path_data->mem_base;
-	if (irq_status & path_data->path_reg_data->error_irq_mask) {
+	if (irq_status & path_data->common_reg_data->error_irq_mask) {
 		CAM_ERR(CAM_SFE,
 			"SFE Violation Detected irq_status: 0x%x",
 			irq_status);
@@ -861,10 +865,70 @@ static int cam_sfe_top_handle_irq_top_half(uint32_t evt_id,
 	return rc;
 }
 
+void cam_sfe_top_sel_frame_counter(
+	uint32_t res_id, uint32_t *val,
+	bool read_counter,
+	struct cam_sfe_path_data *path_data)
+{
+	const uint32_t frame_cnt_shift = 0x4;
+	uint32_t frame_cnt0 = 0, frame_cnt1 = 0;
+	struct cam_sfe_top_common_reg_offset *common_reg = NULL;
+
+	if (read_counter) {
+		common_reg = path_data->common_reg;
+		frame_cnt0 = cam_io_r(path_data->mem_base +
+			common_reg->diag_sensor_frame_cnt_status0);
+		frame_cnt1 = cam_io_r(path_data->mem_base +
+			common_reg->diag_sensor_frame_cnt_status1);
+	}
+
+	switch (res_id) {
+	case CAM_ISP_HW_SFE_IN_PIX:
+		*val |= (1 << frame_cnt_shift);
+		if (read_counter)
+			CAM_INFO(CAM_SFE, "IPP frame_cnt 0x%x",
+				frame_cnt0 & 0xFF);
+		break;
+	case CAM_ISP_HW_SFE_IN_RDI0:
+		*val |= (1 << (frame_cnt_shift + 1));
+		if (read_counter)
+			CAM_INFO(CAM_SFE, "RDI0 frame_cnt 0x%x",
+				(frame_cnt0 >> 16) & 0xFF);
+		break;
+	case CAM_ISP_HW_SFE_IN_RDI1:
+		*val |= (1 << (frame_cnt_shift + 2));
+		if (read_counter)
+			CAM_INFO(CAM_SFE, "RDI1 frame_cnt 0x%x",
+				(frame_cnt0 >> 24) & 0xFF);
+		break;
+	case CAM_ISP_HW_SFE_IN_RDI2:
+		*val |= (1 << (frame_cnt_shift + 3));
+		if (read_counter)
+			CAM_INFO(CAM_SFE, "RDI2 frame_cnt 0x%x",
+				frame_cnt1 & 0xFF);
+		break;
+	case CAM_ISP_HW_SFE_IN_RDI3:
+		*val |= (1 << (frame_cnt_shift + 4));
+		if (read_counter)
+			CAM_INFO(CAM_SFE, "RDI3 frame_cnt 0x%x",
+				(frame_cnt1 >> 16) & 0xFF);
+		break;
+	case CAM_ISP_HW_SFE_IN_RDI4:
+		*val |= (1 << (frame_cnt_shift + 5));
+		if (read_counter)
+			CAM_INFO(CAM_SFE, "RDI4 frame_cnt 0x%x",
+				(frame_cnt1 >> 24) & 0xFF);
+		break;
+	default:
+		break;
+	}
+}
+
 static int cam_sfe_top_handle_irq_bottom_half(
 	void *handler_priv, void *evt_payload_priv)
 {
 	int i;
+	uint32_t val0, val1, frame_cnt, offset0, offset1;
 	uint32_t irq_status[CAM_SFE_IRQ_REGISTERS_MAX] = {0};
 	enum cam_sfe_hw_irq_status          ret = CAM_SFE_IRQ_STATUS_MAX;
 	struct cam_isp_hw_event_info        evt_info;
@@ -882,7 +946,7 @@ static int cam_sfe_top_handle_irq_bottom_half(
 	evt_info.reg_val = 0;
 
 	if (irq_status[0] &
-		path_data->path_reg_data->error_irq_mask) {
+		path_data->common_reg_data->error_irq_mask) {
 		if (irq_status[0] & 0x4000)
 			CAM_ERR(CAM_SFE, "PP VIOLATION");
 
@@ -904,13 +968,33 @@ static int cam_sfe_top_handle_irq_bottom_half(
 		ret = CAM_SFE_IRQ_STATUS_VIOLATION;
 	}
 
-	/* To Do Debugfs entry to control the enablement */
 	if (irq_status[0] & path_data->path_reg_data->subscribe_irq_mask) {
 		if (irq_status[0] & path_data->path_reg_data->sof_irq_mask) {
 			CAM_INFO_RATE_LIMIT(CAM_SFE, "SFE:%d Received %s SOF",
 				evt_info.hw_idx,
 				cam_sfe_top_res_id_to_string(res->res_id));
-		}
+			offset0 = path_data->common_reg->diag_sensor_status_0;
+			offset1 = path_data->common_reg->diag_sensor_status_1;
+			/* check for any debug info at SOF */
+			if (top_priv->sfe_debug_cfg &
+				SFE_DEBUG_ENABLE_SENSOR_DIAG_INFO) {
+				val0 =  cam_io_r(path_data->mem_base +
+					offset0);
+				val1 = cam_io_r(path_data->mem_base +
+					offset1);
+				CAM_INFO(CAM_SFE,
+					"SFE:%d HBI: 0x%x VBI: 0x%x NEQ_HBI: %s HBI_MIN_ERR: %s",
+					evt_info.hw_idx, (val0 & 0x3FFF), val1,
+					(val0 & (0x4000) ? "TRUE" : "FALSE"),
+					(val0 & (0x8000) ? "TRUE" : "FALSE"));
+			}
+
+			if (top_priv->sfe_debug_cfg &
+				SFE_DEBUG_ENABLE_FRAME_COUNTER)
+				cam_sfe_top_sel_frame_counter(
+					res->res_id, &frame_cnt,
+					true, path_data);
+			}
 
 		if (irq_status[0] &
 			path_data->path_reg_data->eof_irq_mask) {
@@ -921,15 +1005,6 @@ static int cam_sfe_top_handle_irq_bottom_half(
 		ret = CAM_SFE_IRQ_STATUS_SUCCESS;
 	}
 
-	/* To DO frame counter under debugfs */
-	CAM_DBG(CAM_SFE,
-		"SFE:%d SFE_DIAG_SENSOR_STATUS0: 0x%x SFE_DIAG_SENSOR_STATUS1: 0x%x",
-		evt_info.hw_idx,
-		cam_io_r(path_data->mem_base +
-			path_data->common_reg->diag_sensor_status_0),
-		cam_io_r(path_data->mem_base +
-			path_data->common_reg->diag_sensor_status_1));
-
 	cam_sfe_top_put_evt_payload(top_priv, &payload);
 
 	return ret;
@@ -939,6 +1014,8 @@ int cam_sfe_top_start(
 	void *priv, void *start_args, uint32_t arg_size)
 {
 	int                                   rc = -EINVAL;
+	uint32_t                              val = 0, diag_cfg = 0;
+	bool                                  debug_cfg_enabled = false;
 	struct cam_sfe_top_priv              *top_priv;
 	struct cam_isp_resource_node         *sfe_res;
 	struct cam_hw_info                   *hw_info = NULL;
@@ -979,16 +1056,39 @@ int cam_sfe_top_start(
 			path_data->common_reg->core_cfg));
 
 	/* Enable debug cfg registers */
-	cam_io_w(path_data->path_reg_data->top_debug_cfg_en,
+	cam_io_w(path_data->common_reg_data->top_debug_cfg_en,
 		path_data->mem_base +
 		path_data->common_reg->top_debug_cfg);
 
 	/* Enable sensor diag info */
-	/* TO DO - debug fs to enable*/
-	cam_io_w(path_data->path_reg_data->enable_diagnostic_hw,
-		path_data->mem_base + path_data->common_reg->diag_config);
+	if (top_priv->sfe_debug_cfg &
+		SFE_DEBUG_ENABLE_SENSOR_DIAG_INFO) {
+		if ((top_priv->sensor_sel_diag_cfg) &&
+			(top_priv->sensor_sel_diag_cfg <
+			CAM_SFE_TOP_IN_PORT_MAX))
+			val |= top_priv->sensor_sel_diag_cfg <<
+				path_data->common_reg_data->sensor_sel_shift;
+		debug_cfg_enabled = true;
+	}
 
-	error_mask[0] = path_data->path_reg_data->error_irq_mask;
+	if (top_priv->sfe_debug_cfg & SFE_DEBUG_ENABLE_FRAME_COUNTER) {
+		cam_sfe_top_sel_frame_counter(sfe_res->res_id, &val,
+			false, path_data);
+		debug_cfg_enabled = true;
+	}
+
+	if (debug_cfg_enabled) {
+		diag_cfg = cam_io_r(path_data->mem_base +
+			path_data->common_reg->diag_config);
+		diag_cfg |= val;
+		diag_cfg |= path_data->common_reg_data->enable_diagnostic_hw;
+		CAM_DBG(CAM_SFE, "Diag config 0x%x", diag_cfg);
+		cam_io_w(diag_cfg,
+			path_data->mem_base +
+			path_data->common_reg->diag_config);
+	}
+
+	error_mask[0] = path_data->common_reg_data->error_irq_mask;
 	/* Enable error IRQ by default */
 	if (!path_data->error_irq_handle) {
 		path_data->error_irq_handle = cam_irq_controller_subscribe_irq(
@@ -1008,27 +1108,33 @@ int cam_sfe_top_start(
 		}
 	}
 
-	/* TO DO define the debugfs to enable/disable sof/eof irq */
-	if (!path_data->sof_eof_handle) {
-		sof_eof_mask[0] = path_data->path_reg_data->subscribe_irq_mask;
-		path_data->sof_eof_handle = cam_irq_controller_subscribe_irq(
-			top_priv->common_data.sfe_irq_controller,
-			CAM_IRQ_PRIORITY_1,
-			sof_eof_mask,
-			sfe_res,
-			cam_sfe_top_handle_irq_top_half,
-			cam_sfe_top_handle_irq_bottom_half,
-			sfe_res->tasklet_info,
-			&tasklet_bh_api);
+	if ((top_priv->sfe_debug_cfg & SFE_DEBUG_ENABLE_SOF_EOF_IRQ) ||
+		(debug_cfg_enabled)) {
+		if (!path_data->sof_eof_handle) {
+			sof_eof_mask[0] =
+				path_data->path_reg_data->subscribe_irq_mask;
+			path_data->sof_eof_handle =
+				cam_irq_controller_subscribe_irq(
+				top_priv->common_data.sfe_irq_controller,
+				CAM_IRQ_PRIORITY_1,
+				sof_eof_mask,
+				sfe_res,
+				cam_sfe_top_handle_irq_top_half,
+				cam_sfe_top_handle_irq_bottom_half,
+				sfe_res->tasklet_info,
+				&tasklet_bh_api);
 
-		if (path_data->sof_eof_handle < 1) {
-			CAM_ERR(CAM_SFE, "Failed to subscribe SOF/EOF IRQ");
-			path_data->sof_eof_handle = 0;
-			return -EFAULT;
+			if (path_data->sof_eof_handle < 1) {
+				CAM_ERR(CAM_SFE,
+					"Failed to subscribe SOF/EOF IRQ");
+				path_data->sof_eof_handle = 0;
+				return -EFAULT;
+			}
 		}
 	}
 
 	sfe_res->res_state = CAM_ISP_RESOURCE_STATE_STREAMING;
+	start_stop_cnt++;
 	return 0;
 }
 
@@ -1036,6 +1142,8 @@ int cam_sfe_top_stop(
 	void *priv, void *stop_args, uint32_t arg_size)
 {
 	int i;
+	bool debug_cfg_disable = false;
+	uint32_t val = 0, diag_cfg = 0;
 	struct cam_sfe_top_priv       *top_priv;
 	struct cam_isp_resource_node  *sfe_res;
 	struct cam_sfe_path_data      *path_data;
@@ -1070,12 +1178,41 @@ int cam_sfe_top_stop(
 		cam_irq_controller_unsubscribe_irq(
 			top_priv->common_data.sfe_irq_controller,
 			path_data->error_irq_handle);
+		path_data->error_irq_handle = 0;
 	}
 
 	if (path_data->sof_eof_handle > 0) {
 		cam_irq_controller_unsubscribe_irq(
 			top_priv->common_data.sfe_irq_controller,
 			path_data->sof_eof_handle);
+		path_data->sof_eof_handle = 0;
+	}
+
+	if (top_priv->sfe_debug_cfg & SFE_DEBUG_ENABLE_FRAME_COUNTER) {
+		cam_sfe_top_sel_frame_counter(sfe_res->res_id, &val,
+			false, path_data);
+		debug_cfg_disable = true;
+	}
+
+	if (start_stop_cnt)
+		start_stop_cnt--;
+
+	if (!start_stop_cnt &&
+		((top_priv->sfe_debug_cfg &
+		SFE_DEBUG_ENABLE_FRAME_COUNTER) ||
+		(top_priv->sfe_debug_cfg &
+		SFE_DEBUG_ENABLE_SENSOR_DIAG_INFO))) {
+		val |= path_data->common_reg_data->enable_diagnostic_hw;
+		debug_cfg_disable = true;
+	}
+
+	if (debug_cfg_disable) {
+		diag_cfg = cam_io_r(path_data->mem_base +
+			path_data->common_reg->diag_config);
+		diag_cfg &= ~val;
+		cam_io_w(diag_cfg,
+			path_data->mem_base +
+			path_data->common_reg->diag_config);
 	}
 
 	return 0;
@@ -1159,6 +1296,8 @@ int cam_sfe_top_init(
 			path_data->path_reg_data =
 				sfe_top_hw_info->pix_reg_data;
 			path_data->common_reg = sfe_top_hw_info->common_reg;
+			path_data->common_reg_data =
+				sfe_top_hw_info->common_reg_data;
 			path_data->modules_reg =
 				sfe_top_hw_info->modules_hw_info;
 			path_data->hw_intf = hw_intf;
@@ -1184,6 +1323,8 @@ int cam_sfe_top_init(
 				soc_info->reg_map[SFE_CORE_BASE_IDX].mem_base;
 			path_data->hw_intf = hw_intf;
 			path_data->common_reg = sfe_top_hw_info->common_reg;
+			path_data->common_reg_data =
+				sfe_top_hw_info->common_reg_data;
 			path_data->modules_reg =
 				sfe_top_hw_info->modules_hw_info;
 			path_data->soc_info = soc_info;
@@ -1199,6 +1340,10 @@ int cam_sfe_top_init(
 	top_priv->common_data.hw_intf = hw_intf;
 	top_priv->common_data.common_reg =
 		sfe_top_hw_info->common_reg;
+	top_priv->sfe_debug_cfg = 0;
+
+	/* Remove after driver stabilizes */
+	top_priv->sfe_debug_cfg |= SFE_DEBUG_ENABLE_SOF_EOF_IRQ;
 
 	sfe_top->hw_ops.process_cmd = cam_sfe_top_process_cmd;
 	sfe_top->hw_ops.start = cam_sfe_top_start;

@@ -131,6 +131,7 @@ struct cam_sfe_bus_sfe_out_hw_info {
  * @sfe_out_hw_info:  SFE output capability
  * @num_comp_grp:     Number of composite groups
  * @comp_done_shift:  Mask shift for comp done mask
+ * @line_done_cfg:    Line done cfg for wr/rd sync
  * @top_irq_shift:    Mask shift for top level BUS WR irq
  */
 struct cam_sfe_bus_wr_hw_info {
@@ -143,6 +144,7 @@ struct cam_sfe_bus_wr_hw_info {
 		sfe_out_hw_info[CAM_SFE_BUS_SFE_OUT_MAX];
 	uint32_t num_comp_grp;
 	uint32_t comp_done_shift;
+	uint32_t line_done_cfg;
 	uint32_t top_irq_shift;
 };
 

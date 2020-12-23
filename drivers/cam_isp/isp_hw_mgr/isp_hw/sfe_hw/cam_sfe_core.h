@@ -37,6 +37,14 @@ struct cam_sfe_hw_core_info {
 	spinlock_t                          spin_lock;
 };
 
+/*
+ * Debug config to enable interrupts and debug features
+ */
+#define SFE_DEBUG_ENABLE_SOF_EOF_IRQ              BIT(0)
+#define SFE_DEBUG_ENABLE_SENSOR_DIAG_INFO         BIT(1)
+#define SFE_DEBUG_ENABLE_FRAME_COUNTER            BIT(2)
+#define SFE_DEBUG_ENABLE_RD_DONE_IRQ              BIT(3)
+
 int cam_sfe_get_hw_caps(void *device_priv,
 	void *get_hw_cap_args, uint32_t arg_size);
 int cam_sfe_reset(void *device_priv,
