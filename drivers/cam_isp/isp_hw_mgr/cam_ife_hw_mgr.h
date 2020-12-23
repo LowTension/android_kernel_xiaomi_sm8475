@@ -15,8 +15,22 @@
 #include "cam_tasklet_util.h"
 #include "cam_cdm_intf_api.h"
 
+/*
+ * enum cam_ife_ctx_master_type - HW master type
+ * CAM_IFE_CTX_TYPE_NONE: IFE ctx/stream directly connected to CSID
+ * CAM_IFE_CTX_TYPE_CUSTOM: IFE ctx/stream connected to custom HW
+ * CAM_IFE_CTX_TYPE_SFE: IFE ctx/stream connected to SFE
+ */
+enum cam_ife_ctx_master_type {
+	CAM_IFE_CTX_TYPE_NONE,
+	CAM_IFE_CTX_TYPE_CUSTOM,
+	CAM_IFE_CTX_TYPE_SFE,
+	CAM_IFE_CTX_TYPE_MAX,
+};
+
 /* IFE resource constants */
 #define CAM_IFE_HW_IN_RES_MAX            (CAM_ISP_IFE_IN_RES_MAX & 0xFF)
+#define CAM_SFE_HW_OUT_RES_MAX           (CAM_ISP_SFE_OUT_RES_MAX & 0xFF)
 #define CAM_IFE_HW_RES_POOL_MAX          64
 
 /* IFE_HW_MGR custom config */
@@ -50,7 +64,43 @@ struct cam_ife_hw_mgr_debug {
 };
 
 /**
- * struct cam_vfe_hw_mgr_ctx - IFE HW manager Context object
+ * struct cam_sfe_scratch_buf_info - Scratch buf info
+ *
+ * @width: Width in pixels
+ * @height: Height in pixels
+ * @stride: Stride in pixels
+ * @slice_height: Height in lines
+ * @io_addr: Buffer address
+ * @res_id: Resource type
+ * @is_secure: secure scratch buffer
+ */
+struct cam_sfe_scratch_buf_info {
+	uint32_t   width;
+	uint32_t   height;
+	uint32_t   stride;
+	uint32_t   slice_height;
+	dma_addr_t io_addr;
+	uint32_t   res_id;
+	bool       is_secure;
+};
+
+/**
+ * struct cam_sfe_scratch_buf_cfg - Scratch buf info
+ *
+ * @config_done: To indicate if stream received it's scratch cfg
+ * @num_configs: Number of buffer configs [max of 3 currently]
+ * @buf_info: Info on each of the buffers
+ *
+ */
+struct cam_sfe_scratch_buf_cfg {
+	bool                            config_done;
+	uint32_t                        num_config;
+	struct cam_sfe_scratch_buf_info buf_info[
+		CAM_SFE_FE_RDI_NUM_MAX];
+};
+
+/**
+ * struct cam_ife_hw_mgr_ctx - IFE HW manager Context object
  *
  * @list:                   used by the ctx list.
  * @common:                 common acquired context data
@@ -64,8 +114,10 @@ struct cam_ife_hw_mgr_debug {
  *                          one.
  * @res_list_csid:          CSID resource list
  * @res_list_ife_src:       IFE input resource list
- * @res_list_ife_in_rd      IFE input resource list for read path
+ * @res_list_sfe_src        SFE input resource list
+ * @res_list_ife_in_rd      IFE/SFE input resource list for read path
  * @res_list_ife_out:       IFE output resoruces array
+ * @res_list_sfe_out:       SFE output resources array
  * @free_res_list:          Free resources list for the branch node
  * @res_pool:               memory storage for the free resource list
  * @irq_status0_mask:       irq_status0_mask for the context
@@ -96,7 +148,7 @@ struct cam_ife_hw_mgr_debug {
  * @init_done               indicate whether init hw is done
  * @is_fe_enabled           Indicate whether fetch engine\read path is enabled
  * @is_dual                 indicate whether context is in dual VFE mode
- * @custom_enabled          update the flag if context is connected to custom HW
+ * @ctx_type                Type of IFE ctx [CUSTOM/SFE etc.]
  * @custom_config           ife ctx config if custom is enabled [bit field]
  * @ts                      captured timestamp when the ctx is acquired
  * @is_tpg                  indicate whether context is using PHY TPG
@@ -107,6 +159,7 @@ struct cam_ife_hw_mgr_debug {
  * @pf_mid_found            in page fault, mid found for this ctx.
  * @buf_done_controller     Buf done controller.
  * @need_csid_top_cfg       Flag to indicate if CSID top cfg is  needed.
+ * @scratch_config          Scratch buffer config if any for this ctx
  *
  */
 struct cam_ife_hw_mgr_ctx {
@@ -123,14 +176,18 @@ struct cam_ife_hw_mgr_ctx {
 	struct cam_isp_hw_mgr_res       res_list_tpg;
 	struct list_head                res_list_ife_csid;
 	struct list_head                res_list_ife_src;
+	struct list_head                res_list_sfe_src;
 	struct list_head                res_list_ife_in_rd;
 	struct cam_isp_hw_mgr_res      *res_list_ife_out;
+	struct cam_isp_hw_mgr_res       res_list_sfe_out[
+						CAM_SFE_HW_OUT_RES_MAX];
 	struct list_head                free_res_list;
 	struct cam_isp_hw_mgr_res       res_pool[CAM_IFE_HW_RES_POOL_MAX];
 
 	uint32_t                        irq_status0_mask[CAM_IFE_HW_NUM_MAX];
 	uint32_t                        irq_status1_mask[CAM_IFE_HW_NUM_MAX];
-	struct cam_isp_ctx_base_info    base[CAM_IFE_HW_NUM_MAX];
+	struct cam_isp_ctx_base_info    base[CAM_IFE_HW_NUM_MAX +
+						CAM_SFE_HW_NUM_MAX];
 	uint32_t                        num_base;
 	uint32_t                        cdm_handle;
 	struct cam_cdm_utils_ops       *cdm_ops;
@@ -154,7 +211,7 @@ struct cam_ife_hw_mgr_ctx {
 	bool                            init_done;
 	bool                            is_fe_enabled;
 	bool                            is_dual;
-	bool                            custom_enabled;
+	enum cam_ife_ctx_master_type    ctx_type;
 	uint32_t                        custom_config;
 	struct timespec64               ts;
 	bool                            is_tpg;
@@ -164,6 +221,7 @@ struct cam_ife_hw_mgr_ctx {
 	bool                            pf_mid_found;
 	bool                            need_csid_top_cfg;
 	void                           *buf_done_controller;
+	struct cam_sfe_scratch_buf_cfg  scratch_config;
 };
 
 /**
@@ -174,6 +232,7 @@ struct cam_ife_hw_mgr_ctx {
  *                         HW manager during the initialization.
  * @ife_devices:           IFE device instances array. This will be filled by
  *                         HW layer during initialization
+ * @sfe_devices:           SFE device instance array
  * @ctx_mutex:             mutex for the hw context pool
  * @free_ctx_list:         free hw context list
  * @used_ctx_list:         used hw context list
@@ -194,6 +253,7 @@ struct cam_ife_hw_mgr {
 	struct cam_hw_intf            *tpg_devices[CAM_TOP_TPG_HW_NUM_MAX];
 	struct cam_hw_intf            *csid_devices[CAM_IFE_CSID_HW_NUM_MAX];
 	struct cam_isp_hw_intf_data   *ife_devices[CAM_IFE_HW_NUM_MAX];
+	struct cam_hw_intf            *sfe_devices[CAM_SFE_HW_NUM_MAX];
 	struct cam_soc_reg_map        *cdm_reg_map[CAM_IFE_HW_NUM_MAX];
 
 	struct mutex                   ctx_mutex;

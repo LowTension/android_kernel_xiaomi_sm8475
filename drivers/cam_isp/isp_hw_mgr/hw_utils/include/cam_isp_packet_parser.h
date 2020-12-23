@@ -49,6 +49,18 @@ struct cam_isp_frame_header_info {
 };
 
 /*
+ * struct cam_isp_check_sfe_fe_io_cfg
+ *
+ * @sfe_fe_enabled  : True if SFE fetch engine is enabled
+ * @sfe_rdi_cfg_mask: To indicate IO buf cfg for RDIs
+ *
+ */
+struct cam_isp_check_sfe_fe_io_cfg {
+	bool                     sfe_fe_enabled;
+	uint32_t                 sfe_rdi_cfg_mask;
+};
+
+/*
  * struct cam_isp_change_base_args
  *
  * @cdm_id:       CDM id
@@ -110,6 +122,32 @@ int cam_isp_add_cmd_buf_update(
 	uint32_t                             *bytes_used);
 
 /*
+ * cam_sfe_add_command_buffers()
+ *
+ * @brief                  Add command buffer in the HW entries list for given
+ *                         left or right SFE instance.
+ *
+ * @prepare:               Contain the packet and HW update variables
+ * @kmd_buf_info:          KMD buffer to store the custom cmd data
+ * @base_info:             base hardware information
+ * @blob_handler_cb:       Call_back_function for Meta handling
+ * @res_list_isp_out:      SFE out resource list
+ * @out_base:              Base value of ISP resource (SFE)
+ * @out_max:               Max of supported ISP resources(SFE)
+ *
+ * @return:                0 for success
+ *                         Negative for Failure
+ */
+int cam_sfe_add_command_buffers(
+	struct cam_hw_prepare_update_args  *prepare,
+	struct cam_kmd_buf_info            *kmd_buf_info,
+	struct cam_isp_ctx_base_info       *base_info,
+	cam_packet_generic_blob_handler     blob_handler_cb,
+	struct cam_isp_hw_mgr_res          *res_list_sfe_out,
+	uint32_t                            out_base,
+	uint32_t                            out_max);
+
+/*
  * cam_isp_add_command_buffers()
  *
  * @brief                  Add command buffer in the HW entries list for given
@@ -120,7 +158,8 @@ int cam_isp_add_cmd_buf_update(
  * @base_info:             base hardware information
  * @blob_handler_cb:       Call_back_function for Meta handling
  * @res_list_isp_out:      IFE /VFE out resource list
- * @size_isp_out:          Size of the res_list_isp_out array
+ * @out_base:              Base value of ISP resource (IFE)
+ * @out_max:               Max of supported ISP resources(IFE)
  *
  * @return:                0 for success
  *                         Negative for Failure
@@ -131,7 +170,8 @@ int cam_isp_add_command_buffers(
 	struct cam_isp_ctx_base_info       *base_info,
 	cam_packet_generic_blob_handler     blob_handler_cb,
 	struct cam_isp_hw_mgr_res          *res_list_isp_out,
-	uint32_t                            size_isp_out);
+	uint32_t                            out_base,
+	uint32_t                            out_max);
 
 /*
  * cam_isp_add_io_buffers()
@@ -146,11 +186,14 @@ int cam_isp_add_command_buffers(
  * @prepare:               Contain the  packet and HW update variables
  * @base_idx:              Base or dev index of the IFE/VFE HW instance
  * @kmd_buf_info:          Kmd buffer to store the change base command
- * @res_list_isp_out:      IFE /VFE out resource list
- * @res_list_ife_in_rd:    IFE /VFE in rd resource list
- * @size_isp_out:          Size of the res_list_isp_out array
+ * @res_list_isp_out:      IFE/SFE out resource list
+ * @res_list_ife_in_rd:    IFE/SFE in rd resource list
+ * @out_base:              Base value of ISP resource (IFE/SFE)
+ * @out_max:               Max of supported ISP resources(IFE/SFE)
  * @fill_fence:            If true, Fence map table will be filled
+ * @hw_type:               HW type for this ctx base (IFE/SFE)
  * @frame_header_info:     Frame header related params
+ * @check_sfe_fe_cfg:      Validate if sfe fetch received IO cfg
  * @return:                0 for success
  *                         -EINVAL for Fail
  */
@@ -162,9 +205,12 @@ int cam_isp_add_io_buffers(
 	struct cam_kmd_buf_info              *kmd_buf_info,
 	struct cam_isp_hw_mgr_res            *res_list_isp_out,
 	struct list_head                     *res_list_ife_in_rd,
-	uint32_t                              size_isp_out,
+	uint32_t                              out_base,
+	uint32_t                              out_max,
 	bool                                  fill_fence,
-	struct cam_isp_frame_header_info     *frame_header_info);
+	enum cam_isp_hw_type                  hw_type,
+	struct cam_isp_frame_header_info     *frame_header_info,
+	struct cam_isp_check_sfe_fe_io_cfg   *check_sfe_fe_cfg);
 
 /*
  * cam_isp_add_reg_update()
@@ -263,6 +309,24 @@ int cam_isp_add_go_cmd(
  *                         -EINVAL for Fail
  */
 int cam_isp_add_csid_reg_update(
+	struct cam_hw_prepare_update_args    *prepare,
+	struct list_head                     *res_list,
+	uint32_t                              base_idx,
+	struct cam_kmd_buf_info              *kmd_buf_info);
+
+
+/* cam_isp_add_csid_offline_cmd()
+ *
+ * @brief                  Add csid go cmd for offline mode
+ *
+ * @prepare:               Contain the  packet and HW update variables
+ * @res_list:              Resource list for CSID
+ * @base_idx:              Base or dev index of the CSID/IFE HW instance
+ * @kmd_buf_info:          Kmd buffer to store the change base command
+ * @return:                0 for success
+ *                         -EINVAL for Fail
+ */
+int cam_isp_add_csid_offline_cmd(
 	struct cam_hw_prepare_update_args    *prepare,
 	struct list_head                     *res_list,
 	uint32_t                              base_idx,
