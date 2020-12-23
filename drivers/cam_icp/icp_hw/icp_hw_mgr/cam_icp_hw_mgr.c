@@ -2663,9 +2663,9 @@ static int32_t cam_icp_mgr_process_msg(void *priv, void *data)
 	return rc;
 }
 
-int32_t cam_icp_hw_mgr_cb(uint32_t irq_status, void *data)
+static int cam_icp_hw_mgr_cb(void *data, uint32_t irq_status)
 {
-	int32_t rc = 0;
+	int rc = 0;
 	unsigned long flags;
 	struct cam_icp_hw_mgr *hw_mgr = data;
 	struct crm_workq_task *task;
@@ -3069,14 +3069,19 @@ static int cam_icp_mgr_hw_close_k(void *hw_priv, void *hw_close_args)
 static int cam_icp_mgr_proc_resume(struct cam_icp_hw_mgr *hw_mgr)
 {
 	struct cam_hw_intf *icp_dev_intf = hw_mgr->icp_dev_intf;
+	int rc;
 
 	if (!icp_dev_intf)
 		return -EINVAL;
 
-	return icp_dev_intf->hw_ops.process_cmd(icp_dev_intf->hw_priv,
-						CAM_ICP_CMD_POWER_RESUME,
-						&hw_mgr->icp_jtag_debug,
-						sizeof(hw_mgr->icp_jtag_debug));
+	rc = icp_dev_intf->hw_ops.process_cmd(icp_dev_intf->hw_priv,
+					CAM_ICP_CMD_POWER_RESUME,
+					&hw_mgr->icp_jtag_debug,
+					sizeof(hw_mgr->icp_jtag_debug));
+	if (!rc)
+		hw_mgr->icp_resumed = true;
+
+	return rc;
 }
 
 static void cam_icp_mgr_proc_suspend(struct cam_icp_hw_mgr *hw_mgr)
@@ -3089,6 +3094,8 @@ static void cam_icp_mgr_proc_suspend(struct cam_icp_hw_mgr *hw_mgr)
 	icp_dev_intf->hw_ops.process_cmd(icp_dev_intf->hw_priv,
 					CAM_ICP_CMD_POWER_COLLAPSE,
 					NULL, 0);
+
+	hw_mgr->icp_resumed = false;
 }
 
 static int __power_collapse(struct cam_icp_hw_mgr *hw_mgr)
@@ -3126,6 +3133,96 @@ static int cam_icp_mgr_icp_power_collapse(struct cam_icp_hw_mgr *hw_mgr)
 	CAM_DBG(CAM_PERF, "EXIT");
 
 	return rc;
+}
+
+static int cam_icp_mgr_proc_boot(struct cam_icp_hw_mgr *hw_mgr)
+{
+	struct cam_hw_intf *icp_dev_intf = hw_mgr->icp_dev_intf;
+	struct cam_icp_boot_args args;
+	int rc;
+
+	if (!icp_dev_intf) {
+		CAM_ERR(CAM_ICP, "invalid ICP device interface");
+		return -EINVAL;
+	}
+
+	args.firmware.iova = hw_mgr->hfi_mem.fw_buf.iova;
+	args.firmware.kva = hw_mgr->hfi_mem.fw_buf.kva;
+	args.firmware.len = hw_mgr->hfi_mem.fw_buf.len;
+
+	args.irq_cb.data = hw_mgr;
+	args.irq_cb.cb = cam_icp_hw_mgr_cb;
+
+	args.debug_enabled = hw_mgr->icp_jtag_debug;
+
+	rc = icp_dev_intf->hw_ops.process_cmd(
+			icp_dev_intf->hw_priv,
+			CAM_ICP_CMD_PROC_BOOT,
+			&args, sizeof(args));
+	if (!rc)
+		hw_mgr->icp_resumed = true;
+	else
+		CAM_ERR(CAM_ICP, "ICP processor boot failed rc=%d", rc);
+
+	return rc;
+}
+
+static int __resume_and_idle(struct cam_icp_hw_mgr *hw_mgr)
+{
+	struct cam_hw_intf *icp_dev_intf = hw_mgr->icp_dev_intf;
+	int rc;
+
+	rc = icp_dev_intf->hw_ops.init(icp_dev_intf->hw_priv, NULL, 0);
+	if (rc) {
+		CAM_ERR(CAM_ICP, "icp hw init failed rc=%d", rc);
+		return rc;
+	}
+
+	rc = cam_icp_mgr_proc_resume(hw_mgr);
+	if (rc) {
+		CAM_ERR(CAM_ICP, "icp resume failed rc=%d", rc);
+		goto out_deinit;
+	}
+
+	if (hw_mgr->icp_pc_flag) {
+		rc = cam_icp_mgr_send_pc_prep(hw_mgr);
+		if (rc) {
+			CAM_ERR(CAM_ICP,
+				"send power collapse prep failed rc=%d",
+				rc);
+			goto out_collapse;
+		}
+	}
+
+	return 0;
+
+out_collapse:
+	cam_icp_mgr_proc_suspend(hw_mgr);
+out_deinit:
+	icp_dev_intf->hw_ops.deinit(icp_dev_intf->hw_priv, NULL, 0);
+	return rc;
+}
+
+static void cam_icp_mgr_proc_shutdown(struct cam_icp_hw_mgr *hw_mgr)
+{
+	struct cam_hw_intf *icp_dev_intf = hw_mgr->icp_dev_intf;
+
+	if (!icp_dev_intf) {
+		CAM_ERR(CAM_ICP, "invalid ICP device interface");
+		return;
+	}
+
+	if (!hw_mgr->icp_resumed && __resume_and_idle(hw_mgr))
+		return;
+
+	icp_dev_intf->hw_ops.process_cmd(
+			icp_dev_intf->hw_priv,
+			CAM_ICP_CMD_PROC_SHUTDOWN,
+			NULL, 0);
+
+	icp_dev_intf->hw_ops.deinit(icp_dev_intf->hw_priv, NULL, 0);
+
+	hw_mgr->icp_resumed = false;
 }
 
 static int cam_icp_mgr_hfi_resume(struct cam_icp_hw_mgr *hw_mgr)
@@ -3481,12 +3578,10 @@ static int cam_icp_mgr_hw_close(void *hw_priv, void *hw_close_args)
 {
 	struct cam_icp_hw_mgr *hw_mgr = hw_priv;
 	struct cam_hw_intf *icp_dev_intf = NULL;
-	struct cam_icp_set_irq_cb irq_cb;
-	struct cam_icp_a5_set_fw_buf_info fw_buf_info;
 	int rc = 0;
 
 	CAM_DBG(CAM_ICP, "E");
-	if (hw_mgr->fw_download == false) {
+	if (!hw_mgr->icp_booted) {
 		CAM_DBG(CAM_ICP, "hw mgr is already closed");
 		return 0;
 	}
@@ -3497,30 +3592,12 @@ static int cam_icp_mgr_hw_close(void *hw_priv, void *hw_close_args)
 		return -EINVAL;
 	}
 
-	fw_buf_info.kva = 0;
-	fw_buf_info.iova = 0;
-	fw_buf_info.len = 0;
-	rc = icp_dev_intf->hw_ops.process_cmd(
-		icp_dev_intf->hw_priv,
-		CAM_ICP_CMD_SET_FW_BUF,
-		&fw_buf_info,
-		sizeof(fw_buf_info));
-	if (rc)
-		CAM_ERR(CAM_ICP, "nullify the fw buf failed");
+	cam_icp_mgr_proc_shutdown(hw_mgr);
 
 	cam_hfi_deinit();
-
-	irq_cb.icp_hw_mgr_cb = NULL;
-	irq_cb.data = NULL;
-	rc = icp_dev_intf->hw_ops.process_cmd(
-		icp_dev_intf->hw_priv,
-		CAM_ICP_SET_IRQ_CB,
-		&irq_cb, sizeof(irq_cb));
-	if (rc)
-		CAM_ERR(CAM_ICP, "deregister irq call back failed");
-
 	cam_icp_free_hfi_mem();
-	hw_mgr->fw_download = false;
+
+	hw_mgr->icp_booted = false;
 
 	CAM_DBG(CAM_ICP, "Exit");
 	return rc;
@@ -3577,49 +3654,6 @@ bps_dev_init_failed:
 	icp_dev_intf->hw_ops.deinit(icp_dev_intf->hw_priv, NULL, 0);
 icp_dev_init_failed:
 	return rc;
-}
-
-static int cam_icp_mgr_fw_download(struct cam_icp_hw_mgr *hw_mgr)
-{
-	int rc;
-	struct cam_hw_intf *icp_dev_intf = NULL;
-	struct cam_icp_set_irq_cb irq_cb;
-	struct cam_icp_a5_set_fw_buf_info fw_buf_info;
-
-	icp_dev_intf = hw_mgr->icp_dev_intf;
-	if (!icp_dev_intf) {
-		CAM_ERR(CAM_ICP, "ICP device interface is invalid");
-		return -EINVAL;
-	}
-
-	irq_cb.icp_hw_mgr_cb = cam_icp_hw_mgr_cb;
-	irq_cb.data = hw_mgr;
-	rc = icp_dev_intf->hw_ops.process_cmd(
-		icp_dev_intf->hw_priv,
-		CAM_ICP_SET_IRQ_CB,
-		&irq_cb, sizeof(irq_cb));
-	if (rc)
-		return rc;
-
-	fw_buf_info.kva = icp_hw_mgr.hfi_mem.fw_buf.kva;
-	fw_buf_info.iova = icp_hw_mgr.hfi_mem.fw_buf.iova;
-	fw_buf_info.len = icp_hw_mgr.hfi_mem.fw_buf.len;
-
-	rc = icp_dev_intf->hw_ops.process_cmd(
-		icp_dev_intf->hw_priv,
-		CAM_ICP_CMD_SET_FW_BUF,
-		&fw_buf_info, sizeof(fw_buf_info));
-	if (rc)
-		return rc;
-
-	rc = icp_dev_intf->hw_ops.process_cmd(
-		icp_dev_intf->hw_priv,
-		CAM_ICP_CMD_FW_DOWNLOAD,
-		NULL, 0);
-	if (rc)
-		return rc;
-
-	return cam_icp_mgr_proc_resume(hw_mgr);
 }
 
 static int cam_icp_mgr_hfi_init(struct cam_icp_hw_mgr *hw_mgr)
@@ -3771,11 +3805,9 @@ static int cam_icp_mgr_icp_resume(struct cam_icp_hw_mgr *hw_mgr)
 		return -EINVAL;
 	}
 
-	if (hw_mgr->fw_download  == false) {
-		CAM_DBG(CAM_ICP, "Downloading FW");
-		rc = cam_icp_mgr_hw_open_k(hw_mgr, &downloadFromResume);
-		CAM_DBG(CAM_ICP, "FW Download Done Exit");
-		return rc;
+	if (!hw_mgr->icp_booted) {
+		CAM_DBG(CAM_ICP, "booting ICP processor");
+		return cam_icp_mgr_hw_open_k(hw_mgr, &downloadFromResume);
 	}
 
 	rc = icp_dev_intf->hw_ops.init(icp_dev_intf->hw_priv, NULL, 0);
@@ -3812,8 +3844,8 @@ static int cam_icp_mgr_hw_open(void *hw_mgr_priv, void *download_fw_args)
 		return -EINVAL;
 	}
 
-	if (hw_mgr->fw_download) {
-		CAM_DBG(CAM_ICP, "FW already downloaded");
+	if (hw_mgr->icp_booted) {
+		CAM_DBG(CAM_ICP, "ICP already booted");
 		return rc;
 	}
 
@@ -3830,9 +3862,9 @@ static int cam_icp_mgr_hw_open(void *hw_mgr_priv, void *download_fw_args)
 	if (rc)
 		goto dev_init_fail;
 
-	rc = cam_icp_mgr_fw_download(hw_mgr);
+	rc = cam_icp_mgr_proc_boot(hw_mgr);
 	if (rc)
-		goto fw_download_failed;
+		goto boot_failed;
 
 	rc = cam_icp_mgr_hfi_init(hw_mgr);
 	if (rc)
@@ -3843,7 +3875,7 @@ static int cam_icp_mgr_hw_open(void *hw_mgr_priv, void *download_fw_args)
 		goto fw_init_failed;
 
 	hw_mgr->ctxt_cnt = 0;
-	hw_mgr->fw_download = true;
+	hw_mgr->icp_booted = true;
 	atomic_set(&hw_mgr->recovery, 0);
 
 	CAM_INFO(CAM_ICP, "FW download done successfully");
@@ -3869,8 +3901,8 @@ static int cam_icp_mgr_hw_open(void *hw_mgr_priv, void *download_fw_args)
 fw_init_failed:
 	cam_hfi_deinit();
 hfi_init_failed:
-	cam_icp_mgr_proc_suspend(hw_mgr);
-fw_download_failed:
+	cam_icp_mgr_proc_shutdown(hw_mgr);
+boot_failed:
 	cam_icp_mgr_device_deinit(hw_mgr);
 dev_init_fail:
 	cam_icp_free_hfi_mem();

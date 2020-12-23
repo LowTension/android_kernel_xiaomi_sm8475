@@ -471,6 +471,86 @@ static int cam_a5_power_collapse(struct cam_hw_info *a5_info)
 	return 0;
 }
 
+static void prepare_boot(struct cam_hw_info *a5_dev,
+			struct cam_icp_boot_args *args)
+{
+	struct cam_a5_device_core_info *core_info = a5_dev->core_info;
+	unsigned long flags;
+
+	core_info->fw_buf = args->firmware.iova;
+	core_info->fw_kva_addr = args->firmware.kva;
+	core_info->fw_buf_len = args->firmware.len;
+
+	spin_lock_irqsave(&a5_dev->hw_lock, flags);
+	core_info->irq_cb.data = args->irq_cb.data;
+	core_info->irq_cb.cb = args->irq_cb.cb;
+	spin_unlock_irqrestore(&a5_dev->hw_lock, flags);
+}
+
+static void prepare_shutdown(struct cam_hw_info *a5_dev)
+{
+	struct cam_a5_device_core_info *core_info = a5_dev->core_info;
+	unsigned long flags;
+
+	core_info->fw_buf = 0;
+	core_info->fw_kva_addr = 0;
+	core_info->fw_buf_len = 0;
+
+	spin_lock_irqsave(&a5_dev->hw_lock, flags);
+	core_info->irq_cb.data = NULL;
+	core_info->irq_cb.cb = NULL;
+	spin_unlock_irqrestore(&a5_dev->hw_lock, flags);
+}
+
+static int cam_a5_boot(struct cam_hw_info *a5_dev,
+		struct cam_icp_boot_args *args, size_t arg_size)
+{
+	int rc;
+
+	if (!a5_dev || !args) {
+		CAM_ERR(CAM_ICP,
+			"invalid args: a5_dev=%pK args=%pK",
+			a5_dev, args);
+		return -EINVAL;
+	}
+
+	if (arg_size != sizeof(struct cam_icp_boot_args)) {
+		CAM_ERR(CAM_ICP, "invalid boot args size");
+		return -EINVAL;
+	}
+
+	prepare_boot(a5_dev, args);
+
+	rc = cam_a5_download_fw(a5_dev);
+	if (rc) {
+		CAM_ERR(CAM_ICP, "firmware download failed rc=%d", rc);
+		goto err;
+	}
+
+	rc = cam_a5_power_resume(a5_dev, args->debug_enabled);
+	if (rc) {
+		CAM_ERR(CAM_ICP, "A5 boot failed rc=%d", rc);
+		goto err;
+	}
+
+	return 0;
+err:
+	prepare_shutdown(a5_dev);
+	return rc;
+}
+
+static int cam_a5_shutdown(struct cam_hw_info *a5_dev)
+{
+	if (!a5_dev) {
+		CAM_ERR(CAM_ICP, "invalid A5 device info");
+		return -EINVAL;
+	}
+
+	prepare_shutdown(a5_dev);
+	cam_a5_power_collapse(a5_dev);
+	return 0;
+}
+
 irqreturn_t cam_a5_irq(int irq_num, void *data)
 {
 	struct cam_hw_info *a5_dev = data;
@@ -509,9 +589,8 @@ irqreturn_t cam_a5_irq(int irq_num, void *data)
 	}
 
 	spin_lock(&a5_dev->hw_lock);
-	if (core_info->irq_cb.icp_hw_mgr_cb)
-		core_info->irq_cb.icp_hw_mgr_cb(irq_status,
-					core_info->irq_cb.data);
+	if (core_info->irq_cb.cb)
+		core_info->irq_cb.cb(core_info->irq_cb.data, irq_status);
 	spin_unlock(&a5_dev->hw_lock);
 
 	return IRQ_HANDLED;
@@ -568,7 +647,6 @@ int cam_a5_process_cmd(void *device_priv, uint32_t cmd_type,
 	struct cam_a5_device_core_info *core_info = NULL;
 	struct cam_a5_device_hw_info *hw_info = NULL;
 	struct a5_soc_info *a5_soc = NULL;
-	unsigned long flags;
 	uint32_t ubwc_ipe_cfg[ICP_UBWC_MAX] = {0};
 	uint32_t ubwc_bps_cfg[ICP_UBWC_MAX] = {0};
 	uint32_t index = 0;
@@ -589,8 +667,11 @@ int cam_a5_process_cmd(void *device_priv, uint32_t cmd_type,
 	hw_info = core_info->a5_hw_info;
 
 	switch (cmd_type) {
-	case CAM_ICP_CMD_FW_DOWNLOAD:
-		rc = cam_a5_download_fw(device_priv);
+	case CAM_ICP_CMD_PROC_SHUTDOWN:
+		rc = cam_a5_shutdown(device_priv);
+		break;
+	case CAM_ICP_CMD_PROC_BOOT:
+		rc = cam_a5_boot(device_priv, cmd_args, arg_size);
 		break;
 	case CAM_ICP_CMD_POWER_COLLAPSE:
 		rc = cam_a5_power_collapse(a5_dev);
@@ -598,38 +679,6 @@ int cam_a5_process_cmd(void *device_priv, uint32_t cmd_type,
 	case CAM_ICP_CMD_POWER_RESUME:
 		rc = cam_a5_power_resume(a5_dev, *((bool *)cmd_args));
 		break;
-	case CAM_ICP_CMD_SET_FW_BUF: {
-		struct cam_icp_a5_set_fw_buf_info *fw_buf_info = cmd_args;
-
-		if (!cmd_args) {
-			CAM_ERR(CAM_ICP, "cmd args NULL");
-			return -EINVAL;
-		}
-
-		core_info->fw_buf = fw_buf_info->iova;
-		core_info->fw_kva_addr = fw_buf_info->kva;
-		core_info->fw_buf_len = fw_buf_info->len;
-
-		CAM_DBG(CAM_ICP, "fw buf info = %x %llx %lld",
-			core_info->fw_buf, core_info->fw_kva_addr,
-			core_info->fw_buf_len);
-		break;
-	}
-	case CAM_ICP_SET_IRQ_CB: {
-		struct cam_icp_set_irq_cb *irq_cb = cmd_args;
-
-		if (!cmd_args) {
-			CAM_ERR(CAM_ICP, "cmd args NULL");
-			return -EINVAL;
-		}
-
-		spin_lock_irqsave(&a5_dev->hw_lock, flags);
-		core_info->irq_cb.icp_hw_mgr_cb = irq_cb->icp_hw_mgr_cb;
-		core_info->irq_cb.data = irq_cb->data;
-		spin_unlock_irqrestore(&a5_dev->hw_lock, flags);
-		break;
-	}
-
 	case CAM_ICP_SEND_INIT:
 		hfi_send_system_cmd(HFI_CMD_SYS_INIT, 0, 0);
 		break;

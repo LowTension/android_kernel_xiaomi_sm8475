@@ -12,12 +12,6 @@
 #include "cam_hw_mgr_intf.h"
 #include "cam_icp_hw_intf.h"
 
-struct cam_icp_a5_set_fw_buf_info {
-	uint32_t iova;
-	uint64_t kva;
-	uint64_t len;
-};
-
 /**
  * struct cam_icp_a5_query_cap - ICP query device capability payload
  * @fw_version: firmware version info

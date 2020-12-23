@@ -23,12 +23,11 @@ enum cam_icp_hw_type {
 };
 
 enum cam_icp_cmd_type {
-	CAM_ICP_CMD_FW_DOWNLOAD,
+	CAM_ICP_CMD_PROC_SHUTDOWN,
+	CAM_ICP_CMD_PROC_BOOT,
 	CAM_ICP_CMD_POWER_COLLAPSE,
 	CAM_ICP_CMD_POWER_RESUME,
-	CAM_ICP_CMD_SET_FW_BUF,
 	CAM_ICP_CMD_ACQUIRE,
-	CAM_ICP_SET_IRQ_CB,
 	CAM_ICP_TEST_IRQ,
 	CAM_ICP_SEND_INIT,
 	CAM_ICP_CMD_VOTE_CPAS,
@@ -41,9 +40,29 @@ enum cam_icp_cmd_type {
 	CAM_ICP_CMD_MAX,
 };
 
-struct cam_icp_set_irq_cb {
-	int32_t (*icp_hw_mgr_cb)(uint32_t irq_status, void *data);
+struct cam_icp_irq_cb {
 	void *data;
+	int (*cb)(void *data, uint32_t irq_status);
+};
+
+/**
+ * struct cam_icp_boot_args - Boot arguments for ICP processor
+ *
+ * @firmware.iova: device vaddr to firmware region
+ * @firmware.kva: kernel vaddr to firmware region
+ * @firmware.len: length of firmware region
+ * @irq_cb: irq callback
+ * @debug_enabled: processor will be booted with debug enabled
+ */
+struct cam_icp_boot_args {
+	struct {
+		uint32_t iova;
+		uint64_t kva;
+		uint64_t len;
+	} firmware;
+
+	struct cam_icp_irq_cb irq_cb;
+	bool debug_enabled;
 };
 
 /**

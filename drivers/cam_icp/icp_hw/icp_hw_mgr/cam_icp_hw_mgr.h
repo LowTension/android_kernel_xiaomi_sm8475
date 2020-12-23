@@ -314,7 +314,8 @@ struct cam_icp_clk_info {
  * @devices: Devices of ICP hardware manager
  * @ctx_data: Context data
  * @icp_caps: ICP capabilities
- * @fw_download: Firmware download state
+ * @icp_booted: Processor is booted i.e. firmware loaded
+ * @icp_resumed: Processor is powered on
  * @iommu_hdl: Non secure IOMMU handle
  * @iommu_sec_hdl: Secure IOMMU handle
  * @hfi_mem: Memory for hfi
@@ -323,7 +324,7 @@ struct cam_icp_clk_info {
  * @timer_work: Work queue for timer watchdog
  * @msg_buf: Buffer for message data from firmware
  * @dbg_buf: Buffer for debug data from firmware
- * @a5_complete: Completion info
+ * @icp_complete: Completion info
  * @cmd_work_data: Pointer to command work queue task
  * @msg_work_data: Pointer to message work queue task
  * @timer_work_data: Pointer to timer work queue task
@@ -331,7 +332,6 @@ struct cam_icp_clk_info {
  * @ipe_ctxt_cnt: IPE Active context count
  * @bps_ctxt_cnt: BPS Active context count
  * @dentry: Debugfs entry
- * @a5_debug: A5 debug flag
  * @icp_pc_flag: Flag to enable/disable power collapse
  * @ipe_bps_pc_flag: Flag to enable/disable
  *                   power collapse for ipe & bps
@@ -339,14 +339,14 @@ struct cam_icp_clk_info {
  * @icp_default_clk: Set this clok if user doesn't supply
  * @clk_info: Clock info of hardware
  * @secure_mode: Flag to enable/disable secure camera
- * @a5_jtag_debug: entry to enable A5 JTAG debugging
- * @a5_debug_type : entry to enable FW debug message/qdss
- * @a5_dbg_lvl : debug level set to FW.
- * @a5_fw_dump_lvl : level set for dumping the FW data
+ * @icp_jtag_debug: entry to enable ICP JTAG debugging
+ * @icp_debug_type : entry to enable FW debug message/qdss
+ * @icp_dbg_lvl : debug level set to FW.
+ * @icp_fw_dump_lvl : level set for dumping the FW data
  * @ipe0_enable: Flag for IPE0
  * @ipe1_enable: Flag for IPE1
  * @bps_enable: Flag for BPS
- * @a5_dev_intf : Device interface for A5
+ * @icp_dev_intf : Device interface for ICP
  * @ipe0_dev_intf: Device interface for IPE0
  * @ipe1_dev_intf: Device interface for IPE1
  * @bps_dev_intf: Device interface for BPS
@@ -365,7 +365,8 @@ struct cam_icp_hw_mgr {
 	struct cam_icp_hw_ctx_data ctx_data[CAM_ICP_CTX_MAX];
 	struct cam_icp_query_cap_cmd icp_caps;
 
-	bool fw_download;
+	bool icp_booted;
+	bool icp_resumed;
 	int32_t iommu_hdl;
 	int32_t iommu_sec_hdl;
 	struct icp_hfi_mem_info hfi_mem;
