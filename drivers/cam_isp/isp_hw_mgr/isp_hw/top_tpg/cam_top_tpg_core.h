@@ -108,6 +108,7 @@ struct cam_top_tpg_cfg {
  * @tpg_res:                  tpg resource
  * @tpg_cfg:                  tpg configuration
  * @clk_rate                  clock rate
+ * @reserve_cnt:              reserve cnt
  * @lock_state                lock state
  * @tpg_complete              tpg completion
  *
@@ -118,6 +119,7 @@ struct cam_top_tpg_hw {
 	struct cam_top_tpg_hw_info      *tpg_info;
 	struct cam_isp_resource_node     tpg_res;
 	uint64_t                         clk_rate;
+	uint32_t                         reserve_cnt;
 	spinlock_t                       lock_state;
 	struct completion                tpg_complete;
 };

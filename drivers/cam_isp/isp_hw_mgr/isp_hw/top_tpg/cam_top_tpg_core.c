@@ -82,6 +82,7 @@ static int cam_top_tpg_release(void *hw_priv,
 	CAM_DBG(CAM_ISP, "TPG:%d res type :%d",
 		tpg_hw->hw_intf->hw_idx, tpg_res->res_type);
 
+	tpg_hw->reserve_cnt = 0;
 	tpg_res->res_state = CAM_ISP_RESOURCE_STATE_AVAILABLE;
 	tpg_data = (struct cam_top_tpg_cfg *)tpg_res->res_priv;
 	memset(tpg_data, 0, sizeof(struct cam_top_tpg_cfg));
