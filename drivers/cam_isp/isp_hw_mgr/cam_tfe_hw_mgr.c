@@ -4224,6 +4224,7 @@ static int cam_tfe_mgr_prepare_hw_update(void *hw_mgr_priv,
 	struct cam_isp_prepare_hw_update_data   *prepare_hw_data;
 	struct cam_isp_frame_header_info         frame_header_info;
 	struct cam_isp_change_base_args          change_base_info = {0};
+	struct cam_isp_check_sfe_fe_io_cfg       sfe_fe_chk_cfg = {0};
 
 	if (!hw_mgr_priv || !prepare_hw_update_args) {
 		CAM_ERR(CAM_ISP, "Invalid args");
@@ -4313,9 +4314,10 @@ static int cam_tfe_mgr_prepare_hw_update(void *hw_mgr_priv,
 			hw_mgr->mgr_common.img_iommu_hdl_secure,
 			prepare, ctx->base[i].idx,
 			&kmd_buf, ctx->res_list_tfe_out,
-			NULL,
+			NULL, CAM_ISP_TFE_OUT_RES_BASE,
 			CAM_TFE_HW_OUT_RES_MAX, fill_fence,
-			&frame_header_info);
+			CAM_ISP_HW_TYPE_TFE,
+			&frame_header_info, &sfe_fe_chk_cfg);
 
 		if (rc) {
 			CAM_ERR(CAM_ISP,
