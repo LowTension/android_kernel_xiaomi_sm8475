@@ -7928,6 +7928,24 @@ static int cam_isp_packet_generic_blob_handler(void *user_data,
 	case CAM_ISP_GENERIC_BLOB_TYPE_SFE_FE_CONFIG:
 	case CAM_ISP_GENERIC_BLOB_TYPE_SFE_SCRATCH_BUF_CFG:
 		break;
+	case CAM_ISP_GENERIC_BLOB_TYPE_DYNAMIC_MODE_SWITCH: {
+		struct cam_isp_mode_switch_info    *mup_config;
+
+		if (blob_size < sizeof(struct cam_isp_mode_switch_info)) {
+			CAM_ERR(CAM_ISP, "Invalid blob size %u expected %lu",
+				blob_size,
+				sizeof(struct cam_isp_mode_switch_info));
+			return -EINVAL;
+		}
+
+		mup_config = (struct cam_isp_mode_switch_info *)blob_data;
+
+		rc = cam_isp_blob_csid_mup_update(blob_type, blob_info,
+			mup_config, prepare);
+		if (rc)
+			CAM_ERR(CAM_ISP, "MUP Update Failed");
+	}
+		break;
 	default:
 		CAM_WARN(CAM_ISP, "Invalid blob type %d", blob_type);
 		break;
@@ -8263,23 +8281,6 @@ static int cam_sfe_packet_generic_blob_handler(void *user_data,
 	case CAM_ISP_GENERIC_BLOB_TYPE_CSID_QCFA_CONFIG:
 	case CAM_ISP_GENERIC_BLOB_TYPE_SENSOR_BLANKING_CONFIG:
 	case CAM_ISP_GENERIC_BLOB_TYPE_TPG_CORE_CONFIG:
-	case CAM_ISP_GENERIC_BLOB_TYPE_DYNAMIC_MODE_SWITCH: {
-		struct cam_isp_mode_switch_info    *mup_config;
-
-		if (blob_size < sizeof(struct cam_isp_mode_switch_info)) {
-			CAM_ERR(CAM_ISP, "Invalid blob size %u expected %lu",
-				blob_size,
-				sizeof(struct cam_isp_mode_switch_info));
-			return -EINVAL;
-		}
-
-		mup_config = (struct cam_isp_mode_switch_info *)blob_data;
-
-		rc = cam_isp_blob_csid_mup_update(blob_type, blob_info,
-			mup_config, prepare);
-		if (rc)
-			CAM_ERR(CAM_ISP, "MUP Update Failed");
-	}
 		break;
 	default:
 		CAM_WARN(CAM_ISP, "Invalid blob type: %u", blob_type);
