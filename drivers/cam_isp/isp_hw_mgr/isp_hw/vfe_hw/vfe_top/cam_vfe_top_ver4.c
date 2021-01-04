@@ -64,6 +64,7 @@ struct cam_vfe_mux_ver4_data {
 	bool                               is_offline;
 
 	bool                               is_pixel_path;
+	bool                               sfe_binned_epoch_cfg;
 
 	struct timespec64                     sof_ts;
 	struct timespec64                     epoch_ts;
@@ -373,6 +374,8 @@ int cam_vfe_top_acquire_resource(
 		acquire_data->vfe_in.in_port->horizontal_bin;
 	res_data->vbi_value      = 0;
 	res_data->hbi_value      = 0;
+	res_data->sfe_binned_epoch_cfg = (bool)
+		acquire_data->vfe_in.in_port->sfe_binned_epoch_cfg;
 
 	if (res_data->is_dual)
 		res_data->dual_hw_idx = acquire_data->vfe_in.dual_hw_idx;
@@ -1023,7 +1026,8 @@ static int cam_vfe_resource_start(
 	/* Epoch line cfg will still be configured at midpoint of the frame width.
 	 * We use '/4' instead of '/2' because it is multipixel path.
 	 */
-	if (rsrc_data->horizontal_bin || rsrc_data->qcfa_bin)
+	if (rsrc_data->horizontal_bin || rsrc_data->qcfa_bin ||
+		rsrc_data->sfe_binned_epoch_cfg)
 		val >>= 1;
 
 	cam_io_w_mb(val, rsrc_data->mem_base +

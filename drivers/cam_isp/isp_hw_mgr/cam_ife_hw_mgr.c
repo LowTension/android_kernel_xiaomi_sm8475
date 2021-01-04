@@ -4280,6 +4280,8 @@ static int cam_ife_mgr_acquire_get_unified_structure_v2(
 		                           CAM_ISP_DYNAMIC_SENOR_SWITCH_EN);
 	in_port->can_use_lite             =  in->feature_flag &
 						CAM_ISP_CAN_USE_LITE_MODE;
+	in_port->sfe_binned_epoch_cfg     = (in->feature_flag &
+		CAM_ISP_SFE_BINNED_EPOCH_CFG_ENABLE);
 
 	in_port->data = kcalloc(in->num_out_res,
 		sizeof(struct cam_isp_out_port_generic_info),
