@@ -686,6 +686,7 @@ int cam_isp_add_io_buffers(
 	struct cam_buf_io_cfg              *io_cfg;
 	struct cam_isp_resource_node       *res;
 	struct cam_isp_hw_mgr_res          *hw_mgr_res;
+	struct cam_isp_hw_mgr_res          *hw_mgr_res_temp;
 	struct cam_isp_hw_get_cmd_update    update_buf;
 	struct cam_isp_hw_get_wm_update     wm_update;
 	struct cam_isp_hw_get_wm_update     bus_rd_update;
@@ -778,14 +779,18 @@ int cam_isp_add_io_buffers(
 			res_id_in = io_cfg[i].resource_type;
 			found = false;
 			if (!res_list_in_rd) {
-				CAM_DBG(CAM_ISP,
-					"No BUS Read supported");
-				continue;
+				CAM_ERR(CAM_ISP,
+				"No BUS Read supported io_cfg %d %d req:%d type:%d fence:%d",
+					prepare->packet->num_io_configs, i,
+					prepare->packet->header.request_id,
+					io_cfg[i].resource_type, io_cfg[i].fence);
+				return -EINVAL;
 			}
 			if (hw_type != CAM_ISP_HW_TYPE_SFE)
 				res_id_in = CAM_ISP_HW_VFE_IN_RD;
 
-			list_for_each_entry(hw_mgr_res, res_list_in_rd, list) {
+			list_for_each_entry_safe(hw_mgr_res, hw_mgr_res_temp,
+				res_list_in_rd, list) {
 				if (hw_mgr_res->res_id == res_id_in) {
 					found = true;
 					break;
