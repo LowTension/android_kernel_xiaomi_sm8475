@@ -450,6 +450,10 @@ int cam_isp_add_command_buffers(
 		case CAM_ISP_SFE_PACKET_META_COMMON:
 		case CAM_ISP_SFE_PACKET_META_DUAL_CONFIG:
 			break;
+		case CAM_ISP_PACKET_META_CSID_LEFT:
+		case CAM_ISP_PACKET_META_CSID_RIGHT:
+		case CAM_ISP_PACKET_META_CSID_COMMON:
+			break;
 		default:
 			CAM_ERR(CAM_ISP, "invalid cdm command meta data %d",
 				cmd_meta_data);
@@ -1549,18 +1553,142 @@ int cam_isp_add_wait_trigger(
 	return rc;
 }
 
-int cam_isp_add_csid_reg_update(
-	struct cam_hw_prepare_update_args    *prepare,
-	struct list_head                     *res_list,
-	uint32_t                              base_idx,
-	struct cam_kmd_buf_info              *kmd_buf_info)
+int cam_isp_add_csid_command_buffers(
+	struct cam_hw_prepare_update_args   *prepare,
+	struct cam_kmd_buf_info             *kmd_buf_info,
+	struct cam_isp_ctx_base_info        *base_info)
 {
 	int rc = 0;
-	struct cam_isp_hw_mgr_res            *hw_mgr_res;
+	uint32_t                           cmd_meta_data, num_ent, i;
+	uint32_t                           base_idx;
+	enum cam_isp_hw_split_id           split_id;
+	struct cam_cmd_buf_desc           *cmd_desc = NULL;
+	struct cam_hw_update_entry        *hw_entry = NULL;
+
+	split_id = base_info->split_id;
+	base_idx = base_info->idx;
+	hw_entry = prepare->hw_update_entries;
+
+	/*
+	 * set the cmd_desc to point the first command descriptor in the
+	 * packet
+	 */
+	cmd_desc = (struct cam_cmd_buf_desc *)
+			((uint8_t *)&prepare->packet->payload +
+			prepare->packet->cmd_buf_offset);
+
+	CAM_DBG(CAM_ISP, "split id = %d, number of command buffers:%d",
+		split_id, prepare->packet->num_cmd_buf);
+
+	for (i = 0; i < prepare->packet->num_cmd_buf; i++) {
+		num_ent = prepare->num_hw_update_entries;
+		if (!cmd_desc[i].length)
+			continue;
+
+		/* One hw entry space required for left or right or common */
+		if (num_ent + 1 >= prepare->max_hw_update_entries) {
+			CAM_ERR(CAM_ISP, "Insufficient  HW entries :%d %d",
+				num_ent, prepare->max_hw_update_entries);
+			return -EINVAL;
+		}
+
+		rc = cam_packet_util_validate_cmd_desc(&cmd_desc[i]);
+		if (rc)
+			return rc;
+
+		cmd_meta_data = cmd_desc[i].meta_data;
+
+		CAM_DBG(CAM_ISP, "meta type: %d, split_id: %d",
+			cmd_meta_data, split_id);
+
+		switch (cmd_meta_data) {
+
+		case CAM_ISP_PACKET_META_BASE:
+		case CAM_ISP_PACKET_META_LEFT:
+		case CAM_ISP_PACKET_META_DMI_LEFT:
+		case CAM_ISP_PACKET_META_RIGHT:
+		case CAM_ISP_PACKET_META_DMI_RIGHT:
+		case CAM_ISP_PACKET_META_COMMON:
+		case CAM_ISP_PACKET_META_DMI_COMMON:
+		case CAM_ISP_PACKET_META_DUAL_CONFIG:
+		case CAM_ISP_PACKET_META_GENERIC_BLOB_LEFT:
+		case CAM_ISP_PACKET_META_GENERIC_BLOB_RIGHT:
+		case CAM_ISP_PACKET_META_GENERIC_BLOB_COMMON:
+		case CAM_ISP_PACKET_META_REG_DUMP_ON_FLUSH:
+		case CAM_ISP_PACKET_META_REG_DUMP_ON_ERROR:
+		case CAM_ISP_PACKET_META_REG_DUMP_PER_REQUEST:
+			break;
+		case CAM_ISP_PACKET_META_CSID_LEFT:
+			if (split_id == CAM_ISP_HW_SPLIT_LEFT) {
+				hw_entry[num_ent].len = cmd_desc[i].length;
+				hw_entry[num_ent].handle =
+					cmd_desc[i].mem_handle;
+				hw_entry[num_ent].offset = cmd_desc[i].offset;
+				CAM_DBG(CAM_ISP,
+					"Meta_Left num_ent=%d handle=0x%x, len=%u, offset=%u",
+					num_ent,
+					hw_entry[num_ent].handle,
+					hw_entry[num_ent].len,
+					hw_entry[num_ent].offset);
+					hw_entry[num_ent].flags =
+						CAM_ISP_IQ_BL;
+
+				num_ent++;
+			}
+			break;
+		case CAM_ISP_PACKET_META_CSID_RIGHT:
+			if (split_id == CAM_ISP_HW_SPLIT_RIGHT) {
+				hw_entry[num_ent].len = cmd_desc[i].length;
+				hw_entry[num_ent].handle =
+					cmd_desc[i].mem_handle;
+				hw_entry[num_ent].offset = cmd_desc[i].offset;
+				CAM_DBG(CAM_ISP,
+					"Meta_Right num_ent=%d handle=0x%x, len=%u, offset=%u",
+					num_ent,
+					hw_entry[num_ent].handle,
+					hw_entry[num_ent].len,
+					hw_entry[num_ent].offset);
+					hw_entry[num_ent].flags =
+						CAM_ISP_IQ_BL;
+				num_ent++;
+			}
+			break;
+		case CAM_ISP_PACKET_META_CSID_COMMON:
+			hw_entry[num_ent].len = cmd_desc[i].length;
+			hw_entry[num_ent].handle =
+				cmd_desc[i].mem_handle;
+			hw_entry[num_ent].offset = cmd_desc[i].offset;
+			CAM_DBG(CAM_ISP,
+				"Meta_Common num_ent=%d handle=0x%x, len=%u, offset=%u",
+				num_ent,
+				hw_entry[num_ent].handle,
+				hw_entry[num_ent].len,
+				hw_entry[num_ent].offset);
+				hw_entry[num_ent].flags = CAM_ISP_IQ_BL;
+
+			num_ent++;
+			break;
+		default:
+			CAM_ERR(CAM_ISP, "invalid cdm command meta data %d",
+				cmd_meta_data);
+			return -EINVAL;
+		}
+		prepare->num_hw_update_entries = num_ent;
+	}
+
+	return rc;
+}
+
+int cam_isp_add_csid_reg_update(
+	struct cam_hw_prepare_update_args    *prepare,
+	struct cam_kmd_buf_info              *kmd_buf_info,
+	void                                 *args)
+{
+	int rc = 0;
 	struct cam_isp_resource_node         *res;
-	uint32_t kmd_buf_remain_size, num_ent, i, reg_update_size, hw_idx;
-	struct cam_ife_csid_reg_update_args
-				rup_args[CAM_IFE_CSID_HW_NUM_MAX] = {0};
+	uint32_t kmd_buf_remain_size, num_ent;
+	uint32_t reg_update_size = 0;
+	struct cam_isp_csid_reg_update_args *rup_args = NULL;
 
 	if (prepare->num_hw_update_entries + 1 >=
 		prepare->max_hw_update_entries) {
@@ -1570,65 +1698,44 @@ int cam_isp_add_csid_reg_update(
 		return -EINVAL;
 	}
 
-	reg_update_size = 0;
-	list_for_each_entry(hw_mgr_res, res_list, list) {
-		if (hw_mgr_res->res_type == CAM_ISP_RESOURCE_UNINT)
-			continue;
+	rup_args = (struct cam_isp_csid_reg_update_args *)args;
 
-		for (i = 0; i < CAM_ISP_HW_SPLIT_MAX; i++) {
-			if (!hw_mgr_res->hw_res[i])
-				continue;
-			if (i == CAM_ISP_HW_SPLIT_RIGHT)
-				continue;
-			res = hw_mgr_res->hw_res[i];
-			if (res->hw_intf->hw_idx != base_idx)
-				continue;
-			hw_idx = res->hw_intf->hw_idx;
-			rup_args[hw_idx].res[rup_args[hw_idx].num_res] = res;
-			rup_args[hw_idx].num_res++;
-
-			CAM_DBG(CAM_ISP,
-				"Reg update added for res %d hw_id %d cdm_idx %d",
-				res->res_id, res->hw_intf->hw_idx, base_idx);
-		}
+	if (!rup_args->num_res) {
+		CAM_ERR(CAM_ISP, "No Res for Reg Update");
+		return -EINVAL;
 	}
 
-	for (i = 0; i < CAM_IFE_CSID_HW_NUM_MAX; i++) {
-		if (!rup_args[i].num_res)
-			continue;
-
-		if (kmd_buf_info->size > (kmd_buf_info->used_bytes +
-			reg_update_size)) {
-			kmd_buf_remain_size =  kmd_buf_info->size -
-				(kmd_buf_info->used_bytes +
-				reg_update_size);
-		} else {
-			CAM_ERR(CAM_ISP, "no free mem %d %d %d",
-				base_idx, kmd_buf_info->size,
-				kmd_buf_info->used_bytes +
-				reg_update_size);
-			rc = -EINVAL;
-			return rc;
-		}
-
-		rup_args[i].cmd.cmd_buf_addr = kmd_buf_info->cpu_addr +
-			kmd_buf_info->used_bytes/4 +
-			reg_update_size/4;
-		rup_args[i].cmd.size = kmd_buf_remain_size;
-		res = rup_args[i].res[0];
-
-		rc = res->hw_intf->hw_ops.process_cmd(
-			res->hw_intf->hw_priv,
-			CAM_ISP_HW_CMD_GET_REG_UPDATE, &rup_args[i],
-			sizeof(struct cam_ife_csid_reg_update_args));
-		if (rc)
-			return rc;
-
-		CAM_DBG(CAM_ISP,
-			"Reg update added for res %d hw_id %d cdm_idx %d",
-			res->res_id, res->hw_intf->hw_idx, base_idx);
-		reg_update_size += rup_args[i].cmd.used_bytes;
+	if (kmd_buf_info->size <=(kmd_buf_info->used_bytes +
+		reg_update_size)) {
+		CAM_ERR(CAM_ISP, "no free mem %u %u %u",
+			kmd_buf_info->size,
+			kmd_buf_info->used_bytes +
+			reg_update_size);
+		return -EINVAL;
 	}
+
+	kmd_buf_remain_size =  kmd_buf_info->size -
+		(kmd_buf_info->used_bytes +
+		reg_update_size);
+
+	memset(&rup_args->cmd, 0, sizeof(struct cam_isp_hw_cmd_buf_update));
+	rup_args->cmd.cmd_buf_addr = kmd_buf_info->cpu_addr +
+		kmd_buf_info->used_bytes/4 +
+		reg_update_size/4;
+	rup_args->cmd.size = kmd_buf_remain_size;
+	res = rup_args->res[0];
+
+	rc = res->hw_intf->hw_ops.process_cmd(
+		res->hw_intf->hw_priv,
+		CAM_ISP_HW_CMD_GET_REG_UPDATE, rup_args,
+		sizeof(struct cam_isp_csid_reg_update_args));
+	if (rc)
+		return rc;
+
+	CAM_DBG(CAM_ISP,
+		"Reg update added for res %d hw_id %d",
+		res->res_id, res->hw_intf->hw_idx);
+	reg_update_size += rup_args->cmd.used_bytes;
 
 	if (reg_update_size) {
 		/* Update the HW entries */
@@ -1653,7 +1760,6 @@ int cam_isp_add_csid_reg_update(
 		kmd_buf_info->offset     += reg_update_size;
 		prepare->num_hw_update_entries = num_ent;
 		/* reg update is success return status 0 */
-		rc = 0;
 	}
 
 	return rc;

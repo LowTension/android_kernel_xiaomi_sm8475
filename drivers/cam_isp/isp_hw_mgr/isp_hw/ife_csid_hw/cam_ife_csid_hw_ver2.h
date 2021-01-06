@@ -518,6 +518,8 @@ struct cam_ife_csid_ver2_common_reg_info {
 	uint32_t early_eof_supported;
 	uint32_t global_reset;
 	uint32_t rup_supported;
+	uint32_t only_master_rup;
+	uint32_t need_separate_base;
 	/* Masks */
 	uint32_t pxl_cnt_mask;
 	uint32_t line_cnt_mask;

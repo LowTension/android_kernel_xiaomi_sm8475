@@ -237,7 +237,7 @@ struct cam_ife_hw_mgr_ctx {
  * @free_ctx_list:         free hw context list
  * @used_ctx_list:         used hw context list
  * @ctx_pool:              context storage
- * @ife_csid_dev_caps      csid device capability stored per core
+ * @csid_hw_caps           csid hw capability stored per core
  * @ife_dev_caps           ife device capability per core
  * @work q                 work queue for IFE hw manager
  * @debug_cfg              debug configuration
@@ -262,7 +262,7 @@ struct cam_ife_hw_mgr {
 	struct list_head               used_ctx_list;
 	struct cam_ife_hw_mgr_ctx      ctx_pool[CAM_IFE_CTX_MAX];
 
-	struct cam_ife_csid_hw_caps    ife_csid_dev_caps[
+	struct cam_ife_csid_hw_caps    csid_hw_caps[
 						CAM_IFE_CSID_HW_NUM_MAX];
 	struct cam_vfe_hw_get_hw_cap   ife_dev_caps[CAM_IFE_HW_NUM_MAX];
 	struct cam_req_mgr_core_workq *workq;
