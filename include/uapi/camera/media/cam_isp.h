@@ -167,6 +167,7 @@
 
 /* Feature Flag indicators */
 #define CAM_ISP_PARAM_FETCH_SECURITY_MODE      BIT(0)
+#define CAM_ISP_CAN_USE_LITE_MODE              BIT(1)
 #define CAM_ISP_DYNAMIC_SENOR_SWITCH_EN        BIT(2)
 
 /* ISP core cfg flag params */

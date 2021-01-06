@@ -659,11 +659,11 @@ static enum cam_vfe_bus_ver3_vfe_out_type
 	case CAM_ISP_IFE_OUT_RES_STATS_GTM_BHIST:
 		vfe_out_type = CAM_VFE_BUS_VER3_VFE_OUT_STATS_GTM_BHIST;
 		break;
-	case CAM_ISP_IFE_LITE_OUT_RES_STATS_BE:
-		vfe_out_type = CAM_VFE_BUS_VER3_VFE_OUT_STATS_BE;
+	case CAM_ISP_IFE_LITE_OUT_RES_STATS_BG:
+		vfe_out_type = CAM_VFE_BUS_VER3_VFE_OUT_STATS_BG;
 		break;
-	case CAM_ISP_IFE_LITE_OUT_RES_GAMMA:
-		vfe_out_type = CAM_VFE_BUS_VER3_VFE_OUT_GAMMA;
+	case CAM_ISP_IFE_LITE_OUT_RES_PREPROCESS_RAW:
+		vfe_out_type = CAM_VFE_BUS_VER3_VFE_OUT_PREPROCESS_RAW;
 		break;
 	default:
 		CAM_WARN(CAM_ISP, "Invalid isp res id: %d , assigning max",
@@ -769,11 +769,11 @@ static int cam_vfe_bus_ver3_get_comp_vfe_out_res_id_list(
 	if (comp_mask & (1 << CAM_VFE_BUS_VER3_VFE_OUT_STATS_GTM_BHIST))
 		out_list[count++] = CAM_ISP_IFE_OUT_RES_STATS_GTM_BHIST;
 
-	if (comp_mask & (1 << CAM_VFE_BUS_VER3_VFE_OUT_STATS_BE))
-		out_list[count++] = CAM_ISP_IFE_LITE_OUT_RES_STATS_BE;
+	if (comp_mask & (1 << CAM_VFE_BUS_VER3_VFE_OUT_STATS_BG))
+		out_list[count++] = CAM_ISP_IFE_LITE_OUT_RES_STATS_BG;
 
-	if (comp_mask & (1 << CAM_VFE_BUS_VER3_VFE_OUT_GAMMA))
-		out_list[count++] = CAM_ISP_IFE_LITE_OUT_RES_GAMMA;
+	if (comp_mask & (1 << CAM_VFE_BUS_VER3_VFE_OUT_PREPROCESS_RAW))
+		out_list[count++] = CAM_ISP_IFE_LITE_OUT_RES_PREPROCESS_RAW;
 
 	*num_out = count;
 	return 0;
@@ -1295,7 +1295,7 @@ static int cam_vfe_bus_ver3_acquire_wm(
 		rsrc_data->height = 0;
 		rsrc_data->stride = 1;
 		rsrc_data->en_cfg = (0x1 << 16) | 0x1;
-	} else if (vfe_out_res_id == CAM_VFE_BUS_VER3_VFE_OUT_STATS_BE) {
+	} else if (vfe_out_res_id == CAM_VFE_BUS_VER3_VFE_OUT_PREPROCESS_RAW) {
 		switch (rsrc_data->format) {
 		case CAM_FORMAT_MIPI_RAW_8:
 		case CAM_FORMAT_MIPI_RAW_10:
@@ -1315,7 +1315,7 @@ static int cam_vfe_bus_ver3_acquire_wm(
 			return -EINVAL;
 		}
 
-	} else if (vfe_out_res_id == CAM_VFE_BUS_VER3_VFE_OUT_GAMMA) {
+	} else if (vfe_out_res_id == CAM_VFE_BUS_VER3_VFE_OUT_STATS_BG) {
 		switch (rsrc_data->format) {
 		case CAM_FORMAT_PLAIN64:
 			rsrc_data->width = 0;

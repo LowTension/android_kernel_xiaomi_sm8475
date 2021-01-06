@@ -134,6 +134,7 @@ struct cam_isp_in_port_generic_info {
 	uint32_t                        sfe_ife_enable;
 	uint32_t                        secure_mode;
 	uint32_t                        dynamic_sensor_switch_en;
+	uint32_t                        can_use_lite;
 	struct cam_isp_out_port_generic_info    *data;
 };
 
