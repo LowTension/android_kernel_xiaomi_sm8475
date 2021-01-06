@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CAM_TOP_TPG_HW_INTF_H_
@@ -12,8 +12,12 @@
 
 /* Max top tpg instance */
 #define CAM_TOP_TPG_HW_NUM_MAX                        3
+/* Max supported number of VC for TPG */
+#define CAM_TOP_TPG_MAX_SUPPORTED_VC                  4
 /* Max supported number of DT for TPG */
 #define CAM_TOP_TPG_MAX_SUPPORTED_DT                  4
+/* Max supported number of in_ports for TPG */
+#define CAM_TOP_TPG_MAX_SUPPORTED_IN_PORTS            16
 
 /**
  * enum cam_top_tpg_id - top tpg hw instance id
@@ -54,30 +58,18 @@ struct cam_top_tpg_ver1_reserve_args {
 };
 
 /**
- * struct cam_top_tpg_ver2_reserve_args
- * @num_inport:   number of inport
+ * struct cam_top_tpg_reserve_args
  *                TPG supports 1 VC/DT combo
- * @in_port :     Input port resource info structure pointer
- * @node_res :    Reserved resource structure pointer
- *
- */
-struct cam_top_tpg_ver2_reserve_args {
-	uint32_t                                  num_inport;
-	struct cam_isp_in_port_generic_info      *in_port;
-	struct cam_isp_resource_node             *node_res;
-};
-
-/**
- * struct cam_top_tpg_ver2_reserve_args
- * @num_inport:   number of inport
  *                TPG supports 4 VC's and 4 DT's per VC
+ * @num_inport:   number of inport
  * @in_port :     Input port resource info structure pointer
  * @node_res :    Reserved resource structure pointer
  *
  */
-struct cam_top_tpg_ver3_reserve_args {
+struct cam_top_tpg_reserve_args {
 	uint32_t                                  num_inport;
-	struct cam_isp_in_port_generic_info      *in_port;
+	struct cam_isp_in_port_generic_info      *in_port[
+					CAM_TOP_TPG_MAX_SUPPORTED_IN_PORTS];
 	struct cam_isp_resource_node             *node_res;
 };
 

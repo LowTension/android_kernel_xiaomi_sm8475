@@ -2945,38 +2945,42 @@ static int cam_ife_hw_mgr_acquire_tpg(
 	uint32_t                                 num_inport)
 {
 	int rc = -EINVAL;
-	uint32_t i;
+	uint32_t i = 0;
 	struct cam_ife_hw_mgr *ife_hw_mgr;
 	struct cam_hw_intf *hw_intf;
-	struct cam_top_tpg_ver2_reserve_args tpg_reserve;
+	struct cam_top_tpg_reserve_args tpg_reserve;
 
 	ife_hw_mgr = ife_ctx->hw_mgr;
 
-	for (i = 0; i < CAM_TOP_TPG_HW_NUM_MAX; i++) {
-		if (!ife_hw_mgr->tpg_devices[i])
-			continue;
+	tpg_reserve.num_inport = num_inport;
+	tpg_reserve.node_res = NULL;
+	if ((num_inport > 0) &&
+		(num_inport <= CAM_TOP_TPG_MAX_SUPPORTED_IN_PORTS)){
+		for (i = 0; i < num_inport; i++)
+			tpg_reserve.in_port[i] = (in_port + i);
 
-		hw_intf = ife_hw_mgr->tpg_devices[i];
-		tpg_reserve.num_inport = num_inport;
-		tpg_reserve.node_res = NULL;
-		tpg_reserve.in_port = in_port;
+		for (i = 0; i < CAM_TOP_TPG_HW_NUM_MAX; i++) {
+			if (!ife_hw_mgr->tpg_devices[i])
+				continue;
 
-		rc = hw_intf->hw_ops.reserve(hw_intf->hw_priv,
-			&tpg_reserve, sizeof(tpg_reserve));
-		if (!rc)
-			break;
+			hw_intf = ife_hw_mgr->tpg_devices[i];
+			rc = hw_intf->hw_ops.reserve(hw_intf->hw_priv,
+				&tpg_reserve, sizeof(tpg_reserve));
+			if (!rc)
+				break;
+		}
 	}
 
-	if (i == CAM_TOP_TPG_HW_NUM_MAX || !tpg_reserve.node_res) {
-		CAM_ERR(CAM_ISP, "Can not acquire IFE TPG");
+	if ((i == CAM_TOP_TPG_HW_NUM_MAX) || !tpg_reserve.node_res) {
+		CAM_ERR(CAM_ISP,
+			"Can not acquire IFE TPG. rc:%d, num_inports:%u",
+			rc, num_inport);
 		rc = -EINVAL;
 		goto end;
 	}
 
-	ife_ctx->res_list_tpg.res_type = in_port->res_type;
 	ife_ctx->res_list_tpg.hw_res[0] = tpg_reserve.node_res;
 	ife_ctx->is_tpg = true;
-
 end:
 	return rc;
 }
@@ -4501,8 +4505,18 @@ static int cam_ife_mgr_acquire_hw(void *hw_mgr_priv, void *acquire_hw_args)
 	}
 
 	/* Check if all output ports are of lite  */
-	if (total_lite_port == total_pix_port + total_rdi_port) {
+	if (total_lite_port == total_pix_port + total_rdi_port)
 		ife_ctx->is_lite_context = 1;
+
+	/* Acquire tpg HW */
+	if ((in_port->res_type == CAM_ISP_IFE_IN_RES_CPHY_TPG_0) ||
+		(in_port->res_type == CAM_ISP_IFE_IN_RES_CPHY_TPG_1) ||
+		(in_port->res_type == CAM_ISP_IFE_IN_RES_CPHY_TPG_2))
+		rc = cam_ife_hw_mgr_acquire_tpg(ife_ctx, &in_port[0],
+			acquire_hw_info->num_inputs);
+	if (rc) {
+		CAM_ERR(CAM_ISP, "can not acquire TPG resource");
+		goto free_res;
 	}
 
 	/* acquire HW resources */
@@ -4521,21 +4535,13 @@ static int cam_ife_mgr_acquire_hw(void *hw_mgr_priv, void *acquire_hw_args)
 			}
 		}
 
+		if (ife_ctx->is_tpg)
+			ife_ctx->res_list_tpg.res_type = in_port[i].res_type;
+
 		CAM_DBG(CAM_ISP,
 			"in_res_type: 0x%x sfe_in_path_type: 0x%x sfe_ife_enable: 0x%x",
 			in_port[i].res_type, in_port[i].sfe_in_path_type,
 			in_port[i].sfe_ife_enable);
-
-		if ((in_port[i].res_type == CAM_ISP_IFE_IN_RES_CPHY_TPG_0) ||
-			(in_port[i].res_type == CAM_ISP_IFE_IN_RES_CPHY_TPG_1) ||
-			(in_port[i].res_type == CAM_ISP_IFE_IN_RES_CPHY_TPG_2))
-			rc  = cam_ife_hw_mgr_acquire_tpg(ife_ctx, &in_port[i],
-				acquire_hw_info->num_inputs);
-
-		if (rc) {
-			CAM_ERR(CAM_ISP, "can not acquire TPG resource");
-			goto free_res;
-		}
 
 		if (ife_ctx->is_offline)
 			rc = cam_ife_mgr_acquire_hw_for_offline_ctx(
