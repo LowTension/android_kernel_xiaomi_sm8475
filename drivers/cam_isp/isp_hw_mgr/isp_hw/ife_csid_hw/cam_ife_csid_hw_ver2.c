@@ -1895,7 +1895,13 @@ static int cam_ife_csid_ver2_init_config_pxl_path(
 		path_reg = csid_reg->ipp_reg;
 	else if (res->res_id ==  CAM_IFE_PIX_PATH_RES_PPP)
 		path_reg = csid_reg->ppp_reg;
-
+	else {
+		CAM_ERR(CAM_ISP,
+			"CSID:%d path res type:%d res_id:%d res state %d",
+			csid_hw->hw_intf->hw_idx,
+			res->res_type, res->res_id, res->res_state);
+		return -EINVAL;
+	}
 	cmn_reg = csid_reg->cmn_reg;
 
 	path_cfg = (struct cam_ife_csid_ver2_path_cfg *)res->res_priv;

@@ -2023,7 +2023,7 @@ static int cam_ife_hw_mgr_acquire_res_sfe_src(
 	struct cam_sfe_acquire_args          sfe_acquire;
 	struct cam_isp_hw_mgr_res           *csid_res;
 	struct cam_isp_hw_mgr_res           *sfe_src_res;
-	struct cam_hw_intf                  *hw_intf;
+	struct cam_hw_intf                  *hw_intf = NULL;
 	struct cam_ife_hw_mgr               *ife_hw_mgr;
 
 	ife_hw_mgr = ife_ctx->hw_mgr;
@@ -2118,7 +2118,8 @@ static int cam_ife_hw_mgr_acquire_res_sfe_src(
 				break;
 		}
 
-		if (rc || !sfe_acquire.sfe_in.rsrc_node) {
+		if (i == CAM_SFE_HW_NUM_MAX || rc ||
+				!sfe_acquire.sfe_in.rsrc_node) {
 			CAM_ERR(CAM_ISP,
 				"Failed to acquire SFE for res_id: 0x%x",
 				sfe_acquire.sfe_in.res_id);
@@ -2127,6 +2128,7 @@ static int cam_ife_hw_mgr_acquire_res_sfe_src(
 
 		sfe_src_res->hw_res[CAM_ISP_HW_SPLIT_LEFT] =
 			sfe_acquire.sfe_in.rsrc_node;
+
 		CAM_DBG(CAM_ISP,
 				"acquire success LEFT SFE: %u res_type: %u res_id: %u",
 				hw_intf->hw_idx,
@@ -2468,7 +2470,7 @@ static int cam_ife_hw_mgr_acquire_ife_src_for_sfe(
 	int rc = -1, i;
 	struct cam_vfe_acquire_args                 vfe_acquire;
 	struct cam_isp_hw_mgr_res                  *ife_src_res;
-	struct cam_hw_intf                         *hw_intf;
+	struct cam_hw_intf                         *hw_intf = NULL;
 	struct cam_ife_hw_mgr                      *ife_hw_mgr;
 
 	ife_hw_mgr = ife_ctx->hw_mgr;
@@ -2566,7 +2568,8 @@ static int cam_ife_hw_mgr_acquire_ife_src_for_sfe(
 				break;
 		}
 
-		if (rc || !vfe_acquire.vfe_in.rsrc_node) {
+		if (i == CAM_IFE_HW_NUM_MAX || rc ||
+				!vfe_acquire.vfe_in.rsrc_node) {
 			CAM_ERR(CAM_ISP, "Unable to acquire right IFE res: %u",
 				vfe_acquire.vfe_in.res_id);
 			rc = -EAGAIN;
@@ -3440,7 +3443,7 @@ static int cam_ife_hw_mgr_acquire_offline_res_ife_camif(
 	int                                         rc = -1;
 	int                                         i;
 	struct cam_vfe_acquire_args                 vfe_acquire;
-	struct cam_hw_intf                         *hw_intf;
+	struct cam_hw_intf                         *hw_intf = NULL;
 	struct cam_isp_hw_mgr_res                  *ife_src_res;
 	struct cam_isp_hw_mgr_res                  *isp_bus_rd_res;
 	struct cam_ife_hw_mgr                      *ife_hw_mgr;
@@ -3495,7 +3498,8 @@ static int cam_ife_hw_mgr_acquire_offline_res_ife_camif(
 			break;
 	}
 
-	if (rc || !vfe_acquire.vfe_in.rsrc_node) {
+	if (i == CAM_IFE_HW_NUM_MAX || rc ||
+			!vfe_acquire.vfe_in.rsrc_node) {
 		CAM_ERR(CAM_ISP, "Failed to acquire IFE LEFT rc: %d",
 			rc);
 		goto put_res;
@@ -3551,7 +3555,7 @@ static int cam_ife_hw_mgr_acquire_offline_res_ife_camif(
 			ife_src_res->hw_res[1]->res_id);
 
 		CAM_DBG(CAM_ISP, "Acquired VFE:%d CAMIF for RIGHT",
-			ife_src_res->hw_res[i]->hw_intf->hw_idx);
+			ife_src_res->hw_res[1]->hw_intf->hw_idx);
 	}
 
 	return rc;
@@ -5767,6 +5771,7 @@ static int cam_ife_mgr_start_hw(void *hw_mgr_priv, void *start_hw_args)
 
 	primary_rdi_src_res = CAM_ISP_HW_VFE_IN_MAX;
 	primary_rdi_out_res = g_ife_hw_mgr.max_vfe_out_res_type;
+	primary_rdi_csid_res = CAM_IFE_PIX_PATH_RES_MAX;
 
 	if (!hw_mgr_priv || !start_isp) {
 		CAM_ERR(CAM_ISP, "Invalid arguments");
@@ -6715,7 +6720,7 @@ static int cam_isp_blob_hfr_update(
 
 		rc = cam_isp_add_cmd_buf_update(
 			hw_mgr_res, blob_type,
-			blob_type_hw_cmd_map[blob_type],
+			CAM_ISP_HW_CMD_GET_HFR_UPDATE,
 			blob_info->base_info->idx,
 			(void *)cmd_buf_addr,
 			kmd_buf_remain_size,
@@ -8444,7 +8449,7 @@ static int cam_isp_sfe_add_scratch_buffer_cfg(
 	struct list_head                     *res_list_in_rd,
 	struct cam_ife_hw_mgr_ctx            *ctx)
 {
-	int i, j, res_id, rc;
+	int i, j, res_id, rc = 0;
 	uint32_t used_bytes = 0, remain_size = 0;
 	uint32_t io_cfg_used_bytes, num_ent;
 	uint32_t *cpu_addr = NULL;
@@ -10508,8 +10513,7 @@ static int cam_ife_hw_mgr_event_handler(
 		return -EINVAL;
 
 	if (!priv)
-		if (evt_id != CAM_ISP_HW_EVENT_ERROR)
-			return -EINVAL;
+		return -EINVAL;
 
 	ctx = (struct cam_ife_hw_mgr_ctx *)priv;
 	CAM_DBG(CAM_ISP, "Event ID 0x%x", evt_id);
