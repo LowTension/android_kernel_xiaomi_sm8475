@@ -286,6 +286,83 @@ static int cam_ife_csid_ver2_set_debug(
 	return 0;
 }
 
+static int cam_ife_csid_ver2_sof_irq_debug(
+	struct cam_ife_csid_ver2_hw *csid_hw,
+	void *cmd_args)
+{
+	int i = 0;
+	uint32_t val = 0;
+	bool sof_irq_enable = false;
+	struct cam_hw_soc_info                  *soc_info;
+	struct cam_ife_csid_ver2_reg_info *csid_reg;
+
+	if (*((uint32_t *)cmd_args) == 1)
+		sof_irq_enable = true;
+
+	if (csid_hw->hw_info->hw_state ==
+		CAM_HW_STATE_POWER_DOWN) {
+		CAM_WARN(CAM_ISP,
+			"CSID powered down unable to %s sof irq",
+			(sof_irq_enable) ? "enable" : "disable");
+		return 0;
+	}
+
+	soc_info = &csid_hw->hw_info->soc_info;
+	csid_reg = (struct cam_ife_csid_ver2_reg_info *)
+			csid_hw->core_info->csid_reg;
+
+	for (i = 0; i < csid_reg->cmn_reg->num_pix; i++) {
+
+		val = cam_io_r_mb(soc_info->reg_map[0].mem_base +
+			csid_reg->ipp_reg->irq_mask_addr);
+
+		if (!val)
+			continue;
+
+		if (sof_irq_enable)
+			val |= IFE_CSID_VER2_PATH_INFO_INPUT_SOF;
+		else
+			val &= ~IFE_CSID_VER2_PATH_INFO_INPUT_SOF;
+
+		cam_io_w_mb(val, soc_info->reg_map[0].mem_base +
+			csid_reg->ipp_reg->irq_mask_addr);
+	}
+
+	for (i = 0; i < csid_reg->cmn_reg->num_rdis; i++) {
+		val = cam_io_r_mb(soc_info->reg_map[0].mem_base +
+			csid_reg->rdi_reg[i]->irq_mask_addr);
+		if (!val)
+			continue;
+
+		if (sof_irq_enable)
+			val |= IFE_CSID_VER2_PATH_INFO_INPUT_SOF;
+		else
+			val &= ~IFE_CSID_VER2_PATH_INFO_INPUT_SOF;
+
+		cam_io_w_mb(val, soc_info->reg_map[0].mem_base +
+			csid_reg->rdi_reg[i]->irq_mask_addr);
+	}
+
+	if (sof_irq_enable) {
+		csid_hw->debug_info.path_mask |=
+			IFE_CSID_VER2_PATH_INFO_INPUT_SOF;
+		csid_hw->debug_info.debug_val |=
+			CAM_IFE_CSID_DEBUG_ENABLE_SOF_IRQ;
+		csid_hw->flags.sof_irq_triggered = true;
+	} else {
+		csid_hw->debug_info.path_mask &=
+			~IFE_CSID_VER2_PATH_INFO_INPUT_SOF;
+		csid_hw->debug_info.debug_val &=
+			~CAM_IFE_CSID_DEBUG_ENABLE_SOF_IRQ;
+		csid_hw->flags.sof_irq_triggered = false;
+	}
+
+	CAM_INFO(CAM_ISP, "SOF freeze: CSID SOF irq %s",
+		(sof_irq_enable) ? "enabled" : "disabled");
+
+	return 0;
+}
+
 static int cam_ife_csid_ver2_get_evt_payload(
 	struct cam_ife_csid_ver2_hw *csid_hw,
 	struct cam_ife_csid_ver2_evt_payload **evt_payload,
@@ -712,9 +789,15 @@ static int cam_ife_csid_ver2_parse_path_irq_status(
 	const uint8_t                        **irq_reg_tag;
 	uint32_t                               bit_pos = 0;
 	uint32_t                               temp_status;
+	uint32_t                               sof_irq_debug_en = 0;
 
 	irq_reg_tag = cam_ife_csid_get_irq_reg_tag_ptr();
 	temp_status = irq_status & err_mask;
+
+	if (csid_hw->flags.sof_irq_triggered &&
+		(irq_status & IFE_CSID_VER2_PATH_INFO_INPUT_SOF)) {
+		csid_hw->counters.irq_debug_cnt++;
+	}
 
 	while (temp_status) {
 
@@ -741,6 +824,11 @@ static int cam_ife_csid_ver2_parse_path_irq_status(
 
 		bit_pos++;
 		temp_status >>= 1;
+	}
+
+	if (csid_hw->counters.irq_debug_cnt >= CAM_CSID_IRQ_SOF_DEBUG_CNT_MAX) {
+		cam_ife_csid_ver2_sof_irq_debug(csid_hw, &sof_irq_debug_en);
+		csid_hw->counters.irq_debug_cnt = 0;
 	}
 
 	return 0;
@@ -3590,82 +3678,6 @@ static int cam_ife_csid_ver2_set_csid_clock(
 	return 0;
 }
 
-static int cam_ife_csid_ver2_sof_irq_debug(
-	struct cam_ife_csid_ver2_hw *csid_hw,
-	void *cmd_args)
-{
-	int i = 0;
-	uint32_t val = 0;
-	bool sof_irq_enable = false;
-	struct cam_hw_soc_info                  *soc_info;
-	struct cam_ife_csid_ver2_reg_info *csid_reg;
-
-	if (*((uint32_t *)cmd_args) == 1)
-		sof_irq_enable = true;
-
-	if (csid_hw->hw_info->hw_state ==
-		CAM_HW_STATE_POWER_DOWN) {
-		CAM_WARN(CAM_ISP,
-			"CSID powered down unable to %s sof irq",
-			(sof_irq_enable) ? "enable" : "disable");
-		return 0;
-	}
-
-	soc_info = &csid_hw->hw_info->soc_info;
-	csid_reg = (struct cam_ife_csid_ver2_reg_info *)
-			csid_hw->core_info->csid_reg;
-
-	for (i = 0; i < csid_reg->cmn_reg->num_pix; i++) {
-
-		val = cam_io_r_mb(soc_info->reg_map[0].mem_base +
-			csid_reg->ipp_reg->irq_mask_addr);
-
-		if (!val)
-			continue;
-
-		if (sof_irq_enable)
-			val |= IFE_CSID_VER2_PATH_INFO_INPUT_SOF;
-		else
-			val &= ~IFE_CSID_VER2_PATH_INFO_INPUT_SOF;
-
-		cam_io_w_mb(val, soc_info->reg_map[0].mem_base +
-			csid_reg->ipp_reg->irq_mask_addr);
-	}
-
-	for (i = 0; i < csid_reg->cmn_reg->num_rdis; i++) {
-		val = cam_io_r_mb(soc_info->reg_map[0].mem_base +
-			csid_reg->rdi_reg[i]->irq_mask_addr);
-		if (!val)
-			continue;
-
-		if (sof_irq_enable)
-			val |= IFE_CSID_VER2_PATH_INFO_INPUT_SOF;
-		else
-			val &= ~IFE_CSID_VER2_PATH_INFO_INPUT_SOF;
-
-		cam_io_w_mb(val, soc_info->reg_map[0].mem_base +
-			csid_reg->rdi_reg[i]->irq_mask_addr);
-	}
-
-	if (sof_irq_enable) {
-		csid_hw->debug_info.path_mask |=
-			IFE_CSID_VER2_PATH_INFO_INPUT_SOF;
-		csid_hw->debug_info.debug_val |=
-			CAM_IFE_CSID_DEBUG_ENABLE_SOF_IRQ;
-		csid_hw->flags.sof_irq_triggered = true;
-	} else {
-		csid_hw->debug_info.path_mask &=
-			~IFE_CSID_VER2_PATH_INFO_INPUT_SOF;
-		csid_hw->debug_info.debug_val &=
-			~CAM_IFE_CSID_DEBUG_ENABLE_SOF_IRQ;
-		csid_hw->flags.sof_irq_triggered = false;
-	}
-
-	CAM_INFO(CAM_ISP, "SOF freeze: CSID SOF irq %s",
-		(sof_irq_enable) ? "enabled" : "disabled");
-
-	return 0;
-}
 static int cam_ife_csid_ver2_dual_sync_cfg(
 	struct cam_ife_csid_ver2_hw  *csid_hw,
 	void *cmd_args)
