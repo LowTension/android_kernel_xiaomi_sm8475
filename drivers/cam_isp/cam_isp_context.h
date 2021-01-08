@@ -166,12 +166,11 @@ struct cam_isp_ctx_irq_ops {
  */
 struct cam_isp_ctx_req {
 	struct cam_ctx_request               *base;
-	struct cam_hw_update_entry            cfg[CAM_ISP_CTX_CFG_MAX];
+	struct cam_hw_update_entry           *cfg;
 	uint32_t                              num_cfg;
-	struct cam_hw_fence_map_entry         fence_map_out
-						[CAM_ISP_CTX_RES_MAX];
+	struct cam_hw_fence_map_entry        *fence_map_out;
 	uint32_t                              num_fence_map_out;
-	struct cam_hw_fence_map_entry         fence_map_in[CAM_ISP_CTX_RES_MAX];
+	struct cam_hw_fence_map_entry        *fence_map_in;
 	uint32_t                              num_fence_map_in;
 	uint32_t                              num_acked;
 	uint32_t                              num_deferred_acks;

@@ -294,6 +294,9 @@ int cam_icp_context_init(struct cam_icp_context *ctx,
 
 	ctx->base->state_machine = cam_icp_ctx_state_machine;
 	ctx->base->ctx_priv = ctx;
+	ctx->base->max_hw_update_entries = CAM_CTX_CFG_MAX;
+	ctx->base->max_in_map_entries = CAM_CTX_CFG_MAX;
+	ctx->base->max_out_map_entries = CAM_CTX_CFG_MAX;
 	ctx->ctxt_to_hw_map = NULL;
 
 err:

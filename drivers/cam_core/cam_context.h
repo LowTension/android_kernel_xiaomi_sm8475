@@ -60,6 +60,7 @@ enum cam_context_state {
  * @num_out_map_entries:   Number of out map entries
  * @num_in_acked:          Number of in fence acked
  * @num_out_acked:         Number of out fence acked
+ * @index:                 Index of request in the list
  * @flushed:               Request is flushed
  * @ctx:                   The context to which this request belongs
  * @pf_data                page fault debug data
@@ -70,14 +71,15 @@ struct cam_ctx_request {
 	uint32_t                       status;
 	uint64_t                       request_id;
 	void                          *req_priv;
-	struct cam_hw_update_entry     hw_update_entries[CAM_CTX_CFG_MAX];
+	struct cam_hw_update_entry    *hw_update_entries;
 	uint32_t                       num_hw_update_entries;
-	struct cam_hw_fence_map_entry  in_map_entries[CAM_CTX_CFG_MAX];
+	struct cam_hw_fence_map_entry *in_map_entries;
 	uint32_t                       num_in_map_entries;
-	struct cam_hw_fence_map_entry  out_map_entries[CAM_CTX_CFG_MAX];
+	struct cam_hw_fence_map_entry *out_map_entries;
 	uint32_t                       num_out_map_entries;
 	atomic_t                       num_in_acked;
 	uint32_t                       num_out_acked;
+	uint32_t                       index;
 	int                            flushed;
 	struct cam_context            *ctx;
 	struct cam_hw_mgr_dump_pf_data pf_data;
@@ -198,6 +200,12 @@ struct cam_ctx_ops {
  * @node:                  The main node to which this context belongs
  * @sync_mutex:            mutex to sync with sync cb thread
  * @last_flush_req:        Last request to flush
+ * @max_hw_update_entries: Max hw update entries
+ * @max_in_map_entries:    Max in map entries
+ * @max_out_map_entries:   Max out in map entries
+ * @hw_updater_entry:      Hw update entry
+ * @in_map_entries:        In map update entry
+ * @out_map_entries:       Out map entry
  *
  */
 struct cam_context {
@@ -212,28 +220,34 @@ struct cam_context {
 	struct mutex                 ctx_mutex;
 	spinlock_t                   lock;
 
-	struct list_head             active_req_list;
-	struct list_head             pending_req_list;
-	struct list_head             wait_req_list;
-	struct list_head             free_req_list;
-	struct cam_ctx_request      *req_list;
-	uint32_t                     req_size;
+	struct list_head               active_req_list;
+	struct list_head               pending_req_list;
+	struct list_head               wait_req_list;
+	struct list_head               free_req_list;
+	struct cam_ctx_request        *req_list;
+	uint32_t                       req_size;
 
-	struct cam_hw_mgr_intf      *hw_mgr_intf;
-	struct cam_req_mgr_crm_cb   *ctx_crm_intf;
-	struct cam_req_mgr_kmd_ops  *crm_ctx_intf;
-	cam_hw_event_cb_func         irq_cb_intf;
+	struct cam_hw_mgr_intf        *hw_mgr_intf;
+	struct cam_req_mgr_crm_cb     *ctx_crm_intf;
+	struct cam_req_mgr_kmd_ops    *crm_ctx_intf;
+	cam_hw_event_cb_func           irq_cb_intf;
 
-	enum cam_context_state       state;
-	struct cam_ctx_ops          *state_machine;
+	enum cam_context_state         state;
+	struct cam_ctx_ops            *state_machine;
 
-	void                        *ctx_priv;
-	void                        *ctxt_to_hw_map;
+	void                          *ctx_priv;
+	void                          *ctxt_to_hw_map;
 
-	struct kref                  refcount;
-	void                        *node;
-	struct mutex                 sync_mutex;
-	uint32_t                     last_flush_req;
+	struct kref                    refcount;
+	void                          *node;
+	struct mutex                   sync_mutex;
+	uint32_t                       last_flush_req;
+	uint32_t                       max_hw_update_entries;
+	uint32_t                       max_in_map_entries;
+	uint32_t                       max_out_map_entries;
+	struct cam_hw_update_entry    *hw_update_entry;
+	struct cam_hw_fence_map_entry *in_map_entries;
+	struct cam_hw_fence_map_entry *out_map_entries;
 };
 
 /**

@@ -198,6 +198,9 @@ int cam_jpeg_context_init(struct cam_jpeg_context *ctx,
 	ctx_base->state_machine = cam_jpeg_ctx_state_machine;
 	ctx_base->ctx_priv = ctx;
 
+	ctx_base->max_hw_update_entries = CAM_CTX_CFG_MAX;
+	ctx_base->max_in_map_entries = CAM_CTX_CFG_MAX;
+	ctx_base->max_out_map_entries = CAM_CTX_CFG_MAX;
 err:
 	return rc;
 }

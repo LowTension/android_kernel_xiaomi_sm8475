@@ -1729,6 +1729,9 @@ int cam_custom_dev_context_init(struct cam_custom_context *ctx,
 		return rc;
 	}
 
+	ctx_base->max_hw_update_entries = CAM_CTX_CFG_MAX;
+	ctx_base->max_in_map_entries = CAM_CTX_CFG_MAX;
+	ctx_base->max_out_map_entries = CAM_CTX_CFG_MAX;
 	/* link camera context with custom HW context */
 	ctx_base->state_machine = cam_custom_dev_ctx_top_state_machine;
 	ctx_base->ctx_priv = ctx;
