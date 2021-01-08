@@ -4943,6 +4943,64 @@ static int cam_isp_classify_vote_info(
 		}
 		isp_vote->num_paths = j;
 
+	} else if ((hw_mgr_res->res_id == CAM_ISP_HW_SFE_IN_PIX)
+		|| (hw_mgr_res->res_id == CAM_ISP_HW_SFE_IN_RD0) ||
+		(hw_mgr_res->res_id == CAM_ISP_HW_SFE_IN_RD1) ||
+		(hw_mgr_res->res_id == CAM_ISP_HW_SFE_IN_RD2)) {
+		if (split_idx == CAM_ISP_HW_SPLIT_LEFT) {
+			if (*nrdi_l_bw_updated)
+				return rc;
+
+			for (i = 0; i < bw_config->num_paths; i++) {
+				if (bw_config->axi_path[i].usage_data ==
+					CAM_ISP_USAGE_LEFT_PX) {
+					memcpy(&isp_vote->axi_path[j],
+						&bw_config->axi_path[i],
+						sizeof(struct
+						cam_axi_per_path_bw_vote));
+					j++;
+				}
+			}
+			isp_vote->num_paths = j;
+
+			*nrdi_l_bw_updated = true;
+		} else {
+			if (*nrdi_r_bw_updated)
+				return rc;
+
+			for (i = 0; i < bw_config->num_paths; i++) {
+				if (bw_config->axi_path[i].usage_data ==
+					CAM_ISP_USAGE_RIGHT_PX) {
+					memcpy(&isp_vote->axi_path[j],
+						&bw_config->axi_path[i],
+						sizeof(struct
+						cam_axi_per_path_bw_vote));
+					j++;
+				}
+			}
+			isp_vote->num_paths = j;
+
+			*nrdi_r_bw_updated = true;
+		}
+	} else if ((hw_mgr_res->res_id >= CAM_ISP_HW_SFE_IN_RDI0)
+		&& (hw_mgr_res->res_id <=
+		CAM_ISP_HW_SFE_IN_RDI4)) {
+		for (i = 0; i < bw_config->num_paths; i++) {
+			if ((bw_config->axi_path[i].usage_data ==
+				CAM_ISP_USAGE_RDI) &&
+				((bw_config->axi_path[i].path_data_type -
+				CAM_AXI_PATH_DATA_IFE_RDI0) ==
+				(hw_mgr_res->res_id -
+				CAM_ISP_HW_VFE_IN_RDI0))) {
+				memcpy(&isp_vote->axi_path[j],
+					&bw_config->axi_path[i],
+					sizeof(struct
+					cam_axi_per_path_bw_vote));
+				j++;
+			}
+		}
+		isp_vote->num_paths = j;
+
 	} else {
 		if (hw_mgr_res->hw_res[split_idx]) {
 			CAM_ERR(CAM_ISP, "Invalid res_id %u, split_idx: %u",
@@ -4976,6 +5034,7 @@ static int cam_isp_blob_bw_update_v2(
 	struct cam_isp_hw_mgr_res             *hw_mgr_res;
 	struct cam_hw_intf                    *hw_intf;
 	struct cam_vfe_bw_update_args_v2       bw_upd_args;
+	struct cam_sfe_bw_update_args          sfe_bw_update_args;
 	int                                    rc = -EINVAL;
 	uint32_t                               i, split_idx;
 	bool                                   nrdi_l_bw_updated = false;
@@ -5024,6 +5083,45 @@ static int cam_isp_blob_bw_update_v2(
 					&bw_upd_args,
 					sizeof(
 					struct cam_vfe_bw_update_args_v2));
+				if (rc)
+					CAM_ERR(CAM_PERF,
+						"BW Update failed rc: %d", rc);
+			} else {
+				CAM_WARN(CAM_ISP, "NULL hw_intf!");
+			}
+		}
+	}
+
+	nrdi_l_bw_updated = false;
+	nrdi_r_bw_updated = false;
+	list_for_each_entry(hw_mgr_res, &ctx->res_list_sfe_src, list) {
+		for (split_idx = 0; split_idx < CAM_ISP_HW_SPLIT_MAX;
+			split_idx++) {
+			if (!hw_mgr_res->hw_res[split_idx])
+				continue;
+
+			memset(&sfe_bw_update_args.sfe_vote, 0,
+				sizeof(struct cam_axi_vote));
+			rc = cam_isp_classify_vote_info(hw_mgr_res, bw_config,
+				&sfe_bw_update_args.sfe_vote, split_idx,
+				&nrdi_l_bw_updated, &nrdi_r_bw_updated);
+			if (rc)
+				return rc;
+
+			if (!bw_upd_args.isp_vote.num_paths)
+				continue;
+
+			hw_intf = hw_mgr_res->hw_res[split_idx]->hw_intf;
+			if (hw_intf && hw_intf->hw_ops.process_cmd) {
+				sfe_bw_update_args.node_res =
+					hw_mgr_res->hw_res[split_idx];
+
+				rc = hw_intf->hw_ops.process_cmd(
+					hw_intf->hw_priv,
+					CAM_ISP_HW_CMD_BW_UPDATE_V2,
+					&sfe_bw_update_args,
+					sizeof(
+					struct cam_sfe_bw_update_args));
 				if (rc)
 					CAM_ERR(CAM_PERF,
 						"BW Update failed rc: %d", rc);
