@@ -1909,10 +1909,12 @@ int cam_smmu_reserve_sec_heap(int32_t smmu_hdl,
 	size = iommu_map_sg(iommu_cb_set.cb_info[idx].domain,
 		sec_heap_iova,
 		secheap_buf->table->sgl,
-		secheap_buf->table->nents,
+		secheap_buf->table->orig_nents,
 		prot);
 	if (size != sec_heap_iova_len) {
-		CAM_ERR(CAM_SMMU, "IOMMU mapping failed");
+		CAM_ERR(CAM_SMMU,
+			"IOMMU mapping failed size=%zu, sec_heap_iova_len=%zu",
+			size, sec_heap_iova_len);
 		goto err_unmap_sg;
 	}
 
@@ -2058,7 +2060,7 @@ static int cam_smmu_map_buffer_validate(struct dma_buf *buf,
 		if (iommu_cb_set.force_cache_allocs)
 			prot |= IOMMU_CACHE;
 
-		size = iommu_map_sg(domain, iova, table->sgl, table->nents,
+		size = iommu_map_sg(domain, iova, table->sgl, table->orig_nents,
 				prot);
 
 		if (size < 0) {
