@@ -1144,6 +1144,7 @@ static int cam_ife_csid_ver2_internal_reset(
 
 	soc_info = &csid_hw->hw_info->soc_info;
 	mem_base = soc_info->reg_map[CAM_IFE_CSID_CLC_MEM_BASE_ID].mem_base;
+	reinit_completion(&csid_hw->irq_complete[CAM_IFE_CSID_IRQ_REG_TOP]);
 
 	if (csid_hw->hw_info->hw_state != CAM_HW_STATE_POWER_UP) {
 		CAM_ERR(CAM_ISP, "CSID[%d] powered down state",
