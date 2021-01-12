@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/module.h>
@@ -428,23 +428,43 @@ int32_t cam_sensor_update_i2c_info(struct cam_cmd_i2c_info *i2c_info,
 	return rc;
 }
 
-int32_t cam_sensor_update_slave_info(struct cam_cmd_probe *probe_info,
-	struct cam_sensor_ctrl_t *s_ctrl)
+int32_t cam_sensor_update_slave_info(void *probe_info,
+	uint32_t cmd, struct cam_sensor_ctrl_t *s_ctrl)
 {
 	int32_t rc = 0;
+	struct cam_cmd_probe *sensor_probe_info;
+	struct cam_cmd_probe_v2 *sensor_probe_info_v2;
 
-	s_ctrl->sensordata->slave_info.sensor_id_reg_addr =
-		probe_info->reg_addr;
-	s_ctrl->sensordata->slave_info.sensor_id =
-		probe_info->expected_data;
-	s_ctrl->sensordata->slave_info.sensor_id_mask =
-		probe_info->data_mask;
-	/* Userspace passes the pipeline delay in reserved field */
-	s_ctrl->pipeline_delay =
-		probe_info->reserved;
+	if (cmd == CAM_SENSOR_PROBE_CMD) {
+		sensor_probe_info = (struct cam_cmd_probe *)probe_info;
+		s_ctrl->sensordata->slave_info.sensor_id_reg_addr =
+			sensor_probe_info->reg_addr;
+		s_ctrl->sensordata->slave_info.sensor_id =
+			sensor_probe_info->expected_data;
+		s_ctrl->sensordata->slave_info.sensor_id_mask =
+			sensor_probe_info->data_mask;
+		s_ctrl->pipeline_delay =
+			sensor_probe_info->reserved;
 
-	s_ctrl->sensor_probe_addr_type =  probe_info->addr_type;
-	s_ctrl->sensor_probe_data_type =  probe_info->data_type;
+		s_ctrl->sensor_probe_addr_type = sensor_probe_info->addr_type;
+		s_ctrl->sensor_probe_data_type = sensor_probe_info->data_type;
+	} else if (cmd == CAM_SENSOR_PROBE_V2_CMD) {
+		sensor_probe_info_v2 = (struct cam_cmd_probe_v2 *)probe_info;
+		s_ctrl->sensordata->slave_info.sensor_id_reg_addr =
+			sensor_probe_info_v2->reg_addr;
+		s_ctrl->sensordata->slave_info.sensor_id =
+			sensor_probe_info_v2->expected_data;
+		s_ctrl->sensordata->slave_info.sensor_id_mask =
+			sensor_probe_info_v2->data_mask;
+		s_ctrl->pipeline_delay =
+			sensor_probe_info_v2->pipeline_delay;
+
+		s_ctrl->sensor_probe_addr_type =
+			sensor_probe_info_v2->addr_type;
+		s_ctrl->sensor_probe_data_type =
+			sensor_probe_info_v2->data_type;
+	}
+
 	CAM_DBG(CAM_SENSOR,
 		"Sensor Addr: 0x%x sensor_id: 0x%x sensor_mask: 0x%x sensor_pipeline_delay:0x%x",
 		s_ctrl->sensordata->slave_info.sensor_id_reg_addr,
@@ -456,18 +476,25 @@ int32_t cam_sensor_update_slave_info(struct cam_cmd_probe *probe_info,
 
 int32_t cam_handle_cmd_buffers_for_probe(void *cmd_buf,
 	struct cam_sensor_ctrl_t *s_ctrl,
-	int32_t cmd_buf_num, uint32_t cmd_buf_length, size_t remain_len)
+	int32_t cmd_buf_num, uint32_t cmd,
+	uint32_t cmd_buf_length, size_t remain_len)
 {
 	int32_t rc = 0;
+	size_t required_size = 0;
 
 	switch (cmd_buf_num) {
 	case 0: {
 		struct cam_cmd_i2c_info *i2c_info = NULL;
-		struct cam_cmd_probe *probe_info;
+		void *probe_info;
 
-		if (remain_len <
-			(sizeof(struct cam_cmd_i2c_info) +
-			sizeof(struct cam_cmd_probe))) {
+		if (cmd == CAM_SENSOR_PROBE_CMD)
+			required_size = sizeof(struct cam_cmd_i2c_info) +
+				sizeof(struct cam_cmd_probe);
+		else if(cmd == CAM_SENSOR_PROBE_V2_CMD)
+			required_size = sizeof(struct cam_cmd_i2c_info) +
+				sizeof(struct cam_cmd_probe_v2);
+
+		if (remain_len < required_size) {
 			CAM_ERR(CAM_SENSOR,
 				"not enough buffer for cam_cmd_i2c_info");
 			return -EINVAL;
@@ -478,9 +505,8 @@ int32_t cam_handle_cmd_buffers_for_probe(void *cmd_buf,
 			CAM_ERR(CAM_SENSOR, "Failed in Updating the i2c Info");
 			return rc;
 		}
-		probe_info = (struct cam_cmd_probe *)
-			(cmd_buf + sizeof(struct cam_cmd_i2c_info));
-		rc = cam_sensor_update_slave_info(probe_info, s_ctrl);
+		probe_info = cmd_buf + sizeof(struct cam_cmd_i2c_info);
+		rc = cam_sensor_update_slave_info(probe_info, cmd, s_ctrl);
 		if (rc < 0) {
 			CAM_ERR(CAM_SENSOR, "Updating the slave Info");
 			return rc;
@@ -506,7 +532,8 @@ int32_t cam_handle_cmd_buffers_for_probe(void *cmd_buf,
 	return rc;
 }
 
-int32_t cam_handle_mem_ptr(uint64_t handle, struct cam_sensor_ctrl_t *s_ctrl)
+int32_t cam_handle_mem_ptr(uint64_t handle, uint32_t cmd,
+	struct cam_sensor_ctrl_t *s_ctrl)
 {
 	int rc = 0, i;
 	uint32_t *cmd_buf;
@@ -581,7 +608,7 @@ int32_t cam_handle_mem_ptr(uint64_t handle, struct cam_sensor_ctrl_t *s_ctrl)
 		ptr = (void *) cmd_buf;
 
 		rc = cam_handle_cmd_buffers_for_probe(ptr, s_ctrl,
-			i, cmd_desc[i].length, remain_len);
+			i, cmd, cmd_desc[i].length, remain_len);
 		if (rc < 0) {
 			CAM_ERR(CAM_SENSOR,
 				"Failed to parse the command Buffer Header");
@@ -725,7 +752,8 @@ int32_t cam_sensor_driver_cmd(struct cam_sensor_ctrl_t *s_ctrl,
 
 	mutex_lock(&(s_ctrl->cam_sensor_mutex));
 	switch (cmd->op_code) {
-	case CAM_SENSOR_PROBE_CMD: {
+	case CAM_SENSOR_PROBE_CMD:
+	case CAM_SENSOR_PROBE_V2_CMD: {
 		if (s_ctrl->is_probe_succeed == 1) {
 			CAM_ERR(CAM_SENSOR,
 				"Already Sensor Probed in the slot");
@@ -734,7 +762,8 @@ int32_t cam_sensor_driver_cmd(struct cam_sensor_ctrl_t *s_ctrl,
 
 		if (cmd->handle_type ==
 			CAM_HANDLE_MEM_HANDLE) {
-			rc = cam_handle_mem_ptr(cmd->handle, s_ctrl);
+			rc = cam_handle_mem_ptr(cmd->handle, cmd->op_code,
+				s_ctrl);
 			if (rc < 0) {
 				CAM_ERR(CAM_SENSOR, "Get Buffer Handle Failed");
 				goto release_mutex;
