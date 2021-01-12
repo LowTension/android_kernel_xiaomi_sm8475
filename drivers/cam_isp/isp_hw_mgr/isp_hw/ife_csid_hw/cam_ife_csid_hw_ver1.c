@@ -4202,6 +4202,7 @@ static int cam_ife_csid_ver1_path_top_half(
 	uint32_t                                debug_bits;
 	uint32_t                                bit_pos = 0;
 	int                                     id = 0;
+	uint32_t                                sof_irq_debug_en = 0;
 
 	csid_reg = (struct cam_ife_csid_ver1_reg_info *)
 			csid_hw->core_info->csid_reg;
@@ -4252,6 +4253,11 @@ static int cam_ife_csid_ver1_path_top_half(
 		return 0;
 	}
 
+	if (csid_hw->flags.sof_irq_triggered &&
+		(status & IFE_CSID_VER1_PATH_INFO_INPUT_SOF)) {
+		csid_hw->counters.irq_debug_cnt++;
+	}
+
 	if (status & path_reg->fatal_err_mask)
 		cam_io_w_mb(CAM_CSID_HALT_IMMEDIATELY,
 			soc_info->reg_map[0].mem_base +
@@ -4274,6 +4280,11 @@ static int cam_ife_csid_ver1_path_top_half(
 
 	*need_bh = status & (path_reg->fatal_err_mask |
 			path_reg->non_fatal_err_mask);
+
+	if (csid_hw->counters.irq_debug_cnt >= CAM_CSID_IRQ_SOF_DEBUG_CNT_MAX) {
+		cam_ife_csid_ver1_sof_irq_debug(csid_hw, &sof_irq_debug_en);
+		csid_hw->counters.irq_debug_cnt = 0;
+	}
 
 	return IRQ_HANDLED;
 }
