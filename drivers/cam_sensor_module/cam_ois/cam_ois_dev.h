@@ -92,6 +92,7 @@ struct cam_ois_intf_params {
  * @cci_i2c_master  :   I2C structure
  * @v4l2_dev_str    :   V4L2 device structure
  * @bridge_intf     :   bridge interface params
+ * @i2c_fwinit_data :   ois i2c firmware init settings
  * @i2c_init_data   :   ois i2c init settings
  * @i2c_mode_data   :   ois i2c mode settings
  * @i2c_time_data   :   ois i2c time write settings
@@ -114,6 +115,7 @@ struct cam_ois_ctrl_t {
 	enum cci_device_num cci_num;
 	struct cam_subdev v4l2_dev_str;
 	struct cam_ois_intf_params bridge_intf;
+	struct i2c_settings_array i2c_fwinit_data;
 	struct i2c_settings_array i2c_init_data;
 	struct i2c_settings_array i2c_calib_data;
 	struct i2c_settings_array i2c_mode_data;

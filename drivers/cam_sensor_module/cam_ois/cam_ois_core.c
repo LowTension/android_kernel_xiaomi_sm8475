@@ -398,6 +398,8 @@ static int cam_ois_fw_download(struct cam_ois_ctrl_t *o_ctrl)
 		return -ENOMEM;
 	}
 
+	CAM_DBG(CAM_OIS, "FW prog size:%d.", total_bytes);
+
 	i2c_reg_setting.reg_setting = (struct cam_sensor_i2c_reg_array *) (
 		vaddr);
 
@@ -413,7 +415,8 @@ static int cam_ois_fw_download(struct cam_ois_ctrl_t *o_ctrl)
 	rc = camera_io_dev_write_continuous(&(o_ctrl->io_master_info),
 		&i2c_reg_setting, 1);
 	if (rc < 0) {
-		CAM_ERR(CAM_OIS, "OIS FW download failed %d", rc);
+		CAM_ERR(CAM_OIS, "OIS FW(prog) size(%d) download failed. %d",
+			total_bytes, rc);
 		goto release_firmware;
 	}
 	vfree(vaddr);
@@ -441,6 +444,8 @@ static int cam_ois_fw_download(struct cam_ois_ctrl_t *o_ctrl)
 		return -ENOMEM;
 	}
 
+	CAM_DBG(CAM_OIS, "FW coeff size:%d", total_bytes);
+
 	i2c_reg_setting.reg_setting = (struct cam_sensor_i2c_reg_array *) (
 		vaddr);
 
@@ -455,8 +460,10 @@ static int cam_ois_fw_download(struct cam_ois_ctrl_t *o_ctrl)
 
 	rc = camera_io_dev_write_continuous(&(o_ctrl->io_master_info),
 		&i2c_reg_setting, 1);
+
 	if (rc < 0)
-		CAM_ERR(CAM_OIS, "OIS FW download failed %d", rc);
+		CAM_ERR(CAM_OIS, "OIS FW(coeff) size(%d) download failed rc: %d",
+			total_bytes, rc);
 
 release_firmware:
 	vfree(vaddr);
@@ -527,12 +534,14 @@ static int cam_ois_pkt_parse(struct cam_ois_ctrl_t *o_ctrl, void *arg)
 		return -EINVAL;
 	}
 
-
 	switch (csl_packet->header.op_code & 0xFFFFFF) {
 	case CAM_OIS_PACKET_OPCODE_INIT:
 		offset = (uint32_t *)&csl_packet->payload;
 		offset += (csl_packet->cmd_buf_offset / sizeof(uint32_t));
 		cmd_desc = (struct cam_cmd_buf_desc *)(offset);
+
+		CAM_DBG(CAM_OIS, "num_cmd_buf %d",
+			csl_packet->num_cmd_buf);
 
 		/* Loop through multiple command buffers */
 		for (i = 0; i < csl_packet->num_cmd_buf; i++) {
@@ -591,7 +600,7 @@ static int cam_ois_pkt_parse(struct cam_ois_ctrl_t *o_ctrl, void *arg)
 			default:
 			if (o_ctrl->i2c_init_data.is_settings_valid == 0) {
 				CAM_DBG(CAM_OIS,
-				"Received init settings");
+				"Received init/config settings");
 				i2c_reg_settings =
 					&(o_ctrl->i2c_init_data);
 				i2c_reg_settings->is_settings_valid = 1;
@@ -622,6 +631,21 @@ static int cam_ois_pkt_parse(struct cam_ois_ctrl_t *o_ctrl, void *arg)
 						"Calib parsing failed: %d", rc);
 					return rc;
 				}
+			} else if (o_ctrl->i2c_fwinit_data.is_settings_valid == 0) {
+				CAM_DBG(CAM_OIS, "received fwinit settings");
+				i2c_reg_settings =
+					&(o_ctrl->i2c_fwinit_data);
+				i2c_reg_settings->is_settings_valid = 1;
+				i2c_reg_settings->request_id = 0;
+				rc = cam_sensor_i2c_command_parser(
+					&o_ctrl->io_master_info,
+					i2c_reg_settings,
+					&cmd_desc[i], 1, NULL);
+				if (rc < 0) {
+					CAM_ERR(CAM_OIS,
+					"fw init parsing failed: %d", rc);
+					return rc;
+				}
 			}
 			break;
 			}
@@ -634,6 +658,27 @@ static int cam_ois_pkt_parse(struct cam_ois_ctrl_t *o_ctrl, void *arg)
 				return rc;
 			}
 			o_ctrl->cam_ois_state = CAM_OIS_CONFIG;
+		}
+
+		if (o_ctrl->i2c_fwinit_data.is_settings_valid == 1) {
+			rc = cam_ois_apply_settings(o_ctrl,
+				&o_ctrl->i2c_fwinit_data);
+			if ((rc == -EAGAIN) &&
+				(o_ctrl->io_master_info.master_type == CCI_MASTER)) {
+				CAM_WARN(CAM_OIS,
+					"CCI HW is restting: Reapplying fwinit settings");
+				usleep_range(1000, 1010);
+				rc = cam_ois_apply_settings(o_ctrl,
+					&o_ctrl->i2c_fwinit_data);
+			}
+			if (rc) {
+				CAM_ERR(CAM_OIS,
+					"Cannot apply fwinit data %d",
+					rc);
+				goto pwr_dwn;
+			} else {
+				CAM_DBG(CAM_OIS, "OIS fwinit settings success");
+			}
 		}
 
 		if (o_ctrl->ois_fw_flag) {
@@ -658,15 +703,34 @@ static int cam_ois_pkt_parse(struct cam_ois_ctrl_t *o_ctrl, void *arg)
 				"Cannot apply Init settings: rc = %d",
 				rc);
 			goto pwr_dwn;
+		} else {
+			CAM_DBG(CAM_OIS, "apply Init settings success");
 		}
 
 		if (o_ctrl->is_ois_calib) {
 			rc = cam_ois_apply_settings(o_ctrl,
 				&o_ctrl->i2c_calib_data);
+			if ((rc == -EAGAIN) &&
+				(o_ctrl->io_master_info.master_type == CCI_MASTER)) {
+				CAM_WARN(CAM_OIS,
+					"CCI HW is restting: Reapplying calib settings");
+				usleep_range(1000, 1010);
+				rc = cam_ois_apply_settings(o_ctrl,
+					&o_ctrl->i2c_calib_data);
+			}
 			if (rc) {
 				CAM_ERR(CAM_OIS, "Cannot apply calib data");
 				goto pwr_dwn;
+			} else {
+				CAM_DBG(CAM_OIS, "apply calib data settings success");
 			}
+		}
+
+		rc = delete_request(&o_ctrl->i2c_fwinit_data);
+		if (rc < 0) {
+			CAM_WARN(CAM_OIS,
+				"Fail deleting fwinit data: rc: %d", rc);
+			rc = 0;
 		}
 
 		rc = delete_request(&o_ctrl->i2c_init_data);
@@ -871,6 +935,9 @@ void cam_ois_shutdown(struct cam_ois_ctrl_t *o_ctrl)
 		o_ctrl->bridge_intf.session_hdl = -1;
 	}
 
+	if (o_ctrl->i2c_fwinit_data.is_settings_valid == 1)
+		delete_request(&o_ctrl->i2c_fwinit_data);
+
 	if (o_ctrl->i2c_mode_data.is_settings_valid == 1)
 		delete_request(&o_ctrl->i2c_mode_data);
 
@@ -1006,6 +1073,9 @@ int cam_ois_driver_cmd(struct cam_ois_ctrl_t *o_ctrl, void *arg)
 
 		if (o_ctrl->i2c_init_data.is_settings_valid == 1)
 			delete_request(&o_ctrl->i2c_init_data);
+
+		if (o_ctrl->i2c_fwinit_data.is_settings_valid == 1)
+			delete_request(&o_ctrl->i2c_fwinit_data);
 
 		break;
 	case CAM_STOP_DEV:
