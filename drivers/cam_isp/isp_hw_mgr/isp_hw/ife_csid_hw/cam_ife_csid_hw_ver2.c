@@ -963,8 +963,8 @@ int cam_ife_csid_ver2_get_hw_caps(void *hw_priv,
 	struct cam_ife_csid_hw_caps           *hw_caps;
 	struct cam_ife_csid_ver2_hw           *csid_hw;
 	struct cam_hw_info                    *hw_info;
-	struct cam_ife_csid_ver2_reg_info *csid_reg;
-
+	struct cam_csid_soc_private           *soc_private = NULL;
+	struct cam_ife_csid_ver2_reg_info     *csid_reg;
 
 	if (!hw_priv || !get_hw_cap_args) {
 		CAM_ERR(CAM_ISP, "CSID: Invalid args");
@@ -977,6 +977,8 @@ int cam_ife_csid_ver2_get_hw_caps(void *hw_priv,
 	hw_caps = (struct cam_ife_csid_hw_caps *) get_hw_cap_args;
 	csid_reg = (struct cam_ife_csid_ver2_reg_info *)
 			csid_hw->core_info->csid_reg;
+	soc_private = (struct cam_csid_soc_private *)
+			csid_hw->hw_info->soc_info.soc_private;
 
 	hw_caps->num_rdis = csid_reg->cmn_reg->num_rdis;
 	hw_caps->num_pix = csid_reg->cmn_reg->num_pix;
@@ -988,6 +990,7 @@ int cam_ife_csid_ver2_get_hw_caps(void *hw_priv,
 	hw_caps->rup_en = csid_reg->cmn_reg->rup_supported;
 	hw_caps->only_master_rup = csid_reg->cmn_reg->only_master_rup;
 	hw_caps->need_separate_base = csid_reg->cmn_reg->need_separate_base;
+	hw_caps->is_lite = soc_private->is_ife_csid_lite;
 
 	CAM_DBG(CAM_ISP,
 		"CSID:%d No rdis:%d, no pix:%d, major:%d minor:%d ver :%d",
