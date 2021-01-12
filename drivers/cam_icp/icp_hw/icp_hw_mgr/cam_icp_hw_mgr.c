@@ -2702,11 +2702,20 @@ static int32_t cam_icp_hw_mgr_cb(void *data, bool recover)
 	return rc;
 }
 
+static void cam_icp_free_fw_mem(void)
+{
+	/* Skip freeing FW memory if not allocated */
+	if (icp_hw_mgr.icp_use_pil)
+		return;
+
+	cam_smmu_dealloc_firmware(icp_hw_mgr.iommu_hdl);
+}
+
 static void cam_icp_free_hfi_mem(void)
 {
 	int rc;
 
-	cam_smmu_dealloc_firmware(icp_hw_mgr.iommu_hdl);
+	cam_icp_free_fw_mem();
 	rc = cam_mem_mgr_free_memory_region(&icp_hw_mgr.hfi_mem.sec_heap);
 	if (rc)
 		CAM_ERR(CAM_ICP, "failed to unreserve sec heap");
@@ -2829,14 +2838,6 @@ static int cam_icp_allocate_fw_mem(void)
 		kvaddr, iova, len);
 
 	return rc;
-}
-
-static void cam_icp_free_fw_mem(void)
-{
-	if (icp_hw_mgr.icp_use_pil)
-		return;
-
-	cam_smmu_dealloc_firmware(icp_hw_mgr.iommu_hdl);
 }
 
 static int cam_icp_allocate_qdss_mem(void)
