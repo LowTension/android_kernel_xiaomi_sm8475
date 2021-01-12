@@ -1769,20 +1769,6 @@ static int cam_ife_hw_mgr_acquire_res_sfe_out(
 	int rc = -EINVAL;
 	struct cam_isp_hw_mgr_res *sfe_res_iterator;
 
-	if (!list_empty(&ife_ctx->res_list_ife_in_rd)) {
-		sfe_res_iterator = list_first_entry(
-			&ife_ctx->res_list_ife_in_rd,
-			struct cam_isp_hw_mgr_res, list);
-		if (sfe_res_iterator->num_children)
-			goto out_for_sfe_src;
-		rc = cam_ife_hw_mgr_acquire_res_sfe_out_pix(
-			ife_ctx, sfe_res_iterator, in_port);
-		if (rc)
-			goto err;
-	}
-
-out_for_sfe_src:
-
 	list_for_each_entry(sfe_res_iterator,
 		&ife_ctx->res_list_sfe_src, list) {
 		if (sfe_res_iterator->num_children)
@@ -1796,9 +1782,18 @@ out_for_sfe_src:
 		case CAM_ISP_HW_SFE_IN_RDI0:
 		case CAM_ISP_HW_SFE_IN_RDI1:
 		case CAM_ISP_HW_SFE_IN_RDI2:
+			/* for sHDR acquire both RDI and PIX ports */
+			rc = cam_ife_hw_mgr_acquire_res_sfe_out_rdi(ife_ctx,
+				sfe_res_iterator, in_port);
+			if (rc)
+				goto err;
+
+			rc = cam_ife_hw_mgr_acquire_res_sfe_out_pix(ife_ctx,
+				sfe_res_iterator, in_port);
+			break;
 		case CAM_ISP_HW_SFE_IN_RDI3:
 		case CAM_ISP_HW_SFE_IN_RDI4:
-		rc = cam_ife_hw_mgr_acquire_res_sfe_out_rdi(ife_ctx,
+			rc = cam_ife_hw_mgr_acquire_res_sfe_out_rdi(ife_ctx,
 				sfe_res_iterator, in_port);
 			break;
 		default:
