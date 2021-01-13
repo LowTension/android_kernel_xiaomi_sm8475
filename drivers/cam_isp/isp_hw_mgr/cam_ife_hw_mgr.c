@@ -2779,13 +2779,6 @@ static int cam_ife_hw_mgr_acquire_csid_hw(
 
 	ife_hw_mgr = ife_ctx->hw_mgr;
 
-	if (ife_ctx->is_tpg) {
-		if (ife_ctx->res_list_tpg.hw_res[0]->hw_intf->hw_idx == 0)
-			csid_acquire->phy_sel = CAM_ISP_IFE_IN_RES_PHY_0;
-		else
-			csid_acquire->phy_sel = CAM_ISP_IFE_IN_RES_PHY_1;
-	}
-
 	if (ife_ctx->is_rdi_only_context)
 		csid_acquire->can_use_lite = true;
 

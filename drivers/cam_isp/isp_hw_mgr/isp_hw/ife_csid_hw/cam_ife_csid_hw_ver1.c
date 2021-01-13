@@ -1458,13 +1458,13 @@ static int cam_ife_csid_hw_ver1_rx_cfg(
 		csid_hw->rx_cfg.phy_sel = 0;
 		break;
 	case CAM_ISP_IFE_IN_RES_CPHY_TPG_0:
-		csid_hw->rx_cfg.phy_sel = 1;
+		csid_hw->rx_cfg.phy_sel = 0;
 		break;
 	case CAM_ISP_IFE_IN_RES_CPHY_TPG_1:
-		csid_hw->rx_cfg.phy_sel = 2;
+		csid_hw->rx_cfg.phy_sel = 1;
 		break;
 	case CAM_ISP_IFE_IN_RES_CPHY_TPG_2:
-		csid_hw->rx_cfg.phy_sel = 3;
+		csid_hw->rx_cfg.phy_sel = 2;
 		break;
 	default:
 		csid_hw->rx_cfg.phy_sel =
