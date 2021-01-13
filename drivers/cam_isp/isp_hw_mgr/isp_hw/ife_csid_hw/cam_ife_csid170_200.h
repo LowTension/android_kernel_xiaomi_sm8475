@@ -74,7 +74,7 @@ static struct cam_ife_csid_ver1_path_reg_info
 	.timestamp_en_shift_val        = 2,
 	.format_measure_en_shift_val   = 0,
 	.fatal_err_mask                = 0x4,
-	.non_fatal_err_mask            = 0x8000,
+	.non_fatal_err_mask            = 0xe000,
 };
 
 static struct cam_ife_csid_ver1_path_reg_info
@@ -133,7 +133,7 @@ static struct cam_ife_csid_ver1_path_reg_info
 	.timestamp_en_shift_val         = 2,
 	.format_measure_en_shift_val    = 0,
 	.fatal_err_mask                 = 0x4,
-	.non_fatal_err_mask             = 0x8000,
+	.non_fatal_err_mask             = 0xe000,
 };
 
 static struct cam_ife_csid_ver1_path_reg_info
@@ -192,7 +192,7 @@ static struct cam_ife_csid_ver1_path_reg_info
 	.timestamp_en_shift_val          = 1,
 	.format_measure_en_shift_val     = 1,
 	.fatal_err_mask                  = 0x4,
-	.non_fatal_err_mask              = 0x8000,
+	.non_fatal_err_mask              = 0xe000,
 };
 
 static struct cam_ife_csid_ver1_path_reg_info
@@ -251,7 +251,7 @@ static struct cam_ife_csid_ver1_path_reg_info
 	.timestamp_en_shift_val          = 1,
 	.format_measure_en_shift_val     = 1,
 	.fatal_err_mask                  = 0x4,
-	.non_fatal_err_mask              = 0x8000,
+	.non_fatal_err_mask              = 0xe000,
 };
 
 static struct cam_ife_csid_ver1_path_reg_info
@@ -311,7 +311,7 @@ static struct cam_ife_csid_ver1_path_reg_info
 	.timestamp_en_shift_val          = 1,
 	.format_measure_en_shift_val     = 1,
 	.fatal_err_mask                  = 0x4,
-	.non_fatal_err_mask              = 0x8000,
+	.non_fatal_err_mask              = 0xe000,
 };
 
 static struct cam_ife_csid_csi2_rx_reg_info
@@ -467,6 +467,10 @@ static struct cam_ife_csid_ver1_common_reg_info
 	.measure_en_hbi_vbi_cnt_mask     = 0xC,
 	.timestamp_strobe_val            = 0x2,
 	.timestamp_stb_sel_shift_val     = 0,
+	.format_measure_height_mask_val  = 0xFFFF,
+	.format_measure_height_shift_val = 0x10,
+	.format_measure_width_mask_val   = 0xFFFF,
+	.format_measure_width_shift_val  = 0x0,
 };
 
 static struct cam_ife_csid_ver1_reg_info cam_ife_csid_170_200_reg_info = {

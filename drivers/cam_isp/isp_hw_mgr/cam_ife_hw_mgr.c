@@ -7326,69 +7326,6 @@ end:
 	return rc;
 }
 
-static int cam_isp_blob_sensor_config(
-	uint32_t                               blob_type,
-	struct cam_isp_generic_blob_info      *blob_info,
-	struct cam_isp_sensor_config          *dim_config,
-	struct cam_hw_prepare_update_args     *prepare)
-{
-	struct cam_ife_hw_mgr_ctx                   *ctx = NULL;
-	struct cam_isp_hw_mgr_res                   *hw_mgr_res;
-	struct cam_hw_intf                          *hw_intf;
-	struct cam_ife_sensor_dimension_update_args  update_args;
-	int                                          rc = -EINVAL;
-	uint32_t                                     i;
-	uint32_t                                     res_id;
-	struct cam_isp_sensor_dimension             *path_config;
-
-	ctx = prepare->ctxt_to_hw_map;
-
-	list_for_each_entry(hw_mgr_res, &ctx->res_list_ife_csid, list) {
-		for (i = 0; i < CAM_ISP_HW_SPLIT_MAX; i++) {
-			if (!hw_mgr_res->hw_res[i])
-				continue;
-
-			res_id = hw_mgr_res->hw_res[i]->res_id;
-
-			if (res_id == CAM_IFE_PIX_PATH_RES_IPP) {
-				path_config = &dim_config->ipp_path;
-			} else if (res_id == CAM_IFE_PIX_PATH_RES_PPP) {
-				path_config = &dim_config->ppp_path;
-			} else if (res_id <= CAM_IFE_PIX_PATH_RES_RDI_4) {
-				path_config = &dim_config->rdi_path[res_id];
-			} else {
-				CAM_DBG(CAM_ISP, "Invalid res id %u", res_id);
-				continue;
-			}
-
-			if (!path_config->measure_enabled)
-				continue;
-
-			hw_intf = hw_mgr_res->hw_res[i]->hw_intf;
-
-			update_args.sensor_data.width = path_config->width;
-			update_args.sensor_data.height = path_config->width;
-			update_args.sensor_data.measure_enabled =
-			    path_config->measure_enabled;
-			update_args.res = hw_mgr_res->hw_res[i];
-
-			rc = hw_intf->hw_ops.process_cmd(
-				hw_intf->hw_priv,
-				CAM_IFE_CSID_SET_SENSOR_DIMENSION_CFG,
-				&update_args,
-				sizeof(update_args));
-
-			if (rc) {
-				CAM_ERR(CAM_ISP, "Dimension Update failed %u",
-					res_id);
-				break;
-			}
-		}
-	}
-
-	return rc;
-}
-
 static int cam_isp_blob_vfe_out_update(
 	uint32_t                               blob_type,
 	struct cam_isp_generic_blob_info      *blob_info,
@@ -8023,26 +7960,6 @@ static int cam_isp_packet_generic_blob_handler(void *user_data,
 				"Epoch Configuration Update Failed rc:%d", rc);
 	}
 		break;
-	case CAM_ISP_GENERIC_BLOB_TYPE_SENSOR_DIMENSION_CONFIG: {
-		struct cam_isp_sensor_config *csid_dim_config;
-
-		if (blob_size < sizeof(struct cam_isp_sensor_config)) {
-			CAM_ERR(CAM_ISP, "Invalid blob size %zu expected %zu",
-				blob_size,
-				sizeof(struct cam_isp_sensor_config));
-			return -EINVAL;
-		}
-
-		csid_dim_config =
-			(struct cam_isp_sensor_config *)blob_data;
-
-		rc = cam_isp_blob_sensor_config(blob_type, blob_info,
-			csid_dim_config, prepare);
-		if (rc)
-			CAM_ERR(CAM_ISP,
-				"Sensor Dimension Update Failed rc: %d", rc);
-	}
-		break;
 	case CAM_ISP_GENERIC_BLOB_TYPE_TPG_CORE_CONFIG: {
 		struct cam_isp_tpg_core_config *tpg_config;
 
@@ -8417,7 +8334,6 @@ static int cam_sfe_packet_generic_blob_handler(void *user_data,
 	case CAM_ISP_GENERIC_BLOB_TYPE_IFE_CORE_CONFIG:
 	case CAM_ISP_GENERIC_BLOB_TYPE_VFE_OUT_CONFIG:
 	case CAM_ISP_GENERIC_BLOB_TYPE_BW_CONFIG_V2:
-	case CAM_ISP_GENERIC_BLOB_TYPE_SENSOR_DIMENSION_CONFIG:
 	case CAM_ISP_GENERIC_BLOB_TYPE_CSID_QCFA_CONFIG:
 	case CAM_ISP_GENERIC_BLOB_TYPE_SENSOR_BLANKING_CONFIG:
 	case CAM_ISP_GENERIC_BLOB_TYPE_TPG_CORE_CONFIG:

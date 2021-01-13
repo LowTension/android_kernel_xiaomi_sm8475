@@ -134,6 +134,10 @@ struct cam_ife_csid_ver1_common_reg_info {
 	uint32_t crop_pix_end_mask;
 	uint32_t crop_line_start_mask;
 	uint32_t crop_line_end_mask;
+	uint32_t format_measure_height_mask_val;
+	uint32_t format_measure_height_shift_val;
+	uint32_t format_measure_width_mask_val;
+	uint32_t format_measure_width_shift_val;
 };
 
 /*
@@ -331,7 +335,6 @@ struct cam_ife_csid_ver1_reg_info {
  * @sync_mode   :        Sync mode--> master/slave/none
  * @crop_enable:         flag to indicate crop enable
  * @drop_enable:         flag to indicate drop enable
- * @fmt_measure_enable:  flag to indicate format measure enabled
  *
  */
 struct cam_ife_csid_ver1_path_cfg {
@@ -350,12 +353,9 @@ struct cam_ife_csid_ver1_path_cfg {
 	uint32_t                        qcfa_bin;
 	uint32_t                        hor_ver_bin;
 	uint32_t                        num_bytes_out;
-	uint32_t                        sensor_width;
-	uint32_t                        sensor_height;
 	enum cam_isp_hw_sync_mode       sync_mode;
 	bool                            crop_enable;
 	bool                            drop_enable;
-	bool                            fmt_measure_enable;
 };
 
 /**
