@@ -4150,7 +4150,7 @@ static struct cam_isp_ctx_irq_ops
 		.irq_ops = {
 			__cam_isp_ctx_handle_error,
 			__cam_isp_ctx_rdi_only_sof_in_applied_state,
-			NULL,
+			__cam_isp_ctx_reg_upd_in_applied_state,
 			NULL,
 			NULL,
 			__cam_isp_ctx_buf_done_in_applied,
