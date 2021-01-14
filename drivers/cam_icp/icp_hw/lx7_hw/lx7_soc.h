@@ -13,6 +13,7 @@
 #define UBWC_CONFIG_MAX 2
 
 struct lx7_soc_info {
+	uint32_t icp_qos_val;
 	struct {
 		uint32_t ipe_fetch[UBWC_CONFIG_MAX];
 		uint32_t ipe_write[UBWC_CONFIG_MAX];

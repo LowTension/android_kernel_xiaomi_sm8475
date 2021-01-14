@@ -65,6 +65,20 @@ static int cam_lx7_ubwc_config_get(struct lx7_soc_info *lx7_soc_info,
 	return 0;
 }
 
+static inline void cam_lx7_qos_get(
+	struct lx7_soc_info *lx7_soc_info,
+	struct device_node *np)
+{
+	int rc;
+
+	rc = of_property_read_u32(np, "qos-val",
+		&lx7_soc_info->icp_qos_val);
+	if (rc < 0) {
+		CAM_WARN(CAM_ICP, "QoS need not be set");
+		lx7_soc_info->icp_qos_val = 0;
+	}
+}
+
 static int cam_lx7_dt_properties_get(struct cam_hw_soc_info *soc_info)
 {
 	int rc;
@@ -81,6 +95,9 @@ static int cam_lx7_dt_properties_get(struct cam_hw_soc_info *soc_info)
 		CAM_ERR(CAM_ICP, "failed to get UBWC config props rc=%d", rc);
 		return rc;
 	}
+
+	cam_lx7_qos_get(soc_info->soc_private,
+		soc_info->pdev->dev.of_node);
 
 	return 0;
 }

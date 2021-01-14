@@ -155,7 +155,8 @@ camera-$(CONFIG_SPECTRA_ICP) += \
 	drivers/cam_icp/icp_hw/bps_hw/bps_soc.o \
 	drivers/cam_icp/cam_icp_subdev.o \
 	drivers/cam_icp/cam_icp_context.o \
-	drivers/cam_icp/hfi.o
+	drivers/cam_icp/hfi.o \
+	drivers/cam_icp/utils/cam_icp_utils.o
 
 camera-$(CONFIG_SPECTRA_JPEG) += \
 	drivers/cam_jpeg/jpeg_hw/jpeg_enc_hw/jpeg_enc_dev.o \

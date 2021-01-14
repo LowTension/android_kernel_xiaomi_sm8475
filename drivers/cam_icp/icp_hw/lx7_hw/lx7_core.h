@@ -9,16 +9,28 @@
 #include "cam_hw_intf.h"
 #include "cam_icp_hw_intf.h"
 
-#define LX7_CSR_BASE  0
-#define LX7_CIRQ_BASE 1
-
 #define UNSUPPORTED_PROC_PAS_ID   30
 #define CAM_FW_PAS_ID             33
+
+enum cam_lx7_reg_base {
+	LX7_CSR_BASE,
+	LX7_CIRQ_BASE,
+	LX7_SYS_BASE,
+	LX7_BASE_MAX,
+};
 
 struct cam_lx7_core_info {
 	struct cam_icp_irq_cb irq_cb;
 	uint32_t cpas_handle;
 	bool cpas_start;
+	bool use_sec_pil;
+	struct {
+		const struct firmware *fw_elf;
+		void *fw;
+		uint32_t fw_buf;
+		uintptr_t fw_kva_addr;
+		uint64_t fw_buf_len;
+	} fw_params;
 };
 
 int cam_lx7_hw_init(void *priv, void *args, uint32_t arg_size);

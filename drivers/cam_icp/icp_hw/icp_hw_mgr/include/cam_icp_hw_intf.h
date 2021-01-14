@@ -54,6 +54,7 @@ struct cam_icp_irq_cb {
  * @firmware.len: length of firmware region
  * @irq_cb: irq callback
  * @debug_enabled: processor will be booted with debug enabled
+ * @use_sec_pil: If set to true, use secure PIL for load
  */
 struct cam_icp_boot_args {
 	struct {
@@ -64,6 +65,7 @@ struct cam_icp_boot_args {
 
 	struct cam_icp_irq_cb irq_cb;
 	bool debug_enabled;
+	bool use_sec_pil;
 };
 
 /**

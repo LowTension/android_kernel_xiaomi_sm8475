@@ -3,7 +3,6 @@
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
  */
 
-#include <linux/firmware.h>
 #include <linux/of_address.h>
 #include <linux/qcom_scm.h>
 #include <linux/soc/qcom/mdt_loader.h>
@@ -16,6 +15,7 @@
 #include "cam_icp_hw_intf.h"
 #include "hfi_intf.h"
 #include "hfi_sys_defs.h"
+#include "cam_icp_utils.h"
 #include "lx7_core.h"
 #include "lx7_reg.h"
 #include "lx7_soc.h"
@@ -26,6 +26,9 @@
 #define LX7_GEN_PURPOSE_REG_OFFSET 0x20
 
 #define ICP_FW_NAME_MAX_SIZE    32
+
+#define PC_POLL_DELAY_US 100
+#define PC_POLL_TIMEOUT_US 10000
 
 static int cam_lx7_ubwc_configure(struct cam_hw_soc_info *soc_info)
 {
@@ -296,6 +299,12 @@ static void prepare_boot(struct cam_hw_info *lx7_info,
 	struct cam_lx7_core_info *core_info = lx7_info->core_info;
 	unsigned long flags;
 
+	if (!args->use_sec_pil) {
+		core_info->fw_params.fw_buf = args->firmware.iova;
+		core_info->fw_params.fw_kva_addr = args->firmware.kva;
+		core_info->fw_params.fw_buf_len = args->firmware.len;
+	}
+
 	spin_lock_irqsave(&lx7_info->hw_lock, flags);
 	core_info->irq_cb.data = args->irq_cb.data;
 	core_info->irq_cb.cb = args->irq_cb.cb;
@@ -307,10 +316,216 @@ static void prepare_shutdown(struct cam_hw_info *lx7_info)
 	struct cam_lx7_core_info *core_info = lx7_info->core_info;
 	unsigned long flags;
 
+	core_info->fw_params.fw_buf = 0x0;
+	core_info->fw_params.fw_kva_addr = 0x0;
+	core_info->fw_params.fw_buf_len = 0x0;
+	core_info->use_sec_pil = false;
+
 	spin_lock_irqsave(&lx7_info->hw_lock, flags);
 	core_info->irq_cb.data = NULL;
 	core_info->irq_cb.cb = NULL;
 	spin_unlock_irqrestore(&lx7_info->hw_lock, flags);
+}
+
+/* Used if ICP_SYS is not protected */
+static int __cam_lx7_power_collapse(struct cam_hw_info *lx7_info)
+{
+	uint32_t status = 0;
+	void __iomem *base;
+
+	if (!lx7_info) {
+		CAM_ERR(CAM_ICP, "invalid lx7 dev info");
+		return -EINVAL;
+	}
+
+	base = lx7_info->soc_info.reg_map[LX7_SYS_BASE].mem_base;
+
+	/**
+	 * Need to poll here to confirm that FW has triggered WFI
+	 * and Host can then proceed. No interrupt is expected
+	 * from FW at this time.
+	 */
+	if (readl_poll_timeout(base + ICP_LX7_SYS_STATUS,
+				status, status & ICP_LX7_STANDBYWFI,
+				PC_POLL_DELAY_US, PC_POLL_TIMEOUT_US)) {
+		CAM_ERR(CAM_ICP, "WFI poll timed out: status=0x%08x", status);
+		return -ETIMEDOUT;
+	}
+
+	cam_io_w_mb(0x0, base + ICP_LX7_SYS_CONTROL);
+	return 0;
+}
+
+/* Used if ICP_SYS is not protected */
+static int __cam_lx7_power_resume(struct cam_hw_info *lx7_info)
+{
+	void __iomem *base;
+	struct lx7_soc_info    *soc_priv;
+	struct cam_hw_soc_info *soc_info;
+
+	if (!lx7_info) {
+		CAM_ERR(CAM_ICP, "invalid lx7 dev info");
+		return -EINVAL;
+	}
+
+	soc_info = &lx7_info->soc_info;
+	soc_priv = soc_info->soc_private;
+	base = lx7_info->soc_info.reg_map[LX7_SYS_BASE].mem_base;
+
+	cam_io_w_mb(ICP_LX7_FUNC_RESET,
+		base + ICP_LX7_SYS_RESET);
+
+	if (soc_priv->icp_qos_val)
+		cam_io_w_mb(soc_priv->icp_qos_val,
+			base + ICP_LX7_SYS_ACCESS);
+
+	cam_io_w_mb(ICP_LX7_EN_CPU,
+		base + ICP_LX7_SYS_CONTROL);
+
+	return 0;
+}
+
+/* Used for non secure FW load */
+static int32_t __cam_non_sec_load_fw(void *device_priv)
+{
+	int32_t rc = 0;
+	uint32_t fw_size;
+	struct cam_icp_proc_params lx7_params;
+	char firmware_name[ICP_FW_NAME_MAX_SIZE] = {0};
+	const char               *fw_name;
+	const uint8_t            *fw_start = NULL;
+	struct cam_hw_info       *lx7_dev = device_priv;
+	struct cam_hw_soc_info   *soc_info = NULL;
+	struct cam_lx7_core_info *core_info = NULL;
+	struct platform_device   *pdev = NULL;
+
+	if (!device_priv) {
+		CAM_ERR(CAM_ICP, "Invalid cam_dev_info");
+		return -EINVAL;
+	}
+
+	soc_info = &lx7_dev->soc_info;
+	core_info = (struct cam_lx7_core_info *)lx7_dev->core_info;
+	pdev = soc_info->pdev;
+
+	/**
+	 * Do not attempt to map 0xE0400000 and 0xE0420000 as these
+	 * addresses are routed internally by the core. These segments
+	 * are used by the firmware to make use of the rom packing feature.
+	 */
+	lx7_params.skip_seg = true;
+	lx7_params.vaddr[0] = 0xE0400000;
+	lx7_params.vaddr[1] = 0xE0420000;
+
+	rc = of_property_read_string(pdev->dev.of_node, "fw_name",
+		&fw_name);
+	if (rc) {
+		CAM_ERR(CAM_ICP, "FW image name not found");
+		return rc;
+	}
+
+	/* Account for ".elf" size [4 characters] */
+	if (strlen(fw_name) >= (ICP_FW_NAME_MAX_SIZE - 4)) {
+		CAM_ERR(CAM_ICP, "Invalid fw name %s", fw_name);
+		return -EINVAL;
+	}
+
+	scnprintf(firmware_name, ARRAY_SIZE(firmware_name),
+		"%s.elf", fw_name);
+
+	rc = request_firmware(&core_info->fw_params.fw_elf,
+		firmware_name, &pdev->dev);
+	if (rc) {
+		CAM_ERR(CAM_ICP, "Failed to locate %s fw: %d",
+			firmware_name, rc);
+		return rc;
+	}
+
+	if (!core_info->fw_params.fw_elf) {
+		CAM_ERR(CAM_ICP, "Invalid elf size");
+		rc = -EINVAL;
+		goto fw_download_failed;
+	}
+
+	fw_start = core_info->fw_params.fw_elf->data;
+
+	rc = cam_icp_validate_fw(fw_start, EM_XTENSA);
+	if (rc) {
+		CAM_ERR(CAM_ICP, "fw elf validation failed");
+		goto fw_download_failed;
+	}
+
+	rc = cam_icp_get_fw_size(fw_start, &fw_size, &lx7_params);
+	if (rc) {
+		CAM_ERR(CAM_ICP, "unable to get fw size");
+		goto fw_download_failed;
+	}
+
+	if (core_info->fw_params.fw_buf_len < fw_size) {
+		CAM_ERR(CAM_ICP, "mismatch in fw size: %u %llu",
+			fw_size, core_info->fw_params.fw_buf_len);
+		rc = -EINVAL;
+		goto fw_download_failed;
+	}
+
+	rc = cam_icp_program_fw(fw_start,
+		core_info->fw_params.fw_kva_addr,
+		&lx7_params);
+	if (rc) {
+		CAM_ERR(CAM_ICP, "fw program is failed");
+		goto fw_download_failed;
+	}
+
+fw_download_failed:
+	release_firmware(core_info->fw_params.fw_elf);
+	return rc;
+}
+
+/* Used for non secure FW load */
+static int cam_lx7_non_sec_boot(
+	struct cam_hw_info *lx7_info,
+	struct cam_icp_boot_args *args,
+	uint32_t arg_size)
+{
+	int rc;
+
+	if (!lx7_info || !args) {
+		CAM_ERR(CAM_ICP,
+			"invalid args: lx7_dev=%pK args=%pK",
+			lx7_info, args);
+		return -EINVAL;
+	}
+
+	if (arg_size != sizeof(struct cam_icp_boot_args)) {
+		CAM_ERR(CAM_ICP, "invalid boot args size");
+		return -EINVAL;
+	}
+
+	if (lx7_info->soc_info.num_mem_block != LX7_BASE_MAX) {
+		CAM_ERR(CAM_ICP, "check ICP SYS reg config in DT..");
+		return -EINVAL;
+	}
+
+	prepare_boot(lx7_info, args);
+
+	rc = __cam_non_sec_load_fw(lx7_info);
+	if (rc) {
+		CAM_ERR(CAM_ICP,
+			"firmware download failed rc=%d", rc);
+		goto err;
+	}
+
+	rc = __cam_lx7_power_resume(lx7_info);
+	if (rc) {
+		CAM_ERR(CAM_ICP, "lx7 boot failed rc=%d", rc);
+		goto err;
+	}
+
+	return 0;
+
+err:
+	prepare_shutdown(lx7_info);
+	return rc;
 }
 
 #if IS_REACHABLE(CONFIG_QCOM_MDT_LOADER)
@@ -410,6 +625,7 @@ static int cam_lx7_boot(struct cam_hw_info *lx7_info,
 			uint32_t arg_size)
 {
 	int rc;
+	struct cam_lx7_core_info *core_info = NULL;
 
 	if (!IS_REACHABLE(CONFIG_QCOM_MDT_LOADER))
 		return -EOPNOTSUPP;
@@ -426,6 +642,7 @@ static int cam_lx7_boot(struct cam_hw_info *lx7_info,
 		return -EINVAL;
 	}
 
+	core_info = (struct cam_lx7_core_info *)lx7_info->core_info;
 	prepare_boot(lx7_info, args);
 
 #if IS_REACHABLE(CONFIG_QCOM_MDT_LOADER)
@@ -442,6 +659,7 @@ static int cam_lx7_boot(struct cam_hw_info *lx7_info,
 		goto err;
 	}
 
+	core_info->use_sec_pil = true;
 	return 0;
 err:
 	prepare_shutdown(lx7_info);
@@ -450,19 +668,66 @@ err:
 
 static int cam_lx7_shutdown(struct cam_hw_info *lx7_info)
 {
+	int rc = 0;
+	struct cam_lx7_core_info *core_info =
+		(struct cam_lx7_core_info *)lx7_info->core_info;
+
 	prepare_shutdown(lx7_info);
 
-	return qcom_scm_pas_shutdown(CAM_FW_PAS_ID);
+	if (core_info->use_sec_pil)
+		rc = qcom_scm_pas_shutdown(CAM_FW_PAS_ID);
+	else {
+		void __iomem *base;
+
+		base = lx7_info->soc_info.reg_map[LX7_SYS_BASE].mem_base;
+		cam_io_w_mb(0x0, base + ICP_LX7_SYS_CONTROL);
+	}
+
+	return rc;
 }
 
-static int set_remote_state(uint32_t state)
+/* API controls collapse/resume of ICP */
+static int cam_lx7_core_control(
+	struct cam_hw_info *lx7_info,
+	uint32_t state)
+{
+	int rc = 0;
+	struct cam_lx7_core_info *core_info =
+		(struct cam_lx7_core_info *)lx7_info->core_info;
+
+	if (core_info->use_sec_pil) {
+		rc = qcom_scm_set_remote_state(state, CAM_FW_PAS_ID);
+		if (rc)
+			CAM_ERR(CAM_ICP, "remote state set to %s failed rc=%d",
+				state == TZ_STATE_RESUME ? "resume" : "suspend", rc);
+	} else {
+		if (state == TZ_STATE_RESUME) {
+			rc = __cam_lx7_power_resume(lx7_info);
+			if (rc)
+				CAM_ERR(CAM_ICP, "lx7 resume failed rc=%d", rc);
+		} else {
+			rc = __cam_lx7_power_collapse(lx7_info);
+			if (rc)
+				CAM_ERR(CAM_ICP, "lx7 collapse failed rc=%d", rc);
+		}
+	}
+
+	return rc;
+}
+
+static inline int cam_lx7_download_fw(
+	struct cam_hw_info *lx7_info,
+	struct cam_icp_boot_args *args,
+	uint32_t arg_size)
 {
 	int rc;
 
-	rc = qcom_scm_set_remote_state(state, CAM_FW_PAS_ID);
-	if (rc)
-		CAM_ERR(CAM_ICP, "remote state set to %s failed rc=%d",
-			state == TZ_STATE_RESUME ? "resume" : "suspend", rc);
+	if (args->use_sec_pil)
+		rc = cam_lx7_boot(
+			lx7_info, args, arg_size);
+	else
+		rc = cam_lx7_non_sec_boot(
+			lx7_info, args, arg_size);
 
 	return rc;
 }
@@ -524,13 +789,13 @@ int cam_lx7_process_cmd(void *priv, uint32_t cmd_type,
 		rc = cam_lx7_shutdown(lx7_info);
 		break;
 	case CAM_ICP_CMD_PROC_BOOT:
-		rc = cam_lx7_boot(lx7_info, args, arg_size);
+		rc = cam_lx7_download_fw(lx7_info, args, arg_size);
 		break;
 	case CAM_ICP_CMD_POWER_COLLAPSE:
-		rc = set_remote_state(TZ_STATE_SUSPEND);
+		rc = cam_lx7_core_control(lx7_info, TZ_STATE_SUSPEND);
 		break;
 	case CAM_ICP_CMD_POWER_RESUME:
-		rc = set_remote_state(TZ_STATE_RESUME);
+		rc = cam_lx7_core_control(lx7_info, TZ_STATE_RESUME);
 		break;
 	case CAM_ICP_CMD_VOTE_CPAS:
 		rc = cam_lx7_cpas_vote(lx7_info->core_info, args);
