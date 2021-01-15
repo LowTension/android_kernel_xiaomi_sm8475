@@ -4282,6 +4282,8 @@ static int cam_ife_mgr_acquire_get_unified_structure_v2(
 						CAM_ISP_CAN_USE_LITE_MODE;
 	in_port->sfe_binned_epoch_cfg     = (in->feature_flag &
 		CAM_ISP_SFE_BINNED_EPOCH_CFG_ENABLE);
+	in_port->epd_supported            =  (in->feature_flag &
+					   CAM_ISP_EPD_SUPPORT);
 
 	in_port->data = kcalloc(in->num_out_res,
 		sizeof(struct cam_isp_out_port_generic_info),
@@ -7488,52 +7490,6 @@ static int cam_isp_blob_vfe_out_update(
 	return rc;
 }
 
-static int cam_isp_blob_csid_config_update(
-	uint32_t                               blob_type,
-	struct cam_isp_generic_blob_info      *blob_info,
-	struct cam_isp_csid_epd_config        *epd_config,
-	struct cam_hw_prepare_update_args     *prepare)
-{
-	struct cam_ife_hw_mgr_ctx                   *ctx = NULL;
-	struct cam_isp_hw_mgr_res                   *hw_mgr_res;
-	struct cam_hw_intf                          *hw_intf;
-	struct cam_ife_csid_epd_update_args         epd_update_args;
-	int                                         rc = -EINVAL;
-	uint32_t                                    i = 0;
-
-	ctx = prepare->ctxt_to_hw_map;
-
-	list_for_each_entry(hw_mgr_res, &ctx->res_list_ife_csid, list) {
-		for (i = 0; i < CAM_ISP_HW_SPLIT_MAX; i++) {
-			if (!hw_mgr_res->hw_res[i])
-				continue;
-
-			hw_intf = hw_mgr_res->hw_res[i]->hw_intf;
-			if (hw_intf && hw_intf->hw_ops.process_cmd) {
-				epd_update_args.epd_supported =
-					epd_config->is_epd_supported;
-
-				rc = hw_intf->hw_ops.process_cmd(
-					hw_intf->hw_priv,
-					CAM_IFE_CSID_SET_CONFIG,
-					&epd_update_args,
-					sizeof(
-					struct cam_ife_csid_epd_update_args)
-					);
-				if (rc)
-					CAM_ERR(CAM_ISP,
-						"Failed to epd config:%d",
-						epd_config->is_epd_supported);
-			} else {
-				CAM_WARN(CAM_ISP, "NULL hw_intf!");
-			}
-
-		}
-	}
-
-	return rc;
-}
-
 static int cam_isp_blob_sensor_blanking_config(
 	uint32_t                               blob_type,
 	struct cam_isp_generic_blob_info      *blob_info,
@@ -8048,23 +8004,6 @@ static int cam_isp_packet_generic_blob_handler(void *user_data,
 			CAM_ERR(CAM_ISP, "VFE out update failed rc: %d", rc);
 	}
 		break;
-	case CAM_ISP_GENERIC_BLOB_TYPE_CSID_CONFIG: {
-		struct cam_isp_csid_epd_config *epd_config;
-
-		if (blob_size < sizeof(struct cam_isp_csid_epd_config)) {
-			CAM_ERR(CAM_ISP,
-				"Invalid epd config blob size %u expected %u",
-				blob_size,
-				sizeof(struct cam_isp_csid_epd_config));
-			return -EINVAL;
-		}
-		epd_config = (struct cam_isp_csid_epd_config *)blob_data;
-		rc = cam_isp_blob_csid_config_update(blob_type, blob_info,
-			epd_config, prepare);
-		if (rc)
-			CAM_ERR(CAM_ISP, "CSID Config failed rc: %d", rc);
-	}
-		break;
 	case CAM_ISP_GENERIC_BLOB_TYPE_SENSOR_BLANKING_CONFIG: {
 		struct cam_isp_sensor_blanking_config  *sensor_blanking_config;
 
@@ -8478,7 +8417,6 @@ static int cam_sfe_packet_generic_blob_handler(void *user_data,
 	case CAM_ISP_GENERIC_BLOB_TYPE_IFE_CORE_CONFIG:
 	case CAM_ISP_GENERIC_BLOB_TYPE_VFE_OUT_CONFIG:
 	case CAM_ISP_GENERIC_BLOB_TYPE_BW_CONFIG_V2:
-	case CAM_ISP_GENERIC_BLOB_TYPE_CSID_CONFIG:
 	case CAM_ISP_GENERIC_BLOB_TYPE_SENSOR_DIMENSION_CONFIG:
 	case CAM_ISP_GENERIC_BLOB_TYPE_CSID_QCFA_CONFIG:
 	case CAM_ISP_GENERIC_BLOB_TYPE_SENSOR_BLANKING_CONFIG:

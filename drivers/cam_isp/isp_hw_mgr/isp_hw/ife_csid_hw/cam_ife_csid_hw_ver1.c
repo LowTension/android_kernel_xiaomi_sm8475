@@ -1452,6 +1452,8 @@ static int cam_ife_csid_hw_ver1_rx_cfg(
 	csid_hw->rx_cfg.lane_num =
 		reserve->in_port->lane_num;
 	csid_hw->res_type = reserve->in_port->res_type;
+	csid_hw->rx_cfg.epd_supported =
+		reserve->in_port->epd_supported;
 
 	switch (reserve->in_port->res_type) {
 	case CAM_ISP_IFE_IN_RES_TPG:
@@ -2122,7 +2124,7 @@ static int cam_ife_csid_ver1_enable_csi2(struct cam_ife_csid_ver1_hw *csid_hw)
 	/*EPD supported sensors do not send EOT, error will be generated
 	 * if this irq is enabled
 	 */
-	if (csid_hw->flags.epd_supported)
+	if (csid_hw->rx_cfg.epd_supported)
 		val &= ~IFE_CSID_VER1_RX_CPHY_EOT_RECEPTION;
 
 	cam_io_w_mb(val, soc_info->reg_map[0].mem_base +
@@ -3714,10 +3716,6 @@ static int cam_ife_csid_ver1_process_cmd(void *hw_priv,
 		break;
 	case CAM_ISP_HW_CMD_CSID_CLOCK_DUMP:
 		rc = cam_ife_csid_ver1_dump_csid_clock(csid_hw, cmd_args);
-		break;
-	case CAM_IFE_CSID_SET_CONFIG:
-		rc = cam_ife_csid_set_epd_config(&csid_hw->flags, cmd_args,
-			csid_hw->hw_intf->hw_idx);
 		break;
 	case CAM_IFE_CSID_SET_SENSOR_DIMENSION_CFG:
 		rc = cam_ife_csid_ver1_set_sensor_dimension(csid_hw,

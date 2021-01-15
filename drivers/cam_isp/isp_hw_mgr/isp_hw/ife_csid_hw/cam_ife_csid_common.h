@@ -257,7 +257,6 @@ struct cam_ife_csid_debug_info {
 /*
  * struct cam_ife_csid_hw_flags: place holder for flags
  *
- * @epd_supported:        flag to indicate if epd supported
  * @device_enabled:       flag to indicate if device enabled
  * @binning_enabled:      flag to indicate if binning enabled
  * @sof_irq_triggered:    flag to indicate if sof irq triggered
@@ -269,7 +268,6 @@ struct cam_ife_csid_debug_info {
  * @offline_mode:         flag to indicate if csid in offline mode
  */
 struct cam_ife_csid_hw_flags {
-	bool                  epd_supported;
 	bool                  device_enabled;
 	bool                  binning_enabled;
 	bool                  sof_irq_triggered;
@@ -307,6 +305,7 @@ struct cam_ife_csid_cid_data {
  * @tpg_num_sel:              TPG num sel
  * @dynamic_senso_switch_en:  Flag if dynamic sensor switch is enabled
  * @mup:                      Mode Update bit. 0 for odd vc, 1 for even VC
+ * @epd_supported:            Flag to check if epd supported
  */
 struct cam_ife_csid_rx_cfg  {
 	uint32_t                        phy_sel;
@@ -317,6 +316,7 @@ struct cam_ife_csid_rx_cfg  {
 	uint32_t                        tpg_num_sel;
 	uint32_t                        dynamic_sensor_switch_en;
 	uint32_t                        mup;
+	uint32_t                        epd_supported;
 };
 
 int cam_ife_csid_is_pix_res_format_supported(
@@ -349,9 +349,6 @@ int cam_ife_csid_cid_release(
 int cam_ife_csid_check_in_port_args(
 	struct cam_csid_hw_reserve_resource_args  *reserve,
 	uint32_t hw_idx);
-
-int cam_ife_csid_set_epd_config(struct cam_ife_csid_hw_flags  *flags,
-	void *cmd_args, uint32_t hw_idx);
 
 int cam_ife_csid_is_vc_full_width(struct cam_ife_csid_cid_data *cid_data);
 
