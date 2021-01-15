@@ -19,6 +19,8 @@
 #include "cam_trace.h"
 #include "cam_common_util.h"
 
+#define CAM_MEM_SHARED_BUFFER_PAD_4K (4 * 1024)
+
 static struct cam_mem_table tbl;
 static atomic_t cam_mem_mgr_state = ATOMIC_INIT(CAM_MEM_MGR_UNINITIALIZED);
 
@@ -176,6 +178,8 @@ int cam_mem_mgr_init(void)
 		CAM_ERR(CAM_MEM, "Error in getting force cache alloc flag");
 		return -EINVAL;
 	}
+
+	tbl.need_shared_buffer_padding = cam_smmu_need_shared_buffer_padding();
 
 #if IS_REACHABLE(CONFIG_DMABUF_HEAPS)
 	rc = cam_mem_mgr_get_dma_heaps();
@@ -672,20 +676,18 @@ static int cam_mem_util_get_dma_buf(size_t len,
 }
 #endif
 
-static int cam_mem_util_buffer_alloc(struct cam_mem_mgr_alloc_cmd *cmd,
+static int cam_mem_util_buffer_alloc(size_t len, uint32_t flags,
 	struct dma_buf **dmabuf,
 	int *fd)
 {
 	int rc;
 	struct dma_buf *temp_dmabuf = NULL;
 
-	rc = cam_mem_util_get_dma_buf(cmd->len,
-		cmd->flags,
-		dmabuf);
+	rc = cam_mem_util_get_dma_buf(len, flags, dmabuf);
 	if (rc) {
 		CAM_ERR(CAM_MEM,
 			"Error allocating dma buf : len=%llu, flags=0x%x",
-			cmd->len, cmd->flags);
+			len, flags);
 		return rc;
 	}
 
@@ -697,7 +699,7 @@ static int cam_mem_util_buffer_alloc(struct cam_mem_mgr_alloc_cmd *cmd,
 	}
 
 	CAM_DBG(CAM_MEM, "Alloc success : len=%zu, *dmabuf=%pK, fd=%d",
-		cmd->len, *dmabuf, *fd);
+		len, *dmabuf, *fd);
 
 	/*
 	 * increment the ref count so that ref count becomes 2 here
@@ -860,7 +862,15 @@ int cam_mem_mgr_alloc_and_map(struct cam_mem_mgr_alloc_cmd *cmd)
 		CAM_ERR(CAM_MEM, " Invalid argument");
 		return -EINVAL;
 	}
+
 	len = cmd->len;
+
+	if (tbl.need_shared_buffer_padding &&
+		(cmd->flags & CAM_MEM_FLAG_HW_SHARED_ACCESS)) {
+		len += CAM_MEM_SHARED_BUFFER_PAD_4K;
+		CAM_DBG(CAM_MEM, "Pad 4k size, actual %llu, allocating %zu",
+			cmd->len, len);
+	}
 
 	rc = cam_mem_util_check_alloc_flags(cmd);
 	if (rc) {
@@ -869,13 +879,11 @@ int cam_mem_mgr_alloc_and_map(struct cam_mem_mgr_alloc_cmd *cmd)
 		return rc;
 	}
 
-	rc = cam_mem_util_buffer_alloc(cmd,
-		&dmabuf,
-		&fd);
+	rc = cam_mem_util_buffer_alloc(len, cmd->flags, &dmabuf, &fd);
 	if (rc) {
 		CAM_ERR(CAM_MEM,
 			"Ion Alloc failed, len=%llu, align=%llu, flags=0x%x, num_hdl=%d",
-			cmd->len, cmd->align, cmd->flags, cmd->num_hdl);
+			len, cmd->align, cmd->flags, cmd->num_hdl);
 		cam_mem_mgr_print_tbl();
 		return rc;
 	}
@@ -950,7 +958,7 @@ int cam_mem_mgr_alloc_and_map(struct cam_mem_mgr_alloc_cmd *cmd)
 	tbl.bufq[idx].kmdvaddr = kvaddr;
 	tbl.bufq[idx].vaddr = hw_vaddr;
 	tbl.bufq[idx].dma_buf = dmabuf;
-	tbl.bufq[idx].len = cmd->len;
+	tbl.bufq[idx].len = len;
 	tbl.bufq[idx].num_hdl = cmd->num_hdl;
 	memcpy(tbl.bufq[idx].hdls, cmd->mmu_hdls,
 		sizeof(int32_t) * cmd->num_hdl);

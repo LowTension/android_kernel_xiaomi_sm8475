@@ -183,6 +183,7 @@ struct cam_iommu_cb_set {
 	bool cb_dump_enable;
 	bool map_profile_enable;
 	bool force_cache_allocs;
+	bool need_shared_buffer_padding;
 };
 
 static const struct of_device_id msm_cam_smmu_dt_match[] = {
@@ -363,6 +364,11 @@ static void cam_smmu_dump_monitor_array(
 
 		index = (index + 1) % CAM_SMMU_MONITOR_MAX_ENTRIES;
 	}
+}
+
+bool cam_smmu_need_shared_buffer_padding(void)
+{
+	return iommu_cb_set.need_shared_buffer_padding;
 }
 
 int cam_smmu_need_force_alloc_cached(bool *force_alloc_cached)
@@ -4269,6 +4275,9 @@ static int cam_smmu_component_bind(struct device *dev,
 
 	iommu_cb_set.force_cache_allocs =
 		of_property_read_bool(dev->of_node, "force_cache_allocs");
+	iommu_cb_set.need_shared_buffer_padding =
+		of_property_read_bool(dev->of_node,
+		"need_shared_buffer_padding");
 
 	CAM_DBG(CAM_SMMU, "Main component bound successfully");
 	return 0;

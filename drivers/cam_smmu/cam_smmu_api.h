@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2014-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2021, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CAM_SMMU_API_H_
@@ -436,6 +436,11 @@ void cam_smmu_exit_module(void);
  * @brief : API to determine whether to force all allocations to CACHED
  */
 int cam_smmu_need_force_alloc_cached(bool *force_alloc_cached);
+
+/**
+ * @brief : API to determine whether padding is needed for shared buffers
+ */
+bool cam_smmu_need_shared_buffer_padding(void);
 
 
 #endif /* _CAM_SMMU_API_H_ */
