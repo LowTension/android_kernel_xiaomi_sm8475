@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _HFI_INTF_H_
@@ -33,6 +33,7 @@ struct hfi_mem {
  * @qdss: qdss mapped memory for fw
  * @io_mem: io memory info
  * @io_mem2: 2nd io memory info
+ * @fw_uncached: FW uncached region info
  */
 struct hfi_mem_info {
 	struct hfi_mem qtbl;
@@ -45,6 +46,7 @@ struct hfi_mem_info {
 	struct hfi_mem qdss;
 	struct hfi_mem io_mem;
 	struct hfi_mem io_mem2;
+	struct hfi_mem fw_uncached;
 };
 
 /**

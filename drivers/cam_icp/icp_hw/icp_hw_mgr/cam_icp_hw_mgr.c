@@ -2728,18 +2728,37 @@ static void cam_icp_free_fw_mem(void)
 static void cam_icp_free_hfi_mem(void)
 {
 	int rc;
+	struct cam_smmu_region_info fwuncached_region_info;
+	bool fwuncached_region_exists = false;
 
 	cam_icp_free_fw_mem();
-	rc = cam_mem_mgr_free_memory_region(&icp_hw_mgr.hfi_mem.sec_heap);
-	if (rc)
-		CAM_ERR(CAM_ICP, "failed to unreserve sec heap");
+
+	rc = cam_smmu_get_region_info(icp_hw_mgr.iommu_hdl,
+		CAM_SMMU_REGION_FWUNCACHED,
+		&fwuncached_region_info);
+	if (!rc)
+		fwuncached_region_exists = true;
+
+	if (fwuncached_region_exists) {
+		rc = cam_mem_mgr_free_memory_region(
+			&icp_hw_mgr.hfi_mem.fw_uncached);
+		if (rc)
+			CAM_ERR(CAM_ICP,
+				"failed to unreserve fwuncached region");
+	} else {
+		rc = cam_mem_mgr_free_memory_region(
+			&icp_hw_mgr.hfi_mem.sec_heap);
+		if (rc)
+			CAM_ERR(CAM_ICP, "failed to unreserve sec heap");
+
+		cam_mem_mgr_release_mem(&icp_hw_mgr.hfi_mem.qtbl);
+		cam_mem_mgr_release_mem(&icp_hw_mgr.hfi_mem.cmd_q);
+		cam_mem_mgr_release_mem(&icp_hw_mgr.hfi_mem.msg_q);
+		cam_mem_mgr_release_mem(&icp_hw_mgr.hfi_mem.dbg_q);
+		cam_mem_mgr_release_mem(&icp_hw_mgr.hfi_mem.sfr_buf);
+	}
 
 	cam_smmu_dealloc_qdss(icp_hw_mgr.iommu_hdl);
-	cam_mem_mgr_release_mem(&icp_hw_mgr.hfi_mem.qtbl);
-	cam_mem_mgr_release_mem(&icp_hw_mgr.hfi_mem.cmd_q);
-	cam_mem_mgr_release_mem(&icp_hw_mgr.hfi_mem.msg_q);
-	cam_mem_mgr_release_mem(&icp_hw_mgr.hfi_mem.dbg_q);
-	cam_mem_mgr_release_mem(&icp_hw_mgr.hfi_mem.sfr_buf);
 }
 
 static int cam_icp_alloc_secheap_mem(struct cam_mem_mgr_memory_desc *secheap)
@@ -2899,6 +2918,8 @@ static int cam_icp_get_io_mem_info(void)
 static int cam_icp_allocate_hfi_mem(void)
 {
 	int rc;
+	struct cam_smmu_region_info fwuncached_region_info;
+	bool fwuncached_region_exists = false;
 
 	rc = cam_smmu_get_region_info(icp_hw_mgr.iommu_hdl,
 		CAM_SMMU_REGION_SHARED,
@@ -2920,46 +2941,180 @@ static int cam_icp_allocate_hfi_mem(void)
 		goto fw_alloc_failed;
 	}
 
-	rc = cam_icp_alloc_shared_mem(&icp_hw_mgr.hfi_mem.qtbl);
-	if (rc) {
-		CAM_ERR(CAM_ICP, "Unable to allocate qtbl memory");
-		goto qtbl_alloc_failed;
+	rc = cam_smmu_get_region_info(icp_hw_mgr.iommu_hdl,
+		CAM_SMMU_REGION_FWUNCACHED,
+		&fwuncached_region_info);
+	if (!rc)
+		fwuncached_region_exists = true;
+
+	if (fwuncached_region_exists) {
+		struct cam_mem_mgr_request_desc alloc;
+		struct cam_mem_mgr_memory_desc out;
+		uint32_t offset;
+		uint64_t size;
+
+		memset(&alloc, 0, sizeof(alloc));
+		memset(&out, 0, sizeof(out));
+
+		alloc.size = fwuncached_region_info.iova_len;
+		alloc.align = 0;
+		alloc.flags = CAM_MEM_FLAG_KMD_ACCESS;
+		alloc.smmu_hdl = icp_hw_mgr.iommu_hdl;
+		rc = cam_mem_mgr_reserve_memory_region(&alloc,
+			CAM_SMMU_REGION_FWUNCACHED,
+			&out);
+		if (rc) {
+			CAM_ERR(CAM_ICP, "Unable to reserve secheap memory");
+			goto qtbl_alloc_failed;
+		}
+
+		icp_hw_mgr.hfi_mem.fw_uncached = out;
+
+		offset = 0;
+
+		size = SZ_1M;
+		icp_hw_mgr.hfi_mem.sec_heap.iova       = out.iova + offset;
+		icp_hw_mgr.hfi_mem.sec_heap.kva        = out.kva + offset;
+		icp_hw_mgr.hfi_mem.sec_heap.len        = size;
+		icp_hw_mgr.hfi_mem.sec_heap.smmu_hdl   = out.smmu_hdl;
+		icp_hw_mgr.hfi_mem.sec_heap.mem_handle = out.mem_handle;
+		icp_hw_mgr.hfi_mem.sec_heap.region     = out.region;
+		offset += (uint32_t)size;
+
+		size = SZ_1M;
+		icp_hw_mgr.hfi_mem.qtbl.iova       = out.iova + offset;
+		icp_hw_mgr.hfi_mem.qtbl.kva        = out.kva + offset;
+		icp_hw_mgr.hfi_mem.qtbl.len        = size;
+		icp_hw_mgr.hfi_mem.qtbl.smmu_hdl   = out.smmu_hdl;
+		icp_hw_mgr.hfi_mem.qtbl.mem_handle = out.mem_handle;
+		icp_hw_mgr.hfi_mem.qtbl.region     = out.region;
+		offset += (uint32_t)size;
+
+		size = SZ_1M;
+		icp_hw_mgr.hfi_mem.cmd_q.iova       = out.iova + offset;
+		icp_hw_mgr.hfi_mem.cmd_q.kva        = out.kva + offset;
+		icp_hw_mgr.hfi_mem.cmd_q.len        = size;
+		icp_hw_mgr.hfi_mem.cmd_q.smmu_hdl   = out.smmu_hdl;
+		icp_hw_mgr.hfi_mem.cmd_q.mem_handle = out.mem_handle;
+		icp_hw_mgr.hfi_mem.cmd_q.region     = out.region;
+		offset += (uint32_t)size;
+
+		size = SZ_1M;
+		icp_hw_mgr.hfi_mem.msg_q.iova       = out.iova + offset;
+		icp_hw_mgr.hfi_mem.msg_q.kva        = out.kva + offset;
+		icp_hw_mgr.hfi_mem.msg_q.len        = size;
+		icp_hw_mgr.hfi_mem.msg_q.smmu_hdl   = out.smmu_hdl;
+		icp_hw_mgr.hfi_mem.msg_q.mem_handle = out.mem_handle;
+		icp_hw_mgr.hfi_mem.msg_q.region     = out.region;
+		offset += (uint32_t)size;
+
+		size = SZ_1M;
+		icp_hw_mgr.hfi_mem.dbg_q.iova       = out.iova + offset;
+		icp_hw_mgr.hfi_mem.dbg_q.kva        = out.kva + offset;
+		icp_hw_mgr.hfi_mem.dbg_q.len        = size;
+		icp_hw_mgr.hfi_mem.dbg_q.smmu_hdl   = out.smmu_hdl;
+		icp_hw_mgr.hfi_mem.dbg_q.mem_handle = out.mem_handle;
+		icp_hw_mgr.hfi_mem.dbg_q.region     = out.region;
+		offset += (uint32_t)size;
+
+		size = SZ_8K;
+		icp_hw_mgr.hfi_mem.sfr_buf.iova       = out.iova + offset;
+		icp_hw_mgr.hfi_mem.sfr_buf.kva        = out.kva + offset;
+		icp_hw_mgr.hfi_mem.sfr_buf.len        = size;
+		icp_hw_mgr.hfi_mem.sfr_buf.smmu_hdl   = out.smmu_hdl;
+		icp_hw_mgr.hfi_mem.sfr_buf.mem_handle = out.mem_handle;
+		icp_hw_mgr.hfi_mem.sfr_buf.region     = out.region;
+		offset += (uint32_t)size;
+
+		if (offset > out.len) {
+			CAM_ERR(CAM_ICP,
+				"FW uncached region size %lld not enough, required %lld",
+				offset, out.len);
+			cam_mem_mgr_free_memory_region(
+				&icp_hw_mgr.hfi_mem.fw_uncached);
+			goto qtbl_alloc_failed;
+		}
+	} else {
+		rc = cam_icp_alloc_shared_mem(&icp_hw_mgr.hfi_mem.qtbl);
+		if (rc) {
+			CAM_ERR(CAM_ICP, "Unable to allocate qtbl memory");
+			goto qtbl_alloc_failed;
+		}
+
+		rc = cam_icp_alloc_shared_mem(&icp_hw_mgr.hfi_mem.cmd_q);
+		if (rc) {
+			CAM_ERR(CAM_ICP, "Unable to allocate cmd q memory");
+			goto cmd_q_alloc_failed;
+		}
+
+		rc = cam_icp_alloc_shared_mem(&icp_hw_mgr.hfi_mem.msg_q);
+		if (rc) {
+			CAM_ERR(CAM_ICP, "Unable to allocate msg q memory");
+			goto msg_q_alloc_failed;
+		}
+
+		rc = cam_icp_alloc_shared_mem(&icp_hw_mgr.hfi_mem.dbg_q);
+		if (rc) {
+			CAM_ERR(CAM_ICP, "Unable to allocate dbg q memory");
+			goto dbg_q_alloc_failed;
+		}
+
+		rc = cam_icp_alloc_sfr_mem(&icp_hw_mgr.hfi_mem.sfr_buf);
+		if (rc) {
+			CAM_ERR(CAM_ICP, "Unable to allocate sfr buffer");
+			goto sfr_buf_alloc_failed;
+		}
+
+		rc = cam_icp_alloc_secheap_mem(&icp_hw_mgr.hfi_mem.sec_heap);
+		if (rc) {
+			CAM_ERR(CAM_ICP, "Unable to allocate sec heap memory");
+			goto sec_heap_alloc_failed;
+		}
 	}
 
-	rc = cam_icp_alloc_shared_mem(&icp_hw_mgr.hfi_mem.cmd_q);
-	if (rc) {
-		CAM_ERR(CAM_ICP, "Unable to allocate cmd q memory");
-		goto cmd_q_alloc_failed;
-	}
+	CAM_DBG(CAM_ICP, "Shared Region [0x%x %lld] FW Uncached Region [0x%x %lld]",
+		icp_hw_mgr.hfi_mem.shmem.iova_start,
+		icp_hw_mgr.hfi_mem.shmem.iova_len,
+		fwuncached_region_info.iova_start,
+		fwuncached_region_info.iova_len);
 
-	rc = cam_icp_alloc_shared_mem(&icp_hw_mgr.hfi_mem.msg_q);
-	if (rc) {
-		CAM_ERR(CAM_ICP, "Unable to allocate msg q memory");
-		goto msg_q_alloc_failed;
-	}
+	CAM_DBG(CAM_ICP,
+		"FwUncached[0x%x %p %lld] QTbl[0x%x %p %lld] CmdQ[0x%x %p %lld] MsgQ[0x%x %p %lld]",
+		icp_hw_mgr.hfi_mem.fw_uncached.iova,
+		icp_hw_mgr.hfi_mem.fw_uncached.kva,
+		icp_hw_mgr.hfi_mem.fw_uncached.len,
+		icp_hw_mgr.hfi_mem.qtbl.iova,
+		icp_hw_mgr.hfi_mem.qtbl.kva,
+		icp_hw_mgr.hfi_mem.qtbl.len,
+		icp_hw_mgr.hfi_mem.cmd_q.iova,
+		icp_hw_mgr.hfi_mem.cmd_q.kva,
+		icp_hw_mgr.hfi_mem.cmd_q.len,
+		icp_hw_mgr.hfi_mem.msg_q.iova,
+		icp_hw_mgr.hfi_mem.msg_q.kva,
+		icp_hw_mgr.hfi_mem.msg_q.len);
 
-	rc = cam_icp_alloc_shared_mem(&icp_hw_mgr.hfi_mem.dbg_q);
-	if (rc) {
-		CAM_ERR(CAM_ICP, "Unable to allocate dbg q memory");
-		goto dbg_q_alloc_failed;
-	}
-
-	rc = cam_icp_alloc_sfr_mem(&icp_hw_mgr.hfi_mem.sfr_buf);
-	if (rc) {
-		CAM_ERR(CAM_ICP, "Unable to allocate sfr buffer");
-		goto sfr_buf_alloc_failed;
-	}
-
-	rc = cam_icp_alloc_secheap_mem(&icp_hw_mgr.hfi_mem.sec_heap);
-	if (rc) {
-		CAM_ERR(CAM_ICP, "Unable to allocate sec heap memory");
-		goto sec_heap_alloc_failed;
-	}
+	CAM_DBG(CAM_ICP,
+		"DbgQ[0x%x %p %lld] SFR[0x%x %p %lld] SecHeap[0x%x %p %lld]",
+		icp_hw_mgr.hfi_mem.dbg_q.iova,
+		icp_hw_mgr.hfi_mem.dbg_q.kva,
+		icp_hw_mgr.hfi_mem.dbg_q.len,
+		icp_hw_mgr.hfi_mem.sfr_buf.iova,
+		icp_hw_mgr.hfi_mem.sfr_buf.kva,
+		icp_hw_mgr.hfi_mem.sfr_buf.len,
+		icp_hw_mgr.hfi_mem.sec_heap.iova,
+		icp_hw_mgr.hfi_mem.sec_heap.kva,
+		icp_hw_mgr.hfi_mem.sec_heap.len);
 
 	rc = cam_icp_get_io_mem_info();
 	if (rc) {
 		CAM_ERR(CAM_ICP, "Unable to get I/O region info");
-		goto get_io_mem_failed;
+		if (fwuncached_region_exists) {
+			cam_mem_mgr_free_memory_region(
+				&icp_hw_mgr.hfi_mem.fw_uncached);
+			goto qtbl_alloc_failed;
+		} else {
+			goto get_io_mem_failed;
+		}
 	}
 
 	return rc;
@@ -3330,6 +3485,9 @@ static int cam_icp_mgr_hfi_resume(struct cam_icp_hw_mgr *hw_mgr)
 		hfi_mem.io_mem2.iova = 0x0;
 		hfi_mem.io_mem2.len = 0x0;
 	}
+
+	hfi_mem.fw_uncached.iova = icp_hw_mgr.hfi_mem.fw_uncached.iova;
+	hfi_mem.fw_uncached.len = icp_hw_mgr.hfi_mem.fw_uncached.len;
 
 	CAM_DBG(CAM_ICP,
 		"IO region1 IOVA = %X length = %lld, IO region2 IOVA = %X length = %lld",
@@ -3760,6 +3918,9 @@ static int cam_icp_mgr_hfi_init(struct cam_icp_hw_mgr *hw_mgr)
 		hfi_mem.io_mem2.iova = 0x0;
 		hfi_mem.io_mem2.len = 0x0;
 	}
+
+	hfi_mem.fw_uncached.iova = icp_hw_mgr.hfi_mem.fw_uncached.iova;
+	hfi_mem.fw_uncached.len = icp_hw_mgr.hfi_mem.fw_uncached.len;
 
 	if (icp_dev_intf->hw_type == CAM_ICP_DEV_LX7)
 		hfi_ops = &hfi_lx7_ops;
