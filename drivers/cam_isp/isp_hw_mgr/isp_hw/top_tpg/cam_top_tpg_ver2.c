@@ -142,6 +142,9 @@ static int cam_top_tpg_ver2_start(
 	tpg_data = (struct cam_top_tpg_cfg  *)tpg_res->res_priv;
 	soc_info = &tpg_hw->hw_info->soc_info;
 
+	if (tpg_res->res_state == CAM_ISP_RESOURCE_STATE_STREAMING)
+		goto end;
+
 	if ((tpg_res->res_type != CAM_ISP_RESOURCE_TPG) ||
 		(tpg_res->res_state != CAM_ISP_RESOURCE_STATE_RESERVED)) {
 		CAM_ERR(CAM_ISP, "TPG:%d Invalid Res type:%d res_state:%d",

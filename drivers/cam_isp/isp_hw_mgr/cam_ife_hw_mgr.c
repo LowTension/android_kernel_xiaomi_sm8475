@@ -5654,14 +5654,15 @@ static int cam_ife_mgr_stop_hw(void *hw_mgr_priv, void *stop_hw_args)
 			"config done completion timeout for last applied req_id=%llu ctx_index %",
 			ctx->applied_req_id, ctx->ctx_index);
 
+	if (ctx->is_tpg)
+		cam_ife_hw_mgr_stop_hw_res(&ctx->res_list_tpg);
+
 	if (stop_isp->stop_only)
 		goto end;
 
 	if (cam_cdm_stream_off(ctx->cdm_handle))
 		CAM_ERR(CAM_ISP, "CDM stream off failed %d", ctx->cdm_handle);
 
-	if (ctx->is_tpg)
-		cam_ife_hw_mgr_stop_hw_res(&ctx->res_list_tpg);
 
 	cam_ife_hw_mgr_deinit_hw(ctx);
 	CAM_DBG(CAM_ISP,
