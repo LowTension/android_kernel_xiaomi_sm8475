@@ -315,6 +315,12 @@ int32_t cam_sensor_util_write_qtimer_to_io_buffer(
 		return -EINVAL;
 	}
 
+	rc = cam_sensor_util_get_current_qtimer_ns(&qtime_ns);
+	if (rc < 0) {
+		CAM_ERR(CAM_SENSOR, "failed to get qtimer rc:%d");
+		return rc;
+	}
+
 	if (io_cfg->direction == CAM_BUF_OUTPUT) {
 		rc = cam_mem_get_cpu_buf(io_cfg->mem_handle[0],
 			&buf_addr, &buf_size);
@@ -342,12 +348,6 @@ int32_t cam_sensor_util_write_qtimer_to_io_buffer(
 				"not enough size for qtimer, target_size:%d",
 				target_size);
 			return -EINVAL;
-		}
-
-		rc = cam_sensor_util_get_current_qtimer_ns(&qtime_ns);
-		if (rc < 0) {
-			CAM_ERR(CAM_SENSOR, "failed to get qtimer rc:%d");
-			return rc;
 		}
 
 		memcpy((void *)target_buf, &qtime_ns, sizeof(uint64_t));
