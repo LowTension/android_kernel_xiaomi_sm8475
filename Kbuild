@@ -241,6 +241,17 @@ camera-$(CONFIG_SPECTRA_OPE) += \
 	drivers/cam_ope/ope_hw_mgr/ope_hw/bus_rd/ope_bus_rd.o\
 	drivers/cam_ope/ope_hw_mgr/ope_hw/bus_wr/ope_bus_wr.o
 
+camera-$(CONFIG_SPECTRA_CRE) += \
+	drivers/cam_cre/cam_cre_hw_mgr/cre_hw/cre_core.o \
+	drivers/cam_cre/cam_cre_hw_mgr/cre_hw/cre_soc.o \
+	drivers/cam_cre/cam_cre_hw_mgr/cre_hw/cre_dev.o \
+	drivers/cam_cre/cam_cre_hw_mgr/cre_hw/top/cre_top.o \
+	drivers/cam_cre/cam_cre_hw_mgr/cre_hw/bus_rd/cre_bus_rd.o \
+	drivers/cam_cre/cam_cre_hw_mgr/cre_hw/bus_wr/cre_bus_wr.o \
+	drivers/cam_cre/cam_cre_hw_mgr/cam_cre_hw_mgr.o \
+	drivers/cam_cre/cam_cre_dev.o \
+	drivers/cam_cre/cam_cre_context.o
+
 camera-$(CONFIG_SPECTRA_TFE) += \
 	drivers/cam_isp/isp_hw_mgr/isp_hw/ppi_hw/cam_csid_ppi_core.o \
 	drivers/cam_isp/isp_hw_mgr/isp_hw/ppi_hw/cam_csid_ppi_dev.o \
