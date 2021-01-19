@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/module.h>
@@ -1276,12 +1276,12 @@ update_req_mgr:
 		if (fctrl->bridge_intf.crm_cb &&
 			fctrl->bridge_intf.crm_cb->add_req)
 			rc = fctrl->bridge_intf.crm_cb->add_req(&add_req);
-			if  (rc) {
-				CAM_ERR(CAM_FLASH,
-					"Failed in adding request: %llu to request manager",
-					csl_packet->header.request_id);
-				return rc;
-			}
+		if (rc) {
+			CAM_ERR(CAM_FLASH,
+				"Failed in adding request: %llu to request manager",
+				csl_packet->header.request_id);
+			return rc;
+		}
 		CAM_DBG(CAM_FLASH, "add req to req_mgr= %lld", add_req.req_id);
 	}
 	return rc;
