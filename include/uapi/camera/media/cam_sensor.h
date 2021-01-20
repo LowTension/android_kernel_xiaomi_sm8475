@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only WITH Linux-syscall-note */
 /*
- * Copyright (c) 2016-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
  */
 
 #ifndef __UAPI_CAM_SENSOR_H__
@@ -10,10 +10,12 @@
 #include <linux/ioctl.h>
 #include <camera/media/cam_defs.h>
 
-#define CAM_SENSOR_PROBE_CMD   (CAM_COMMON_OPCODE_MAX + 1)
+#define CAM_SENSOR_PROBE_CMD      (CAM_COMMON_OPCODE_MAX + 1)
+#define CAM_SENSOR_PROBE_V2_CMD   (CAM_COMMON_OPCODE_MAX + 2)
 #define CAM_FLASH_MAX_LED_TRIGGERS 2
 #define MAX_OIS_NAME_SIZE 32
 #define CAM_CSIPHY_SECURE_MODE_ENABLED 1
+#define CAM_SENSOR_NAME_MAX_SIZE 32
 /**
  * struct cam_sensor_query_cap - capabilities info for sensor
  *
@@ -165,6 +167,38 @@ struct cam_cmd_probe {
 	__u32    data_mask;
 	__u16    camera_id;
 	__u16    reserved;
+} __attribute__((packed));
+
+/**
+ * struct cam_cmd_probe_v2 - Contains sensor slave info version 2
+ *
+ * @data_type         :   Slave register data type
+ * @addr_type         :   Slave register address type
+ * @op_code           :   Don't Care
+ * @cmd_type          :   Explains type of command
+ * @reg_addr          :   Slave register address
+ * @expected_data     :   Data expected at slave register address
+ * @data_mask         :   Data mask if only few bits are valid
+ * @camera_id         :   Indicates the slot to which camera
+ *                      needs to be probed
+ * @pipeline_delay    :   Pipeline delay
+ * @logical_camera_id :   Logical Camera ID
+ * @sensor_name       :   Sensor's name
+ * @reserved
+ */
+struct cam_cmd_probe_v2 {
+	__u8     data_type;
+	__u8     addr_type;
+	__u8     op_code;
+	__u8     cmd_type;
+	__u32    reg_addr;
+	__u32    expected_data;
+	__u32    data_mask;
+	__u16    camera_id;
+	__u16    pipeline_delay;
+	__u32    logical_camera_id;
+	char     sensor_name[CAM_SENSOR_NAME_MAX_SIZE];
+	__u32    reserved[4];
 } __attribute__((packed));
 
 /**
