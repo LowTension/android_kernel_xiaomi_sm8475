@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
  */
 
 
@@ -1278,10 +1278,8 @@ static int cam_vfe_bus_ver3_acquire_wm(
 	} else if (vfe_out_res_id == CAM_VFE_BUS_VER3_VFE_OUT_LTM_STATS) {
 		switch (rsrc_data->format) {
 		case CAM_FORMAT_PLAIN32:
-			rsrc_data->width = 0;
-			rsrc_data->height = 0;
-			rsrc_data->stride = 1;
-			rsrc_data->en_cfg = (0x1 << 16) | 0x1;
+			rsrc_data->stride = ALIGNUP(rsrc_data->width * 4, 16);
+			rsrc_data->en_cfg = 0x1;
 			break;
 		default:
 			CAM_ERR(CAM_ISP, "Invalid format %d out_type:%d",
@@ -1350,10 +1348,10 @@ static int cam_vfe_bus_ver3_acquire_wm(
 	}
 
 	CAM_DBG(CAM_ISP,
-		"VFE:%d WM:%d processed width:%d height:%d format:0x%X en_ubwc:%d %s",
+		"VFE:%d WM:%d processed width:%d height:%d stride:%d format:0x%X en_ubwc:%d %s",
 		rsrc_data->common_data->core_index, rsrc_data->index,
-		rsrc_data->width, rsrc_data->height, rsrc_data->format,
-		rsrc_data->en_ubwc, wm_mode);
+		rsrc_data->width, rsrc_data->height, rsrc_data->stride,
+		rsrc_data->format, rsrc_data->en_ubwc, wm_mode);
 	return 0;
 }
 
@@ -2961,8 +2959,7 @@ static int cam_vfe_bus_ver3_update_wm(void *priv, void *cmd_args,
 		val = io_cfg->planes[i].plane_stride;
 		CAM_DBG(CAM_ISP, "before stride %d", val);
 		val = ALIGNUP(val, 16);
-		if (val != io_cfg->planes[i].plane_stride &&
-			val != wm_data->stride)
+		if (val != io_cfg->planes[i].plane_stride)
 			CAM_WARN(CAM_ISP, "Warning stride %u expected %u",
 				io_cfg->planes[i].plane_stride, val);
 
