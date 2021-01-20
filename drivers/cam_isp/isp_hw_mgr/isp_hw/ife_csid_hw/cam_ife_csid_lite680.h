@@ -137,7 +137,7 @@ static struct cam_ife_csid_ver2_common_reg_info
 	.rst_loc_complete_csid_val                    = 0x1,
 	.rst_mode_frame_boundary_val                  = 0x0,
 	.rst_mode_immediate_val                       = 0x1,
-	.rst_cmd_hw_reset_complete_val                = 0x0,
+	.rst_cmd_hw_reset_complete_val                = 0x1,
 	.rst_cmd_sw_reset_complete_val                = 0x2,
 	.rst_cmd_irq_ctrl_only_val                    = 0x4,
 	.timestamp_strobe_val                         = 0x2,
