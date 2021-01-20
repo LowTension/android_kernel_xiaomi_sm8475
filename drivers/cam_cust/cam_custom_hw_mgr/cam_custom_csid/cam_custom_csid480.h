@@ -119,8 +119,8 @@ static struct cam_ife_csid_ver1_path_reg_info
 	.ccif_violation_en               = 1,
 	.format_measure_en_shift_val     = 1,
 	.overflow_ctrl_en                = 0,
-	.non_fatal_err_mask              = 0x28000,
-	.non_fatal_err_mask              = 0x4,
+	.non_fatal_err_mask              = 0x2e000,
+	.fatal_err_mask                  = 0x4,
 	.overflow_ctrl_mode_val          = 0x8,
 };
 

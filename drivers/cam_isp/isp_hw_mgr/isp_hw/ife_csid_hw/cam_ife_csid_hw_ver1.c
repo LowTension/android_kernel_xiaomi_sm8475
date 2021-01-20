@@ -2270,26 +2270,6 @@ static int cam_ife_csid_ver1_init_config_rdi_path(
 		cam_io_w_mb(val, mem_base + path_reg->err_recovery_cfg0_addr);
 	}
 
-	if (path_cfg->fmt_measure_enable) {
-		val = (path_cfg->sensor_height &
-			cmn_reg->fmt_measure_num_line_mask) <<
-			cmn_reg->fmt_measure_num_lines_shift_val;
-		if (path_format.decode_fmt == 0xf)
-			val |= (__KERNEL_DIV_ROUND_UP(
-				(path_cfg->sensor_width *
-				path_format.bits_per_pxl), 8) &
-				cmn_reg->fmt_measure_num_pxl_mask);
-
-		else
-			val |= (path_cfg->sensor_width &
-				cmn_reg->fmt_measure_num_pxl_mask);
-
-		cam_io_w_mb(val, mem_base +
-			path_reg->format_measure_cfg1_addr);
-		cam_io_w_mb(cmn_reg->measure_pixel_line_en_mask,
-			mem_base + path_reg->format_measure_cfg0_addr);
-	}
-
 	if (csid_hw->debug_info.debug_val &
 		CAM_IFE_CSID_DEBUG_ENABLE_HBI_VBI_INFO) {
 		val = cam_io_r_mb(mem_base +
@@ -2604,18 +2584,6 @@ static int cam_ife_csid_ver1_init_config_pxl_path(
 		val = path_reg->overflow_ctrl_en |
 			path_reg->overflow_ctrl_mode_val;
 		cam_io_w_mb(val, mem_base + path_reg->err_recovery_cfg0_addr);
-	}
-
-	if (path_cfg->fmt_measure_enable) {
-		val = (path_cfg->sensor_height &
-			cmn_reg->fmt_measure_num_line_mask) <<
-			cmn_reg->fmt_measure_num_lines_shift_val;
-		val |= path_cfg->sensor_width &
-			csid_reg->cmn_reg->fmt_measure_num_pxl_mask;
-		cam_io_w_mb(val, mem_base +
-			path_reg->format_measure_cfg1_addr);
-		cam_io_w_mb(cmn_reg->measure_pixel_line_en_mask, mem_base +
-			path_reg->format_measure_cfg0_addr);
 	}
 
 	if (csid_hw->debug_info.debug_val &
@@ -3645,51 +3613,6 @@ static int cam_ife_csid_ver1_dump_hw(
 	return 0;
 }
 
-static int cam_ife_csid_ver1_set_sensor_dimension(
-	struct cam_ife_csid_ver1_hw *csid_hw, void *cmd_args)
-{
-	struct cam_ife_sensor_dimension_update_args *update_args = NULL;
-	struct cam_isp_resource_node *res = NULL;
-	struct  cam_ife_csid_ver1_path_cfg *path_cfg = NULL;
-
-	if (!csid_hw || !cmd_args) {
-		CAM_ERR(CAM_ISP, "Invalid param %pK %pK",
-			csid_hw, cmd_args);
-		return -EINVAL;
-	}
-
-	update_args =
-		(struct cam_ife_sensor_dimension_update_args *)cmd_args;
-
-	res = update_args->res;
-
-	if (!res) {
-		CAM_ERR(CAM_ISP, "CSID[%d] NULL res",
-			csid_hw->hw_intf->hw_idx);
-		return -EINVAL;
-	}
-
-	path_cfg = (struct  cam_ife_csid_ver1_path_cfg *)res->res_priv;
-
-	if (!path_cfg) {
-		CAM_ERR(CAM_ISP, "CSID[%d] Invalid res_id %u",
-			csid_hw->hw_intf->hw_idx, res->res_id);
-		return -EINVAL;
-	}
-
-	path_cfg->fmt_measure_enable = update_args->sensor_data.measure_enabled;
-	path_cfg->sensor_width = update_args->sensor_data.width;
-	path_cfg->sensor_height = update_args->sensor_data.height;
-
-	CAM_DBG(CAM_ISP,
-		"CSID[%d] path[%d] width %u height %u",
-		csid_hw->hw_intf->hw_idx, res->res_id,
-		path_cfg->sensor_width,
-		path_cfg->sensor_height);
-
-	return 0;
-}
-
 static int cam_ife_csid_log_acquire_data(
 	struct cam_ife_csid_ver1_hw *csid_hw, void *cmd_args)
 {
@@ -3800,10 +3723,6 @@ static int cam_ife_csid_ver1_process_cmd(void *hw_priv,
 		break;
 	case CAM_ISP_HW_CMD_CSID_CLOCK_DUMP:
 		rc = cam_ife_csid_ver1_dump_csid_clock(csid_hw, cmd_args);
-		break;
-	case CAM_IFE_CSID_SET_SENSOR_DIMENSION_CFG:
-		rc = cam_ife_csid_ver1_set_sensor_dimension(csid_hw,
-			cmd_args);
 		break;
 	case CAM_IFE_CSID_TOP_CONFIG:
 		break;
@@ -4288,6 +4207,7 @@ static int cam_ife_csid_ver1_path_top_half(
 	uint32_t                                bit_pos = 0;
 	int                                     id = 0;
 	uint32_t                                sof_irq_debug_en = 0;
+	uint32_t                                val , val1;
 
 	csid_reg = (struct cam_ife_csid_ver1_reg_info *)
 			csid_hw->core_info->csid_reg;
@@ -4341,6 +4261,27 @@ static int cam_ife_csid_ver1_path_top_half(
 	if (csid_hw->flags.sof_irq_triggered &&
 		(status & IFE_CSID_VER1_PATH_INFO_INPUT_SOF)) {
 		csid_hw->counters.irq_debug_cnt++;
+	}
+
+	if ((status & IFE_CSID_VER1_PATH_ERROR_PIX_COUNT ) ||
+		(status & IFE_CSID_VER1_PATH_ERROR_LINE_COUNT)) {
+		val = cam_io_r_mb(soc_info->reg_map[0].mem_base +
+				path_reg->format_measure0_addr);
+		val1 = cam_io_r_mb(soc_info->reg_map[0].mem_base +
+				path_reg->format_measure_cfg1_addr);
+		CAM_ERR(CAM_ISP,
+			"Expected:: h:  0x%x w: 0x%x actual:: h: 0x%x w: 0x%x [format_measure0: 0x%x]",
+			((val1 >>
+			csid_reg->cmn_reg->format_measure_height_shift_val) &
+			csid_reg->cmn_reg->format_measure_height_mask_val),
+			val1 &
+			csid_reg->cmn_reg->format_measure_width_mask_val,
+			((val >>
+			csid_reg->cmn_reg->format_measure_height_shift_val) &
+			csid_reg->cmn_reg->format_measure_height_mask_val),
+			val &
+			csid_reg->cmn_reg->format_measure_width_mask_val,
+			val);
 	}
 
 	if (status & path_reg->fatal_err_mask)

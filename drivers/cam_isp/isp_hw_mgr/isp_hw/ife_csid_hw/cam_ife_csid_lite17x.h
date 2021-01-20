@@ -67,7 +67,7 @@ static  struct cam_ife_csid_ver1_path_reg_info
 	.timestamp_en_shift_val                = 2,
 	.format_measure_en_shift_val           = 1,
 	.fatal_err_mask                        = 0x4,
-	.non_fatal_err_mask                    = 0x8000,
+	.non_fatal_err_mask                    = 0xe000,
 };
 
 static  struct cam_ife_csid_ver1_path_reg_info
@@ -381,6 +381,10 @@ static  struct cam_ife_csid_ver1_common_reg_info
 	.ipp_irq_mask_all                      = 0x7FFF,
 	.rdi_irq_mask_all                      = 0x7FFF,
 	.ppp_irq_mask_all                      = 0xFFFF,
+	.format_measure_height_mask_val        = 0xFFFF,
+	.format_measure_height_shift_val       = 0x10,
+	.format_measure_width_mask_val         = 0xFFFF,
+	.format_measure_width_shift_val        = 0x0,
 };
 
 static  struct cam_ife_csid_ver1_reg_info cam_ife_csid_lite_17x_reg_info = {
