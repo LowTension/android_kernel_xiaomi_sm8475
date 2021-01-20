@@ -73,8 +73,8 @@ irqreturn_t cam_cci_irq(int irq_num, void *data)
 
 	irq_status0 = cam_io_r_mb(base + CCI_IRQ_STATUS_0_ADDR);
 	irq_status1 = cam_io_r_mb(base + CCI_IRQ_STATUS_1_ADDR);
-	CAM_DBG(CAM_CCI,
-		"BASE: %pK, irq0:%x irq1:%x",
+	CAM_INFO(CAM_CCI,
+		"BASE: %p, irq0:%x irq1:%x",
 		base, irq_status0, irq_status1);
 
 	if (irq_status0 & CCI_IRQ_STATUS_0_RST_DONE_ACK_BMSK) {
