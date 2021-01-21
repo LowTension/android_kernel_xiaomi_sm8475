@@ -6,9 +6,9 @@
 #ifndef __UAPI_CAM_TFE_H__
 #define __UAPI_CAM_TFE_H__
 
-#include <camera/media/cam_defs.h>
-#include <camera/media/cam_isp_tfe.h>
-#include <camera/media/cam_cpas.h>
+#include <media/cam_defs.h>
+#include <media/cam_isp_tfe.h>
+#include <media/cam_cpas.h>
 
 
 /* ISP TFE driver name */

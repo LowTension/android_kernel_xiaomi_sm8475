@@ -6,7 +6,7 @@
 #ifndef __UAPI_CAM_LRME_H__
 #define __UAPI_CAM_LRME_H__
 
-#include <camera/media/cam_defs.h>
+#include <media/cam_defs.h>
 
 /* LRME Resource Types */
 

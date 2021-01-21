@@ -8,7 +8,7 @@
 
 #include <linux/types.h>
 #include <linux/ioctl.h>
-#include <camera/media/cam_defs.h>
+#include <media/cam_defs.h>
 
 #define CAM_SENSOR_PROBE_CMD      (CAM_COMMON_OPCODE_MAX + 1)
 #define CAM_SENSOR_PROBE_V2_CMD   (CAM_COMMON_OPCODE_MAX + 2)

@@ -6,7 +6,7 @@
 #ifndef __UAPI_CAM_JPEG_H__
 #define __UAPI_CAM_JPEG_H__
 
-#include <camera/media/cam_defs.h>
+#include <media/cam_defs.h>
 
 /* enc, dma, cdm(enc/dma) are used in querycap */
 #define CAM_JPEG_DEV_TYPE_ENC      0

@@ -6,7 +6,7 @@
 #ifndef __UAPI_CAM_FD_H__
 #define __UAPI_CAM_FD_H__
 
-#include <camera/media/cam_defs.h>
+#include <media/cam_defs.h>
 
 #define CAM_FD_MAX_FACES                       35
 #define CAM_FD_RAW_RESULT_ENTRIES              512
