@@ -147,6 +147,9 @@ camera-$(CONFIG_SPECTRA_ICP) += \
 	drivers/cam_icp/icp_hw/a5_hw/a5_dev.o \
 	drivers/cam_icp/icp_hw/a5_hw/a5_core.o \
 	drivers/cam_icp/icp_hw/a5_hw/a5_soc.o \
+	drivers/cam_icp/icp_hw/lx7_hw/lx7_dev.o \
+	drivers/cam_icp/icp_hw/lx7_hw/lx7_core.o \
+	drivers/cam_icp/icp_hw/lx7_hw/lx7_soc.o \
 	drivers/cam_icp/icp_hw/bps_hw/bps_dev.o \
 	drivers/cam_icp/icp_hw/bps_hw/bps_core.o \
 	drivers/cam_icp/icp_hw/bps_hw/bps_soc.o \

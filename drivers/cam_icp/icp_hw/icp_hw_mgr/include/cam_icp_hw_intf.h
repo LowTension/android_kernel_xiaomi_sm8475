@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  */
 
 #ifndef CAM_ICP_HW_INTF_H
@@ -17,6 +17,7 @@
 
 enum cam_icp_hw_type {
 	CAM_ICP_DEV_A5,
+	CAM_ICP_DEV_LX7,
 	CAM_ICP_DEV_IPE,
 	CAM_ICP_DEV_BPS,
 	CAM_ICP_DEV_MAX,
@@ -41,8 +42,8 @@ enum cam_icp_cmd_type {
 };
 
 struct cam_icp_irq_cb {
+	int32_t (*cb)(void *data, bool recover);
 	void *data;
-	int (*cb)(void *data, uint32_t irq_status);
 };
 
 /**

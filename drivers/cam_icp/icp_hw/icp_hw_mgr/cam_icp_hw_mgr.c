@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/uaccess.h>
@@ -38,6 +38,7 @@
 #include "cam_req_mgr_workq.h"
 #include "cam_mem_mgr.h"
 #include "a5_core.h"
+#include "lx7_core.h"
 #include "hfi_sys_defs.h"
 #include "cam_debug_util.h"
 #include "cam_soc_util.h"
@@ -57,6 +58,12 @@ static const struct hfi_ops hfi_a5_ops = {
 	.irq_raise = cam_a5_irq_raise,
 	.irq_enable = cam_a5_irq_enable,
 	.iface_addr = cam_a5_iface_addr,
+};
+
+static const struct hfi_ops hfi_lx7_ops = {
+	.irq_raise = cam_lx7_irq_raise,
+	.irq_enable = cam_lx7_irq_enable,
+	.iface_addr = cam_lx7_iface_addr,
 };
 
 static struct cam_icp_hw_mgr icp_hw_mgr;
@@ -2667,9 +2674,8 @@ static int32_t cam_icp_mgr_process_msg(void *priv, void *data)
 
 	cam_icp_mgr_process_dbg_buf(icp_hw_mgr.icp_dbg_lvl);
 
-	if ((task_data->irq_status & A5_WDT_0) ||
-		(task_data->irq_status & A5_WDT_1)) {
-		CAM_ERR_RATE_LIMIT(CAM_ICP, "watch dog interrupt from A5");
+	if (task_data->recover) {
+		CAM_ERR_RATE_LIMIT(CAM_ICP, "issuing device recovery...");
 
 		rc = cam_icp_mgr_trigger_recovery(hw_mgr);
 	}
@@ -2677,7 +2683,7 @@ static int32_t cam_icp_mgr_process_msg(void *priv, void *data)
 	return rc;
 }
 
-static int cam_icp_hw_mgr_cb(void *data, uint32_t irq_status)
+static int32_t cam_icp_hw_mgr_cb(void *data, bool recover)
 {
 	int rc = 0;
 	unsigned long flags;
@@ -2700,7 +2706,7 @@ static int cam_icp_hw_mgr_cb(void *data, uint32_t irq_status)
 
 	task_data = (struct hfi_msg_work_data *)task->payload;
 	task_data->data = hw_mgr;
-	task_data->irq_status = irq_status;
+	task_data->recover = recover;
 	task_data->type = ICP_WORKQ_TASK_MSG_TYPE;
 	task->process_cb = cam_icp_mgr_process_msg;
 	rc = cam_req_mgr_workq_enqueue_task(task, &icp_hw_mgr,
@@ -3740,7 +3746,10 @@ static int cam_icp_mgr_hfi_init(struct cam_icp_hw_mgr *hw_mgr)
 		hfi_mem.io_mem2.len = 0x0;
 	}
 
-	hfi_ops = &hfi_a5_ops;
+	if (icp_dev_intf->hw_type == CAM_ICP_DEV_LX7)
+		hfi_ops = &hfi_lx7_ops;
+	else
+		hfi_ops = &hfi_a5_ops;
 
 	return cam_hfi_init(&hfi_mem, hfi_ops, icp_dev, 0);
 }

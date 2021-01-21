@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/slab.h>
@@ -336,15 +336,15 @@ int cam_a5_init_hw(void *device_priv,
 	cpas_vote.axi_vote.axi_path[0].transac_type =
 		CAM_ICP_DEFAULT_AXI_TRANSAC;
 	cpas_vote.axi_vote.axi_path[0].camnoc_bw =
-		CAM_ICP_A5_BW_BYTES_VOTE;
+		CAM_ICP_BW_BYTES_VOTE;
 	cpas_vote.axi_vote.axi_path[0].mnoc_ab_bw =
-		CAM_ICP_A5_BW_BYTES_VOTE;
+		CAM_ICP_BW_BYTES_VOTE;
 	cpas_vote.axi_vote.axi_path[0].mnoc_ib_bw =
-		CAM_ICP_A5_BW_BYTES_VOTE;
+		CAM_ICP_BW_BYTES_VOTE;
 	cpas_vote.axi_vote.axi_path[0].ddr_ab_bw =
-		CAM_ICP_A5_BW_BYTES_VOTE;
+		CAM_ICP_BW_BYTES_VOTE;
 	cpas_vote.axi_vote.axi_path[0].ddr_ib_bw =
-		CAM_ICP_A5_BW_BYTES_VOTE;
+		CAM_ICP_BW_BYTES_VOTE;
 
 	rc = cam_cpas_start(core_info->cpas_handle,
 		&cpas_vote.ahb_vote, &cpas_vote.axi_vote);
@@ -558,6 +558,7 @@ irqreturn_t cam_a5_irq(int irq_num, void *data)
 	struct cam_a5_device_core_info *core_info = NULL;
 	struct cam_a5_device_hw_info *hw_info = NULL;
 	uint32_t irq_status = 0;
+	bool recover = false;
 
 	if (!data) {
 		CAM_ERR(CAM_ICP, "Invalid cam_dev_info or query_cap args");
@@ -586,11 +587,13 @@ irqreturn_t cam_a5_irq(int irq_num, void *data)
 	if ((irq_status & A5_WDT_0) ||
 		(irq_status & A5_WDT_1)) {
 		CAM_ERR_RATE_LIMIT(CAM_ICP, "watch dog interrupt from A5");
+		recover = true;
 	}
 
 	spin_lock(&a5_dev->hw_lock);
 	if (core_info->irq_cb.cb)
-		core_info->irq_cb.cb(core_info->irq_cb.data, irq_status);
+		core_info->irq_cb.cb(core_info->irq_cb.data,
+			recover);
 	spin_unlock(&a5_dev->hw_lock);
 
 	return IRQ_HANDLED;
