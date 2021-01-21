@@ -12,9 +12,8 @@
 #define LX7_CSR_BASE  0
 #define LX7_CIRQ_BASE 1
 
-/* TODO: Update once we're ready to use TZ */
 #define UNSUPPORTED_PROC_PAS_ID   30
-#define CAM_FW_PAS_ID             UNSUPPORTED_PROC_PAS_ID
+#define CAM_FW_PAS_ID             33
 
 struct cam_lx7_core_info {
 	struct cam_icp_irq_cb irq_cb;

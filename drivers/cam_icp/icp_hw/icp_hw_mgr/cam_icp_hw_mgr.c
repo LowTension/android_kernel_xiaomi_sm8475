@@ -2826,6 +2826,9 @@ static int cam_icp_allocate_fw_mem(void)
 	size_t len;
 	dma_addr_t iova;
 
+	if (icp_hw_mgr.icp_use_pil)
+		return 0;
+
 	rc = cam_smmu_alloc_firmware(icp_hw_mgr.iommu_hdl,
 		&iova, &kvaddr, &len);
 	if (rc)
@@ -2840,6 +2843,14 @@ static int cam_icp_allocate_fw_mem(void)
 		kvaddr, iova, len);
 
 	return rc;
+}
+
+static void cam_icp_free_fw_mem(void)
+{
+	if (icp_hw_mgr.icp_use_pil)
+		return;
+
+	cam_smmu_dealloc_firmware(icp_hw_mgr.iommu_hdl);
 }
 
 static int cam_icp_allocate_qdss_mem(void)
@@ -2966,7 +2977,7 @@ cmd_q_alloc_failed:
 qtbl_alloc_failed:
 	cam_smmu_dealloc_qdss(icp_hw_mgr.iommu_hdl);
 fw_alloc_failed:
-	cam_smmu_dealloc_firmware(icp_hw_mgr.iommu_hdl);
+	cam_icp_free_fw_mem();
 	return rc;
 }
 
@@ -3166,9 +3177,12 @@ static int cam_icp_mgr_proc_boot(struct cam_icp_hw_mgr *hw_mgr)
 		return -EINVAL;
 	}
 
-	args.firmware.iova = hw_mgr->hfi_mem.fw_buf.iova;
-	args.firmware.kva = hw_mgr->hfi_mem.fw_buf.kva;
-	args.firmware.len = hw_mgr->hfi_mem.fw_buf.len;
+	if (!hw_mgr->icp_use_pil) {
+		/* We handle the iommu mapping */
+		args.firmware.iova = hw_mgr->hfi_mem.fw_buf.iova;
+		args.firmware.kva = hw_mgr->hfi_mem.fw_buf.kva;
+		args.firmware.len = hw_mgr->hfi_mem.fw_buf.len;
+	}
 
 	args.irq_cb.data = hw_mgr;
 	args.irq_cb.cb = cam_icp_hw_mgr_cb;
@@ -5964,6 +5978,7 @@ static int cam_icp_mgr_alloc_devs(struct device_node *np)
 
 	icp_hw_mgr.ipe_bps_pc_flag = of_property_read_bool(np, "ipe_bps_pc_en");
 	icp_hw_mgr.icp_pc_flag = of_property_read_bool(np, "icp_pc_en");
+	icp_hw_mgr.icp_use_pil = of_property_read_bool(np, "icp_use_pil");
 
 	return 0;
 

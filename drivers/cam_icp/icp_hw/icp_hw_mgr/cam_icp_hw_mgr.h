@@ -338,6 +338,7 @@ struct cam_icp_clk_info {
  * @icp_pc_flag: Flag to enable/disable power collapse
  * @ipe_bps_pc_flag: Flag to enable/disable
  *                   power collapse for ipe & bps
+ * @icp_use_pil: Flag to indicate usage of PIL framework
  * @icp_debug_clk: Set clock based on debug value
  * @icp_default_clk: Set this clok if user doesn't supply
  * @clk_info: Clock info of hardware
@@ -388,6 +389,7 @@ struct cam_icp_hw_mgr {
 	struct dentry *dentry;
 	bool icp_pc_flag;
 	bool ipe_bps_pc_flag;
+	bool icp_use_pil;
 	uint64_t icp_debug_clk;
 	uint64_t icp_default_clk;
 	struct cam_icp_clk_info clk_info[ICP_CLK_HW_MAX];
