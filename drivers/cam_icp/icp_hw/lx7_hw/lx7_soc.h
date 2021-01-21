@@ -28,5 +28,7 @@ int cam_lx7_soc_resources_deinit(struct cam_hw_soc_info *soc_info);
 
 int cam_lx7_soc_resources_enable(struct cam_hw_soc_info *soc_info);
 int cam_lx7_soc_resources_disable(struct cam_hw_soc_info *soc_info);
+int cam_lx7_update_clk_rate(struct cam_hw_soc_info *soc_info,
+	int32_t clk_level);
 
 #endif /* _CAM_LX7_SOC_H_ */

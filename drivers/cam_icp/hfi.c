@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/io.h>
@@ -32,8 +32,9 @@
 #define HFI_VERSION_INFO_STEP_BMSK   0xFF
 #define HFI_VERSION_INFO_STEP_SHFT  0
 
-#define HFI_POLL_DELAY_US 100
-#define HFI_POLL_TIMEOUT_US 10000
+/* TO DO Lower timeout value */
+#define HFI_POLL_DELAY_US 10
+#define HFI_POLL_TIMEOUT_US 1500000
 
 static struct hfi_info *g_hfi;
 unsigned int g_icp_mmu_hdl;

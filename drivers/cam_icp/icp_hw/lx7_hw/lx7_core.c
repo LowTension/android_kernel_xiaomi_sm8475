@@ -15,16 +15,17 @@
 #include "cam_icp_hw_mgr_intf.h"
 #include "cam_icp_hw_intf.h"
 #include "hfi_intf.h"
+#include "hfi_sys_defs.h"
 #include "lx7_core.h"
 #include "lx7_reg.h"
 #include "lx7_soc.h"
 
-#define TZ_STATE_RESUME  0
-#define TZ_STATE_SUSPEND 1
-
-#define LX7_FW_NAME "CAMERA_ICP.mdt"
+#define TZ_STATE_SUSPEND 0
+#define TZ_STATE_RESUME  1
 
 #define LX7_GEN_PURPOSE_REG_OFFSET 0x20
+
+#define ICP_FW_NAME_MAX_SIZE    32
 
 static int cam_lx7_ubwc_configure(struct cam_hw_soc_info *soc_info)
 {
@@ -219,12 +220,20 @@ static int cam_lx7_cpas_stop(struct cam_lx7_core_info *core_info)
 int cam_lx7_hw_init(void *priv, void *args, uint32_t arg_size)
 {
 	struct cam_hw_info *lx7 = priv;
+	unsigned long flags;
 	int rc;
 
 	if (!lx7) {
 		CAM_ERR(CAM_ICP, "LX7 device info cannot be NULL");
 		return -EINVAL;
 	}
+
+	spin_lock_irqsave(&lx7->hw_lock, flags);
+	if (lx7->hw_state == CAM_HW_STATE_POWER_UP) {
+		spin_unlock_irqrestore(&lx7->hw_lock, flags);
+		return 0;
+	}
+	spin_unlock_irqrestore(&lx7->hw_lock, flags);
 
 	rc = cam_lx7_cpas_start(lx7->core_info);
 	if (rc)
@@ -236,6 +245,10 @@ int cam_lx7_hw_init(void *priv, void *args, uint32_t arg_size)
 		goto soc_fail;
 	}
 
+	spin_lock_irqsave(&lx7->hw_lock, flags);
+	lx7->hw_state = CAM_HW_STATE_POWER_UP;
+	spin_unlock_irqrestore(&lx7->hw_lock, flags);
+
 	return 0;
 
 soc_fail:
@@ -246,6 +259,7 @@ soc_fail:
 int cam_lx7_hw_deinit(void *priv, void *args, uint32_t arg_size)
 {
 	struct cam_hw_info *lx7_info = priv;
+	unsigned long flags;
 	int rc;
 
 	if (!lx7_info) {
@@ -253,13 +267,27 @@ int cam_lx7_hw_deinit(void *priv, void *args, uint32_t arg_size)
 		return -EINVAL;
 	}
 
-	rc = cam_lx7_soc_resources_disable(&lx7_info->soc_info);
-	if (rc) {
-		CAM_ERR(CAM_ICP, "failed to disable soc resources rc=%d", rc);
-		return rc;
+	spin_lock_irqsave(&lx7_info->hw_lock, flags);
+	if (lx7_info->hw_state == CAM_HW_STATE_POWER_DOWN) {
+		spin_unlock_irqrestore(&lx7_info->hw_lock, flags);
+		return 0;
 	}
+	spin_unlock_irqrestore(&lx7_info->hw_lock, flags);
 
-	return cam_lx7_cpas_stop(lx7_info->core_info);
+	rc = cam_lx7_soc_resources_disable(&lx7_info->soc_info);
+	if (rc)
+		CAM_WARN(CAM_ICP,
+			"failed to disable soc resources rc=%d", rc);
+
+	rc = cam_lx7_cpas_stop(lx7_info->core_info);
+	if (rc)
+		CAM_WARN(CAM_ICP, "cpas stop failed rc=%d", rc);
+
+	spin_lock_irqsave(&lx7_info->hw_lock, flags);
+	lx7_info->hw_state = CAM_HW_STATE_POWER_DOWN;
+	spin_unlock_irqrestore(&lx7_info->hw_lock, flags);
+
+	return rc;
 }
 
 static void prepare_boot(struct cam_hw_info *lx7_info,
@@ -288,7 +316,9 @@ static void prepare_shutdown(struct cam_hw_info *lx7_info)
 #if IS_REACHABLE(CONFIG_QCOM_MDT_LOADER)
 static int __load_firmware(struct platform_device *pdev)
 {
+	const char *fw_name;
 	const struct firmware *firmware = NULL;
+	char firmware_name[ICP_FW_NAME_MAX_SIZE] = {0};
 	void *vaddr = NULL;
 	struct device_node *node;
 	struct resource res;
@@ -296,6 +326,27 @@ static int __load_firmware(struct platform_device *pdev)
 	size_t res_size;
 	ssize_t fw_size;
 	int rc;
+
+	if (!pdev) {
+		CAM_ERR(CAM_ICP, "invalid args");
+		return -EINVAL;
+	}
+
+	rc = of_property_read_string(pdev->dev.of_node, "fw_name",
+		&fw_name);
+	if (rc) {
+		CAM_ERR(CAM_ICP, "FW image name not found");
+		return rc;
+	}
+
+	/* Account for ".mdt" size [4 characters] */
+	if (strlen(fw_name) >= (ICP_FW_NAME_MAX_SIZE - 4)) {
+		CAM_ERR(CAM_ICP, "Invalid fw name %s", fw_name);
+		return -EINVAL;
+	}
+
+	scnprintf(firmware_name, ARRAY_SIZE(firmware_name),
+		"%s.mdt", fw_name);
 
 	node = of_parse_phandle(pdev->dev.of_node, "memory-region", 0);
 	if (!node) {
@@ -313,11 +364,11 @@ static int __load_firmware(struct platform_device *pdev)
 	res_start = res.start;
 	res_size = (size_t)resource_size(&res);
 
-	rc = request_firmware(&firmware, LX7_FW_NAME, &pdev->dev);
+	rc = request_firmware(&firmware, firmware_name, &pdev->dev);
 	if (rc) {
 		CAM_ERR(CAM_ICP,
 			"error requesting %s firmware rc=%d",
-			LX7_FW_NAME, rc);
+			firmware_name, rc);
 		return rc;
 	}
 
@@ -338,7 +389,7 @@ static int __load_firmware(struct platform_device *pdev)
 		goto out;
 	}
 
-	rc = qcom_mdt_load(&pdev->dev, firmware, LX7_FW_NAME, CAM_FW_PAS_ID,
+	rc = qcom_mdt_load(&pdev->dev, firmware, firmware_name, CAM_FW_PAS_ID,
 			vaddr, res_start, res_size, NULL);
 	if (rc) {
 		CAM_ERR(CAM_ICP, "failed to load firmware rc=%d", rc);
@@ -416,6 +467,47 @@ static int set_remote_state(uint32_t state)
 	return rc;
 }
 
+static int __cam_lx7_update_clk_rate(
+	struct cam_hw_info *lx7_info,
+	int32_t *clk_lvl)
+{
+	int32_t clk_level = 0, rc;
+	struct cam_ahb_vote       ahb_vote;
+	struct cam_lx7_core_info *core_info = NULL;
+	struct cam_hw_soc_info   *soc_info = NULL;
+
+	if (!clk_lvl) {
+		CAM_ERR(CAM_ICP, "Invalid args");
+		return -EINVAL;
+	}
+
+	soc_info = &lx7_info->soc_info;
+	core_info = lx7_info->core_info;
+	if (!core_info || !soc_info) {
+		CAM_ERR(CAM_ICP, "Invalid args");
+		return -EINVAL;
+	}
+
+	clk_level = *((int32_t *)clk_lvl);
+	CAM_DBG(CAM_ICP,
+		"Update ICP clock to level [%d]", clk_level);
+	rc = cam_lx7_update_clk_rate(soc_info, clk_level);
+	if (rc)
+		CAM_WARN(CAM_ICP,
+			"Failed to update clk to level: %d rc: %d",
+			clk_level, rc);
+
+	ahb_vote.type = CAM_VOTE_ABSOLUTE;
+	ahb_vote.vote.level = clk_level;
+	rc = cam_cpas_update_ahb_vote(
+		core_info->cpas_handle, &ahb_vote);
+	if (rc)
+		CAM_WARN(CAM_ICP,
+			"Failed to update ahb vote rc: %d", rc);
+
+	return rc;
+}
+
 int cam_lx7_process_cmd(void *priv, uint32_t cmd_type,
 			void *args, uint32_t arg_size)
 {
@@ -452,6 +544,18 @@ int cam_lx7_process_cmd(void *priv, uint32_t cmd_type,
 	case CAM_ICP_CMD_UBWC_CFG:
 		rc = cam_lx7_ubwc_configure(&lx7_info->soc_info);
 		break;
+	case CAM_ICP_SEND_INIT:
+		hfi_send_system_cmd(HFI_CMD_SYS_INIT, 0, 0);
+		rc = 0;
+		break;
+	case CAM_ICP_CMD_PC_PREP:
+		hfi_send_system_cmd(HFI_CMD_SYS_PC_PREP, 0, 0);
+		rc = 0;
+		break;
+	case CAM_ICP_CMD_CLK_UPDATE: {
+		rc = __cam_lx7_update_clk_rate(lx7_info, args);
+		break;
+	}
 	default:
 		CAM_ERR(CAM_ICP, "invalid command type=%u", cmd_type);
 		break;
