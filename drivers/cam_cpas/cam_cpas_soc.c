@@ -10,6 +10,8 @@
 #include <linux/platform_device.h>
 #include <linux/slab.h>
 
+#include <dt-bindings/msm-camera.h>
+
 #include "cam_cpas_api.h"
 #include "cam_cpas_hw_intf.h"
 #include "cam_cpas_hw.h"
