@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/slab.h>
@@ -468,6 +468,7 @@ static int cam_vfe_camif_ver3_resource_start(
 	case CAM_CPAS_TITAN_480_V100:
 	case CAM_CPAS_TITAN_580_V100:
 	case CAM_CPAS_TITAN_570_V200:
+	case CAM_CPAS_TITAN_680_V100:
 		epoch0_line_cfg = ((rsrc_data->last_line +
 			rsrc_data->vbi_value) -
 			rsrc_data->first_line) / 4;
