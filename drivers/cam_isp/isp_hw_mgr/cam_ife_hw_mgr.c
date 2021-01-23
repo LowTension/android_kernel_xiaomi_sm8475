@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/slab.h>
@@ -6203,6 +6203,11 @@ static int cam_ife_mgr_reset(void *hw_mgr_priv, void *hw_reset_args)
 	if (!ctx || !ctx->ctx_in_use) {
 		CAM_ERR(CAM_ISP, "Invalid context is used");
 		return -EPERM;
+	}
+
+	if (hw_mgr->csid_global_reset_en) {
+		CAM_DBG(CAM_ISP, "Path reset not supported");
+		return 0;
 	}
 
 	CAM_DBG(CAM_ISP, "Reset CSID and VFE");
