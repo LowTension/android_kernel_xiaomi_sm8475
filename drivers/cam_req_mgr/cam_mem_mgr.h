@@ -74,6 +74,13 @@ struct cam_mem_buf_queue {
  * @alloc_profile_enable: Whether to enable alloc profiling
  * @dbg_buf_idx: debug buffer index to get usecases info
  * @force_cache_allocs: Force all internal buffer allocations with cache
+ * @need_shared_buffer_padding: Whether padding is needed for shared buffer
+ *                              allocations.
+ * @system_heap: Handle to system heap
+ * @system_uncached_heap: Handle to system uncached heap
+ * @camera_heap: Handle to camera heap
+ * @camera_uncached_heap: Handle to camera uncached heap
+ * @secure_display_heap: Handle to secure display heap
  */
 struct cam_mem_table {
 	struct mutex m_lock;
@@ -84,6 +91,7 @@ struct cam_mem_table {
 	bool alloc_profile_enable;
 	size_t dbg_buf_idx;
 	bool force_cache_allocs;
+	bool need_shared_buffer_padding;
 #if IS_REACHABLE(CONFIG_DMABUF_HEAPS)
 	struct dma_heap *system_heap;
 	struct dma_heap *system_uncached_heap;
