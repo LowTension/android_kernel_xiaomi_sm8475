@@ -909,7 +909,7 @@ int cam_mem_mgr_alloc_and_map(struct cam_mem_mgr_alloc_cmd *cmd)
 			region = CAM_SMMU_REGION_SHARED;
 
 		if (cmd->flags & CAM_MEM_FLAG_PROTECTED_MODE)
-			region = CAM_SMMU_REGION_SECHEAP;
+			region = CAM_SMMU_REGION_IO;
 
 		rc = cam_mem_util_map_hw_va(cmd->flags,
 			cmd->mmu_hdls,
@@ -1567,6 +1567,7 @@ int cam_mem_mgr_reserve_memory_region(struct cam_mem_mgr_request_desc *inp,
 	int32_t idx;
 	int32_t smmu_hdl = 0;
 	int32_t num_hdl = 0;
+	uintptr_t kvaddr = 0;
 
 	if (!atomic_read(&cam_mem_mgr_state)) {
 		CAM_ERR(CAM_MEM, "failed. mem_mgr not initialized");
@@ -1583,7 +1584,8 @@ int cam_mem_mgr_reserve_memory_region(struct cam_mem_mgr_request_desc *inp,
 		return -EINVAL;
 	}
 
-	if (region != CAM_SMMU_REGION_SECHEAP) {
+	if ((region != CAM_SMMU_REGION_SECHEAP) &&
+		(region != CAM_SMMU_REGION_FWUNCACHED)) {
 		CAM_ERR(CAM_MEM, "Only secondary heap supported");
 		return -EINVAL;
 	}
@@ -1599,10 +1601,16 @@ int cam_mem_mgr_reserve_memory_region(struct cam_mem_mgr_request_desc *inp,
 		CAM_DBG(CAM_MEM, "Got dma_buf = %pK", buf);
 	}
 
-	rc = cam_smmu_reserve_sec_heap(inp->smmu_hdl,
-		buf,
-		&iova,
-		&request_len);
+	if (inp->flags & CAM_MEM_FLAG_KMD_ACCESS) {
+		rc = cam_mem_util_map_cpu_va(buf, &kvaddr, &request_len);
+		if (rc) {
+			CAM_ERR(CAM_MEM, "Failed to get kernel vaddr");
+			goto kmap_fail;
+		}
+	}
+
+	rc = cam_smmu_reserve_buf_region(region,
+		inp->smmu_hdl, buf, &iova, &request_len);
 
 	if (rc) {
 		CAM_ERR(CAM_MEM, "Reserving secondary heap failed");
@@ -1625,7 +1633,7 @@ int cam_mem_mgr_reserve_memory_region(struct cam_mem_mgr_request_desc *inp,
 	tbl.bufq[idx].dma_buf = buf;
 	tbl.bufq[idx].flags = inp->flags;
 	tbl.bufq[idx].buf_handle = mem_handle;
-	tbl.bufq[idx].kmdvaddr = 0;
+	tbl.bufq[idx].kmdvaddr = kvaddr;
 
 	tbl.bufq[idx].vaddr = iova;
 
@@ -1636,7 +1644,7 @@ int cam_mem_mgr_reserve_memory_region(struct cam_mem_mgr_request_desc *inp,
 	tbl.bufq[idx].is_imported = false;
 	mutex_unlock(&tbl.bufq[idx].q_lock);
 
-	out->kva = 0;
+	out->kva = kvaddr;
 	out->iova = (uint32_t)iova;
 	out->smmu_hdl = smmu_hdl;
 	out->mem_handle = mem_handle;
@@ -1646,8 +1654,11 @@ int cam_mem_mgr_reserve_memory_region(struct cam_mem_mgr_request_desc *inp,
 	return rc;
 
 slot_fail:
-	cam_smmu_release_sec_heap(smmu_hdl);
+	cam_smmu_release_buf_region(region, smmu_hdl);
 smmu_fail:
+	if (region == CAM_SMMU_REGION_FWUNCACHED)
+		cam_mem_util_unmap_cpu_va(buf, kvaddr);
+kmap_fail:
 	dma_buf_put(buf);
 ion_fail:
 	return rc;
@@ -1670,7 +1681,8 @@ int cam_mem_mgr_free_memory_region(struct cam_mem_mgr_memory_desc *inp)
 		return -EINVAL;
 	}
 
-	if (inp->region != CAM_SMMU_REGION_SECHEAP) {
+	if ((inp->region != CAM_SMMU_REGION_SECHEAP) &&
+		(inp->region != CAM_SMMU_REGION_FWUNCACHED)) {
 		CAM_ERR(CAM_MEM, "Only secondary heap supported");
 		return -EINVAL;
 	}
@@ -1710,7 +1722,7 @@ int cam_mem_mgr_free_memory_region(struct cam_mem_mgr_memory_desc *inp)
 		return -ENODEV;
 	}
 
-	rc = cam_smmu_release_sec_heap(inp->smmu_hdl);
+	rc = cam_smmu_release_buf_region(inp->region, inp->smmu_hdl);
 	if (rc) {
 		CAM_ERR(CAM_MEM,
 			"Sec heap region release failed");

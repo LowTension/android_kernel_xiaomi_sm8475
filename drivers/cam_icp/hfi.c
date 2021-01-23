@@ -623,9 +623,9 @@ int cam_hfi_resume(struct hfi_mem_info *hfi_mem)
 	cam_io_w_mb((uint32_t)hfi_mem->shmem.len,
 		icp_base + HFI_REG_SHARED_MEM_SIZE);
 	cam_io_w_mb((uint32_t)hfi_mem->sec_heap.iova,
-		icp_base + HFI_REG_UNCACHED_HEAP_PTR);
+		icp_base + HFI_REG_SECONDARY_HEAP_PTR);
 	cam_io_w_mb((uint32_t)hfi_mem->sec_heap.len,
-		icp_base + HFI_REG_UNCACHED_HEAP_SIZE);
+		icp_base + HFI_REG_SECONDARY_HEAP_SIZE);
 	cam_io_w_mb((uint32_t)hfi_mem->qdss.iova,
 		icp_base + HFI_REG_QDSS_IOVA);
 	cam_io_w_mb((uint32_t)hfi_mem->qdss.len,
@@ -640,9 +640,26 @@ int cam_hfi_resume(struct hfi_mem_info *hfi_mem)
 	cam_io_w_mb((uint32_t)hfi_mem->io_mem2.len,
 		icp_base + HFI_REG_IO2_REGION_SIZE);
 
-	CAM_INFO(CAM_HFI, "Resume IO1 : [0x%x 0x%x] IO2 [0x%x 0x%x]",
+	cam_io_w_mb((uint32_t)hfi_mem->fw_uncached.iova,
+		icp_base + HFI_REG_FWUNCACHED_REGION_IOVA);
+	cam_io_w_mb((uint32_t)hfi_mem->fw_uncached.len,
+		icp_base + HFI_REG_FWUNCACHED_REGION_SIZE);
+
+	CAM_DBG(CAM_HFI, "IO1 : [0x%x 0x%x] IO2 [0x%x 0x%x]",
 		hfi_mem->io_mem.iova, hfi_mem->io_mem.len,
 		hfi_mem->io_mem2.iova, hfi_mem->io_mem2.len);
+
+	CAM_DBG(CAM_HFI, "FwUncached : [0x%x 0x%x] Shared [0x%x 0x%x]",
+		hfi_mem->fw_uncached.iova, hfi_mem->fw_uncached.len,
+		hfi_mem->shmem.iova, hfi_mem->shmem.len);
+
+	CAM_DBG(CAM_HFI, "SecHeap : [0x%x 0x%x] QDSS [0x%x 0x%x]",
+		hfi_mem->sec_heap.iova, hfi_mem->sec_heap.len,
+		hfi_mem->qdss.iova, hfi_mem->qdss.len);
+
+	CAM_DBG(CAM_HFI, "QTbl : [0x%x 0x%x] Sfr [0x%x 0x%x]",
+		hfi_mem->qtbl.iova, hfi_mem->qtbl.len,
+		hfi_mem->sfr_buf.iova, hfi_mem->sfr_buf.len);
 
 	return rc;
 }
@@ -818,9 +835,9 @@ int cam_hfi_init(struct hfi_mem_info *hfi_mem, const struct hfi_ops *hfi_ops,
 	cam_io_w_mb((uint32_t)hfi_mem->shmem.len,
 		icp_base + HFI_REG_SHARED_MEM_SIZE);
 	cam_io_w_mb((uint32_t)hfi_mem->sec_heap.iova,
-		icp_base + HFI_REG_UNCACHED_HEAP_PTR);
+		icp_base + HFI_REG_SECONDARY_HEAP_PTR);
 	cam_io_w_mb((uint32_t)hfi_mem->sec_heap.len,
-		icp_base + HFI_REG_UNCACHED_HEAP_SIZE);
+		icp_base + HFI_REG_SECONDARY_HEAP_SIZE);
 	cam_io_w_mb((uint32_t)ICP_INIT_REQUEST_SET,
 		icp_base + HFI_REG_HOST_ICP_INIT_REQUEST);
 	cam_io_w_mb((uint32_t)hfi_mem->qdss.iova,
@@ -835,15 +852,32 @@ int cam_hfi_init(struct hfi_mem_info *hfi_mem, const struct hfi_ops *hfi_ops,
 		icp_base + HFI_REG_IO2_REGION_IOVA);
 	cam_io_w_mb((uint32_t)hfi_mem->io_mem2.len,
 		icp_base + HFI_REG_IO2_REGION_SIZE);
+	cam_io_w_mb((uint32_t)hfi_mem->fw_uncached.iova,
+		icp_base + HFI_REG_FWUNCACHED_REGION_IOVA);
+	cam_io_w_mb((uint32_t)hfi_mem->fw_uncached.len,
+		icp_base + HFI_REG_FWUNCACHED_REGION_SIZE);
 
-	CAM_INFO(CAM_HFI, "Init IO1 : [0x%x 0x%x] IO2 [0x%x 0x%x]",
+	CAM_DBG(CAM_HFI, "IO1 : [0x%x 0x%x] IO2 [0x%x 0x%x]",
 		hfi_mem->io_mem.iova, hfi_mem->io_mem.len,
 		hfi_mem->io_mem2.iova, hfi_mem->io_mem2.len);
 
+	CAM_DBG(CAM_HFI, "FwUncached : [0x%x 0x%x] Shared [0x%x 0x%x]",
+		hfi_mem->fw_uncached.iova, hfi_mem->fw_uncached.len,
+		hfi_mem->shmem.iova, hfi_mem->shmem.len);
+
+	CAM_DBG(CAM_HFI, "SecHeap : [0x%x 0x%x] QDSS [0x%x 0x%x]",
+		hfi_mem->sec_heap.iova, hfi_mem->sec_heap.len,
+		hfi_mem->qdss.iova, hfi_mem->qdss.len);
+
+	CAM_DBG(CAM_HFI, "QTbl : [0x%x 0x%x] Sfr [0x%x 0x%x]",
+		hfi_mem->qtbl.iova, hfi_mem->qtbl.len,
+		hfi_mem->sfr_buf.iova, hfi_mem->sfr_buf.len);
+
 	if (readl_poll_timeout(icp_base + HFI_REG_ICP_HOST_INIT_RESPONSE,
-			       status, status == ICP_INIT_RESP_SUCCESS,
-			       HFI_POLL_DELAY_US, HFI_POLL_TIMEOUT_US)) {
-		CAM_ERR(CAM_HFI, "response poll timed out: status=0x%08x",
+			status, status == ICP_INIT_RESP_SUCCESS,
+			HFI_POLL_DELAY_US, HFI_POLL_TIMEOUT_US)) {
+		CAM_ERR(CAM_HFI,
+			"response poll timed out: status=0x%08x",
 			status);
 		rc = -ETIMEDOUT;
 		goto regions_fail;

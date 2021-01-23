@@ -39,7 +39,8 @@ enum cam_smmu_region_id {
 	CAM_SMMU_REGION_SCRATCH,
 	CAM_SMMU_REGION_IO,
 	CAM_SMMU_REGION_SECHEAP,
-	CAM_SMMU_REGION_QDSS
+	CAM_SMMU_REGION_QDSS,
+	CAM_SMMU_REGION_FWUNCACHED,
 };
 
 /**
@@ -354,8 +355,9 @@ int cam_smmu_get_region_info(int32_t smmu_hdl,
 	struct cam_smmu_region_info *region_info);
 
 /**
- * @brief Reserves secondary heap
+ * @brief Reserves a region with buffer
  *
+ * @param region: Region id
  * @param smmu_hdl: SMMU handle identifying the context bank
  * @param iova: IOVA of secondary heap after reservation has completed
  * @param buf: Allocated dma_buf for secondary heap
@@ -363,19 +365,20 @@ int cam_smmu_get_region_info(int32_t smmu_hdl,
  *
  * @return Status of operation. Negative in case of error. Zero otherwise.
  */
-int cam_smmu_reserve_sec_heap(int32_t smmu_hdl,
-	struct dma_buf *buf,
-	dma_addr_t *iova,
-	size_t *request_len);
+int cam_smmu_reserve_buf_region(enum cam_smmu_region_id region,
+	int32_t smmu_hdl, struct dma_buf *buf,
+	dma_addr_t *iova, size_t *request_len);
 
 /**
- * @brief Releases secondary heap
+ * @brief Releases buffer in reserved region
  *
+ * @param region: Region id
  * @param smmu_hdl: SMMU handle identifying the context bank
  *
  * @return Status of operation. Negative in case of error. Zero otherwise.
  */
-int cam_smmu_release_sec_heap(int32_t smmu_hdl);
+int cam_smmu_release_buf_region(enum cam_smmu_region_id region,
+	int32_t smmu_hdl);
 
 /**
  * @brief Allocates qdss for context bank
