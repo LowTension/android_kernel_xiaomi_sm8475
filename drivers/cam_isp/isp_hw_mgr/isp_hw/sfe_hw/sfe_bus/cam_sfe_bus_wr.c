@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
  */
 
 
@@ -1995,8 +1995,7 @@ static int cam_sfe_bus_wr_update_wm(void *priv, void *cmd_args,
 		val = stride;
 		CAM_DBG(CAM_SFE, "before stride %d", val);
 		val = ALIGNUP(val, 16);
-		if (val != stride &&
-			val != wm_data->stride)
+		if (val != stride)
 			CAM_WARN(CAM_SFE, "Warning stride %u expected %u",
 				stride, val);
 
