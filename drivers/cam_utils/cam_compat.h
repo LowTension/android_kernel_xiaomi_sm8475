@@ -19,7 +19,7 @@
 
 #endif
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
+#if KERNEL_VERSION(5, 4, 0) <= LINUX_VERSION_CODE
 
 #include <linux/msm_ion.h>
 #include <linux/ion.h>
