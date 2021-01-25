@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/delay.h>
@@ -278,14 +278,14 @@ static int cam_cpastop_get_hw_info(struct cam_hw_info *cpas_hw,
 	reg_value = cam_io_r_mb(soc_info->reg_map[reg_indx].mem_base + 0x8);
 	hw_caps->camera_capability = reg_value;
 
-	CAM_DBG(CAM_FD, "Family %d, version %d.%d.%d, cpas %d.%d.%d, cap 0x%x",
+	CAM_DBG(CAM_CPAS, "Family %d, version %d.%d.%d, cpas %d.%d.%d, cap 0x%x",
 		hw_caps->camera_family, hw_caps->camera_version.major,
 		hw_caps->camera_version.minor, hw_caps->camera_version.incr,
 		hw_caps->cpas_version.major, hw_caps->cpas_version.minor,
 		hw_caps->cpas_version.incr, hw_caps->camera_capability);
 
 	soc_info->hw_version = CAM_CPAS_TITAN_NONE;
-	rc  = cam_cpas_translate_camera_cpas_version_id(cam_version,
+	rc = cam_cpas_translate_camera_cpas_version_id(cam_version,
 		cpas_version, &cam_version_id, &cpas_version_id);
 	if (rc) {
 		CAM_ERR(CAM_CPAS, "Invalid Version, Camera: 0x%x CPAS: 0x%x",

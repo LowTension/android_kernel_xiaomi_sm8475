@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/device.h>
@@ -121,14 +121,16 @@ int cam_cpas_node_tree_cleanup(struct cam_cpas *cpas_core,
 
 static int cam_cpas_util_path_type_to_idx(uint32_t *path_data_type)
 {
-	if (*path_data_type >= CAM_CPAS_PATH_DATA_CONSO_OFFSET)
+	if (*path_data_type >= CAM_CPAS_PATH_DATA_CONSO_OFFSET) {
 		*path_data_type = CAM_CPAS_MAX_GRAN_PATHS_PER_CLIENT +
 			(*path_data_type % CAM_CPAS_MAX_GRAN_PATHS_PER_CLIENT);
-	else
+	}
+	else {
 		*path_data_type %= CAM_CPAS_MAX_GRAN_PATHS_PER_CLIENT;
+	}
 
 	if (*path_data_type >= CAM_CPAS_PATH_DATA_MAX) {
-		CAM_ERR(CAM_CPAS, "index Invalid: %d", path_data_type);
+		CAM_ERR(CAM_CPAS, "index Invalid: %u", *path_data_type);
 		return -EINVAL;
 	}
 
@@ -235,7 +237,7 @@ static int cam_cpas_parse_node_tree(struct cam_cpas *cpas_core,
 			if (curr_node_ptr->cell_idx >=
 				CAM_CPAS_MAX_TREE_NODES) {
 				CAM_ERR(CAM_CPAS, "Invalid cell idx: %d",
-					cell_idx);
+					curr_node_ptr->cell_idx);
 				return -EINVAL;
 			}
 
@@ -380,8 +382,11 @@ static int cam_cpas_parse_node_tree(struct cam_cpas *cpas_core,
 
 				rc = cam_cpas_util_path_type_to_idx(
 					&curr_node_ptr->path_data_type);
-				if (rc)
+				if (rc) {
+					CAM_ERR(CAM_CPAS, "Incorrect path type for client: %s",
+						client_name);
 					return rc;
+				}
 
 				rc = of_property_read_u32(curr_node,
 					"traffic-transaction-type",

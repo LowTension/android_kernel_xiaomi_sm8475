@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CAM_CPAS_HW_H_
@@ -14,11 +14,11 @@
 #include "cam_soc_bus.h"
 
 #define CAM_CPAS_INFLIGHT_WORKS              5
-#define CAM_CPAS_MAX_CLIENTS                 40
+#define CAM_CPAS_MAX_CLIENTS                 41
 #define CAM_CPAS_MAX_AXI_PORTS               6
 #define CAM_CPAS_MAX_TREE_LEVELS             4
 #define CAM_CPAS_MAX_GRAN_PATHS_PER_CLIENT   32
-#define CAM_CPAS_PATH_DATA_MAX               38
+#define CAM_CPAS_PATH_DATA_MAX               40
 #define CAM_CPAS_TRANSACTION_MAX             2
 
 #define CAM_CPAS_AXI_MIN_MNOC_AB_BW   (2048 * 1024)

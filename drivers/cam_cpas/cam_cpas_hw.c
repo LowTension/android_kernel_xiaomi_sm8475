@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/device.h>
@@ -2015,6 +2015,11 @@ static void cam_cpas_update_monitor_array(struct cam_hw_info *cpas_hw,
 		entry->be_ddr = cam_io_r_mb(rpmh_base + be_ddr_offset);
 		entry->be_mnoc = cam_io_r_mb(rpmh_base + be_mnoc_offset);
 		entry->be_shub = cam_io_r_mb(rpmh_base + be_shub_offset);
+
+		CAM_DBG(CAM_CPAS,
+			"fe_ddr=0x%x, fe_mnoc=0x%x, be_ddr=0x%x, be_mnoc=0x%x",
+			entry->fe_ddr, entry->fe_mnoc, entry->be_ddr,
+			entry->be_mnoc);
 	}
 
 	entry->camnoc_fill_level[0] = cam_io_r_mb(
