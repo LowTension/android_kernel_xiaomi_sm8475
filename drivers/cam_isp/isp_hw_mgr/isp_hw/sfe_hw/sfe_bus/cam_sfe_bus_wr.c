@@ -2073,6 +2073,121 @@ static int cam_sfe_bus_wr_update_wm(void *priv, void *cmd_args,
 	return 0;
 }
 
+/*
+ * API similar to cam_sfe_bus_wr_update_wm() with the
+ * only change being config is done via AHB instead of CDM
+ */
+static int cam_sfe_bus_wr_config_wm(void *priv, void *cmd_args,
+	uint32_t arg_size)
+{
+	struct cam_sfe_bus_wr_priv             *bus_priv;
+	struct cam_isp_hw_get_cmd_update       *update_buf;
+	struct cam_sfe_bus_wr_out_data         *sfe_out_data = NULL;
+	struct cam_sfe_bus_wr_wm_resource_data *wm_data = NULL;
+	uint32_t  i, k;
+	uint32_t  frame_inc = 0, val;
+	uint32_t loop_size = 0, stride = 0, slice_h = 0;
+
+	bus_priv = (struct cam_sfe_bus_wr_priv  *) priv;
+	update_buf =  (struct cam_isp_hw_get_cmd_update *) cmd_args;
+
+	sfe_out_data = (struct cam_sfe_bus_wr_out_data *)
+		update_buf->res->res_priv;
+
+	if (!sfe_out_data || !sfe_out_data->cdm_util_ops) {
+		CAM_ERR(CAM_SFE, "Failed! Invalid data");
+		return -EINVAL;
+	}
+
+	if (update_buf->wm_update->num_buf != sfe_out_data->num_wm) {
+		CAM_ERR(CAM_SFE,
+			"Failed! Invalid number buffers:%d required:%d",
+			update_buf->wm_update->num_buf, sfe_out_data->num_wm);
+		return -EINVAL;
+	}
+
+	for (i = 0; i < sfe_out_data->num_wm; i++) {
+		wm_data = (struct cam_sfe_bus_wr_wm_resource_data *)
+			sfe_out_data->wm_res[i].res_priv;
+
+		val = (wm_data->height << 16) | wm_data->width;
+		cam_io_w_mb(val,
+			wm_data->common_data->mem_base +
+			wm_data->hw_regs->image_cfg_0);
+		CAM_DBG(CAM_SFE, "WM:%d image height and width 0x%X",
+			wm_data->index, val);
+
+		/* For initial configuration program all bus registers */
+		stride = update_buf->wm_update->stride;
+		slice_h = update_buf->wm_update->slice_height;
+
+		val = stride;
+		CAM_DBG(CAM_SFE, "before stride %d", val);
+		val = ALIGNUP(val, 16);
+		if (val != stride &&
+			val != wm_data->stride)
+			CAM_WARN(CAM_SFE, "Warning stride %u expected %u",
+				stride, val);
+
+		if (wm_data->stride != val || !wm_data->init_cfg_done) {
+			cam_io_w_mb(stride,
+				wm_data->common_data->mem_base +
+				wm_data->hw_regs->image_cfg_2);
+			wm_data->stride = val;
+			CAM_DBG(CAM_SFE, "WM:%d image stride 0x%X",
+				wm_data->index, val);
+		}
+
+		frame_inc = stride * slice_h;
+
+		if (!(wm_data->en_cfg & (0x3 << 16))) {
+			cam_io_w_mb(wm_data->h_init,
+				wm_data->common_data->mem_base +
+				wm_data->hw_regs->image_cfg_1);
+			CAM_DBG(CAM_SFE, "WM:%d h_init 0x%X",
+				wm_data->index, wm_data->h_init);
+		}
+
+		if (wm_data->index > 7)
+			loop_size = wm_data->irq_subsample_period + 1;
+		else
+			loop_size = 1;
+
+		/* WM Image address */
+		for (k = 0; k < loop_size; k++) {
+			if (wm_data->en_cfg & (0x3 << 16))
+				cam_io_w_mb((update_buf->wm_update->image_buf[i] +
+					wm_data->offset + k * frame_inc),
+					wm_data->common_data->mem_base +
+					wm_data->hw_regs->image_addr);
+			else
+				cam_io_w_mb((update_buf->wm_update->image_buf[i] +
+					k * frame_inc),
+					wm_data->common_data->mem_base +
+					wm_data->hw_regs->image_addr);
+		}
+
+		cam_io_w_mb(frame_inc,
+				wm_data->common_data->mem_base +
+				wm_data->hw_regs->frame_incr);
+		CAM_DBG(CAM_SFE, "WM:%d frame_inc %d",
+			wm_data->index, frame_inc);
+
+		/* enable the WM */
+		cam_io_w_mb(wm_data->en_cfg,
+			wm_data->common_data->mem_base +
+			wm_data->hw_regs->cfg);
+		CAM_DBG(CAM_SFE, "WM:%d en_cfg 0x%X",
+			wm_data->index, wm_data->en_cfg);
+
+		/* set initial configuration done */
+		if (!wm_data->init_cfg_done)
+			wm_data->init_cfg_done = true;
+	}
+
+	return 0;
+}
+
 static int cam_sfe_bus_wr_update_hfr(void *priv, void *cmd_args,
 	uint32_t arg_size)
 {
@@ -2328,6 +2443,9 @@ static int cam_sfe_bus_wr_process_cmd(
 	switch (cmd_type) {
 	case CAM_ISP_HW_CMD_GET_BUF_UPDATE:
 		rc = cam_sfe_bus_wr_update_wm(priv, cmd_args, arg_size);
+		break;
+	case CAM_ISP_HW_CMD_BUF_UPDATE:
+		rc = cam_sfe_bus_wr_config_wm(priv, cmd_args, arg_size);
 		break;
 	case CAM_ISP_HW_CMD_GET_HFR_UPDATE:
 		rc = cam_sfe_bus_wr_update_hfr(priv, cmd_args, arg_size);

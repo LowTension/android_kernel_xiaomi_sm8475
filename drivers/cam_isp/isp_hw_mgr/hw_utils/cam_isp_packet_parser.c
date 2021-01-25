@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  */
 
 #include <media/cam_defs.h>
@@ -1723,6 +1723,7 @@ int cam_isp_add_csid_reg_update(
 		kmd_buf_info->used_bytes/4 +
 		reg_update_size/4;
 	rup_args->cmd.size = kmd_buf_remain_size;
+	rup_args->reg_write = false;
 	res = rup_args->res[0];
 
 	rc = res->hw_intf->hw_ops.process_cmd(

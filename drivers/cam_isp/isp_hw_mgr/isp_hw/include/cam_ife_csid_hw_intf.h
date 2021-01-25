@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CAM_CSID_HW_INTF_H_
@@ -353,11 +353,13 @@ struct cam_ife_csid_dual_sync_args {
  * @cmd:           cmd buf update args
  * @node_res:      Node res pointer
  * @num_res:       Num of resources
+ * @reg_write:     if set use AHB to config rup/aup
  */
 struct cam_isp_csid_reg_update_args {
 	struct cam_isp_hw_cmd_buf_update  cmd;
 	struct cam_isp_resource_node     *res[CAM_IFE_PIX_PATH_RES_MAX];
 	uint32_t                          num_res;
+	bool                              reg_write;
 };
 
 /*

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/slab.h>
@@ -4047,6 +4047,9 @@ skip_csid_pxl:
 		}
 	}
 
+	if (in_port->dynamic_sensor_switch_en)
+		ife_ctx->ctx_config |= CAM_IFE_CTX_CFG_DYNAMIC_SWITCH_ON;
+
 	return 0;
 err:
 	/* release resource at the acquire entry funciton */
@@ -4357,7 +4360,7 @@ static int cam_ife_mgr_acquire_hw(void *hw_mgr_priv, void *acquire_hw_args)
 	}
 
 	cam_cpas_get_cpas_hw_version(&ife_ctx->hw_version);
-	ife_ctx->custom_config = 0;
+	ife_ctx->ctx_config = 0;
 	ife_ctx->cdm_handle = 0;
 	ife_ctx->ctx_type = CAM_IFE_CTX_TYPE_NONE;
 
@@ -4420,10 +4423,10 @@ static int cam_ife_mgr_acquire_hw(void *hw_mgr_priv, void *acquire_hw_args)
 			if (in_port[i].cust_node) {
 				ife_ctx->ctx_type = CAM_IFE_CTX_TYPE_CUSTOM;
 				/* These can be obtained from uapi */
-				ife_ctx->custom_config |=
-					CAM_IFE_CUSTOM_CFG_FRAME_HEADER_TS;
-				ife_ctx->custom_config |=
-					CAM_IFE_CUSTOM_CFG_SW_SYNC_ON;
+				ife_ctx->ctx_config |=
+					CAM_IFE_CTX_CFG_FRAME_HEADER_TS;
+				ife_ctx->ctx_config |=
+					CAM_IFE_CTX_CFG_SW_SYNC_ON;
 			} else if (in_port[i].sfe_in_path_type) {
 				ife_ctx->ctx_type = CAM_IFE_CTX_TYPE_SFE;
 			}
@@ -4517,16 +4520,26 @@ static int cam_ife_mgr_acquire_hw(void *hw_mgr_priv, void *acquire_hw_args)
 	atomic_set(&ife_ctx->cdm_done, 1);
 	ife_ctx->last_cdm_done_req = 0;
 
-	acquire_args->support_consumed_addr =
-		g_ife_hw_mgr.support_consumed_addr;
+	if (g_ife_hw_mgr.support_consumed_addr)
+		acquire_args->op_flags |=
+			CAM_IFE_CTX_CONSUME_ADDR_EN;
+
+	if ((ife_ctx->ctx_type == CAM_IFE_CTX_TYPE_SFE) &&
+		ife_ctx->is_fe_enabled) {
+		ife_ctx->ctx_config |= CAM_IFE_CTX_CFG_SFE_FE_MODE;
+		acquire_args->op_flags |=
+			CAM_IFE_CTX_APPLY_DEFAULT_CFG;
+	}
 
 	acquire_args->ctxt_to_hw_map = ife_ctx;
-	acquire_args->custom_enabled = false;
 	if (ife_ctx->ctx_type == CAM_IFE_CTX_TYPE_CUSTOM)
-		acquire_args->custom_enabled = true;
-	acquire_args->use_frame_header_ts =
-		(ife_ctx->custom_config &
-		CAM_IFE_CUSTOM_CFG_FRAME_HEADER_TS);
+		acquire_args->op_flags |= CAM_IFE_CTX_CUSTOM_EN;
+
+	if (ife_ctx->ctx_config &
+		CAM_IFE_CTX_CFG_FRAME_HEADER_TS)
+		acquire_args->op_flags |=
+			CAM_IFE_CTX_FRAME_HEADER_EN;
+
 	ife_ctx->ctx_in_use = 1;
 	ife_ctx->num_reg_dump_buf = 0;
 	memset(&ife_ctx->scratch_config, 0,
@@ -5374,7 +5387,7 @@ static int cam_ife_mgr_config_hw(void *hw_mgr_priv,
 		}
 
 		if (cfg->init_packet || hw_update_data->mup_en ||
-			(ctx->custom_config & CAM_IFE_CUSTOM_CFG_SW_SYNC_ON)) {
+			(ctx->ctx_config & CAM_IFE_CTX_CFG_SW_SYNC_ON)) {
 			rem_jiffies = wait_for_completion_timeout(
 				&ctx->config_done_complete,
 				msecs_to_jiffies(60));
@@ -6272,7 +6285,7 @@ static int cam_ife_mgr_release_hw(void *hw_mgr_priv,
 	ctx->cdm_ops = NULL;
 	ctx->num_reg_dump_buf = 0;
 	ctx->ctx_type = CAM_IFE_CTX_TYPE_NONE;
-	ctx->custom_config = 0;
+	ctx->ctx_config = 0;
 	ctx->num_reg_dump_buf = 0;
 	ctx->is_dual = false;
 	ctx->dsp_enabled = false;
@@ -8313,6 +8326,21 @@ static int cam_sfe_packet_generic_blob_handler(void *user_data,
 			CAM_ERR(CAM_ISP, "FS Update Failed rc: %d", rc);
 	}
 		break;
+	case CAM_ISP_GENERIC_BLOB_TYPE_DYNAMIC_MODE_SWITCH: {
+		struct cam_isp_mode_switch_info    *mup_config;
+
+		if (blob_size < sizeof(struct cam_isp_mode_switch_info)) {
+			CAM_ERR(CAM_ISP, "Invalid blob size %u expected %lu",
+				blob_size,
+				sizeof(struct cam_isp_mode_switch_info));
+			return -EINVAL;
+		}
+
+		mup_config = (struct cam_isp_mode_switch_info *)blob_data;
+		ife_mgr_ctx->scratch_config.curr_num_exp =
+			mup_config->num_expoures;
+	}
+		break;
 	case CAM_ISP_GENERIC_BLOB_TYPE_HFR_CONFIG:
 	case CAM_ISP_GENERIC_BLOB_TYPE_CLOCK_CONFIG:
 	case CAM_ISP_GENERIC_BLOB_TYPE_BW_CONFIG:
@@ -8350,7 +8378,7 @@ static int cam_isp_sfe_send_scratch_buf_upd(
 
 	memset(io_addr, 0, sizeof(io_addr));
 	update_buf.res = hw_res;
-	update_buf.cmd_type = CAM_ISP_HW_CMD_GET_BUF_UPDATE;
+	update_buf.cmd_type = cmd_type;
 	update_buf.cmd.cmd_buf_addr = cpu_addr;
 	update_buf.use_scratch_cfg = true;
 
@@ -8380,7 +8408,11 @@ static int cam_isp_sfe_send_scratch_buf_upd(
 	CAM_DBG(CAM_ISP, "Scratch buf configured for: 0x%x",
 		hw_res->res_id);
 
-	*used_bytes = update_buf.cmd.used_bytes;
+	/* Update used bytes if update is via CDM */
+	if ((cmd_type == CAM_ISP_HW_CMD_GET_BUF_UPDATE) ||
+		(cmd_type == CAM_ISP_HW_CMD_GET_BUF_UPDATE_RM))
+		*used_bytes = update_buf.cmd.used_bytes;
+
 	return rc;
 }
 
@@ -8441,7 +8473,15 @@ static int cam_isp_sfe_add_scratch_buffer_cfg(
 			}
 
 			res_id = hw_mgr_res->hw_res[j]->res_id;
-			cpu_addr = kmd_buf_info->cpu_addr +
+
+			/* check for num exposures */
+			if ((ctx->ctx_config &
+				CAM_IFE_CTX_CFG_DYNAMIC_SWITCH_ON) &&
+				((res_id - CAM_ISP_SFE_OUT_RES_RDI_0) >=
+				ctx->scratch_config.curr_num_exp))
+				continue;
+
+				cpu_addr = kmd_buf_info->cpu_addr +
 				kmd_buf_info->used_bytes / 4 +
 				io_cfg_used_bytes / 4;
 			buf_info = &ctx->scratch_config.buf_info[
@@ -8487,6 +8527,14 @@ static int cam_isp_sfe_add_scratch_buffer_cfg(
 			}
 
 			res_id = hw_mgr_res->hw_res[j]->res_id;
+
+			/* check for num exposures */
+			if ((ctx->ctx_config &
+				CAM_IFE_CTX_CFG_DYNAMIC_SWITCH_ON) &&
+				((res_id - CAM_ISP_HW_SFE_IN_RD0) >=
+				ctx->scratch_config.curr_num_exp))
+				continue;
+
 			cpu_addr = kmd_buf_info->cpu_addr +
 				kmd_buf_info->used_bytes  / 4 +
 				io_cfg_used_bytes / 4;
@@ -8707,7 +8755,7 @@ static int cam_ife_mgr_prepare_hw_update(void *hw_mgr_priv,
 	if (rc)
 		return rc;
 
-	if (ctx->custom_config & CAM_IFE_CUSTOM_CFG_FRAME_HEADER_TS) {
+	if (ctx->ctx_config & CAM_IFE_CTX_CFG_FRAME_HEADER_TS) {
 		rc = cam_ife_mgr_util_insert_frame_header(&kmd_buf,
 			prepare_hw_data);
 		if (rc)
@@ -8825,7 +8873,7 @@ static int cam_ife_mgr_prepare_hw_update(void *hw_mgr_priv,
 		}
 
 		sfe_fe_chk_cfg.sfe_fe_enabled = false;
-		if ((ctx->is_fe_enabled) &&
+		if ((!ctx->is_offline) && (ctx->is_fe_enabled) &&
 			(ctx->base[i].hw_type == CAM_ISP_HW_TYPE_SFE)) {
 			sfe_fe_chk_cfg.sfe_fe_enabled = true;
 			sfe_fe_chk_cfg.sfe_rdi_cfg_mask = 0;
@@ -8899,7 +8947,7 @@ static int cam_ife_mgr_prepare_hw_update(void *hw_mgr_priv,
 	}
 
 	/* Check if frame header was enabled for any WM */
-	if ((ctx->custom_config & CAM_IFE_CUSTOM_CFG_FRAME_HEADER_TS) &&
+	if ((ctx->ctx_config & CAM_IFE_CTX_CFG_FRAME_HEADER_TS) &&
 		(prepare->num_out_map_entries) &&
 		(!prepare_hw_data->frame_header_res_id)) {
 		CAM_ERR(CAM_ISP, "Failed to configure frame header");
@@ -9290,6 +9338,159 @@ outportlog:
 
 }
 
+int cam_isp_config_csid_rup_aup(
+	struct cam_ife_hw_mgr_ctx *ctx)
+{
+	int rc = 0, i, j, hw_idx;
+	struct cam_isp_hw_mgr_res       *hw_mgr_res;
+	struct list_head                *res_list;
+	struct cam_isp_resource_node    *res;
+	struct cam_isp_csid_reg_update_args
+		rup_args[CAM_IFE_CSID_HW_NUM_MAX] = {0};
+
+	res_list = &ctx->res_list_ife_csid;
+	for (j = 0; j < ctx->num_base; j++) {
+		if (ctx->base[j].hw_type != CAM_ISP_HW_TYPE_CSID)
+			continue;
+
+		list_for_each_entry(hw_mgr_res, res_list, list) {
+			if (hw_mgr_res->res_type == CAM_ISP_RESOURCE_UNINT)
+				continue;
+
+			for (i = 0; i < CAM_ISP_HW_SPLIT_MAX; i++) {
+				if (!hw_mgr_res->hw_res[i])
+					continue;
+
+				res = hw_mgr_res->hw_res[i];
+				if (res->hw_intf->hw_idx != ctx->base[j].idx)
+					continue;
+
+				hw_idx = res->hw_intf->hw_idx;
+				rup_args[hw_idx].res[rup_args[hw_idx].num_res] = res;
+				rup_args[hw_idx].num_res++;
+
+				CAM_DBG(CAM_ISP,
+					"Reg update for res %d hw_id %d cdm_idx %d",
+					res->res_id, res->hw_intf->hw_idx, ctx->base[j].idx);
+			}
+		}
+	}
+
+	for (i = 0; i < CAM_IFE_CSID_HW_NUM_MAX; i++) {
+		if (!rup_args[i].num_res)
+			continue;
+
+		rup_args[i].cmd.cmd_buf_addr = NULL;
+		rup_args[i].cmd.size = 0;
+		rup_args[i].reg_write = true;
+		res = rup_args[i].res[0];
+
+		rc = res->hw_intf->hw_ops.process_cmd(
+			res->hw_intf->hw_priv,
+			CAM_ISP_HW_CMD_GET_REG_UPDATE, &rup_args[i],
+			sizeof(struct cam_isp_csid_reg_update_args));
+		if (rc)
+			return rc;
+
+		CAM_DBG(CAM_ISP,
+			"Reg update for res %d hw_id %d ",
+			res->res_id, res->hw_intf->hw_idx);
+	}
+
+	return rc;
+}
+
+/*
+ * Scratch buffer is for sHDR usescases involing SFE RDI0-2
+ * There is no possibility of dual in this case, hence
+ * using the scratch buffer provided during INIT corresponding
+ * to each left RDIs
+ */
+static int cam_ife_mgr_prog_default_settings(
+	struct cam_ife_hw_mgr_ctx *ctx)
+{
+	int i, j, res_id, rc = 0;
+	struct cam_isp_hw_mgr_res       *hw_mgr_res;
+	struct cam_sfe_scratch_buf_info *buf_info;
+	struct list_head                *res_list_in_rd = NULL;
+	struct cam_isp_hw_mgr_res       *res_list_sfe_out = NULL;
+
+	res_list_in_rd = &ctx->res_list_ife_in_rd;
+	res_list_sfe_out = ctx->res_list_sfe_out;
+
+	for (i = 0; i < CAM_SFE_FE_RDI_NUM_MAX; i++) {
+		hw_mgr_res = &res_list_sfe_out[i];
+		for (j = 0; j < CAM_ISP_HW_SPLIT_MAX; j++) {
+			/* j = 1 is not valid for this use-case */
+			if (!hw_mgr_res->hw_res[j])
+				continue;
+
+			res_id = hw_mgr_res->hw_res[j]->res_id;
+			/* check for num exposures */
+			if ((ctx->ctx_config &
+				CAM_IFE_CTX_CFG_DYNAMIC_SWITCH_ON) &&
+				((res_id - CAM_ISP_SFE_OUT_RES_RDI_0) >=
+				ctx->scratch_config.curr_num_exp))
+				continue;
+
+			buf_info = &ctx->scratch_config.buf_info[
+				res_id - CAM_ISP_SFE_OUT_RES_RDI_0];
+
+			CAM_DBG(CAM_ISP,
+				"RDI%d res_id 0x%x idx %u io_addr %pK",
+				i,
+				hw_mgr_res->hw_res[j]->res_id,
+				(res_id - CAM_ISP_SFE_OUT_RES_RDI_0),
+				buf_info->io_addr);
+
+			rc = cam_isp_sfe_send_scratch_buf_upd(0x0,
+				CAM_ISP_HW_CMD_BUF_UPDATE,
+				hw_mgr_res->hw_res[j], buf_info,
+				NULL, NULL);
+			if (rc)
+				return rc;
+		}
+	}
+
+	list_for_each_entry(hw_mgr_res, res_list_in_rd, list) {
+		for (j = 0; j < CAM_ISP_HW_SPLIT_MAX; j++) {
+			if (!hw_mgr_res->hw_res[j])
+				continue;
+
+			res_id = hw_mgr_res->hw_res[j]->res_id;
+
+			/* check for num exposures */
+			if ((ctx->ctx_config &
+				CAM_IFE_CTX_CFG_DYNAMIC_SWITCH_ON) &&
+				((res_id - CAM_ISP_HW_SFE_IN_RD0) >=
+				ctx->scratch_config.curr_num_exp))
+				continue;
+
+			buf_info = &ctx->scratch_config.buf_info
+				[res_id - CAM_ISP_HW_SFE_IN_RD0];
+			CAM_DBG(CAM_ISP,
+				"RD res_id 0x%x idx %u io_addr %pK",
+				hw_mgr_res->hw_res[j]->res_id,
+				(res_id - CAM_ISP_HW_SFE_IN_RD0),
+				buf_info->io_addr);
+			rc = cam_isp_sfe_send_scratch_buf_upd(0x0,
+				CAM_ISP_HW_CMD_BUF_UPDATE_RM,
+				hw_mgr_res->hw_res[j], buf_info,
+				NULL, NULL);
+			if (rc)
+				return rc;
+		}
+	}
+
+	/* Program rup & aup */
+	rc = cam_isp_config_csid_rup_aup(ctx);
+	if (rc)
+		CAM_ERR(CAM_ISP,
+			"RUP/AUP update failed for scratch buffers");
+
+	return rc;
+}
+
 static int cam_ife_mgr_cmd(void *hw_mgr_priv, void *cmd_args)
 {
 	int rc = 0;
@@ -9358,6 +9559,9 @@ static int cam_ife_mgr_cmd(void *hw_mgr_priv, void *cmd_args)
 		case CAM_ISP_HW_MGR_GET_LAST_CDM_DONE:
 			isp_hw_cmd_args->u.last_cdm_done =
 				ctx->last_cdm_done_req;
+			break;
+		case CAM_ISP_HW_MGR_CMD_PROG_DEFAULT_CFG:
+			rc = cam_ife_mgr_prog_default_settings(ctx);
 			break;
 		default:
 			CAM_ERR(CAM_ISP, "Invalid HW mgr command:0x%x",
@@ -10248,8 +10452,8 @@ static int cam_ife_hw_mgr_handle_hw_sof(
 	case CAM_ISP_HW_VFE_IN_CAMIF:
 	case CAM_ISP_HW_VFE_IN_RD:
 		/* if frame header is enabled reset qtimer ts */
-		if (ife_hw_mgr_ctx->custom_config &
-			CAM_IFE_CUSTOM_CFG_FRAME_HEADER_TS) {
+		if (ife_hw_mgr_ctx->ctx_config &
+			CAM_IFE_CTX_CFG_FRAME_HEADER_TS) {
 			sof_done_event_data.timestamp = 0x0;
 			ktime_get_boottime_ts64(&ts);
 			sof_done_event_data.boot_time =
@@ -10417,7 +10621,8 @@ static int cam_ife_hw_mgr_handle_hw_buf_done(
 	buf_done_event_data.last_consumed_addr[0] =
 		event_info->reg_val;
 
-	if ((ife_hw_mgr_ctx->ctx_type == CAM_IFE_CTX_TYPE_SFE) &&
+	if ((!ife_hw_mgr_ctx->is_offline) &&
+		(ife_hw_mgr_ctx->ctx_type == CAM_IFE_CTX_TYPE_SFE) &&
 		(ife_hw_mgr_ctx->is_fe_enabled)) {
 		rc = cam_ife_hw_mgr_check_rdi_scratch_buf_done(
 			ife_hw_mgr_ctx, event_info->res_id,

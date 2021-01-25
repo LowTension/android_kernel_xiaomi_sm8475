@@ -2037,8 +2037,9 @@ static int cam_tfe_mgr_acquire_hw(void *hw_mgr_priv, void *acquire_hw_args)
 	tfe_ctx->ctx_in_use = 1;
 	tfe_ctx->num_reg_dump_buf = 0;
 
-	acquire_args->support_consumed_addr =
-		g_tfe_hw_mgr.support_consumed_addr;
+	if (g_tfe_hw_mgr.support_consumed_addr)
+		acquire_args->op_flags |=
+			 CAM_IFE_CTX_CONSUME_ADDR_EN;
 
 	cam_tfe_hw_mgr_put_ctx(&tfe_hw_mgr->used_ctx_list, &tfe_ctx);
 

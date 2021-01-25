@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CAM_ISP_HW_H_
@@ -145,6 +145,8 @@ enum cam_isp_hw_cmd_type {
 	CAM_IFE_CSID_PROGRAM_OFFLINE_CMD,
 	CAM_IFE_CSID_SET_DUAL_SYNC_CONFIG,
 	CAM_ISP_HW_CMD_CSID_MUP_UPDATE,
+	CAM_ISP_HW_CMD_BUF_UPDATE,
+	CAM_ISP_HW_CMD_BUF_UPDATE_RM,
 	CAM_ISP_HW_CMD_MAX,
 };
 
