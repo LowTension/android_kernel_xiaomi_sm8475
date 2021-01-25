@@ -27,6 +27,7 @@
 #include "camera_main.h"
 #include "cam_trace.h"
 #include "cam_common_util.h"
+#include "cam_compat.h"
 
 #define SHARED_MEM_POOL_GRANULARITY 16
 
@@ -486,8 +487,8 @@ static void cam_smmu_page_fault_work(struct work_struct *work)
 	int idx;
 	struct cam_smmu_work_payload *payload;
 	uint32_t buf_info;
-	struct iommu_fault_ids fault_ids = {0, 0, 0};
-	struct cam_smmu_pf_info  pf_info;
+	/* struct iommu_fault_ids  fault_ids = {0, 0, 0}; */
+	struct cam_smmu_pf_info pf_info;
 
 	mutex_lock(&iommu_cb_set.payload_list_lock);
 	if (list_empty(&iommu_cb_set.payload_list)) {
@@ -502,13 +503,7 @@ static void cam_smmu_page_fault_work(struct work_struct *work)
 	list_del(&payload->list);
 	mutex_unlock(&iommu_cb_set.payload_list_lock);
 
-
-	if ((iommu_get_fault_ids(payload->domain, &fault_ids)))
-		CAM_ERR(CAM_SMMU,
-			"Error: Can not get smmu fault ids");
-
-	CAM_ERR(CAM_SMMU, "smmu fault ids bid:%d pid:%d mid:%d",
-		fault_ids.bid, fault_ids.pid, fault_ids.mid);
+	cam_check_iommu_faults(payload->domain, &pf_info);
 
 	/* Dereference the payload to call the handler */
 	idx = payload->idx;
@@ -521,9 +516,6 @@ static void cam_smmu_page_fault_work(struct work_struct *work)
 	pf_info.iova  = payload->iova;
 	pf_info.flags = payload->flags;
 	pf_info.buf_info = buf_info;
-	pf_info.bid = fault_ids.bid;
-	pf_info.pid = fault_ids.pid;
-	pf_info.mid = fault_ids.mid;
 
 	for (j = 0; j < CAM_SMMU_CB_MAX; j++) {
 		if ((iommu_cb_set.cb_info[idx].handler[j])) {

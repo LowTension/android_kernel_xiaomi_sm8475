@@ -248,3 +248,38 @@ int camera_component_match_add_drivers(struct device *master_dev,
 end:
 	return rc;
 }
+
+#if KERNEL_VERSION(5, 10, 0) <= LINUX_VERSION_CODE
+#include <linux/qcom-iommu-util.h>
+void cam_check_iommu_faults(struct iommu_domain *domain,
+	struct cam_smmu_pf_info *pf_info)
+{
+	struct qcom_iommu_fault_ids fault_ids = {0, 0, 0};
+
+	if (qcom_iommu_get_fault_ids(domain, &fault_ids))
+		CAM_ERR(CAM_SMMU, "Cannot get smmu fault ids");
+	else
+		CAM_ERR(CAM_SMMU, "smmu fault ids bid:%d pid:%d mid:%d",
+			fault_ids.bid, fault_ids.pid, fault_ids.mid);
+
+	pf_info->bid = fault_ids.bid;
+	pf_info->pid = fault_ids.pid;
+	pf_info->mid = fault_ids.mid;
+}
+#else
+void cam_check_iommu_faults(struct iommu_domain *domain,
+	struct cam_smmu_pf_info *pf_info)
+{
+	struct iommu_fault_ids fault_ids = {0, 0, 0};
+
+	if (iommu_get_fault_ids(domain, &fault_ids))
+		CAM_ERR(CAM_SMMU, "Error: Can not get smmu fault ids");
+
+	CAM_ERR(CAM_SMMU, "smmu fault ids bid:%d pid:%d mid:%d",
+		fault_ids.bid, fault_ids.pid, fault_ids.mid);
+
+	pf_info->bid = fault_ids.bid;
+	pf_info->pid = fault_ids.pid;
+	pf_info->mid = fault_ids.mid;
+}
+#endif
