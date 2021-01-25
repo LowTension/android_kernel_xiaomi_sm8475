@@ -9,11 +9,8 @@
 #include <linux/videodev2.h>
 #include <linux/uaccess.h>
 #include <linux/platform_device.h>
-#include <linux/firmware.h>
 #include <linux/delay.h>
 #include <linux/timer.h>
-#include <linux/elf.h>
-#include <linux/iopoll.h>
 #include <media/cam_icp.h>
 #include "cam_io_util.h"
 #include "cam_a5_hw_intf.h"
@@ -29,6 +26,7 @@
 #include "cam_icp_hw_mgr_intf.h"
 #include "cam_cpas_api.h"
 #include "cam_debug_util.h"
+#include "cam_icp_utils.h"
 
 #define PC_POLL_DELAY_US 100
 #define PC_POLL_TIMEOUT_US 10000
@@ -54,133 +52,12 @@ static int cam_a5_cpas_vote(struct cam_a5_device_core_info *core_info,
 	return rc;
 }
 
-static int32_t cam_icp_validate_fw(const uint8_t *elf)
-{
-	struct elf32_hdr *elf_hdr;
-
-	if (!elf) {
-		CAM_ERR(CAM_ICP, "Invalid params");
-		return -EINVAL;
-	}
-
-	elf_hdr = (struct elf32_hdr *)elf;
-
-	if (memcmp(elf_hdr->e_ident, ELFMAG, SELFMAG)) {
-		CAM_ERR(CAM_ICP, "ICP elf identifier is failed");
-		return -EINVAL;
-	}
-
-	/* check architecture */
-	if (elf_hdr->e_machine != EM_ARM) {
-		CAM_ERR(CAM_ICP, "unsupported arch");
-		return -EINVAL;
-	}
-
-	/* check elf bit format */
-	if (elf_hdr->e_ident[EI_CLASS] != ELFCLASS32) {
-		CAM_ERR(CAM_ICP, "elf doesn't support 32 bit format");
-		return -EINVAL;
-	}
-
-	return 0;
-}
-
-static int32_t cam_icp_get_fw_size(const uint8_t *elf, uint32_t *fw_size)
-{
-	int32_t rc = 0;
-	int32_t i = 0;
-	uint32_t num_prg_hdrs;
-	unsigned char *icp_prg_hdr_tbl;
-	uint32_t seg_mem_size = 0;
-	struct elf32_hdr *elf_hdr;
-	struct elf32_phdr *prg_hdr;
-
-	if (!elf || !fw_size) {
-		CAM_ERR(CAM_ICP, "invalid args");
-		return -EINVAL;
-	}
-
-	*fw_size = 0;
-
-	elf_hdr = (struct elf32_hdr *)elf;
-	num_prg_hdrs = elf_hdr->e_phnum;
-	icp_prg_hdr_tbl = (unsigned char *)elf + elf_hdr->e_phoff;
-	prg_hdr = (struct elf32_phdr *)&icp_prg_hdr_tbl[0];
-
-	if (!prg_hdr) {
-		CAM_ERR(CAM_ICP, "failed to get elf program header attr");
-		return -EINVAL;
-	}
-
-	CAM_DBG(CAM_ICP, "num_prg_hdrs = %d", num_prg_hdrs);
-	for (i = 0; i < num_prg_hdrs; i++, prg_hdr++) {
-		if (prg_hdr->p_flags == 0)
-			continue;
-
-		seg_mem_size = (prg_hdr->p_memsz + prg_hdr->p_align - 1) &
-					~(prg_hdr->p_align - 1);
-		seg_mem_size += prg_hdr->p_vaddr;
-		CAM_DBG(CAM_ICP, "memsz:%x align:%x addr:%x seg_mem_size:%x",
-			(int)prg_hdr->p_memsz, (int)prg_hdr->p_align,
-			(int)prg_hdr->p_vaddr, (int)seg_mem_size);
-		if (*fw_size < seg_mem_size)
-			*fw_size = seg_mem_size;
-
-	}
-
-	if (*fw_size == 0) {
-		CAM_ERR(CAM_ICP, "invalid elf fw file");
-		return -EINVAL;
-	}
-
-	return rc;
-}
-
-static int32_t cam_icp_program_fw(const uint8_t *elf,
-		struct cam_a5_device_core_info *core_info)
-{
-	int32_t rc = 0;
-	uint32_t num_prg_hdrs;
-	unsigned char *icp_prg_hdr_tbl;
-	int32_t i = 0;
-	u8 *dest;
-	u8 *src;
-	struct elf32_hdr *elf_hdr;
-	struct elf32_phdr *prg_hdr;
-
-	elf_hdr = (struct elf32_hdr *)elf;
-	num_prg_hdrs = elf_hdr->e_phnum;
-	icp_prg_hdr_tbl = (unsigned char *)elf + elf_hdr->e_phoff;
-	prg_hdr = (struct elf32_phdr *)&icp_prg_hdr_tbl[0];
-
-	if (!prg_hdr) {
-		CAM_ERR(CAM_ICP, "failed to get elf program header attr");
-		return -EINVAL;
-	}
-
-	for (i = 0; i < num_prg_hdrs; i++, prg_hdr++) {
-		if (prg_hdr->p_flags == 0)
-			continue;
-
-		CAM_DBG(CAM_ICP, "Loading FW header size: %u",
-			prg_hdr->p_filesz);
-		if (prg_hdr->p_filesz != 0) {
-			src = (u8 *)((u8 *)elf + prg_hdr->p_offset);
-			dest = (u8 *)(((u8 *)core_info->fw_kva_addr) +
-				prg_hdr->p_vaddr);
-
-			memcpy_toio(dest, src, prg_hdr->p_filesz);
-		}
-	}
-
-	return rc;
-}
-
 static int32_t cam_a5_download_fw(void *device_priv)
 {
 	int32_t rc = 0;
 	uint32_t fw_size;
 	const uint8_t *fw_start = NULL;
+	struct cam_icp_proc_params a5_params;
 	struct cam_hw_info *a5_dev = device_priv;
 	struct cam_hw_soc_info *soc_info = NULL;
 	struct cam_a5_device_core_info *core_info = NULL;
@@ -198,6 +75,7 @@ static int32_t cam_a5_download_fw(void *device_priv)
 	hw_info = core_info->a5_hw_info;
 	pdev = soc_info->pdev;
 	cam_a5_soc_info = soc_info->soc_private;
+	a5_params.skip_seg = false;
 
 	if (cam_a5_soc_info->fw_name) {
 		CAM_INFO(CAM_ICP, "Downloading firmware %s",
@@ -224,13 +102,13 @@ static int32_t cam_a5_download_fw(void *device_priv)
 	}
 
 	fw_start = core_info->fw_elf->data;
-	rc = cam_icp_validate_fw(fw_start);
+	rc = cam_icp_validate_fw(fw_start, EM_ARM);
 	if (rc) {
 		CAM_ERR(CAM_ICP, "fw elf validation failed");
 		goto fw_download_failed;
 	}
 
-	rc = cam_icp_get_fw_size(fw_start, &fw_size);
+	rc = cam_icp_get_fw_size(fw_start, &fw_size, &a5_params);
 	if (rc) {
 		CAM_ERR(CAM_ICP, "unable to get fw size");
 		goto fw_download_failed;
@@ -243,7 +121,7 @@ static int32_t cam_a5_download_fw(void *device_priv)
 		goto fw_download_failed;
 	}
 
-	rc = cam_icp_program_fw(fw_start, core_info);
+	rc = cam_icp_program_fw(fw_start, core_info->fw_kva_addr, &a5_params);
 	if (rc) {
 		CAM_ERR(CAM_ICP, "fw program is failed");
 		goto fw_download_failed;

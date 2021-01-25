@@ -3338,6 +3338,9 @@ static int cam_icp_mgr_proc_boot(struct cam_icp_hw_mgr *hw_mgr)
 		args.firmware.iova = hw_mgr->hfi_mem.fw_buf.iova;
 		args.firmware.kva = hw_mgr->hfi_mem.fw_buf.kva;
 		args.firmware.len = hw_mgr->hfi_mem.fw_buf.len;
+		args.use_sec_pil = false;
+	} else {
+		args.use_sec_pil = true;
 	}
 
 	args.irq_cb.data = hw_mgr;
