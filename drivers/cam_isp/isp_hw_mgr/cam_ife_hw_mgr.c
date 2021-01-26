@@ -8499,9 +8499,8 @@ static int cam_isp_sfe_add_scratch_buffer_cfg(
 				ctx->scratch_config.curr_num_exp))
 				continue;
 
-				cpu_addr = kmd_buf_info->cpu_addr +
-				kmd_buf_info->used_bytes / 4 +
-				io_cfg_used_bytes / 4;
+			cpu_addr = kmd_buf_info->cpu_addr +
+				kmd_buf_info->used_bytes / 4 + io_cfg_used_bytes / 4;
 			buf_info = &ctx->scratch_config.buf_info[
 				res_id - CAM_ISP_SFE_OUT_RES_RDI_0];
 
