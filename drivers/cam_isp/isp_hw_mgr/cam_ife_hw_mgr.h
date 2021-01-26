@@ -143,6 +143,8 @@ struct cam_sfe_scratch_buf_cfg {
  *                          registers
  * @last_cdm_done_req:      Last cdm done request
  * @is_rdi_only_context     flag to specify the context has only rdi resource
+ * @is_lite_context         flag to specify the context has only uses lite
+ *                          resources
  * @config_done_complete    indicator for configuration complete
  * @reg_dump_buf_desc:      cmd buffer descriptors for reg dump
  * @num_reg_dump_buf:       Count of descriptors in reg_dump_buf_desc
@@ -204,6 +206,7 @@ struct cam_ife_hw_mgr_ctx {
 	atomic_t                        cdm_done;
 	uint64_t                        last_cdm_done_req;
 	uint32_t                        is_rdi_only_context;
+	uint32_t                        is_lite_context;
 	struct completion               config_done_complete;
 	uint32_t                        hw_version;
 	struct cam_cmd_buf_desc         reg_dump_buf_desc[
