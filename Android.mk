@@ -15,6 +15,8 @@ KBUILD_OPTIONS += BOARD_PLATFORM=$(TARGET_BOARD_PLATFORM)
 
 # Clear shell environment variables from previous android module during build
 include $(CLEAR_VARS)
+# For incremental compilation support.
+LOCAL_SRC_FILES             := $(wildcard $(LOCAL_PATH)/**/*) $(wildcard $(LOCAL_PATH)/*)
 LOCAL_MODULE_PATH           := $(KERNEL_MODULES_OUT)
 LOCAL_MODULE                := camera.ko
 LOCAL_MODULE_TAGS           := optional
