@@ -10,7 +10,7 @@
 #include "cam_hw_intf.h"
 
 /* MAX IFE CSID instance */
-#define CAM_IFE_CSID_HW_NUM_MAX                        7
+#define CAM_IFE_CSID_HW_NUM_MAX                        8
 #define CAM_IFE_CSID_UDI_MAX                           3
 #define RT_BASE_IDX                                    2
 
