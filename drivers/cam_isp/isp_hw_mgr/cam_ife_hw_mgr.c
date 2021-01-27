@@ -6236,6 +6236,11 @@ static int cam_ife_mgr_reset(void *hw_mgr_priv, void *hw_reset_args)
 		return -EPERM;
 	}
 
+	if (hw_mgr->csid_global_reset_en) {
+		CAM_DBG(CAM_ISP, "Path reset not supported");
+		return 0;
+	}
+
 	CAM_DBG(CAM_ISP, "Reset CSID and VFE");
 
 	rc = cam_ife_hw_mgr_reset_csid(ctx, CAM_IFE_CSID_RESET_PATH);

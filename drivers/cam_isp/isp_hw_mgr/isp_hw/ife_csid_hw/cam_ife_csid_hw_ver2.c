@@ -1152,7 +1152,8 @@ static int cam_ife_csid_ver2_internal_reset(
 		return -EINVAL;
 	}
 
-	if (csid_hw->sync_mode == CAM_ISP_HW_SYNC_SLAVE)
+	if (csid_hw->sync_mode == CAM_ISP_HW_SYNC_SLAVE &&
+		rst_cmd == CAM_IFE_CSID_RESET_CMD_HW_RST)
 		goto wait_only;
 
 	/*Program the reset location */
@@ -1174,6 +1175,7 @@ static int cam_ife_csid_ver2_internal_reset(
 	cam_io_w_mb(val, mem_base + csid_reg->cmn_reg->reset_cfg_addr);
 
 	val = 0;
+
 	/*Program the cmd */
 	if (rst_cmd == CAM_IFE_CSID_RESET_CMD_IRQ_CTRL)
 		val = csid_reg->cmn_reg->rst_cmd_irq_ctrl_only_val;
@@ -1186,17 +1188,13 @@ static int cam_ife_csid_ver2_internal_reset(
 		val, mem_base + csid_reg->cmn_reg->reset_cmd_addr);
 
 wait_only:
-	/* Mask all top irq except reset */
-	cam_io_w_mb(
-		BIT(csid_reg->cmn_reg->top_reset_irq_shift_val),
-		mem_base + csid_reg->cmn_reg->top_irq_mask_addr);
 
 	rc = cam_ife_csid_ver2_wait_for_reset(csid_hw);
 	if (rc)
 		CAM_ERR(CAM_ISP,
-			"CSID[%d] Reset failed mode %d cmd %d loc %d",
+			"CSID[%u] Reset failed mode %d cmd %d loc %d",
 			csid_hw->hw_intf->hw_idx,
-			rst_mode, rst_location, rst_cmd);
+			rst_mode, rst_cmd, rst_location);
 	return rc;
 }
 
@@ -1206,7 +1204,6 @@ int cam_ife_csid_ver2_reset(void *hw_priv,
 	struct cam_hw_info *hw_info;
 	struct cam_ife_csid_ver2_hw *csid_hw;
 	struct cam_csid_reset_cfg_args  *reset;
-	uint32_t irq_mask[CAM_IFE_CSID_IRQ_REG_MAX] = {0};
 	int rc = 0;
 
 	hw_info = (struct cam_hw_info *)hw_priv;
@@ -1215,24 +1212,6 @@ int cam_ife_csid_ver2_reset(void *hw_priv,
 
 	mutex_lock(&csid_hw->hw_info->hw_mutex);
 
-	irq_mask[CAM_IFE_CSID_IRQ_REG_TOP] = IFE_CSID_VER2_TOP_IRQ_STATUS_RST;
-
-	csid_hw->reset_irq_handle = cam_irq_controller_subscribe_irq(
-		csid_hw->csid_irq_controller,
-		CAM_IRQ_PRIORITY_0,
-		irq_mask,
-		csid_hw,
-		cam_ife_csid_ver2_reset_irq_top_half,
-		NULL,
-		NULL,
-		NULL);
-
-	if (csid_hw->reset_irq_handle < 1) {
-		CAM_ERR(CAM_ISP, "csid[%d] reset irq subscribe fail",
-			csid_hw->hw_intf->hw_idx);
-		goto end;
-	}
-
 	switch (reset->reset_type) {
 	case CAM_IFE_CSID_RESET_GLOBAL:
 		rc = cam_ife_csid_ver2_internal_reset(csid_hw,
@@ -1240,12 +1219,14 @@ int cam_ife_csid_ver2_reset(void *hw_priv,
 			CAM_IFE_CSID_RESET_LOC_COMPLETE,
 			CAM_CSID_HALT_IMMEDIATELY);
 		break;
+
 	case CAM_IFE_CSID_RESET_PATH:
 		rc = cam_ife_csid_ver2_internal_reset(csid_hw,
 			CAM_IFE_CSID_RESET_CMD_HW_RST,
 			CAM_IFE_CSID_RESET_LOC_PATH_ONLY,
-			CAM_CSID_HALT_AT_FRAME_BOUNDARY);
+			CAM_CSID_HALT_IMMEDIATELY);
 		break;
+
 	default:
 		CAM_ERR(CAM_ISP, "CSID:Invalid reset type :%d",
 			reset->reset_type);
@@ -1262,13 +1243,6 @@ int cam_ife_csid_ver2_reset(void *hw_priv,
 		csid_hw->hw_intf->hw_idx,
 		reset->reset_type);
 
-	if (csid_hw->reset_irq_handle) {
-		rc = cam_irq_controller_unsubscribe_irq(
-			csid_hw->csid_irq_controller,
-			csid_hw->reset_irq_handle);
-		csid_hw->reset_irq_handle = 0;
-	}
-end:
 	mutex_unlock(&csid_hw->hw_info->hw_mutex);
 	return rc;
 }
@@ -2816,6 +2790,7 @@ static int cam_ife_csid_ver2_enable_core(struct cam_ife_csid_ver2_hw *csid_hw)
 	struct cam_hw_soc_info              *soc_info;
 	const struct cam_ife_csid_ver2_reg_info *csid_reg;
 	uint32_t clk_lvl;
+	uint32_t irq_mask[CAM_IFE_CSID_IRQ_REG_MAX] = {0};
 
 	csid_reg = (struct cam_ife_csid_ver2_reg_info *)
 		    csid_hw->core_info->csid_reg;
@@ -2858,10 +2833,32 @@ static int cam_ife_csid_ver2_enable_core(struct cam_ife_csid_ver2_hw *csid_hw)
 		goto err;
 	}
 
+	irq_mask[CAM_IFE_CSID_IRQ_REG_TOP] = IFE_CSID_VER2_TOP_IRQ_STATUS_RST;
+
+	csid_hw->reset_irq_handle = cam_irq_controller_subscribe_irq(
+		csid_hw->csid_irq_controller,
+		CAM_IRQ_PRIORITY_0,
+		irq_mask,
+		csid_hw,
+		cam_ife_csid_ver2_reset_irq_top_half,
+		NULL,
+		NULL,
+		NULL);
+
+	if (csid_hw->reset_irq_handle < 1) {
+		CAM_ERR(CAM_ISP, "csid[%d] reset irq subscribe fail",
+			csid_hw->hw_intf->hw_idx);
+		goto disable_res;
+	}
+
+	reinit_completion(&csid_hw->irq_complete[CAM_IFE_CSID_IRQ_REG_TOP]);
 	cam_ife_csid_ver2_program_top(csid_hw);
 	csid_hw->hw_info->hw_state = CAM_HW_STATE_POWER_UP;
 
 	return rc;
+
+disable_res:
+	cam_ife_csid_disable_soc_resources(soc_info);
 
 err:
 	CAM_ERR(CAM_ISP, "CSID[%d] init hw fail rc %d",
@@ -2873,7 +2870,6 @@ err:
 static int cam_ife_csid_ver2_enable_hw(
 	struct cam_ife_csid_ver2_hw *csid_hw)
 {
-
 	struct cam_hw_soc_info              *soc_info;
 	const struct cam_ife_csid_ver2_reg_info *csid_reg = NULL;
 	uint32_t  val;
@@ -2977,7 +2973,6 @@ end:
 	return rc;
 }
 
-
 static int cam_ife_csid_ver2_disable_core(
 	struct cam_ife_csid_ver2_hw *csid_hw)
 {
@@ -3006,6 +3001,13 @@ static int cam_ife_csid_ver2_disable_core(
 	/* Disable the top IRQ interrupt */
 	cam_io_w_mb(0, soc_info->reg_map[0].mem_base +
 		csid_reg->cmn_reg->top_irq_mask_addr);
+
+	if (csid_hw->reset_irq_handle) {
+		rc = cam_irq_controller_unsubscribe_irq(
+			csid_hw->csid_irq_controller,
+			csid_hw->reset_irq_handle);
+		csid_hw->reset_irq_handle = 0;
+	}
 
 	rc = cam_ife_csid_disable_soc_resources(soc_info);
 	if (rc)
@@ -3167,6 +3169,7 @@ int cam_ife_csid_ver2_stop(void *hw_priv,
 	int rc = 0;
 	uint32_t i;
 	struct cam_csid_hw_stop_args         *csid_stop;
+	struct cam_csid_reset_cfg_args       reset = {0};
 
 	if (!hw_priv || !stop_args ||
 		(arg_size != sizeof(struct cam_csid_hw_stop_args))) {
@@ -3199,6 +3202,10 @@ int cam_ife_csid_ver2_stop(void *hw_priv,
 			res->res_type, res->res_id);
 	}
 	mutex_unlock(&csid_hw->hw_info->hw_mutex);
+
+	reset.reset_type = CAM_IFE_CSID_RESET_PATH;
+	cam_ife_csid_ver2_reset(hw_priv, &reset,
+		sizeof(struct cam_csid_reset_cfg_args));
 
 	return rc;
 }
@@ -3772,6 +3779,8 @@ static int cam_ife_csid_ver2_process_cmd(void *hw_priv,
 		break;
 	case CAM_ISP_HW_CMD_CSID_MUP_UPDATE:
 		rc = cam_ife_csid_ver2_set_mup_config(csid_hw, cmd_args);
+		break;
+	case CAM_ISP_HW_CMD_CSID_CHANGE_HALT_MODE:
 		break;
 	default:
 		CAM_ERR(CAM_ISP, "CSID:%d unsupported cmd:%d",
