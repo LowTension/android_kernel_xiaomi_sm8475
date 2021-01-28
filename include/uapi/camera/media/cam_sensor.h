@@ -16,6 +16,9 @@
 #define CAM_CSIPHY_SECURE_MODE_ENABLED 1
 #define CAM_SENSOR_NAME_MAX_SIZE 32
 
+#define SKEW_CAL_MASK             BIT(1)
+#define PREAMBLE_PATTEN_CAL_MASK  BIT(2)
+
 enum camera_sensor_cmd_type {
 	CAMERA_SENSOR_CMD_TYPE_INVALID,
 	CAMERA_SENSOR_CMD_TYPE_PROBE,
@@ -432,7 +435,7 @@ struct cam_cmd_unconditional_wait {
 /**
  * cam_csiphy_info       : Provides cmdbuffer structre
  * @lane_assign          : Lane sensor will be using
- * @mipi_flags           : MIPI phy flags
+ * @mipi_flags           : Phy flags for differnt calibration operations
  * @lane_cnt             : Total number of lanes
  * @secure_mode          : Secure mode flag to enable / disable
  * @settle_time          : Settling time in ms
