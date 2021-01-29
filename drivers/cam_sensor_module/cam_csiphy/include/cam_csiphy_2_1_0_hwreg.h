@@ -476,4 +476,28 @@ struct csiphy_reg_t csiphy_3ph_v2_1_0_reg[MAX_LANES][MAX_SETTINGS_PER_LANE] = {
 	},
 };
 
+struct csiphy_reg_t bist_arr_2_1_0[] = {
+	/* 3Phase BIST CONFIGURATION REG SET */
+	{0x02D4, 0x64, 0x00, CSIPHY_3PH_REGS},
+	{0x02D8, 0x3E, 0x00, CSIPHY_3PH_REGS},
+	{0x0250, 0x00, 0x00, CSIPHY_3PH_REGS},
+	{0x0244, 0xB1, 0x00, CSIPHY_3PH_REGS},
+	{0x0240, 0x85, 0x00, CSIPHY_3PH_REGS},
+	{0x06D4, 0x64, 0x00, CSIPHY_3PH_REGS},
+	{0x06D8, 0x3E, 0x00, CSIPHY_3PH_REGS},
+	{0x0650, 0x00, 0x00, CSIPHY_3PH_REGS},
+	{0x0644, 0xB1, 0x00, CSIPHY_3PH_REGS},
+	{0x0640, 0x85, 0x00, CSIPHY_3PH_REGS},
+	{0x0AD4, 0x64, 0x00, CSIPHY_3PH_REGS},
+	{0x0AD8, 0x3E, 0x00, CSIPHY_3PH_REGS},
+	{0x0A50, 0x00, 0x00, CSIPHY_3PH_REGS},
+	{0x0A44, 0xB1, 0x00, CSIPHY_3PH_REGS},
+	{0x0A40, 0x85, 0x00, CSIPHY_3PH_REGS},
+};
+
+struct bist_reg_settings_t bist_setting_2_1_0 = {
+	.num_data_settings = ARRAY_SIZE(bist_arr_2_1_0),
+	.bist_arry = bist_arr_2_1_0,
+};
+
 #endif /* _CAM_CSIPHY_2_1_0_HWREG_H_ */
