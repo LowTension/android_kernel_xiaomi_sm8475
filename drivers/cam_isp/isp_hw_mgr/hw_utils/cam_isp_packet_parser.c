@@ -1617,6 +1617,10 @@ int cam_isp_add_csid_command_buffers(
 		case CAM_ISP_PACKET_META_REG_DUMP_ON_FLUSH:
 		case CAM_ISP_PACKET_META_REG_DUMP_ON_ERROR:
 		case CAM_ISP_PACKET_META_REG_DUMP_PER_REQUEST:
+		case CAM_ISP_SFE_PACKET_META_LEFT:
+		case CAM_ISP_SFE_PACKET_META_RIGHT:
+		case CAM_ISP_SFE_PACKET_META_COMMON:
+		case CAM_ISP_SFE_PACKET_META_DUAL_CONFIG:
 			break;
 		case CAM_ISP_PACKET_META_CSID_LEFT:
 			if (split_id == CAM_ISP_HW_SPLIT_LEFT) {
@@ -1863,5 +1867,62 @@ go_cmd_added:
 	}
 
 end:
+	return rc;
+}
+
+int cam_isp_get_cmd_buf_count(
+	struct cam_hw_prepare_update_args    *prepare,
+	struct cam_isp_cmd_buf_count         *cmd_buf_count)
+{
+	struct cam_cmd_buf_desc        *cmd_desc = NULL;
+	uint32_t                        cmd_meta_data = 0;
+	int                             i;
+	int                             rc = 0;
+
+	cmd_desc = (struct cam_cmd_buf_desc *)
+			((uint8_t *)&prepare->packet->payload +
+			prepare->packet->cmd_buf_offset);
+
+	memset(cmd_buf_count, 0, sizeof(struct cam_isp_cmd_buf_count));
+	for (i = 0; i < prepare->packet->num_cmd_buf; i++) {
+		if (!cmd_desc[i].length)
+			continue;
+
+		rc = cam_packet_util_validate_cmd_desc(&cmd_desc[i]);
+
+		if (rc)
+			return rc;
+
+		cmd_meta_data = cmd_desc[i].meta_data;
+
+		switch (cmd_meta_data) {
+
+		case CAM_ISP_PACKET_META_BASE:
+		case CAM_ISP_PACKET_META_LEFT:
+		case CAM_ISP_PACKET_META_DMI_LEFT:
+		case CAM_ISP_PACKET_META_RIGHT:
+		case CAM_ISP_PACKET_META_DMI_RIGHT:
+		case CAM_ISP_PACKET_META_COMMON:
+		case CAM_ISP_PACKET_META_DMI_COMMON:
+			cmd_buf_count->isp_cnt++;
+			break;
+		case CAM_ISP_PACKET_META_CSID_LEFT:
+		case CAM_ISP_PACKET_META_CSID_RIGHT:
+		case CAM_ISP_PACKET_META_CSID_COMMON:
+			cmd_buf_count->csid_cnt++;
+			break;
+		case CAM_ISP_SFE_PACKET_META_LEFT:
+		case CAM_ISP_SFE_PACKET_META_RIGHT:
+		case CAM_ISP_SFE_PACKET_META_COMMON:
+			cmd_buf_count->sfe_cnt++;
+			break;
+		default:
+			break;
+		}
+	}
+
+	CAM_DBG(CAM_ISP, "Number of cmd buffers: isp:%u csid:%u sfe:%u",
+		 cmd_buf_count->isp_cnt, cmd_buf_count->csid_cnt,
+		 cmd_buf_count->sfe_cnt);
 	return rc;
 }
