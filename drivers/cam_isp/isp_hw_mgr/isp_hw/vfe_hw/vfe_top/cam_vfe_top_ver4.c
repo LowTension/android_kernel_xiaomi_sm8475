@@ -28,6 +28,7 @@
 
 struct cam_vfe_mux_ver4_data {
 	void __iomem                                *mem_base;
+	struct cam_hw_soc_info                      *soc_info;
 	struct cam_hw_intf                          *hw_intf;
 	struct cam_vfe_top_ver4_reg_offset_common   *common_reg;
 	struct cam_vfe_top_common_cfg                cam_common_cfg;
@@ -1287,7 +1288,69 @@ skip_core_decfg:
 	return rc;
 }
 
-int cam_vfe_res_init(
+static int cam_vfe_resource_init(
+	struct cam_isp_resource_node *vfe_res,
+	void *init_args, uint32_t arg_size)
+{
+	struct cam_vfe_mux_ver4_data          *rsrc_data;
+	struct cam_hw_soc_info                *soc_info;
+	int                                    rc = 0;
+
+	if (!vfe_res) {
+		CAM_ERR(CAM_ISP, "Error Invalid input arguments");
+		return -EINVAL;
+	}
+
+	rsrc_data = vfe_res->res_priv;
+	soc_info = rsrc_data->soc_info;
+
+	if ((rsrc_data->dsp_mode >= CAM_ISP_DSP_MODE_ONE_WAY) &&
+		(rsrc_data->dsp_mode <= CAM_ISP_DSP_MODE_ROUND)) {
+		rc = cam_vfe_soc_enable_clk(soc_info, CAM_VFE_DSP_CLK_NAME);
+		if (rc)
+			CAM_ERR(CAM_ISP,
+				"failed to enable dsp clk, rc = %d", rc);
+	}
+
+	rsrc_data->sof_ts.tv_sec = 0;
+	rsrc_data->sof_ts.tv_nsec = 0;
+	rsrc_data->epoch_ts.tv_sec = 0;
+	rsrc_data->epoch_ts.tv_nsec = 0;
+	rsrc_data->eof_ts.tv_sec = 0;
+	rsrc_data->eof_ts.tv_nsec = 0;
+	rsrc_data->error_ts.tv_sec = 0;
+	rsrc_data->error_ts.tv_nsec = 0;
+
+	return rc;
+}
+
+static int cam_vfe_resource_deinit(
+	struct cam_isp_resource_node        *vfe_res,
+	void *deinit_args, uint32_t arg_size)
+{
+	struct cam_vfe_mux_ver4_data          *rsrc_data;
+	struct cam_hw_soc_info                *soc_info;
+	int                                    rc = 0;
+
+	if (!vfe_res) {
+		CAM_ERR(CAM_ISP, "Error Invalid input arguments");
+		return -EINVAL;
+	}
+
+	rsrc_data = vfe_res->res_priv;
+	soc_info = rsrc_data->soc_info;
+
+	if ((rsrc_data->dsp_mode >= CAM_ISP_DSP_MODE_ONE_WAY) &&
+		(rsrc_data->dsp_mode <= CAM_ISP_DSP_MODE_ROUND)) {
+		rc = cam_vfe_soc_disable_clk(soc_info, CAM_VFE_DSP_CLK_NAME);
+		if (rc)
+			CAM_ERR(CAM_ISP, "failed to disable dsp clk");
+	}
+
+	return rc;
+}
+
+int cam_vfe_res_mux_init(
 	struct cam_hw_intf            *hw_intf,
 	struct cam_hw_soc_info        *soc_info,
 	void                          *vfe_hw_info,
@@ -1310,12 +1373,13 @@ int cam_vfe_res_init(
 	vfe_priv->reg_data    = hw_info->reg_data;
 	vfe_priv->hw_intf     = hw_intf;
 	vfe_priv->is_lite     = soc_priv->is_ife_lite;
+	vfe_priv->soc_info    = soc_info;
 	vfe_priv->vfe_irq_controller = vfe_irq_controller;
 	vfe_priv->is_pixel_path = (vfe_res->res_id == CAM_ISP_HW_VFE_IN_CAMIF);
 	vfe_priv->module_desc   = hw_info->module_desc;
 
-	vfe_res->init                = NULL;
-	vfe_res->deinit              = NULL;
+	vfe_res->init                = cam_vfe_resource_init;
+	vfe_res->deinit              = cam_vfe_resource_deinit;
 	vfe_res->start               = cam_vfe_resource_start;
 	vfe_res->stop                = cam_vfe_resource_stop;
 	vfe_res->top_half_handler    = cam_vfe_handle_irq_top_half;
@@ -1331,7 +1395,7 @@ int cam_vfe_res_init(
 	return 0;
 }
 
-int cam_vfe_res_deinit(
+int cam_vfe_res_mux_deinit(
 	struct cam_isp_resource_node  *vfe_res)
 {
 	struct cam_vfe_mux_ver4_data *vfe_priv;
@@ -1344,25 +1408,24 @@ int cam_vfe_res_deinit(
 
 	vfe_priv = vfe_res->res_priv;
 
-	INIT_LIST_HEAD(&vfe_priv->free_payload_list);
-	for (i = 0; i < CAM_VFE_CAMIF_EVT_MAX; i++)
-		INIT_LIST_HEAD(&vfe_priv->evt_payload[i].list);
-
-	vfe_priv = vfe_res->res_priv;
-
-	vfe_res->start = NULL;
-	vfe_res->stop  = NULL;
-	vfe_res->process_cmd = NULL;
-	vfe_res->top_half_handler = NULL;
+	vfe_res->init                = NULL;
+	vfe_res->deinit              = NULL;
+	vfe_res->start               = NULL;
+	vfe_res->stop                = NULL;
+	vfe_res->process_cmd         = NULL;
+	vfe_res->top_half_handler    = NULL;
 	vfe_res->bottom_half_handler = NULL;
-	vfe_res->res_priv = NULL;
+	vfe_res->res_priv            = NULL;
 
-	if (!vfe_res) {
-		CAM_ERR(CAM_ISP, "Error, camif_priv is NULL %pK", vfe_res);
+	if (!vfe_priv) {
+		CAM_ERR(CAM_ISP, "vfe_priv is NULL %pK", vfe_priv);
 		return -ENODEV;
 	}
 
-	kfree(vfe_res);
+	INIT_LIST_HEAD(&vfe_priv->free_payload_list);
+	for (i = 0; i < CAM_VFE_CAMIF_EVT_MAX; i++)
+		INIT_LIST_HEAD(&vfe_priv->evt_payload[i].list);
+	kfree(vfe_priv);
 
 	return 0;
 }
@@ -1419,7 +1482,7 @@ int cam_vfe_top_ver4_init(
 			top_priv->top_common.mux_rsrc[i].res_id =
 				CAM_ISP_HW_VFE_IN_CAMIF;
 
-			rc = cam_vfe_res_init(hw_intf, soc_info,
+			rc = cam_vfe_res_mux_init(hw_intf, soc_info,
 				&hw_info->vfe_full_hw_info,
 				&top_priv->top_common.mux_rsrc[i],
 				vfe_irq_controller);
@@ -1429,7 +1492,7 @@ int cam_vfe_top_ver4_init(
 			top_priv->top_common.mux_rsrc[i].res_id =
 				CAM_ISP_HW_VFE_IN_PDLIB;
 
-			rc = cam_vfe_res_init(hw_intf, soc_info,
+			rc = cam_vfe_res_mux_init(hw_intf, soc_info,
 				&hw_info->pdlib_hw_info,
 				&top_priv->top_common.mux_rsrc[i],
 				vfe_irq_controller);
@@ -1448,7 +1511,7 @@ int cam_vfe_top_ver4_init(
 			top_priv->top_common.mux_rsrc[i].res_id =
 				CAM_ISP_HW_VFE_IN_RDI0 + j;
 
-			rc = cam_vfe_res_init(hw_intf, soc_info,
+			rc = cam_vfe_res_mux_init(hw_intf, soc_info,
 				hw_info->rdi_hw_info[j++],
 				&top_priv->top_common.mux_rsrc[i],
 				vfe_irq_controller);
@@ -1458,7 +1521,7 @@ int cam_vfe_top_ver4_init(
 			top_priv->top_common.mux_rsrc[i].res_id =
 				CAM_ISP_HW_VFE_IN_LCR;
 
-			rc = cam_vfe_res_init(hw_intf, soc_info,
+			rc = cam_vfe_res_mux_init(hw_intf, soc_info,
 				&hw_info->lcr_hw_info,
 				&top_priv->top_common.mux_rsrc[i],
 				vfe_irq_controller);
@@ -1494,7 +1557,7 @@ deinit_resources:
 
 	for (--i; i >= 0; i--) {
 		if (hw_info->mux_type[i] == CAM_VFE_CAMIF_VER_4_0) {
-			if (cam_vfe_res_deinit(
+			if (cam_vfe_res_mux_deinit(
 				&top_priv->top_common.mux_rsrc[i]))
 				CAM_ERR(CAM_ISP, "Camif Deinit failed");
 		} else if (hw_info->mux_type[i] == CAM_VFE_IN_RD_VER_1_0) {
@@ -1502,7 +1565,7 @@ deinit_resources:
 				&top_priv->top_common.mux_rsrc[i]))
 				CAM_ERR(CAM_ISP, "Camif fe Deinit failed");
 		} else {
-			if (cam_vfe_res_deinit(
+			if (cam_vfe_res_mux_deinit(
 				&top_priv->top_common.mux_rsrc[i]))
 				CAM_ERR(CAM_ISP,
 					"Camif lite res id %d Deinit failed",
@@ -1551,7 +1614,7 @@ int cam_vfe_top_ver4_deinit(struct cam_vfe_top  **vfe_top_ptr)
 			CAM_ISP_RESOURCE_STATE_UNAVAILABLE;
 		if (top_priv->top_common.mux_rsrc[i].res_type ==
 			CAM_VFE_CAMIF_VER_4_0) {
-			rc = cam_vfe_res_deinit(
+			rc = cam_vfe_res_mux_deinit(
 				&top_priv->top_common.mux_rsrc[i]);
 			if (rc)
 				CAM_ERR(CAM_ISP, "Camif deinit failed rc=%d",
@@ -1564,7 +1627,7 @@ int cam_vfe_top_ver4_deinit(struct cam_vfe_top  **vfe_top_ptr)
 				CAM_ERR(CAM_ISP, "Camif deinit failed rc=%d",
 					rc);
 		} else {
-			rc = cam_vfe_res_deinit(
+			rc = cam_vfe_res_mux_deinit(
 				&top_priv->top_common.mux_rsrc[i]);
 			if (rc)
 				CAM_ERR(CAM_ISP,
