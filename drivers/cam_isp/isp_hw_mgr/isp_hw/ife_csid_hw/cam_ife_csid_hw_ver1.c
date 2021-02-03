@@ -2213,6 +2213,7 @@ static int cam_ife_csid_ver1_init_config_rdi_path(
 			path_reg->packing_fmt_shift_val;
 
 	val |= path_format.plain_fmt << path_reg->plain_fmt_shift_val;
+	val |= 1 << path_reg->timestamp_en_shift_val;
 
 	cam_io_w_mb(val, mem_base + path_reg->cfg0_addr);
 
@@ -2231,9 +2232,8 @@ static int cam_ife_csid_ver1_init_config_rdi_path(
 	/*configure cfg1 addr
 	 * Timestamp strobe selection
 	 */
-	val |= (1 << path_reg->timestamp_en_shift_val) |
-		(cmn_reg->timestamp_strobe_val <<
-			cmn_reg->timestamp_stb_sel_shift_val);
+	val |= cmn_reg->timestamp_strobe_val <<
+			cmn_reg->timestamp_stb_sel_shift_val;
 
 	cam_io_w_mb(val, mem_base + path_reg->cfg1_addr);
 
