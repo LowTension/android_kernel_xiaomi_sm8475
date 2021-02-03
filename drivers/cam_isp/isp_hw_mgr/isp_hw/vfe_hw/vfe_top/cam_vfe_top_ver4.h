@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CAM_VFE_TOP_VER4_H_
@@ -60,6 +60,7 @@ struct cam_vfe_top_ver4_reg_offset_common {
 	uint32_t stats_throttle_cfg_0;
 	uint32_t stats_throttle_cfg_1;
 	uint32_t stats_throttle_cfg_2;
+	uint32_t bus_violation_status;
 	uint32_t bus_overflow_status;
 	uint32_t irq_sub_pattern_cfg;
 	uint32_t epoch0_pattern_cfg;
@@ -94,12 +95,16 @@ struct cam_vfe_top_common_cfg {
 	uint32_t     ihist_src_sel;
 };
 
+struct cam_vfe_top_ver4_module_desc {
+	uint32_t id;
+	uint8_t *desc;
+};
+
 struct cam_vfe_ver4_path_hw_info {
 	struct cam_vfe_top_ver4_reg_offset_common  *common_reg;
 	struct cam_vfe_ver4_path_reg_data          *reg_data;
+	struct cam_vfe_top_ver4_module_desc        *module_desc;
 };
-
-
 
 struct cam_vfe_top_ver4_hw_info {
 	struct cam_vfe_top_ver4_reg_offset_common  *common_reg;
@@ -124,6 +129,7 @@ struct cam_vfe_ver4_path_reg_data {
 	uint32_t     error_irq_mask;
 	uint32_t     enable_diagnostic_hw;
 	uint32_t     top_debug_cfg_en;
+	uint32_t     pp_violation_mask;
 };
 
 
