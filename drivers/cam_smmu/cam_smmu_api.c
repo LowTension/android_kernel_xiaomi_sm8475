@@ -487,7 +487,6 @@ static void cam_smmu_page_fault_work(struct work_struct *work)
 	int idx;
 	struct cam_smmu_work_payload *payload;
 	uint32_t buf_info;
-	/* struct iommu_fault_ids  fault_ids = {0, 0, 0}; */
 	struct cam_smmu_pf_info pf_info;
 
 	mutex_lock(&iommu_cb_set.payload_list_lock);
@@ -807,11 +806,10 @@ static int cam_smmu_iommu_fault_handler(struct iommu_domain *domain,
 	struct cam_smmu_work_payload *payload;
 
 	if (!token) {
-		CAM_ERR(CAM_SMMU, "Error: token is NULL");
-		CAM_ERR(CAM_SMMU, "Error: domain = %pK, device = %pK",
-			domain, dev);
-		CAM_ERR(CAM_SMMU, "iova = %lX, flags = %d", iova, flags);
-		return -EINVAL;
+		CAM_ERR(CAM_SMMU,
+			"token is NULL, domain = %pK, device = %pK,iova = %lX, flags = %d",
+			domain, dev, iova, flags);
+		return 0;
 	}
 
 	cb_name = (char *)token;
@@ -823,21 +821,21 @@ static int cam_smmu_iommu_fault_handler(struct iommu_domain *domain,
 
 	if (idx < 0 || idx >= iommu_cb_set.cb_num) {
 		CAM_ERR(CAM_SMMU,
-			"Error: index is not valid, index = %d, token = %s",
-			idx, cb_name);
-		return -EINVAL;
+			"index is invalid, index = %d, token = %s, cb_num = %s",
+			idx, cb_name, iommu_cb_set.cb_num);
+		return 0;
 	}
 
 	if (++iommu_cb_set.cb_info[idx].pf_count > g_num_pf_handled) {
 		CAM_INFO_RATE_LIMIT(CAM_SMMU, "PF already handled %d %d %d",
 			g_num_pf_handled, idx,
 			iommu_cb_set.cb_info[idx].pf_count);
-		return -EINVAL;
+		return 0;
 	}
 
 	payload = kzalloc(sizeof(struct cam_smmu_work_payload), GFP_ATOMIC);
 	if (!payload)
-		return -EINVAL;
+		return 0;
 
 	payload->domain = domain;
 	payload->dev = dev;
@@ -852,7 +850,7 @@ static int cam_smmu_iommu_fault_handler(struct iommu_domain *domain,
 
 	cam_smmu_page_fault_work(&iommu_cb_set.smmu_work);
 
-	return -EINVAL;
+	return -ENOSYS;
 }
 
 void cam_smmu_reset_cb_page_fault_cnt(void)
