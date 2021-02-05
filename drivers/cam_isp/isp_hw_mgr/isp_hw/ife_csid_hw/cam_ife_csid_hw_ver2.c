@@ -291,10 +291,10 @@ static int cam_ife_csid_ver2_sof_irq_debug(
 	void *cmd_args)
 {
 	int i = 0;
-	uint32_t val = 0;
+	uint32_t irq_idx = 0;
 	bool sof_irq_enable = false;
-	struct cam_hw_soc_info                  *soc_info;
 	struct cam_ife_csid_ver2_reg_info *csid_reg;
+	uint32_t irq_mask[CAM_IFE_CSID_IRQ_REG_MAX] = {0};
 
 	if (*((uint32_t *)cmd_args) == 1)
 		sof_irq_enable = true;
@@ -307,53 +307,32 @@ static int cam_ife_csid_ver2_sof_irq_debug(
 		return 0;
 	}
 
-	soc_info = &csid_hw->hw_info->soc_info;
 	csid_reg = (struct cam_ife_csid_ver2_reg_info *)
 			csid_hw->core_info->csid_reg;
 
-	for (i = 0; i < csid_reg->cmn_reg->num_pix; i++) {
+	for (i = CAM_IFE_CSID_IRQ_REG_RDI_0; i <= CAM_IFE_CSID_IRQ_REG_IPP;
+		i++) {
+		irq_idx = cam_ife_csid_get_rt_irq_idx(i,
+				csid_reg->cmn_reg->num_pix,
+				csid_reg->cmn_reg->num_ppp,
+				csid_reg->cmn_reg->num_rdis);
 
-		val = cam_io_r_mb(soc_info->reg_map[0].mem_base +
-			csid_reg->ipp_reg->irq_mask_addr);
-
-		if (!val)
-			continue;
-
-		if (sof_irq_enable)
-			val |= IFE_CSID_VER2_PATH_INFO_INPUT_SOF;
-		else
-			val &= ~IFE_CSID_VER2_PATH_INFO_INPUT_SOF;
-
-		cam_io_w_mb(val, soc_info->reg_map[0].mem_base +
-			csid_reg->ipp_reg->irq_mask_addr);
-	}
-
-	for (i = 0; i < csid_reg->cmn_reg->num_rdis; i++) {
-		val = cam_io_r_mb(soc_info->reg_map[0].mem_base +
-			csid_reg->rdi_reg[i]->irq_mask_addr);
-		if (!val)
-			continue;
-
-		if (sof_irq_enable)
-			val |= IFE_CSID_VER2_PATH_INFO_INPUT_SOF;
-		else
-			val &= ~IFE_CSID_VER2_PATH_INFO_INPUT_SOF;
-
-		cam_io_w_mb(val, soc_info->reg_map[0].mem_base +
-			csid_reg->rdi_reg[i]->irq_mask_addr);
+		if (csid_hw->irq_handle[irq_idx]) {
+			irq_mask[irq_idx] =  IFE_CSID_VER2_PATH_INFO_INPUT_SOF;
+			cam_irq_controller_update_irq(
+				csid_hw->csid_irq_controller,
+				csid_hw->irq_handle[i],
+				sof_irq_enable, irq_mask);
+		}
 	}
 
 	if (sof_irq_enable) {
 		csid_hw->debug_info.path_mask |=
 			IFE_CSID_VER2_PATH_INFO_INPUT_SOF;
-		csid_hw->debug_info.debug_val |=
-			CAM_IFE_CSID_DEBUG_ENABLE_SOF_IRQ;
 		csid_hw->flags.sof_irq_triggered = true;
 	} else {
 		csid_hw->debug_info.path_mask &=
 			~IFE_CSID_VER2_PATH_INFO_INPUT_SOF;
-		csid_hw->debug_info.debug_val &=
-			~CAM_IFE_CSID_DEBUG_ENABLE_SOF_IRQ;
 		csid_hw->flags.sof_irq_triggered = false;
 	}
 
@@ -794,11 +773,6 @@ static int cam_ife_csid_ver2_parse_path_irq_status(
 	irq_reg_tag = cam_ife_csid_get_irq_reg_tag_ptr();
 	temp_status = irq_status & err_mask;
 
-	if (csid_hw->flags.sof_irq_triggered &&
-		(irq_status & IFE_CSID_VER2_PATH_INFO_INPUT_SOF)) {
-		csid_hw->counters.irq_debug_cnt++;
-	}
-
 	while (temp_status) {
 
 		if (temp_status & 0x1)
@@ -826,9 +800,17 @@ static int cam_ife_csid_ver2_parse_path_irq_status(
 		temp_status >>= 1;
 	}
 
-	if (csid_hw->counters.irq_debug_cnt >= CAM_CSID_IRQ_SOF_DEBUG_CNT_MAX) {
-		cam_ife_csid_ver2_sof_irq_debug(csid_hw, &sof_irq_debug_en);
-		csid_hw->counters.irq_debug_cnt = 0;
+	if (csid_hw->flags.sof_irq_triggered) {
+
+		if (irq_status & IFE_CSID_VER2_PATH_INFO_INPUT_SOF)
+			csid_hw->counters.irq_debug_cnt++;
+
+		if (csid_hw->counters.irq_debug_cnt >=
+			CAM_CSID_IRQ_SOF_DEBUG_CNT_MAX) {
+			cam_ife_csid_ver2_sof_irq_debug(csid_hw,
+				&sof_irq_debug_en);
+			csid_hw->counters.irq_debug_cnt = 0;
+		}
 	}
 
 	return 0;
@@ -2146,7 +2128,7 @@ static int cam_ife_csid_ver2_start_rdi_path(
 	void __iomem *mem_base;
 	uint32_t val = 0;
 	uint32_t irq_mask[CAM_IFE_CSID_IRQ_REG_MAX] = {0};
-	uint32_t top_irq_mask = 0, irq_idx = 0, rt_irq_idx;
+	uint32_t top_irq_mask = 0, irq_idx = 0;
 	struct cam_ife_csid_ver2_path_cfg *path_cfg;
 
 	rc = cam_ife_csid_ver2_init_config_rdi_path(
@@ -2220,11 +2202,6 @@ static int cam_ife_csid_ver2_start_rdi_path(
 	res->res_state = CAM_ISP_RESOURCE_STATE_STREAMING;
 
 	irq_idx = cam_ife_csid_convert_res_to_irq_reg(res->res_id);
-	rt_irq_idx = cam_ife_csid_get_rt_irq_idx(
-			irq_idx,
-			csid_reg->cmn_reg->num_pix,
-			csid_reg->cmn_reg->num_ppp,
-			csid_reg->cmn_reg->num_rdis);
 
 	switch (res->res_id) {
 	case CAM_IFE_PIX_PATH_RES_RDI_0:
