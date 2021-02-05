@@ -591,12 +591,15 @@ static int cam_csiphy_cphy_data_rate_config(
 	uint8_t  skew_cal_enable = 0;
 	int32_t  delay = 0;
 
-	if ((csiphy_device == NULL) ||
-		(csiphy_device->ctrl_reg == NULL) ||
-		(csiphy_device->ctrl_reg->data_rates_settings_table == NULL)) {
-		CAM_DBG(CAM_CSIPHY,
-			"Data rate specific register table not found");
+	if ((csiphy_device == NULL) || (csiphy_device->ctrl_reg == NULL)) {
+		CAM_ERR(CAM_CSIPHY, "Device is NULL");
 		return -EINVAL;
+	}
+
+	if (csiphy_device->ctrl_reg->data_rates_settings_table == NULL) {
+		CAM_DBG(CAM_CSIPHY,
+			"Data rate specific register table not available");
+		return 0;
 	}
 
 	phy_data_rate = csiphy_device->csiphy_info[idx].data_rate;
