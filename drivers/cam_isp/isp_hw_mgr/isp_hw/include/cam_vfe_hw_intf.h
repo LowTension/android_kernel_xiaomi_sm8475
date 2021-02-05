@@ -11,7 +11,7 @@
 #include "cam_ife_csid_hw_intf.h"
 #include "cam_cpas_api.h"
 
-#define CAM_VFE_HW_NUM_MAX            7
+#define CAM_VFE_HW_NUM_MAX            8
 
 #define VFE_CORE_BASE_IDX             0
 #define RT_BASE_IDX                   2
