@@ -845,6 +845,7 @@ static int cam_ife_csid_ver2_ipp_bottom_half(
 	uint32_t                                   irq_status_ipp;
 	uint32_t                                   err_mask;
 	char                                       tag[15];
+	int                                        irq_idx;
 
 	if (!handler_priv || !evt_payload_priv) {
 		CAM_ERR(CAM_ISP, "Invalid params");
@@ -853,8 +854,14 @@ static int cam_ife_csid_ver2_ipp_bottom_half(
 
 	payload = evt_payload_priv;
 	csid_hw = handler_priv;
+	csid_reg = csid_hw->core_info->csid_reg;
 
-	irq_status_ipp = payload->irq_reg_val[CAM_IFE_CSID_IRQ_REG_IPP];
+	irq_idx = cam_ife_csid_get_rt_irq_idx(
+			CAM_IFE_CSID_IRQ_REG_IPP,
+			csid_reg->cmn_reg->num_pix,
+			csid_reg->cmn_reg->num_ppp,
+			csid_reg->cmn_reg->num_rdis);
+	irq_status_ipp = payload->irq_reg_val[irq_idx];
 
 	snprintf(tag, sizeof(tag), "CSID:%d IPP", csid_hw->hw_intf->hw_idx);
 
@@ -888,9 +895,6 @@ static int cam_ife_csid_ver2_ipp_bottom_half(
 			csid_hw->event_cb(csid_hw->token,
 				CAM_ISP_HW_EVENT_EPOCH, (void *)&evt_info);
 	}
-
-	csid_reg = (struct cam_ife_csid_ver2_reg_info *)
-			csid_hw->core_info->csid_reg;
 
 	err_mask = csid_reg->ipp_reg->fatal_err_mask |
 			csid_reg->ipp_reg->non_fatal_err_mask;

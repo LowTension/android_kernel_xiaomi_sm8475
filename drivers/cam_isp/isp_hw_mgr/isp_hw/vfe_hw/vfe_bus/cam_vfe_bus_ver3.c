@@ -59,6 +59,11 @@ enum cam_vfe_bus_ver3_packer_format {
 	PACKER_FMT_VER3_PLAIN_32,
 	PACKER_FMT_VER3_PLAIN_64,
 	PACKER_FMT_VER3_TP_10,
+	PACKER_FMT_VER3_MIPI10,
+	PACKER_FMT_VER3_MIPI12,
+	PACKER_FMT_VER3_MIPI14,
+	PACKER_FMT_VER3_MIPI20,
+	PACKER_FMT_VER3_PLAIN32_20BPP,
 	PACKER_FMT_VER3_MAX,
 };
 
@@ -467,6 +472,16 @@ static const struct cam_vfe_bus_error_info vfe_lite_error_list[] = {
 		.bitmask = 0x08,
 		.vfe_output = CAM_VFE_BUS_VER3_VFE_OUT_RDI3,
 		.error_description = "Lite RDI 3"
+	},
+	{
+		.bitmask = 0x10,
+		.vfe_output = CAM_VFE_BUS_VER3_VFE_OUT_PREPROCESS_RAW,
+		.error_description = "Lite Pixel Path Preprocess Raw"
+	},
+	{
+		.bitmask = 0x20,
+		.vfe_output = CAM_VFE_BUS_VER3_VFE_OUT_STATS_BG,
+		.error_description = "Lite Pixel Path Stats"
 	}
 };
 
@@ -784,18 +799,22 @@ static enum cam_vfe_bus_ver3_packer_format
 {
 	switch (out_fmt) {
 	case CAM_FORMAT_MIPI_RAW_6:
-	case CAM_FORMAT_MIPI_RAW_8:
-	case CAM_FORMAT_MIPI_RAW_10:
-	case CAM_FORMAT_MIPI_RAW_12:
-	case CAM_FORMAT_MIPI_RAW_14:
 	case CAM_FORMAT_MIPI_RAW_16:
-	case CAM_FORMAT_MIPI_RAW_20:
 	case CAM_FORMAT_PLAIN16_8:
 	case CAM_FORMAT_PLAIN128:
 	case CAM_FORMAT_PD8:
 		return PACKER_FMT_VER3_PLAIN_128;
+	case CAM_FORMAT_MIPI_RAW_8:
 	case CAM_FORMAT_PLAIN8:
 		return PACKER_FMT_VER3_PLAIN_8;
+	case CAM_FORMAT_MIPI_RAW_10:
+		return PACKER_FMT_VER3_MIPI10;
+	case CAM_FORMAT_MIPI_RAW_12:
+		return PACKER_FMT_VER3_MIPI12;
+	case CAM_FORMAT_MIPI_RAW_14:
+		return PACKER_FMT_VER3_MIPI14;
+	case CAM_FORMAT_MIPI_RAW_20:
+		return PACKER_FMT_VER3_MIPI20;
 	case CAM_FORMAT_NV21:
 		if ((wm_index == 1) || (wm_index == 3) || (wm_index == 5))
 			return PACKER_FMT_VER3_PLAIN_8_LSB_MSB_10_ODD_EVEN;
@@ -815,6 +834,8 @@ static enum cam_vfe_bus_ver3_packer_format
 	case CAM_FORMAT_PLAIN32:
 	case CAM_FORMAT_ARGB:
 		return PACKER_FMT_VER3_PLAIN_32;
+	case CAM_FORMAT_PLAIN32_20:
+		return PACKER_FMT_VER3_PLAIN32_20BPP;
 	case CAM_FORMAT_PLAIN64:
 	case CAM_FORMAT_ARGB_16:
 	case CAM_FORMAT_PD10:
@@ -1091,8 +1112,8 @@ static int cam_vfe_bus_ver3_acquire_wm(
 
 	if ((vfe_out_res_id >= CAM_VFE_BUS_VER3_VFE_OUT_RDI0) &&
 		(vfe_out_res_id <= CAM_VFE_BUS_VER3_VFE_OUT_RDI3)) {
-
-		rsrc_data->pack_fmt = 0x0;
+		/* Force RDI to use PLAIN128 */
+		rsrc_data->pack_fmt = PACKER_FMT_VER3_PLAIN_128;
 		switch (rsrc_data->format) {
 		case CAM_FORMAT_MIPI_RAW_6:
 		case CAM_FORMAT_MIPI_RAW_8:
@@ -1302,6 +1323,7 @@ static int cam_vfe_bus_ver3_acquire_wm(
 		case CAM_FORMAT_PLAIN16_8:
 		case CAM_FORMAT_PLAIN16_10:
 		case CAM_FORMAT_PLAIN16_12:
+		case CAM_FORMAT_PLAIN16_14:
 			rsrc_data->width = 0;
 			rsrc_data->height = 0;
 			rsrc_data->stride = 1;
@@ -1444,7 +1466,7 @@ static int cam_vfe_bus_ver3_start_wm(struct cam_isp_resource_node *wm_res)
 		(uint32_t) rsrc_data->hw_regs->cfg, rsrc_data->en_cfg,
 		rsrc_data->width, rsrc_data->height);
 	CAM_DBG(CAM_ISP, "WM:%d pk_fmt:%d stride:%d burst len:%d",
-		rsrc_data->index, rsrc_data->pack_fmt & PACKER_FMT_VER3_MAX,
+		rsrc_data->index, rsrc_data->pack_fmt,
 		rsrc_data->stride, 0xF);
 
 	wm_res->res_state = CAM_ISP_RESOURCE_STATE_STREAMING;

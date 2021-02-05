@@ -50,6 +50,15 @@ static struct cam_vfe_top_ver4_reg_offset_common vfe68x_top_common_reg = {
 	.top_debug_4              = 0x0000106C,
 };
 
+static struct cam_vfe_ver4_path_reg_data vfe68x_ipp_reg_data =
+{
+	.sof_irq_mask                    = 0x1,
+	.eof_irq_mask                    = 0x2,
+	.error_irq_mask                  = 0x3,
+	.enable_diagnostic_hw            = 0x1,
+	.top_debug_cfg_en                = 0x1,
+};
+
 static struct cam_vfe_ver4_path_reg_data vfe68x_rdi_reg_data[4] = {
 
 	{
@@ -109,8 +118,13 @@ static struct cam_vfe_top_ver4_hw_info vfe68x_top_hw_info = {
 	.rdi_hw_info[1] = &vfe68x_rdi_hw_info[1],
 	.rdi_hw_info[2] = &vfe68x_rdi_hw_info[2],
 	.rdi_hw_info[3] = &vfe68x_rdi_hw_info[3],
-	.num_mux = 4,
+	.vfe_full_hw_info = {
+		.common_reg     = &vfe68x_top_common_reg,
+		.reg_data       = &vfe68x_ipp_reg_data,
+	},
+	.num_mux = 5,
 	.mux_type = {
+		CAM_VFE_CAMIF_VER_4_0,
 		CAM_VFE_RDI_VER_1_0,
 		CAM_VFE_RDI_VER_1_0,
 		CAM_VFE_RDI_VER_1_0,
