@@ -482,7 +482,7 @@ static struct cam_ife_csid_ver2_rdi_reg_info
 		.stripe_loc_shift_val             = 20,
 		.ccif_violation_en                = 1,
 		.fatal_err_mask                   = 0x4,
-		.non_fatal_err_mask               = 10080000,
+		.non_fatal_err_mask               = 0x10080000,
 		.camif_irq_mask                   = 0x800000,
 		.rup_aup_mask                     = 0x200020,
 };
@@ -575,7 +575,7 @@ static struct cam_ife_csid_ver2_rdi_reg_info
 		.stripe_loc_shift_val             = 20,
 		.ccif_violation_en                = 1,
 		.fatal_err_mask                   = 0x4,
-		.non_fatal_err_mask               = 10080000,
+		.non_fatal_err_mask               = 0x10080000,
 		.camif_irq_mask                   = 0x800000,
 		.rup_aup_mask                     = 0x400040,
 };
@@ -668,7 +668,7 @@ static struct cam_ife_csid_ver2_rdi_reg_info
 		.stripe_loc_shift_val             = 20,
 		.ccif_violation_en                = 1,
 		.fatal_err_mask                   = 0x4,
-		.non_fatal_err_mask               = 10080000,
+		.non_fatal_err_mask               = 0x10080000,
 		.camif_irq_mask                   = 0x800000,
 		.rup_aup_mask                     = 0x800080,
 };
@@ -761,7 +761,7 @@ static struct cam_ife_csid_ver2_rdi_reg_info
 		.stripe_loc_shift_val            = 20,
 		.ccif_violation_en               = 1,
 		.fatal_err_mask                  = 0x4,
-		.non_fatal_err_mask              = 10080000,
+		.non_fatal_err_mask              = 0x10080000,
 		.camif_irq_mask                  = 0x800000,
 		.rup_aup_mask                    = 0x1000100,
 };
