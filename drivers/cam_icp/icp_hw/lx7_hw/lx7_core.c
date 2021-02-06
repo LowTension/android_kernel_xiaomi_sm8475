@@ -390,7 +390,6 @@ static int32_t __cam_non_sec_load_fw(void *device_priv)
 {
 	int32_t rc = 0;
 	uint32_t fw_size;
-	struct cam_icp_proc_params lx7_params;
 	char firmware_name[ICP_FW_NAME_MAX_SIZE] = {0};
 	const char               *fw_name;
 	const uint8_t            *fw_start = NULL;
@@ -409,13 +408,10 @@ static int32_t __cam_non_sec_load_fw(void *device_priv)
 	pdev = soc_info->pdev;
 
 	/**
-	 * Do not attempt to map 0xE0400000 and 0xE0420000 as these
+	 * Use paddr to map 0xE0400000 and 0xE0420000 as these
 	 * addresses are routed internally by the core. These segments
 	 * are used by the firmware to make use of the rom packing feature.
 	 */
-	lx7_params.skip_seg = true;
-	lx7_params.vaddr[0] = 0xE0400000;
-	lx7_params.vaddr[1] = 0xE0420000;
 
 	rc = of_property_read_string(pdev->dev.of_node, "fw_name",
 		&fw_name);
@@ -455,7 +451,7 @@ static int32_t __cam_non_sec_load_fw(void *device_priv)
 		goto fw_download_failed;
 	}
 
-	rc = cam_icp_get_fw_size(fw_start, &fw_size, &lx7_params);
+	rc = cam_icp_get_fw_size(fw_start, &fw_size);
 	if (rc) {
 		CAM_ERR(CAM_ICP, "unable to get fw size");
 		goto fw_download_failed;
@@ -469,8 +465,7 @@ static int32_t __cam_non_sec_load_fw(void *device_priv)
 	}
 
 	rc = cam_icp_program_fw(fw_start,
-		core_info->fw_params.fw_kva_addr,
-		&lx7_params);
+		core_info->fw_params.fw_kva_addr);
 	if (rc) {
 		CAM_ERR(CAM_ICP, "fw program is failed");
 		goto fw_download_failed;

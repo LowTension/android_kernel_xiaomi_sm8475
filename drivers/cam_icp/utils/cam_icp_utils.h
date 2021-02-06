@@ -13,16 +13,6 @@
 #include "cam_debug_util.h"
 
 /**
- * struct cam_icp_proc_params - ICP [a5/lx7] specific params
- * @skip_seg :  If set skip segments listed in vaddr field
- * @vaddr    :  vaddr of segments to be skipped
- */
-struct cam_icp_proc_params {
-	bool        skip_seg;
-	uint32_t    vaddr[2];
-};
-
-/**
  * @brief : Validate FW elf image
  */
 int32_t cam_icp_validate_fw(const uint8_t *elf, uint32_t machine_id);
@@ -30,13 +20,12 @@ int32_t cam_icp_validate_fw(const uint8_t *elf, uint32_t machine_id);
 /**
  * @brief : Get FW elf size
  */
-int32_t cam_icp_get_fw_size(const uint8_t *elf, uint32_t *fw_size,
-	struct cam_icp_proc_params *params);
+int32_t cam_icp_get_fw_size(const uint8_t *elf, uint32_t *fw_size);
 
 /**
  * @brief : Program FW memory
  */
 int32_t cam_icp_program_fw(const uint8_t *elf,
-	uintptr_t fw_kva_addr, struct cam_icp_proc_params *params);
+	uintptr_t fw_kva_addr);
 
 #endif /* _CAM_ICP_UTILS_H_ */
