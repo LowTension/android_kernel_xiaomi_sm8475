@@ -453,7 +453,7 @@ static int cam_ife_csid_ver2_path_top_half(
 			CAM_INFO(CAM_ISP, "CSID:%d status_%d: 0x%X",
 				csid_hw->hw_intf->hw_idx, i,
 				th_payload->evt_status_arr[i]);
-		return IRQ_HANDLED;
+		return rc;
 	}
 
 	for (i = 0; i < th_payload->num_registers; i++)
@@ -461,7 +461,7 @@ static int cam_ife_csid_ver2_path_top_half(
 
 	th_payload->evt_payload_priv = evt_payload;
 
-	return IRQ_HANDLED;
+	return 0;
 }
 
 static int cam_ife_csid_ver2_rx_err_top_half(
@@ -489,7 +489,7 @@ static int cam_ife_csid_ver2_rx_err_top_half(
 			CAM_INFO(CAM_ISP, "CSID:%d status_%d: 0x%X",
 				csid_hw->hw_intf->hw_idx, i,
 				th_payload->evt_status_arr[i]);
-		return IRQ_HANDLED;
+		return rc;
 	}
 
 	evt_payload->irq_reg_val[CAM_IFE_CSID_IRQ_REG_RX] =
@@ -497,7 +497,7 @@ static int cam_ife_csid_ver2_rx_err_top_half(
 
 	th_payload->evt_payload_priv = evt_payload;
 
-	return IRQ_HANDLED;
+	return 0;
 }
 
 static int cam_ife_csid_ver2_handle_rx_debug_event(
@@ -614,7 +614,7 @@ static int cam_ife_csid_ver2_rx_top_half(
 		irq_status >>= 1;
 	}
 
-	return IRQ_HANDLED;
+	return 0;
 }
 
 static int cam_ife_csid_ver2_disable_csi2(
@@ -777,7 +777,7 @@ static int cam_ife_csid_ver2_rx_err_bottom_half(
 			&csid_hw->rx_free_payload_list,
 			&csid_hw->rx_payload_lock);
 
-	return IRQ_HANDLED;
+	return 0;
 }
 
 static int cam_ife_csid_ver2_parse_path_irq_status(
@@ -908,7 +908,7 @@ static int cam_ife_csid_ver2_ipp_bottom_half(
 			&csid_hw->path_free_payload_list,
 			&csid_hw->path_payload_lock);
 
-	return IRQ_HANDLED;
+	return 0;
 }
 
 static int cam_ife_csid_ver2_ppp_bottom_half(
@@ -945,7 +945,7 @@ static int cam_ife_csid_ver2_ppp_bottom_half(
 			&csid_hw->path_free_payload_list,
 			&csid_hw->path_payload_lock);
 
-	return IRQ_HANDLED;
+	return 0;
 }
 
 static int cam_ife_csid_ver2_rdi_bottom_half(
@@ -1045,7 +1045,7 @@ static int cam_ife_csid_ver2_rdi_bottom_half(
 			&csid_hw->path_free_payload_list,
 			&csid_hw->path_payload_lock);
 
-	return IRQ_HANDLED;
+	return 0;
 }
 
 int cam_ife_csid_ver2_get_hw_caps(void *hw_priv,
