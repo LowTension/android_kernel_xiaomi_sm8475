@@ -3452,8 +3452,11 @@ static int cam_ife_hw_mgr_preprocess_port(
 
 	for (i = 0; i < in_port->num_out_res; i++) {
 		out_port = &in_port->data[i];
-		if (cam_ife_hw_mgr_is_rdi_res(out_port->res_type) ||
-			cam_ife_hw_mgr_is_sfe_rdi_res(out_port->res_type))
+		if (cam_ife_hw_mgr_is_rdi_res(out_port->res_type)) {
+			in_port->rdi_count++;
+			in_port->lite_path_count++;
+		}
+		else if (cam_ife_hw_mgr_is_sfe_rdi_res(out_port->res_type))
 			in_port->rdi_count++;
 		else if (out_port->res_type == CAM_ISP_IFE_OUT_RES_2PD)
 			in_port->ppp_count++;
@@ -3463,6 +3466,17 @@ static int cam_ife_hw_mgr_preprocess_port(
 			CAM_DBG(CAM_ISP, "out_res_type %d",
 			out_port->res_type);
 			in_port->ipp_count++;
+			if (in_port->can_use_lite) {
+				switch(out_port->res_type) {
+				case CAM_ISP_IFE_LITE_OUT_RES_PREPROCESS_RAW:
+				case CAM_ISP_IFE_LITE_OUT_RES_STATS_BG:
+					in_port->lite_path_count++;
+				break;
+				default:
+					CAM_WARN(CAM_ISP, "Output port 0x%x cannot use lite",
+							out_port->res_type);
+				}
+			}
 		}
 	}
 
@@ -4395,6 +4409,7 @@ static int cam_ife_mgr_acquire_hw(void *hw_mgr_priv, void *acquire_hw_args)
 	uint32_t                           total_pix_port = 0;
 	uint32_t                           total_rdi_port = 0;
 	uint32_t                           total_pd_port = 0;
+	uint32_t                           total_lite_port = 0;
 	struct cam_isp_acquire_hw_info    *acquire_hw_info = NULL;
 	uint32_t                           input_size = 0;
 
@@ -4461,12 +4476,18 @@ static int cam_ife_mgr_acquire_hw(void *hw_mgr_priv, void *acquire_hw_args)
 					in_port[i].lcr_count;
 		total_rdi_port += in_port[i].rdi_count;
 		total_pd_port += in_port[i].ppp_count;
+		total_lite_port += in_port[i].lite_path_count;
 	}
 
 	/* Check whether context has only RDI resource */
 	if (!total_pix_port && !total_pd_port) {
 		ife_ctx->is_rdi_only_context = 1;
 		CAM_DBG(CAM_ISP, "RDI only context");
+	}
+
+	/* Check if all output ports are of lite  */
+	if (total_lite_port == total_pix_port + total_rdi_port) {
+		ife_ctx->is_lite_context = 1;
 	}
 
 	/* acquire HW resources */
@@ -9597,7 +9618,7 @@ static int cam_ife_mgr_cmd(void *hw_mgr_priv, void *cmd_args)
 			else if (ctx->is_fe_enabled && !ctx->is_offline &&
 				ctx->ctx_type != CAM_IFE_CTX_TYPE_SFE)
 				isp_hw_cmd_args->u.ctx_type = CAM_ISP_CTX_FS2;
-			else if (ctx->is_rdi_only_context)
+			else if (ctx->is_rdi_only_context || ctx->is_lite_context)
 				isp_hw_cmd_args->u.ctx_type = CAM_ISP_CTX_RDI;
 			else
 				isp_hw_cmd_args->u.ctx_type = CAM_ISP_CTX_PIX;
