@@ -1589,6 +1589,8 @@ irqreturn_t cam_hw_cdm_irq(int irq_num, void *data)
 			if (payload[i]->irq_data ==
 				CAM_CDM_DBG_GEN_IRQ_USR_DATA)
 				CAM_INFO(CAM_CDM, "Debug gen_irq received");
+
+			atomic_inc(&cdm_core->bl_fifo[i].work_record);
 		}
 
 		CAM_DBG(CAM_CDM,
@@ -1615,7 +1617,6 @@ irqreturn_t cam_hw_cdm_irq(int irq_num, void *data)
 			return IRQ_HANDLED;
 		}
 
-		atomic_inc(&cdm_core->bl_fifo[i].work_record);
 		payload[i]->workq_scheduled_ts = ktime_get();
 
 		work_status = queue_work(
@@ -1952,15 +1953,17 @@ int cam_hw_cdm_hang_detect(
 	uint32_t            handle)
 {
 	struct cam_cdm *cdm_core = NULL;
+	struct cam_hw_soc_info *soc_info;
 	int i, rc = -1;
 
 	cdm_core = (struct cam_cdm *)cdm_hw->core_info;
+	soc_info = &cdm_hw->soc_info;
 
 	for (i = 0; i < cdm_core->offsets->reg_data->num_bl_fifo; i++)
 		if (atomic_read(&cdm_core->bl_fifo[i].work_record)) {
 			CAM_WARN(CAM_CDM,
-				"fifo: %d Workqueue got delayed, work_record :%u",
-				i,
+				"fifo: %d Workqueue got delayed for %s%u, work_record :%u",
+				i, soc_info->label_name, soc_info->index,
 				atomic_read(&cdm_core->bl_fifo[i].work_record));
 			rc = 0;
 			break;
