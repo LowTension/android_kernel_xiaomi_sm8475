@@ -57,7 +57,6 @@ static int32_t cam_a5_download_fw(void *device_priv)
 	int32_t rc = 0;
 	uint32_t fw_size;
 	const uint8_t *fw_start = NULL;
-	struct cam_icp_proc_params a5_params;
 	struct cam_hw_info *a5_dev = device_priv;
 	struct cam_hw_soc_info *soc_info = NULL;
 	struct cam_a5_device_core_info *core_info = NULL;
@@ -75,7 +74,6 @@ static int32_t cam_a5_download_fw(void *device_priv)
 	hw_info = core_info->a5_hw_info;
 	pdev = soc_info->pdev;
 	cam_a5_soc_info = soc_info->soc_private;
-	a5_params.skip_seg = false;
 
 	if (cam_a5_soc_info->fw_name) {
 		CAM_INFO(CAM_ICP, "Downloading firmware %s",
@@ -108,7 +106,7 @@ static int32_t cam_a5_download_fw(void *device_priv)
 		goto fw_download_failed;
 	}
 
-	rc = cam_icp_get_fw_size(fw_start, &fw_size, &a5_params);
+	rc = cam_icp_get_fw_size(fw_start, &fw_size);
 	if (rc) {
 		CAM_ERR(CAM_ICP, "unable to get fw size");
 		goto fw_download_failed;
@@ -121,7 +119,7 @@ static int32_t cam_a5_download_fw(void *device_priv)
 		goto fw_download_failed;
 	}
 
-	rc = cam_icp_program_fw(fw_start, core_info->fw_kva_addr, &a5_params);
+	rc = cam_icp_program_fw(fw_start, core_info->fw_kva_addr);
 	if (rc) {
 		CAM_ERR(CAM_ICP, "fw program is failed");
 		goto fw_download_failed;

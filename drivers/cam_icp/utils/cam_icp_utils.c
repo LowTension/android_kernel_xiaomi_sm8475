@@ -38,8 +38,7 @@ int32_t cam_icp_validate_fw(const uint8_t *elf,
 }
 
 int32_t cam_icp_get_fw_size(
-	const uint8_t *elf, uint32_t *fw_size,
-	struct cam_icp_proc_params *params)
+	const uint8_t *elf, uint32_t *fw_size)
 {
 	int32_t rc = 0;
 	int32_t i = 0;
@@ -49,7 +48,7 @@ int32_t cam_icp_get_fw_size(
 	struct elf32_hdr *elf_hdr;
 	struct elf32_phdr *prg_hdr;
 
-	if (!elf || !fw_size || !params) {
+	if (!elf || !fw_size) {
 		CAM_ERR(CAM_ICP, "invalid args");
 		return -EINVAL;
 	}
@@ -71,17 +70,12 @@ int32_t cam_icp_get_fw_size(
 		if (prg_hdr->p_flags == 0)
 			continue;
 
-		if ((params->skip_seg) &&
-			((prg_hdr->p_vaddr == params->vaddr[0]) ||
-			(prg_hdr->p_vaddr ==  params->vaddr[1])))
-			continue;
-
 		seg_mem_size = (prg_hdr->p_memsz + prg_hdr->p_align - 1) &
 					~(prg_hdr->p_align - 1);
-		seg_mem_size += prg_hdr->p_vaddr;
+		seg_mem_size += prg_hdr->p_paddr;
 		CAM_DBG(CAM_ICP, "memsz:%x align:%x addr:%x seg_mem_size:%x",
 			(int)prg_hdr->p_memsz, (int)prg_hdr->p_align,
-			(int)prg_hdr->p_vaddr, (int)seg_mem_size);
+			(int)prg_hdr->p_paddr, (int)seg_mem_size);
 		if (*fw_size < seg_mem_size)
 			*fw_size = seg_mem_size;
 
@@ -96,8 +90,7 @@ int32_t cam_icp_get_fw_size(
 }
 
 int32_t cam_icp_program_fw(const uint8_t *elf,
-	uintptr_t fw_kva_addr,
-	struct cam_icp_proc_params *params)
+	uintptr_t fw_kva_addr)
 {
 	int32_t rc = 0;
 	uint32_t num_prg_hdrs;
@@ -122,17 +115,12 @@ int32_t cam_icp_program_fw(const uint8_t *elf,
 		if (prg_hdr->p_flags == 0)
 			continue;
 
-		if ((params->skip_seg) &&
-			((prg_hdr->p_vaddr == params->vaddr[0]) ||
-			(prg_hdr->p_vaddr ==  params->vaddr[1])))
-			continue;
-
-		CAM_DBG(CAM_ICP, "Loading FW header size: %u",
-			prg_hdr->p_filesz);
+		CAM_DBG(CAM_ICP, "Loading FW header size: %u paddr: %pK",
+			prg_hdr->p_filesz, prg_hdr->p_paddr);
 		if (prg_hdr->p_filesz != 0) {
 			src = (u8 *)((u8 *)elf + prg_hdr->p_offset);
 			dest = (u8 *)(((u8 *)fw_kva_addr) +
-				prg_hdr->p_vaddr);
+				prg_hdr->p_paddr);
 
 			memcpy_toio(dest, src, prg_hdr->p_filesz);
 		}
