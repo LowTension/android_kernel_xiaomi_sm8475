@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/slab.h>
@@ -31,7 +31,8 @@ struct cam_vfe_mux_ver4_data {
 	struct cam_hw_intf                          *hw_intf;
 	struct cam_vfe_top_ver4_reg_offset_common   *common_reg;
 	struct cam_vfe_top_common_cfg                cam_common_cfg;
-	struct cam_vfe_ver4_path_reg_data      *reg_data;
+	struct cam_vfe_ver4_path_reg_data           *reg_data;
+	struct cam_vfe_top_ver4_module_desc         *module_desc;
 
 	cam_hw_mgr_event_cb_func             event_cb;
 	void                                *priv;
@@ -507,6 +508,84 @@ int cam_vfe_top_ver4_release(void *device_priv,
 	return 0;
 }
 
+static void cam_vfe_top_ver4_print_debug_reg_status(
+	struct cam_vfe_mux_ver4_data            *mux_data,
+	uint32_t                                *irq_status)
+{
+	uint32_t val0, val1, val2, val3;
+
+	val0 = cam_io_r(mux_data->mem_base +
+		mux_data->common_reg->top_debug_0);
+	val1 = cam_io_r(mux_data->mem_base +
+		mux_data->common_reg->top_debug_1);
+	val2 = cam_io_r(mux_data->mem_base +
+		mux_data->common_reg->top_debug_2);
+	val3 = cam_io_r(mux_data->mem_base +
+		mux_data->common_reg->top_debug_3);
+
+	CAM_INFO(CAM_ISP,
+		"status_0: 0x%x status_1: 0x%x status_2: 0x%x status_3: 0x%x",
+		val0, val1, val2, val3);
+
+	val0 = cam_io_r(mux_data->mem_base +
+		mux_data->common_reg->top_debug_4);
+	val1 = cam_io_r(mux_data->mem_base +
+		mux_data->common_reg->top_debug_5);
+	val2 = cam_io_r(mux_data->mem_base +
+		mux_data->common_reg->top_debug_6);
+	val3 = cam_io_r(mux_data->mem_base +
+		mux_data->common_reg->top_debug_7);
+
+	CAM_INFO(CAM_ISP,
+		"status_4: 0x%x status_5: 0x%x status_6: 0x%x status_7: 0x%x",
+		val0, val1, val2, val3);
+
+	val0 = cam_io_r(mux_data->mem_base +
+		mux_data->common_reg->top_debug_8);
+	val1 = cam_io_r(mux_data->mem_base +
+		mux_data->common_reg->top_debug_9);
+	val2 = cam_io_r(mux_data->mem_base +
+		mux_data->common_reg->top_debug_10);
+	val3 = cam_io_r(mux_data->mem_base +
+		mux_data->common_reg->top_debug_11);
+	CAM_INFO(CAM_ISP,
+		"status_8: 0x%x status_9: 0x%x status_10: 0x%x status_11: 0x%x",
+		val0, val1, val2, val3);
+
+	val0 = cam_io_r(mux_data->mem_base +
+		mux_data->common_reg->top_debug_12);
+	val1 = cam_io_r(mux_data->mem_base +
+		mux_data->common_reg->top_debug_13);
+	CAM_INFO(CAM_ISP, "status_12: 0x%x status_13: 0x%x",
+		val0, val1);
+
+	if (irq_status[CAM_IFE_IRQ_CAMIF_REG_STATUS0] &&
+		mux_data->reg_data->pp_violation_mask) {
+
+		val0 =  cam_io_r(mux_data->mem_base +
+				mux_data->common_reg->violation_status),
+
+		CAM_ERR(CAM_ISP, "VFE[%u] PP Violation status 0x%x",
+		     mux_data->hw_intf->hw_idx, val0);
+
+		if (mux_data->module_desc)
+			CAM_ERR(CAM_ISP, "VFE[%u] PP Violation Module[%u] %s",
+				mux_data->hw_intf->hw_idx,
+				mux_data->module_desc[val0].id,
+				mux_data->module_desc[val0].desc);
+	}
+
+	CAM_ERR(CAM_ISP, "VFE[%u] Bus overflow status 0x%x",
+		mux_data->hw_intf->hw_idx,
+		cam_io_r(mux_data->mem_base +
+			mux_data->common_reg->bus_overflow_status));
+
+	CAM_ERR(CAM_ISP, "VFE[%u] Bus  Violation status 0x%x",
+		mux_data->hw_intf->hw_idx,
+		cam_io_r(mux_data->mem_base +
+			mux_data->common_reg->bus_violation_status));
+}
+
 int cam_vfe_top_ver4_start(void *device_priv,
 	void *start_args, uint32_t arg_size)
 {
@@ -894,6 +973,8 @@ static int cam_vfe_handle_irq_bottom_half(void *handler_priv,
 		if (vfe_priv->event_cb)
 			vfe_priv->event_cb(vfe_priv->priv,
 				CAM_ISP_HW_EVENT_ERROR, (void *)&evt_info);
+		cam_vfe_top_ver4_print_debug_reg_status(vfe_priv,
+			irq_status);
 
 		ret = CAM_VFE_IRQ_STATUS_ERR;
 	}
@@ -1231,6 +1312,7 @@ int cam_vfe_res_init(
 	vfe_priv->is_lite     = soc_priv->is_ife_lite;
 	vfe_priv->vfe_irq_controller = vfe_irq_controller;
 	vfe_priv->is_pixel_path = (vfe_res->res_id == CAM_ISP_HW_VFE_IN_CAMIF);
+	vfe_priv->module_desc   = hw_info->module_desc;
 
 	vfe_res->init                = NULL;
 	vfe_res->deinit              = NULL;

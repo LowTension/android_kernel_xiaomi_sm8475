@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
  */
 
 
@@ -10,6 +10,265 @@
 #include "cam_vfe_core.h"
 #include "cam_vfe_bus_ver3.h"
 #include "cam_irq_controller.h"
+
+static struct cam_vfe_top_ver4_module_desc vfe_pp_mod_desc[] = {
+	{
+		.id = 0,
+		.desc = "CLC_DEMUX",
+	},
+	{
+		.id = 1,
+		.desc = "CLC_CHANNEL_GAIN",
+	},
+	{
+		.id = 2,
+		.desc = "CLC_BPC_PDPC",
+	},
+	{
+		.id = 3,
+		.desc = "CLC_BINCORRECT",
+	},
+	{
+		.id = 4,
+		.desc = "CLC_COMPDECOMP",
+	},
+	{
+		.id = 5,
+		.desc = "CLC_LSC",
+	},
+	{
+		.id = 6,
+		.desc = "CLC_WB_GAIN",
+	},
+	{
+		.id = 7,
+		.desc = "CLC_GIC",
+	},
+	{
+		.id = 8,
+		.desc = "CLC_BPC_ABF",
+	},
+	{
+		.id = 9,
+		.desc = "CLC_BLS",
+	},
+	{
+		.id = 10,
+		.desc = "CLC_BAYER_GTM",
+	},
+	{
+		.id = 11,
+		.desc = "CLC_BAYER_LTM",
+	},
+	{
+		.id = 12,
+		.desc = "CLC_LCAC",
+	},
+	{
+		.id = 13,
+		.desc = "CLC_DEMOSAIC",
+	},
+	{
+		.id = 14,
+		.desc = "CLC_COLOR_CORRECT",
+	},
+	{
+		.id = 15,
+		.desc = "CLC_GTM",
+	},
+	{
+		.id = 16,
+		.desc = "CLC_GLUT",
+	},
+	{
+		.id = 17,
+		.desc = "CLC_COLOR_TRANSFORM",
+	},
+	{
+		.id = 18,
+		.desc = "CLC_UVG",
+	},
+	{
+		.id = 19,
+		.desc = "CLC_PREPROCESSOR",
+	},
+	{
+		.id = 20,
+		.desc = "CLC_CHROMA_UP",
+	},
+	{
+		.id = 21,
+		.desc = "CLC_SPARSE_PD_EXT",
+	},
+	{
+		.id = 22,
+		.desc = "CLC_LCR",
+	},
+	{
+		.id = 23,
+		.desc = "CLC_COMPDECOMP_HVX_TX",
+	},
+	{
+		.id = 24,
+		.desc = "CLC_COMPDECOMP_HVX_RX",
+	},
+	{
+		.id = 25,
+		.desc = "CLC_GTM_FD_OUT",
+	},
+	{
+		.id = 26,
+		.desc = "CLC_CROP_RND_CLAMP_PIXEL_RAW_OUT",
+	},
+	{
+		.id = 27,
+		.desc = "CLC_DOWNSCALE_MN_Y_FD_OUT",
+	},
+	{
+		.id = 28,
+		.desc = "CLC_DOWNSCALE_MN_C_FD_OUT",
+	},
+	{
+		.id = 29,
+		.desc = "CLC_CLC_CROP_RND_CLAMP_POST_DOWNSCALE_MN_Y_FD_OUT",
+	},
+	{
+		.id = 30,
+		.desc = "CLC_CROP_RND_CLAMP_POST_DOWNSCALE_MN_C_FD_OUT",
+	},
+	{
+		.id = 31,
+		.desc = "CLC_DOWNSCALE_MN_Y_DISP_OUT",
+	},
+	{
+		.id = 32,
+		.desc = "CLC_DOWNSCALE_MN_C_DISP_OUT",
+	},
+	{
+		.id = 33,
+		.desc = "CLC_CROP_RND_CLAMP_POST_DOWNSCALE_MN_Y_DISP_OUT",
+	},
+	{
+		.id = 34,
+		.desc = "CLC_CROP_RND_CLAMP_POST_DOWNSCALE_MN_C_DISP_OUT",
+	},
+	{
+		.id = 35,
+		.desc = "CLC_DOWNSCALE_4TO1_Y_DISP_DS4_OUT",
+	},
+	{
+		.id = 36,
+		.desc = "CLC_DOWNSCALE_4TO1_C_DISP_DS4_OUT",
+	},
+	{
+		.id = 37,
+		.desc = "CLC_CROP_RND_CLAMP_POST_DOWNSCALE_4TO1_Y_DISP_DS4_OUT",
+	},
+	{
+		.id = 38,
+		.desc = "CLC_CROP_RND_CLAMP_POST_DOWNSCALE_4TO1_C_DISP_DS4_OUT",
+	},
+	{
+		.id = 39,
+		.desc = "CLC_DOWNSCALE_4TO1_Y_DISP_DS16_OUT",
+	},
+	{
+		.id = 40,
+		.desc = "CLC_DOWNSCALE_4TO1_C_DISP_DS16_OUT",
+	},
+	{
+		.id = 41,
+		.desc = "CLC_CROP_RND_CLAMP_POST_DOWNSCALE_4TO1_Y_DISP_DS16_OUT",
+	},
+	{
+		.id = 42,
+		.desc = "CLC_CROP_RND_CLAMP_POST_DOWNSCALE_4TO1_C_DISP_DS16_OUT",
+	},
+	{
+		.id = 43,
+		.desc = "CLC_DOWNSCALE_MN_Y_VID_OUT",
+	},
+	{
+		.id = 44,
+		.desc = "CLC_DOWNSCALE_MN_C_VID_OUT",
+	},
+	{
+		.id = 45,
+		.desc = "CLC_CROP_RND_CLAMP_POST_DOWNSCALE_MN_Y_VID_OUT",
+	},
+	{
+		.id = 46,
+		.desc = "CLC_CROP_RND_CLAMP_POST_DOWNSCALE_MN_C_VID_OUT",
+	},
+	{
+		.id = 47,
+		.desc = "CLC_DSX_Y_VID_OUT",
+	},
+	{
+		.id = 48,
+		.desc = "CLC_DSX_C_VID_OUT",
+	},
+	{
+		.id = 49,
+		.desc = "CLC_CROP_RND_CLAMP_POST_DSX_Y_VID_OUT",
+	},
+	{
+		.id = 50,
+		.desc = "CLC_CROP_RND_CLAMP_POST_DSX_C_VID_OUT",
+	},
+	{
+		.id = 51,
+		.desc = "CLC_DOWNSCALE_4TO1_Y_VID_DS16_OUT",
+	},
+	{
+		.id = 52,
+		.desc = "CLC_DOWNSCALE_4TO1_C_VID_DS16_OUT",
+	},
+	{
+		.id = 53,
+		.desc = "CLC_CROP_RND_CLAMP_POST_DOWNSCALE_4TO1_Y_VID_DS16_OUT",
+	},
+	{
+		.id = 54,
+		.desc = "CLC_CROP_RND_CLAMP_POST_DOWNSCALE_4TO1_C_VID_DS16_OUT",
+	},
+	{
+		.id = 55,
+		.desc = "CLC_STATS_AEC_BE",
+	},
+	{
+		.id = 56,
+		.desc = "CLC_STATS_AEC_BHIST",
+	},
+	{
+		.id = 57,
+		.desc = "CLC_STATS_BHIST",
+	},
+	{
+		.id = 58,
+		.desc = "CLC_STATS_TINTLESS_BG",
+	},
+	{
+		.id = 59,
+		.desc = "CLC_STATS_AWB_BG",
+	},
+	{
+		.id = 60,
+		.desc = "CLC_STATS_BFW",
+	},
+	{
+		.id = 61,
+		.desc = "CLC_STATS_BAF",
+	},
+	{
+		.id = 62,
+		.desc = "CLC_STATS_RS",
+	},
+	{
+		.id = 63,
+		.desc = "CLC_STATS_IHIST",
+	},
+};
 
 static struct cam_irq_register_set vfe680_top_irq_reg_set[3] = {
 	{
@@ -64,7 +323,8 @@ static struct cam_vfe_top_ver4_reg_offset_common vfe680_top_common_reg = {
 	.epoch0_pattern_cfg       = 0x00000094,
 	.epoch1_pattern_cfg       = 0x00000098,
 	.epoch_height_cfg         = 0x0000009C,
-	.bus_overflow_status      = 0x0000AA68,
+	.bus_violation_status     = 0x00000C64,
+	.bus_overflow_status      = 0x00000C68,
 	.top_debug_cfg            = 0x000000FC,
 	.top_debug_0              = 0x000000A0,
 	.top_debug_1              = 0x000000A4,
@@ -90,9 +350,10 @@ static struct cam_vfe_ver4_path_reg_data vfe_common_reg_data = {
 	.epoch0_irq_mask                 = 0x10000,
 	.epoch1_irq_mask                 = 0x20000,
 	.eof_irq_mask                    = 0x00000002,
-	.error_irq_mask                 = 0x7F050,
+	.error_irq_mask                  = 0x7F050,
 	.enable_diagnostic_hw            = 0x1,
 	.top_debug_cfg_en                = 3,
+	.pp_violation_mask               = 0x10,
 };
 
 static struct cam_vfe_ver4_path_reg_data vfe680_vfe_full_rdi_reg_data[3] = {
@@ -151,6 +412,7 @@ static struct cam_vfe_top_ver4_hw_info vfe680_top_hw_info = {
 	.vfe_full_hw_info = {
 		.common_reg     = &vfe680_top_common_reg,
 		.reg_data       = &vfe_common_reg_data,
+		.module_desc    = vfe_pp_mod_desc,
 	},
 	.pdlib_hw_info = {
 		.common_reg     = &vfe680_top_common_reg,
