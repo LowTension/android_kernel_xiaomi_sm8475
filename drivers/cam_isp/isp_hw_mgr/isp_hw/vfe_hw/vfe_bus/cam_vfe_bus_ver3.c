@@ -2302,7 +2302,7 @@ static int cam_vfe_bus_ver3_stop_vfe_out(
 
 	if (vfe_out->irq_handle) {
 		rc = cam_irq_controller_unsubscribe_irq(
-			common_data->bus_irq_controller,
+			common_data->buf_done_controller,
 			vfe_out->irq_handle);
 		vfe_out->irq_handle = 0;
 	}
