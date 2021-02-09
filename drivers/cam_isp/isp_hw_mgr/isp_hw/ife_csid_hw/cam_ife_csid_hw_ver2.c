@@ -8,6 +8,7 @@
 
 #include <media/cam_isp.h>
 #include <media/cam_defs.h>
+#include <media/cam_req_mgr.h>
 
 #include <dt-bindings/msm-camera.h>
 
@@ -23,7 +24,7 @@
 #include "cam_tasklet_util.h"
 #include "cam_cdm_util.h"
 #include "cam_common_util.h"
-
+#include "cam_subdev.h"
 
 /* CSIPHY TPG VC/DT values */
 #define CAM_IFE_CPHY_TPG_VC_VAL                         0x0
@@ -726,6 +727,7 @@ static int cam_ife_csid_ver2_rx_err_bottom_half(
 	uint32_t                                    irq_status;
 	uint32_t                                    len = 0;
 	uint32_t                                    val = 0;
+	bool                                        fatal_err_detected = false;
 
 	if (!handler_priv || !evt_payload_priv) {
 		CAM_ERR(CAM_ISP, "Invalid params");
@@ -796,6 +798,8 @@ static int cam_ife_csid_ver2_rx_err_bottom_half(
 			len += scnprintf(log_buf + len,
 				CAM_IFE_CSID_LOG_BUF_LEN - len,
 				"DPHY_ERROR_ECC: Pkt hdr errors unrecoverable\n");
+
+		fatal_err_detected = true;
 	}
 
 	irq_status = payload->irq_reg_val[CAM_IFE_CSID_IRQ_REG_RX] &
@@ -827,6 +831,8 @@ static int cam_ife_csid_ver2_rx_err_bottom_half(
 			len += scnprintf(log_buf + len,
 				CAM_IFE_CSID_LOG_BUF_LEN - len,
 				"UNBOUNDED_FRAME: Frame started with EOF or No EOF\n");
+
+		fatal_err_detected = true;
 	}
 
 	irq_status = payload->irq_reg_val[CAM_IFE_CSID_IRQ_REG_RX] &
@@ -850,6 +856,11 @@ static int cam_ife_csid_ver2_rx_err_bottom_half(
 	if (len)
 		CAM_ERR_RATE_LIMIT(CAM_ISP, "CSID[%u] %s",
 			csid_hw->hw_intf->hw_idx, log_buf);
+
+	if (fatal_err_detected)
+		cam_subdev_notify_message(CAM_CSIPHY_DEVICE_TYPE,
+				CAM_SUBDEV_MESSAGE_IRQ_ERR,
+				(csid_hw->rx_cfg.phy_sel));
 
 	cam_ife_csid_ver2_put_evt_payload(csid_hw, &payload,
 			&csid_hw->rx_free_payload_list,
@@ -880,6 +891,67 @@ static int cam_ife_csid_ver2_handle_event_err(
 		CAM_ISP_HW_EVENT_ERROR, (void *)&evt);
 
 	return 0;
+
+}
+
+static void cam_ife_csid_ver2_print_debug_reg_status(
+	struct cam_ife_csid_ver2_hw *csid_hw,
+	struct cam_isp_resource_node    *res)
+{
+	const struct cam_ife_csid_ver2_reg_info *csid_reg;
+	struct cam_hw_soc_info                   *soc_info;
+	void __iomem *mem_base;
+	const struct cam_ife_csid_ver2_pxl_reg_info *pxl_path_reg = NULL;
+	const struct cam_ife_csid_ver2_rdi_reg_info *rdi_path_reg = NULL;
+	uint32_t val0 = 0, val1 = 0, val2 = 0;
+
+	soc_info = &csid_hw->hw_info->soc_info;
+	csid_reg = (struct cam_ife_csid_ver2_reg_info *)
+		    csid_hw->core_info->csid_reg;
+
+	mem_base = soc_info->reg_map[CAM_IFE_CSID_CLC_MEM_BASE_ID].mem_base;
+
+	switch (res->res_id) {
+	case  CAM_IFE_PIX_PATH_RES_IPP:
+		pxl_path_reg = csid_reg->ipp_reg;
+		val0 = cam_io_r_mb(mem_base +
+			pxl_path_reg->debug_camif_0_addr);
+		val1 = cam_io_r_mb(mem_base +
+			pxl_path_reg->debug_camif_1_addr);
+		val2 = cam_io_r_mb(mem_base +
+			pxl_path_reg->debug_halt_status_addr);
+		break;
+	case  CAM_IFE_PIX_PATH_RES_PPP:
+		pxl_path_reg = csid_reg->ppp_reg;
+		val0 = cam_io_r_mb(mem_base +
+			pxl_path_reg->debug_camif_0_addr);
+		val1 = cam_io_r_mb(mem_base +
+			pxl_path_reg->debug_camif_1_addr);
+		val2 = cam_io_r_mb(mem_base +
+			pxl_path_reg->debug_halt_status_addr);
+		break;
+	case CAM_IFE_PIX_PATH_RES_RDI_0:
+	case CAM_IFE_PIX_PATH_RES_RDI_1:
+	case CAM_IFE_PIX_PATH_RES_RDI_2:
+	case CAM_IFE_PIX_PATH_RES_RDI_3:
+	case CAM_IFE_PIX_PATH_RES_RDI_4:
+		rdi_path_reg = csid_reg->rdi_reg[res->res_id];
+		val0 = cam_io_r_mb(mem_base +
+			rdi_path_reg->debug_camif_0_addr);
+		val1 = cam_io_r_mb(mem_base +
+			rdi_path_reg->debug_camif_1_addr);
+		val2 = cam_io_r_mb(mem_base +
+			rdi_path_reg->debug_halt_status_addr);
+		break;
+	default:
+		CAM_ERR(CAM_ISP, "CSID:%d Invalid res type%d",
+			csid_hw->hw_intf->hw_idx, res->res_type);
+		break;
+	}
+
+	CAM_INFO(CAM_ISP,
+		"debug_camif_0: 0x%x debug_camif_1: 0x%x halt_status: 0x%x for res type%d",
+		 val0, val1, val2, res->res_type);
 }
 
 static int cam_ife_csid_ver2_parse_path_irq_status(
@@ -960,6 +1032,7 @@ static int cam_ife_csid_ver2_ipp_bottom_half(
 	void    __iomem                           *base;
 	char                                       tag[15];
 	int                                        irq_idx;
+	struct cam_isp_resource_node               *res;
 
 	if (!handler_priv || !evt_payload_priv) {
 		CAM_ERR(CAM_ISP, "Invalid params");
@@ -971,6 +1044,7 @@ static int cam_ife_csid_ver2_ipp_bottom_half(
 	csid_reg = csid_hw->core_info->csid_reg;
 	soc_info = &csid_hw->hw_info->soc_info;
 	base  = soc_info->reg_map[CAM_IFE_CSID_CLC_MEM_BASE_ID].mem_base;
+	res = &csid_hw->path_res[CAM_IFE_CSID_IRQ_REG_IPP];
 
 	irq_idx = cam_ife_csid_get_rt_irq_idx(
 			CAM_IFE_CSID_IRQ_REG_IPP,
@@ -1051,6 +1125,9 @@ static int cam_ife_csid_ver2_ipp_bottom_half(
 			irq_status_ipp,
 			err_type);
 
+	if (irq_status_ipp & err_mask)
+		cam_ife_csid_ver2_print_debug_reg_status(csid_hw, res);
+
 	cam_ife_csid_ver2_put_evt_payload(csid_hw, &payload,
 			&csid_hw->path_free_payload_list,
 			&csid_hw->path_payload_lock);
@@ -1072,6 +1149,7 @@ static int cam_ife_csid_ver2_ppp_bottom_half(
 	uint32_t                                   err_type = 0;
 	uint32_t                                   expected_frame = 0;
 	uint32_t                                   actual_frame = 0;
+	struct cam_isp_resource_node              *res;
 
 	if (!handler_priv || !evt_payload_priv) {
 		CAM_ERR(CAM_ISP, "Invalid params");
@@ -1087,6 +1165,8 @@ static int cam_ife_csid_ver2_ppp_bottom_half(
 
 	csid_reg = (struct cam_ife_csid_ver2_reg_info *)
 			csid_hw->core_info->csid_reg;
+
+	res = &csid_hw->path_res[CAM_IFE_CSID_IRQ_REG_PPP];
 
 	err_mask = csid_reg->ppp_reg->fatal_err_mask |
 			csid_reg->ppp_reg->non_fatal_err_mask;
@@ -1126,6 +1206,9 @@ static int cam_ife_csid_ver2_ppp_bottom_half(
 		cam_ife_csid_ver2_handle_event_err(csid_hw,
 			irq_status_ppp,
 			err_type);
+
+	if (irq_status_ppp & err_mask)
+		cam_ife_csid_ver2_print_debug_reg_status(csid_hw, res);
 
 	cam_ife_csid_ver2_put_evt_payload(csid_hw, &payload,
 			&csid_hw->path_free_payload_list,
@@ -1230,6 +1313,10 @@ static int cam_ife_csid_ver2_rdi_bottom_half(
 			cam_ife_csid_ver2_handle_event_err(csid_hw,
 				irq_status_rdi,
 				err_type);
+
+			if (irq_status_rdi & err_mask)
+				cam_ife_csid_ver2_print_debug_reg_status(
+					csid_hw, res);
 			break;
 		}
 
