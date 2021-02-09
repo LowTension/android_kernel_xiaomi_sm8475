@@ -717,7 +717,7 @@ static int cam_ife_csid_ver2_rx_err_bottom_half(
 
 	if (irq_status) {
 
-		len += scnprintf(log_buf, CAM_IFE_CSID_LOG_BUF_LEN - len,
+		len += scnprintf(log_buf + len, CAM_IFE_CSID_LOG_BUF_LEN - len,
 			"Part-fatal-errors:\n");
 
 		if (irq_status & IFE_CSID_VER2_RX_CPHY_EOT_RECEPTION)
@@ -745,7 +745,7 @@ static int cam_ife_csid_ver2_rx_err_bottom_half(
 		csi2_reg->non_fatal_err_mask;
 
 	if (irq_status) {
-		len += scnprintf(log_buf, CAM_IFE_CSID_LOG_BUF_LEN - len,
+		len += scnprintf(log_buf + len, CAM_IFE_CSID_LOG_BUF_LEN - len,
 			"Non-fatal-errors:\n");
 
 		if (irq_status & IFE_CSID_VER2_RX_MMAPPED_VC_DT)
