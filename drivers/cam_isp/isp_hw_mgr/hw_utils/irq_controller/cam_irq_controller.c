@@ -471,13 +471,12 @@ int cam_irq_controller_disable_irq(void *irq_controller, uint32_t handle)
 		cam_io_w_mb(evt_handler->evt_bit_mask_arr[i],
 			controller->mem_base +
 			irq_register->clear_reg_offset);
-
-		if (controller->global_clear_offset)
-			cam_io_w_mb(
-				controller->global_clear_bitmask,
-				controller->mem_base +
-				controller->global_clear_offset);
 	}
+
+	if (controller->global_clear_offset)
+		cam_io_w_mb(controller->global_clear_bitmask,
+			controller->mem_base + controller->global_clear_offset);
+
 	if (need_lock)
 		spin_unlock_irqrestore(&controller->lock, flags);
 
@@ -810,16 +809,18 @@ int cam_irq_controller_update_irq(void *irq_controller, uint32_t handle,
 			irq_register->top_half_enable_mask[priority] &=
 								~irq_mask[i];
 			evt_handler->evt_bit_mask_arr[i] &= ~irq_mask[i];
-
-			if (controller->global_clear_offset)
-				cam_io_w_mb(controller->global_clear_bitmask,
-					controller->mem_base +
-					controller->global_clear_offset);
 		}
 
 		cam_io_w_mb(evt_handler->evt_bit_mask_arr[i],
 			controller->mem_base +
 			controller->irq_register_arr[i].mask_reg_offset);
+	}
+
+	if (!enable) {
+		if (controller->global_clear_offset)
+			cam_io_w_mb(controller->global_clear_bitmask,
+				controller->mem_base +
+				controller->global_clear_offset);
 	}
 
 	if (need_lock)
