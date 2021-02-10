@@ -408,7 +408,7 @@ static int cam_sfe_top_set_hw_clk_rate(
 	CAM_DBG(CAM_PERF, "SFE [%u]: clk: %s idx: %d rate: %llu",
 		soc_info->index,
 		soc_info->clk_name[soc_info->src_clk_idx],
-		soc_info->src_clk_idx, top_priv->req_clk_rate);
+		soc_info->src_clk_idx, max_clk_rate);
 
 	rc = cam_soc_util_set_src_clk_rate(soc_info,
 		max_clk_rate);

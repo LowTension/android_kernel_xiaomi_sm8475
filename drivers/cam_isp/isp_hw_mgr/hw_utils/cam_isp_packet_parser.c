@@ -783,12 +783,13 @@ int cam_isp_add_io_buffers(
 			res_id_in = io_cfg[i].resource_type;
 			found = false;
 			if (!res_list_in_rd) {
-				CAM_ERR(CAM_ISP,
-				"No BUS Read supported io_cfg %d %d req:%d type:%d fence:%d",
+				CAM_DBG(CAM_ISP,
+				"No BUS Read supported hw_type %d io_cfg %d %d req:%d type:%d fence:%d",
+					hw_type,
 					prepare->packet->num_io_configs, i,
 					prepare->packet->header.request_id,
 					io_cfg[i].resource_type, io_cfg[i].fence);
-				return -EINVAL;
+				continue;
 			}
 			if (hw_type != CAM_ISP_HW_TYPE_SFE)
 				res_id_in = CAM_ISP_HW_VFE_IN_RD;
