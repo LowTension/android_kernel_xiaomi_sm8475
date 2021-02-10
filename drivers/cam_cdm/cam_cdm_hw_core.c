@@ -519,6 +519,17 @@ void cam_hw_cdm_dump_core_debug_registers(struct cam_hw_info *cdm_hw,
 			(dump_reg[1] & CAM_CDM_CURRENT_BL_TAG) >>
 				CAM_CDM_CURRENT_BL_TAG_SHIFT);
 
+	cam_cdm_read_hw_reg(cdm_hw,
+		core->offsets->cmn_reg->wait_status, &dump_reg[0]);
+	cam_cdm_read_hw_reg(cdm_hw,
+		core->offsets->cmn_reg->comp_wait[0]->comp_wait_status,
+		&dump_reg[1]);
+	cam_cdm_read_hw_reg(cdm_hw,
+		core->offsets->cmn_reg->comp_wait[1]->comp_wait_status,
+		&dump_reg[2]);
+	CAM_INFO(CAM_CDM, "wait status 0x%x comp wait status 0x%x: 0x%x",
+		dump_reg[0], dump_reg[1], dump_reg[2]);
+
 	cam_hw_cdm_disable_core_dbg(cdm_hw);
 	if (pause_core)
 		cam_hw_cdm_pause_core(cdm_hw, false);
