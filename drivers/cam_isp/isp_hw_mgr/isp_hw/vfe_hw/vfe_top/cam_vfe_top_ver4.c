@@ -23,8 +23,8 @@
 #define CAM_VFE_LITE_HW_RESET_HW_VAL          0x00000001
 #define CAM_CDM_WAIT_COMP_EVENT_BIT           0x2
 
-#define CAM_VFE_CAMIF_IRQ_SOF_DEBUG_CNT_MAX 2
-
+#define CAM_VFE_CAMIF_IRQ_SOF_DEBUG_CNT_MAX   2
+#define CAM_VFE_LEN_LOG_BUF                   256
 
 struct cam_vfe_mux_ver4_data {
 	void __iomem                                *mem_base;
@@ -34,6 +34,7 @@ struct cam_vfe_mux_ver4_data {
 	struct cam_vfe_top_common_cfg                cam_common_cfg;
 	struct cam_vfe_ver4_path_reg_data           *reg_data;
 	struct cam_vfe_top_ver4_module_desc         *module_desc;
+	uint8_t                                      log_buf[CAM_VFE_LEN_LOG_BUF];
 
 	cam_hw_mgr_event_cb_func             event_cb;
 	void                                *priv;
@@ -511,67 +512,39 @@ static void cam_vfe_top_ver4_print_debug_reg_status(
 	struct cam_vfe_mux_ver4_data            *mux_data,
 	uint32_t                                *irq_status)
 {
-	uint32_t val0, val1, val2, val3;
+	uint32_t val, num_reg = mux_data->common_reg->num_top_debug_reg;
+	int i = 0, j, len = 0;
+	uint8_t *log_buf = mux_data->log_buf;
 
-	val0 = cam_io_r(mux_data->mem_base +
-		mux_data->common_reg->top_debug_0);
-	val1 = cam_io_r(mux_data->mem_base +
-		mux_data->common_reg->top_debug_1);
-	val2 = cam_io_r(mux_data->mem_base +
-		mux_data->common_reg->top_debug_2);
-	val3 = cam_io_r(mux_data->mem_base +
-		mux_data->common_reg->top_debug_3);
-
-	CAM_INFO(CAM_ISP,
-		"status_0: 0x%x status_1: 0x%x status_2: 0x%x status_3: 0x%x",
-		val0, val1, val2, val3);
-
-	val0 = cam_io_r(mux_data->mem_base +
-		mux_data->common_reg->top_debug_4);
-	val1 = cam_io_r(mux_data->mem_base +
-		mux_data->common_reg->top_debug_5);
-	val2 = cam_io_r(mux_data->mem_base +
-		mux_data->common_reg->top_debug_6);
-	val3 = cam_io_r(mux_data->mem_base +
-		mux_data->common_reg->top_debug_7);
-
-	CAM_INFO(CAM_ISP,
-		"status_4: 0x%x status_5: 0x%x status_6: 0x%x status_7: 0x%x",
-		val0, val1, val2, val3);
-
-	val0 = cam_io_r(mux_data->mem_base +
-		mux_data->common_reg->top_debug_8);
-	val1 = cam_io_r(mux_data->mem_base +
-		mux_data->common_reg->top_debug_9);
-	val2 = cam_io_r(mux_data->mem_base +
-		mux_data->common_reg->top_debug_10);
-	val3 = cam_io_r(mux_data->mem_base +
-		mux_data->common_reg->top_debug_11);
-	CAM_INFO(CAM_ISP,
-		"status_8: 0x%x status_9: 0x%x status_10: 0x%x status_11: 0x%x",
-		val0, val1, val2, val3);
-
-	val0 = cam_io_r(mux_data->mem_base +
-		mux_data->common_reg->top_debug_12);
-	val1 = cam_io_r(mux_data->mem_base +
-		mux_data->common_reg->top_debug_13);
-	CAM_INFO(CAM_ISP, "status_12: 0x%x status_13: 0x%x",
-		val0, val1);
+	while (i < num_reg) {
+		len += scnprintf(log_buf + len, CAM_VFE_LEN_LOG_BUF - len,
+				"VFE[%u]: Top Debug Status",
+				mux_data->hw_intf->hw_idx);
+		for(j = 0; j < 4 && i < num_reg; j++, i++) {
+			val = cam_io_r(mux_data->mem_base +
+				mux_data->common_reg->top_debug[i]);
+			len += scnprintf(log_buf + len, CAM_VFE_LEN_LOG_BUF -
+				len, "\nstatus %2d : 0x%08x", i, val);
+		}
+		CAM_INFO(CAM_ISP, "%s", log_buf);
+		len = 0;
+		memset(log_buf, 0, sizeof(uint8_t)*CAM_VFE_LEN_LOG_BUF);
+	}
 
 	if (irq_status[CAM_IFE_IRQ_CAMIF_REG_STATUS0] &&
 		mux_data->reg_data->pp_violation_mask) {
 
-		val0 =  cam_io_r(mux_data->mem_base +
+		val =  cam_io_r(mux_data->mem_base +
 				mux_data->common_reg->violation_status),
 
 		CAM_ERR(CAM_ISP, "VFE[%u] PP Violation status 0x%x",
-		     mux_data->hw_intf->hw_idx, val0);
+		     mux_data->hw_intf->hw_idx, val);
 
 		if (mux_data->module_desc)
 			CAM_ERR(CAM_ISP, "VFE[%u] PP Violation Module[%u] %s",
 				mux_data->hw_intf->hw_idx,
-				mux_data->module_desc[val0].id,
-				mux_data->module_desc[val0].desc);
+				mux_data->module_desc[val].id,
+				mux_data->module_desc[val].desc);
 	}
 
 	CAM_ERR(CAM_ISP, "VFE[%u] Bus overflow status 0x%x",
@@ -962,7 +935,7 @@ static int cam_vfe_handle_irq_bottom_half(void *handler_priv,
 
 	if (irq_status[CAM_IFE_IRQ_CAMIF_REG_STATUS0]
 		& vfe_priv->reg_data->error_irq_mask) {
-		CAM_ERR(CAM_ISP, "VFE:%d Overflow", evt_info.hw_idx);
+		CAM_ERR(CAM_ISP, "VFE:%d Error", evt_info.hw_idx);
 
 		ktime_get_boottime_ts64(&ts);
 		CAM_INFO(CAM_ISP,
