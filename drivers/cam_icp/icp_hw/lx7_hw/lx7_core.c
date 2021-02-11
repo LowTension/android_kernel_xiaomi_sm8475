@@ -319,7 +319,6 @@ static void prepare_shutdown(struct cam_hw_info *lx7_info)
 	core_info->fw_params.fw_buf = 0x0;
 	core_info->fw_params.fw_kva_addr = 0x0;
 	core_info->fw_params.fw_buf_len = 0x0;
-	core_info->use_sec_pil = false;
 
 	spin_lock_irqsave(&lx7_info->hw_lock, flags);
 	core_info->irq_cb.data = NULL;
@@ -678,6 +677,7 @@ static int cam_lx7_shutdown(struct cam_hw_info *lx7_info)
 		cam_io_w_mb(0x0, base + ICP_LX7_SYS_CONTROL);
 	}
 
+	core_info->use_sec_pil = false;
 	return rc;
 }
 
