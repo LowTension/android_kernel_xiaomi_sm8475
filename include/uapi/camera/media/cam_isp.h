@@ -779,6 +779,9 @@ struct cam_isp_sfe_init_scratch_buf_config {
  * @vc_dt_pattern_id : TPG pattern - SparsePD, sHDR etc.
  * @qcfa_en          : Selects qcfa in color bar
  * @pix_pattern      : Pix pattern color bar cfg
+ * @hbi_clk_cnt      : Number of HBI # of cycles
+ * @vbi_clk_cnt      : Number of VBI # of cycles
+ * @throttle_pattern : Defines bubble pattern in throttler
  * @tpg_params       : TPG params for future use
  */
 struct cam_isp_tpg_core_config {
@@ -786,7 +789,10 @@ struct cam_isp_tpg_core_config {
 	__u32   vc_dt_pattern_id;
 	__u32   qcfa_en;
 	__u32   pix_pattern;
-	__u32   tpg_params[6];
+	__u32   hbi_clk_cnt;
+	__u32   vbi_clk_cnt;
+	__u32   throttle_pattern;
+	__u32   tpg_params[3];
 } __attribute__((packed));
 
 /**

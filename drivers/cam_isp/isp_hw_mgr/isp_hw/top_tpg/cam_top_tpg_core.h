@@ -71,17 +71,17 @@ struct cam_top_tpg_dt_cfg {
 
 /**
  * struct cam_top_tpg_cfg- tpg congiguration
- * @pix_pattern :    pixel pattern output of the tpg
- * @phy_sel :        phy selection 0:dphy or 1:cphy
- * @num_active_lanes Number of active lines
- * @vc_num:          Virtual channel number
- * @h_blank_count:   horizontal blanking count value
- * @h_blank_count:   vertical blanking count value
- * @vbi_cnt:         vbi count
- * @num_active_dts:  number of active dts need to configure
- * @num_frames:      number of output frames
- * @qcfa_en:         enable qcfa in color bar cfg
- * @dt_cfg:          dt configuration values
+ * @pix_pattern :     pixel pattern output of the tpg
+ * @phy_sel :         phy selection 0:dphy or 1:cphy
+ * @num_active_lanes  Number of active lines
+ * @vc_num:           Virtual channel number
+ * @h_blank_count:    horizontal blanking count value
+ * @v_blank_count:    vertical blanking count value
+ * @num_active_dts:   number of active dts need to configure
+ * @num_frames:       number of output frames
+ * @throttle_pattern: Define bubble pattern in throttler
+ * @qcfa_en:          enable qcfa in color bar cfg
+ * @dt_cfg:           dt configuration values
  *
  */
 struct cam_top_tpg_cfg {
@@ -91,10 +91,10 @@ struct cam_top_tpg_cfg {
 	uint32_t                        vc_num[4];
 	uint32_t                        v_blank_count;
 	uint32_t                        h_blank_count;
-	uint32_t                        vbi_cnt;
 	uint32_t                        num_active_dts;
 	uint32_t                        num_frames;
 	uint32_t                        vc_dt_pattern_id;
+	uint32_t                        throttle_pattern;
 	uint32_t                        qcfa_en;
 	struct cam_top_tpg_dt_cfg       dt_cfg[4];
 };

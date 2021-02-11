@@ -79,10 +79,16 @@ static int cam_top_tpg_ver3_process_cmd(void *hw_priv,
 		tpg_data->pix_pattern = core_cfg->pix_pattern;
 		tpg_data->vc_dt_pattern_id = core_cfg->vc_dt_pattern_id;
 		tpg_data->qcfa_en = core_cfg->qcfa_en;
+		tpg_data->h_blank_count = core_cfg->hbi_clk_cnt;
+		tpg_data->v_blank_count = core_cfg->vbi_clk_cnt;
+		if (core_cfg->throttle_pattern <= 0xFFFF)
+			tpg_data->throttle_pattern = core_cfg->throttle_pattern;
+
 		CAM_DBG(CAM_ISP,
-			"pattern_id: 0x%x pix_pattern: 0x%x qcfa_en: 0x%x",
+			"pattern_id: 0x%x pix_pattern: 0x%x qcfa_en: 0x%x hbi: 0x%x vbi: 0x%x throttle: 0x%x",
 			tpg_data->vc_dt_pattern_id, tpg_data->pix_pattern,
-			tpg_data->qcfa_en);
+			tpg_data->qcfa_en, tpg_data->h_blank_count,
+			tpg_data->v_blank_count, tpg_data->throttle_pattern);
 		break;
 	default:
 		CAM_ERR(CAM_ISP, "Invalid TPG cmd type %u", cmd_type);
@@ -184,8 +190,6 @@ static int cam_top_tpg_ver3_reserve(
 	if (!tpg_hw->reserve_cnt) {
 		tpg_data->phy_sel = reserv->in_port->lane_type;
 		tpg_data->num_active_lanes = reserv->in_port->lane_num;
-		tpg_data->h_blank_count = reserv->in_port->hbi_cnt;
-		tpg_data->v_blank_count = 600;
 	}
 
 	for (i = 0; i < reserv->in_port->num_valid_vc_dt; i++) {
@@ -334,6 +338,13 @@ static int cam_top_tpg_ver3_start(
 		CAM_DBG(CAM_ISP, "vc%d_cfg0 0x%x",
 			i, val);
 	}
+
+	if (tpg_data->throttle_pattern)
+		cam_io_w_mb(tpg_data->throttle_pattern,
+			soc_info->reg_map[0].mem_base + tpg_reg->tpg_throttle);
+	else
+		cam_io_w_mb(0x1111,
+			soc_info->reg_map[0].mem_base + tpg_reg->tpg_throttle);
 
 	cam_io_w_mb(1, soc_info->reg_map[0].mem_base +
 		tpg_reg->tpg_top_irq_mask);
