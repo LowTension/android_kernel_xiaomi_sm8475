@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/slab.h>
@@ -758,4 +758,72 @@ irqreturn_t cam_irq_controller_handle_irq(int irq_num, void *priv)
 		controller->name, controller, &controller->lock);
 
 	return IRQ_HANDLED;
+}
+
+int cam_irq_controller_update_irq(void *irq_controller, uint32_t handle,
+	bool enable, uint32_t *irq_mask)
+{
+	struct cam_irq_controller   *controller  = irq_controller;
+	struct cam_irq_evt_handler  *evt_handler = NULL;
+	struct cam_irq_evt_handler  *evt_handler_temp;
+	struct cam_irq_register_obj *irq_register = NULL;
+	enum cam_irq_priority_level priority;
+	unsigned long               flags = 0;
+	unsigned int                i;
+	uint32_t                    found = 0;
+	int                         rc = -EINVAL;
+	bool                        need_lock;
+
+	if (!controller)
+		return rc;
+
+	need_lock = !in_irq();
+	if (need_lock)
+		spin_lock_irqsave(&controller->lock, flags);
+
+	list_for_each_entry_safe(evt_handler, evt_handler_temp,
+		&controller->evt_handler_list_head, list_node) {
+		if (evt_handler->index == handle) {
+			CAM_DBG(CAM_IRQ_CTRL, "enable item %d", handle);
+			found = 1;
+			rc = 0;
+			break;
+		}
+	}
+
+	if (!found) {
+		if (need_lock)
+			spin_unlock_irqrestore(&controller->lock, flags);
+		return rc;
+	}
+
+	priority = evt_handler->priority;
+	for (i = 0; i < controller->num_registers; i++) {
+
+		irq_register = &controller->irq_register_arr[i];
+
+		if (enable) {
+			irq_register->top_half_enable_mask[priority] |=
+								irq_mask[i];
+			evt_handler->evt_bit_mask_arr[i] |= irq_mask[i];
+		} else {
+			irq_register->top_half_enable_mask[priority] &=
+								~irq_mask[i];
+			evt_handler->evt_bit_mask_arr[i] &= ~irq_mask[i];
+
+			if (controller->global_clear_offset)
+				cam_io_w_mb(controller->global_clear_bitmask,
+					controller->mem_base +
+					controller->global_clear_offset);
+		}
+
+		cam_io_w_mb(evt_handler->evt_bit_mask_arr[i],
+			controller->mem_base +
+			controller->irq_register_arr[i].mask_reg_offset);
+	}
+
+	if (need_lock)
+		spin_unlock_irqrestore(&controller->lock, flags);
+
+	return rc;
 }

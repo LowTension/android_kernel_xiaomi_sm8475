@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2017-2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CAM_IRQ_CONTROLLER_H_
@@ -271,4 +271,25 @@ int cam_irq_controller_enable_irq(void *irq_controller, uint32_t handle);
  * @return:             IRQ_HANDLED/IRQ_NONE
  */
 irqreturn_t cam_irq_controller_clear_and_mask(int irq_num, void *priv);
+
+/*
+ * cam_irq_controller_update_irq()
+ *
+ * @brief:              Enable/Disable the interrupts on given controller.
+ *                      Dynamically any irq can be disabled or enabled.
+ *
+ * @irq_controller:     Pointer to IRQ Controller that controls the registered
+ *                      events to it.
+ * @handle:             Handle returned on successful subscribe, used to
+ *                      identify the handler object
+ *
+ * @enable:             Flag to indicate if disable or enable the irq.
+ *
+ * @irq_mask:           IRQ mask to be enabled or disabled.
+ *
+ * @return:             0: events found and enabled
+ *                      Negative: events not registered on this controller
+ */
+int cam_irq_controller_update_irq(void *irq_controller, uint32_t handle,
+	bool enable, uint32_t *irq_mask);
 #endif /* _CAM_IRQ_CONTROLLER_H_ */
