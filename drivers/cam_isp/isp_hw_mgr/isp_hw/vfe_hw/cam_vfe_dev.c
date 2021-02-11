@@ -13,6 +13,7 @@
 #include "cam_vfe_core.h"
 #include "cam_vfe_soc.h"
 #include "cam_debug_util.h"
+#include <dt-bindings/msm-camera.h>
 
 static  struct cam_isp_hw_intf_data cam_vfe_hw_list[CAM_VFE_HW_NUM_MAX];
 
@@ -37,6 +38,15 @@ static int cam_vfe_component_bind(struct device *dev,
 
 	of_property_read_u32(pdev->dev.of_node,
 		"cell-index", &vfe_hw_intf->hw_idx);
+
+	if (!cam_cpas_is_feature_supported(CAM_CPAS_ISP_FUSE,
+		(1 << vfe_hw_intf->hw_idx), 0) ||
+		!cam_cpas_is_feature_supported(CAM_CPAS_ISP_LITE_FUSE,
+		(1 << vfe_hw_intf->hw_idx), 0)) {
+		CAM_DBG(CAM_ISP, "IFE:%d is not supported",
+			vfe_hw_intf->hw_idx);
+		goto free_vfe_hw_intf;
+	}
 
 	vfe_hw = kzalloc(sizeof(struct cam_hw_info), GFP_KERNEL);
 	if (!vfe_hw) {
