@@ -259,8 +259,8 @@ int cam_hw_cdm_bl_fifo_pending_bl_rb_in_fifo(
 		rc = 0;
 	}
 
-	CAM_DBG(CAM_CDM, "pending_bl_req %d fifo_reg %d, fifo_id %d",
-			*pending_bl_req, fifo_reg, fifo_id);
+	CAM_DBG(CAM_CDM, "Number of pending bl entries:%d in fifo: %d",
+			*pending_bl_req, fifo_id);
 
 end:
 	return rc;
@@ -270,27 +270,28 @@ static void cam_hw_cdm_dump_bl_fifo_data(struct cam_hw_info *cdm_hw)
 {
 	struct cam_cdm *core = (struct cam_cdm *)cdm_hw->core_info;
 	int i, j;
-	uint32_t num_pending_req = 0, dump_reg;
+	uint32_t num_pending_req = 0, dump_reg[2];
 
 	for (i = 0; i < core->offsets->reg_data->num_bl_fifo; i++) {
 		cam_hw_cdm_bl_fifo_pending_bl_rb_in_fifo(cdm_hw,
 			i, &num_pending_req);
+		CAM_INFO(CAM_CDM, "Fifo:%d content dump", i);
 		for (j = 0; j < num_pending_req ; j++) {
 			cam_cdm_write_hw_reg(cdm_hw,
 				core->offsets->cmn_reg->bl_fifo_rb, j);
 			cam_cdm_read_hw_reg(cdm_hw,
 				core->offsets->cmn_reg->bl_fifo_base_rb,
-				&dump_reg);
-			CAM_INFO(CAM_CDM, "BL(%d) base addr =%x", j, dump_reg);
+				&dump_reg[0]);
 			cam_cdm_read_hw_reg(cdm_hw,
 				core->offsets->cmn_reg->bl_fifo_len_rb,
-				&dump_reg);
+				&dump_reg[1]);
 			CAM_INFO(CAM_CDM,
-				"CDM HW current BL len=%d ARB %d tag=%d, ",
-				(dump_reg & CAM_CDM_CURRENT_BL_LEN),
-				(dump_reg & CAM_CDM_CURRENT_BL_ARB) >>
+				"BL_entry:%d base_addr:0x%x, len:%d, ARB:%d, tag:%d",
+				j, dump_reg[0],
+				(dump_reg[1] & CAM_CDM_CURRENT_BL_LEN),
+				(dump_reg[1] & CAM_CDM_CURRENT_BL_ARB) >>
 					CAM_CDM_CURRENT_BL_ARB_SHIFT,
-				(dump_reg & CAM_CDM_CURRENT_BL_TAG) >>
+				(dump_reg[1] & CAM_CDM_CURRENT_BL_TAG) >>
 					CAM_CDM_CURRENT_BL_TAG_SHIFT);
 		}
 	}
@@ -300,11 +301,15 @@ void cam_hw_cdm_dump_core_debug_registers(struct cam_hw_info *cdm_hw,
 	bool pause_core)
 {
 	uint32_t dump_reg[4], core_dbg = 0x100;
+	uint32_t cdm_version = 0;
 	int i;
 	bool is_core_paused_already;
 	struct cam_cdm *core = (struct cam_cdm *)cdm_hw->core_info;
 	const struct cam_cdm_icl_regs *inv_cmd_log =
 		core->offsets->cmn_reg->icl_reg;
+
+	CAM_INFO(CAM_CDM, "Dumping debug data for %s%u",
+		cdm_hw->soc_info.label_name, cdm_hw->soc_info.index);
 
 	cam_cdm_read_hw_reg(cdm_hw, core->offsets->cmn_reg->core_en,
 		&dump_reg[0]);
@@ -313,19 +318,35 @@ void cam_hw_cdm_dump_core_debug_registers(struct cam_hw_info *cdm_hw,
 		cam_hw_cdm_pause_core(cdm_hw, true);
 		usleep_range(1000, 1010);
 	}
+
+	cam_cdm_read_hw_reg(cdm_hw, core->offsets->cmn_reg->cdm_hw_version,
+		&cdm_version);
 	cam_hw_cdm_enable_core_dbg(cdm_hw, core_dbg);
 
 	cam_cdm_read_hw_reg(cdm_hw, core->offsets->cmn_reg->usr_data,
 		&dump_reg[1]);
-
 	cam_cdm_read_hw_reg(cdm_hw,
 		core->offsets->cmn_reg->debug_status,
 		&dump_reg[2]);
-	CAM_INFO(CAM_CDM, "Dumping debug data for %s%u",
-		cdm_hw->soc_info.label_name, cdm_hw->soc_info.index);
 
-	CAM_INFO(CAM_CDM, "Core stat 0x%x udata 0x%x dbg_stat 0x%x",
-			dump_reg[0], dump_reg[1], dump_reg[2]);
+	CAM_INFO(CAM_CDM, "Core_en: %u, Core_pause: %u User_data: 0x%x, Debug_status: 0x%x",
+		(dump_reg[0] & CAM_CDM_CORE_EN_MASK),
+		(bool)(dump_reg[0] & CAM_CDM_CORE_PAUSE_MASK),
+		dump_reg[1], dump_reg[2]);
+
+	cam_cdm_read_hw_reg(cdm_hw,
+		core->offsets->cmn_reg->current_used_ahb_base, &dump_reg[0]);
+
+	if (cdm_version >= CAM_CDM_VERSION_2_0)
+		CAM_INFO(CAM_CDM,
+			"Current AHB base address: 0x%x set by change base cmd by fifo: %u",
+			dump_reg[0] & CAM_CDM_AHB_ADDR_MASK,
+			(dump_reg[0] & CAM_CDM_AHB_LOG_CID_MASK) >>
+				CAM_CDM_AHB_LOG_CID_SHIFT);
+	else
+		CAM_INFO(CAM_CDM,
+			"Current AHB base address: 0x%x set by change base cmd",
+			dump_reg[0] & CAM_CDM_AHB_ADDR_MASK);
 
 	if (core_dbg & 0x100) {
 		cam_cdm_read_hw_reg(cdm_hw,
@@ -334,23 +355,57 @@ void cam_hw_cdm_dump_core_debug_registers(struct cam_hw_info *cdm_hw,
 		cam_cdm_read_hw_reg(cdm_hw,
 			core->offsets->cmn_reg->last_ahb_data,
 			&dump_reg[1]);
-		CAM_INFO(CAM_CDM, "AHB dump lastaddr=0x%x lastdata=0x%x",
-			dump_reg[0], dump_reg[1]);
+
+		if (cdm_version >= CAM_CDM_VERSION_2_0)
+			CAM_INFO(CAM_CDM,
+				"Last AHB addr: 0x%x, data: 0x%x that cdm sent out from fifo: %u",
+				(dump_reg[0] & CAM_CDM_AHB_ADDR_MASK),
+				dump_reg[1],
+				(dump_reg[0] & CAM_CDM_AHB_LOG_CID_MASK) >>
+					CAM_CDM_AHB_LOG_CID_SHIFT);
+		else
+			CAM_INFO(CAM_CDM,
+				"Last AHB addr: 0x%x, data: 0x%x that cdm sent out",
+				(dump_reg[0] & CAM_CDM_AHB_ADDR_MASK),
+				dump_reg[1]);
 	} else {
-		CAM_INFO(CAM_CDM, "CDM HW AHB dump not enable");
+		CAM_INFO(CAM_CDM, "CDM HW AHB dump not enabled");
 	}
+
+	cam_cdm_read_hw_reg(cdm_hw,
+		core->offsets->cmn_reg->last_ahb_err_addr,
+		&dump_reg[0]);
+	cam_cdm_read_hw_reg(cdm_hw,
+		core->offsets->cmn_reg->last_ahb_err_data,
+		&dump_reg[1]);
+
+	if (cdm_version >= CAM_CDM_VERSION_2_0)
+		CAM_INFO(CAM_CDM,
+			"Last Bad AHB addr: 0x%x and data: 0x%x from fifo: %u",
+			(dump_reg[0] & CAM_CDM_AHB_ADDR_MASK), dump_reg[1],
+			(dump_reg[0] & CAM_CDM_AHB_LOG_CID_MASK) >>
+				CAM_CDM_AHB_LOG_CID_SHIFT);
+	else
+		CAM_INFO(CAM_CDM, "Last Bad AHB addr: 0x%x and data: 0x%x",
+			(dump_reg[0] & CAM_CDM_AHB_ADDR_MASK), dump_reg[1]);
 
 	if (inv_cmd_log) {
 		if (inv_cmd_log->misc_regs) {
 			cam_cdm_read_hw_reg(cdm_hw,
 				inv_cmd_log->misc_regs->icl_status,
 				&dump_reg[0]);
+			CAM_INFO(CAM_CDM,
+				"ICL_Status: last_invalid_fifo: %u, last known good fifo: %u",
+				(dump_reg[0] & CAM_CDM_ICL_STATUS_INV_CID_MASK),
+				(dump_reg[0] &
+					CAM_CDM_ICL_STATUS_LAST_CID_MASK) >>
+					CAM_CDM_ICL_STATUS_LAST_CID_SHIFT);
 			cam_cdm_read_hw_reg(cdm_hw,
 				inv_cmd_log->misc_regs->icl_inv_bl_addr,
-				&dump_reg[1]);
+				&dump_reg[0]);
 			CAM_INFO(CAM_CDM,
-				"Last Inv Cmd Log(ICL)Status: 0x%x bl_addr: 0x%x",
-				dump_reg[0], dump_reg[1]);
+				"Last Inv Command BL's base_addr: 0x%x",
+				dump_reg[0]);
 		}
 		if (inv_cmd_log->data_regs) {
 			cam_cdm_read_hw_reg(cdm_hw,
@@ -369,9 +424,9 @@ void cam_hw_cdm_dump_core_debug_registers(struct cam_hw_info *cdm_hw,
 				inv_cmd_log->data_regs->icl_last_data_2,
 				&dump_reg[2]);
 
-
-			CAM_INFO(CAM_CDM, "Last good cmd word 0x%x 0x%x 0x%x",
-					dump_reg[0], dump_reg[1], dump_reg[2]);
+			CAM_INFO(CAM_CDM,
+				"Last good cdm command's word[0]: 0x%x, word[1]: 0x%x, word[2]: 0x%x",
+				dump_reg[0], dump_reg[1], dump_reg[2]);
 		}
 	}
 
@@ -392,7 +447,36 @@ void cam_hw_cdm_dump_core_debug_registers(struct cam_hw_info *cdm_hw,
 
 	cam_cdm_read_hw_reg(cdm_hw,
 		core->offsets->cmn_reg->core_cfg, &dump_reg[0]);
-	CAM_INFO(CAM_CDM, "CDM HW core cfg=0x%x", dump_reg[0]);
+
+	if (cdm_version >= CAM_CDM_VERSION_2_0)
+		CAM_INFO(CAM_CDM,
+			"Core cfg: AHB_Burst_Len: %u, AHB_Burst_En: %u, AHB_stop_on_err: %u, Priority: %s, Imp_Wait: %u, Pririty_mask: 0x%x",
+			dump_reg[0] & CAM_CDM_CORE_CFG_AHB_BURST_LEN_MASK,
+			(bool)(dump_reg[0] &
+				CAM_CDM_CORE_CFG_AHB_BURST_EN_MASK),
+			(bool)(dump_reg[0] &
+				CAM_CDM_CORE_CFG_AHB_STOP_ON_ERR_MASK),
+			(dump_reg[0] & CAM_CDM_CORE_CFG_ARB_SEL_RR_MASK) ? "RR":
+				"PRI",
+			(bool)(dump_reg[0] &
+				CAM_CDM_CORE_CFG_IMPLICIT_WAIT_EN_MASK),
+			(dump_reg[0] & CAM_CDM_CORE_CFG_PRIORITY_MASK) >>
+				CAM_CDM_CORE_CFG_PRIORITY_SHIFT);
+	else
+		CAM_INFO(CAM_CDM,
+			"Core cfg: AHB_Burst_Len: %u, AHB_Burst_En: %u, AHB_stop_on_err: %u",
+			dump_reg[0] & CAM_CDM_CORE_CFG_AHB_BURST_LEN_MASK,
+			(bool)(dump_reg[0] &
+				CAM_CDM_CORE_CFG_AHB_BURST_EN_MASK),
+			(bool)(dump_reg[0] &
+				CAM_CDM_CORE_CFG_AHB_STOP_ON_ERR_MASK));
+
+	if (cdm_version >= CAM_CDM_VERSION_2_1) {
+		cam_cdm_read_hw_reg(cdm_hw,
+			core->offsets->cmn_reg->irq_context_status,
+			&dump_reg[0]);
+		CAM_INFO(CAM_CDM, "irq_context_status: 0x%x", dump_reg[0]);
+	}
 
 	for (i = 0; i < core->offsets->reg_data->num_bl_fifo_irq; i++) {
 		cam_cdm_read_hw_reg(cdm_hw,
@@ -412,21 +496,26 @@ void cam_hw_cdm_dump_core_debug_registers(struct cam_hw_info *cdm_hw,
 	cam_cdm_read_hw_reg(cdm_hw,
 		core->offsets->cmn_reg->current_bl_base, &dump_reg[0]);
 	cam_cdm_read_hw_reg(cdm_hw,
-		core->offsets->cmn_reg->current_used_ahb_base, &dump_reg[1]);
-	CAM_INFO(CAM_CDM, "curr BL base 0x%x AHB base 0x%x",
-		dump_reg[0], dump_reg[1]);
+		core->offsets->cmn_reg->current_bl_len, &dump_reg[1]);
 
-	cam_cdm_read_hw_reg(cdm_hw,
-		core->offsets->cmn_reg->current_bl_len, &dump_reg[0]);
-	CAM_INFO(CAM_CDM,
-		"CDM HW current BL len=%d ARB %d FIFO %d tag=%d, ",
-		(dump_reg[0] & CAM_CDM_CURRENT_BL_LEN),
-		(dump_reg[0] & CAM_CDM_CURRENT_BL_ARB) >>
-			CAM_CDM_CURRENT_BL_ARB_SHIFT,
-		(dump_reg[0] & CAM_CDM_CURRENT_BL_FIFO) >>
-			CAM_CDM_CURRENT_BL_FIFO_SHIFT,
-		(dump_reg[0] & CAM_CDM_CURRENT_BL_TAG) >>
-			CAM_CDM_CURRENT_BL_TAG_SHIFT);
+	if (cdm_version >= CAM_CDM_VERSION_2_0)
+		CAM_INFO(CAM_CDM,
+			"Last fetched BL by cdm from fifo: %u has Base: 0x%x, len: %d ARB: %d tag: %d ",
+			(dump_reg[1] & CAM_CDM_CURRENT_BL_FIFO) >>
+				CAM_CDM_CURRENT_BL_FIFO_SHIFT,
+			dump_reg[0],
+			(dump_reg[1] & CAM_CDM_CURRENT_BL_LEN),
+			(dump_reg[1] & CAM_CDM_CURRENT_BL_ARB) >>
+				CAM_CDM_CURRENT_BL_ARB_SHIFT,
+			(dump_reg[1] & CAM_CDM_CURRENT_BL_TAG) >>
+				CAM_CDM_CURRENT_BL_TAG_SHIFT);
+	else
+		CAM_INFO(CAM_CDM,
+			"Last fetched BL by cdm has Base: 0x%x, len: %d tag: %d ",
+			dump_reg[0],
+			(dump_reg[1] & CAM_CDM_CURRENT_BL_LEN),
+			(dump_reg[1] & CAM_CDM_CURRENT_BL_TAG) >>
+				CAM_CDM_CURRENT_BL_TAG_SHIFT);
 
 	cam_hw_cdm_disable_core_dbg(cdm_hw);
 	if (pause_core)

@@ -85,6 +85,29 @@
 #define CAM_CDM_FLUSH_HW_STATUS 0x6
 #define CAM_CDM_RESET_ERR_STATUS 0x7
 
+/* Curent used AHB masks and shifts */
+#define CAM_CDM_AHB_LOG_CID_SHIFT    28
+#define CAM_CDM_AHB_LOG_CID_MASK     0X30000000
+#define CAM_CDM_AHB_ADDR_MASK        0x00FFFFFF
+
+/* Invalid command status register's masks and shifts */
+#define CAM_CDM_ICL_STATUS_LAST_CID_SHIFT    4
+#define CAM_CDM_ICL_STATUS_LAST_CID_MASK     0X30
+#define CAM_CDM_ICL_STATUS_INV_CID_MASK      0x03
+
+/* Core_cfg register's masks and shifts */
+#define CAM_CDM_CORE_CFG_PRIORITY_MASK             0XF00000
+#define CAM_CDM_CORE_CFG_PRIORITY_SHIFT            20
+#define CAM_CDM_CORE_CFG_IMPLICIT_WAIT_EN_MASK     0x20000
+#define CAM_CDM_CORE_CFG_ARB_SEL_RR_MASK           0x10000
+#define CAM_CDM_CORE_CFG_AHB_STOP_ON_ERR_MASK      0x100
+#define CAM_CDM_CORE_CFG_AHB_BURST_EN_MASK         0x10
+#define CAM_CDM_CORE_CFG_AHB_BURST_LEN_MASK        0x0F
+
+/* Core enable register masks and shifts */
+#define CAM_CDM_CORE_EN_MASK     0x1
+#define CAM_CDM_CORE_PAUSE_MASK  0X2
+
 /* Curent BL command masks and shifts */
 #define CAM_CDM_CURRENT_BL_LEN   0xFFFFF
 #define CAM_CDM_CURRENT_BL_ARB   0x100000
