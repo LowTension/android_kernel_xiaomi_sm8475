@@ -195,7 +195,7 @@ static int cam_cpas_parse_node_tree(struct cam_cpas *cpas_core,
 	uint32_t client_idx = 0, cell_idx = 0, level_idx = 0;
 	int rc = 0, count = 0, i;
 
-	camera_bus_node = of_find_node_by_name(of_node, "camera-bus-nodes");
+	camera_bus_node = of_get_child_by_name(of_node, "camera-bus-nodes");
 	if (!camera_bus_node) {
 		CAM_ERR(CAM_CPAS, "Camera Bus node not found in cpas DT node");
 		return -EINVAL;
@@ -265,7 +265,7 @@ static int cam_cpas_parse_node_tree(struct cam_cpas *cpas_core,
 				&curr_node_ptr->merge_type);
 
 			curr_node_ptr->axi_port_idx = -1;
-			mnoc_node = of_find_node_by_name(curr_node,
+			mnoc_node = of_get_child_by_name(curr_node,
 				"qcom,axi-port-mnoc");
 			if (mnoc_node) {
 				if (mnoc_idx >= CAM_CPAS_MAX_AXI_PORTS)
