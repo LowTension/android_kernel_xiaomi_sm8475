@@ -3394,8 +3394,15 @@ static int cam_ife_mgr_check_and_update_fe_v2(
 			((in_port->sfe_in_path_type & 0xFFFF) == CAM_ISP_SFE_IN_RD_1) ||
 			((in_port->sfe_in_path_type & 0xFFFF) == CAM_ISP_SFE_IN_RD_2)) {
 			ife_ctx->is_fe_enabled = true;
+
+			/* Check for SFE FS mode - SFE PP bypass */
+			if (in_port->feature_flag & CAM_ISP_SFE_FS_MODE_EN)
+				ife_ctx->ctx_config |= CAM_IFE_CTX_CFG_SFE_FS_MODE;
+
+			/* Check for offline */
 			if (in_port->offline_mode)
 				ife_ctx->is_offline = true;
+
 			break;
 		}
 
@@ -4599,11 +4606,9 @@ static int cam_ife_mgr_acquire_hw(void *hw_mgr_priv, void *acquire_hw_args)
 			CAM_IFE_CTX_CONSUME_ADDR_EN;
 
 	if ((ife_ctx->ctx_type == CAM_IFE_CTX_TYPE_SFE) &&
-		ife_ctx->is_fe_enabled) {
-		ife_ctx->ctx_config |= CAM_IFE_CTX_CFG_SFE_FE_MODE;
+		(ife_ctx->is_fe_enabled) && (!ife_ctx->is_offline))
 		acquire_args->op_flags |=
 			CAM_IFE_CTX_APPLY_DEFAULT_CFG;
-	}
 
 	acquire_args->ctxt_to_hw_map = ife_ctx;
 	if (ife_ctx->ctx_type == CAM_IFE_CTX_TYPE_CUSTOM)
@@ -6020,7 +6025,8 @@ static int cam_ife_mgr_start_hw(void *hw_mgr_priv, void *start_hw_args)
 						CAM_IFE_CSID_INPUT_CORE_IFE;
 				}
 
-				if (ctx->is_offline)
+				if ((ctx->is_offline) ||
+					(ctx->ctx_config & CAM_IFE_CTX_CFG_SFE_FS_MODE))
 					csid_top_args.is_sfe_offline = true;
 
 				hw_intf = hw_mgr_res->hw_res[i]->hw_intf;

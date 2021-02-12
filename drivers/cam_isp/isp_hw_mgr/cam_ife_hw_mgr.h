@@ -36,7 +36,7 @@ enum cam_ife_ctx_master_type {
 /* IFE_HW_MGR ctx config */
 #define CAM_IFE_CTX_CFG_FRAME_HEADER_TS   BIT(0)
 #define CAM_IFE_CTX_CFG_SW_SYNC_ON        BIT(1)
-#define CAM_IFE_CTX_CFG_SFE_FE_MODE       BIT(2)
+#define CAM_IFE_CTX_CFG_SFE_FS_MODE       BIT(2)
 #define CAM_IFE_CTX_CFG_DYNAMIC_SWITCH_ON BIT(3)
 
 #define CAM_IFE_UBWC_COMP_EN                 BIT(1)
