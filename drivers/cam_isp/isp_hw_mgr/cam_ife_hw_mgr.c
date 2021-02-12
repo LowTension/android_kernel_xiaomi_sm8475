@@ -2251,6 +2251,13 @@ static bool cam_ife_mgr_check_can_use_lite(
 		can_use_lite = false;
 		goto end;
 	}
+
+	CAM_DBG(CAM_ISP,
+		"in_port lite hint %d, rdi_only: %d can_use_lite: %d res_id: %u",
+		csid_acquire->in_port->can_use_lite,
+		ife_ctx->is_rdi_only_context,
+		can_use_lite, csid_acquire->res_id);
+
 end:
 	return can_use_lite;
 }
@@ -8788,6 +8795,79 @@ static int cam_ife_mgr_isp_add_reg_update(struct cam_ife_hw_mgr_ctx *ctx,
 	return rc;
 }
 
+static int cam_ife_hw_mgr_update_cmd_buffer(
+	struct cam_ife_hw_mgr_ctx               *ctx,
+	struct cam_hw_prepare_update_args       *prepare,
+	struct cam_kmd_buf_info                 *kmd_buf,
+	struct cam_isp_cmd_buf_count            *cmd_buf_count,
+	uint32_t                                 base_idx)
+{
+	struct list_head                     *res_list = NULL;
+	struct cam_isp_change_base_args       change_base_info = {0};
+	int                                   rc = 0;
+
+	if (ctx->base[base_idx].hw_type == CAM_ISP_HW_TYPE_SFE) {
+		res_list = &ctx->res_list_sfe_src;
+	} else if (ctx->base[base_idx].hw_type == CAM_ISP_HW_TYPE_VFE) {
+		res_list = &ctx->res_list_ife_src;
+	}else if (ctx->base[base_idx].hw_type == CAM_ISP_HW_TYPE_CSID) {
+		if (!cmd_buf_count->csid_cnt)
+			return rc;
+		res_list = &ctx->res_list_ife_csid;
+	}
+
+	if (!ctx->internal_cdm) {
+		change_base_info.base_idx = ctx->base[base_idx].idx;
+		change_base_info.cdm_id = ctx->cdm_id;
+		rc = cam_isp_add_change_base(prepare,
+			res_list,
+			&change_base_info, kmd_buf);
+		if (rc) {
+			CAM_ERR(CAM_ISP,
+				"Failed change base, i=%d, split_id=%d, hw_type=%d",
+				base_idx, ctx->base[base_idx].split_id,
+				ctx->base[base_idx].hw_type);
+			return rc;
+		}
+
+		CAM_DBG(CAM_ISP,
+			"changing the base hw_type: %u core_id: %u CDM ID: %d",
+			ctx->base[base_idx].hw_type, ctx->base[base_idx].idx,
+			ctx->cdm_id);
+	}
+
+	if (ctx->base[base_idx].hw_type == CAM_ISP_HW_TYPE_SFE)
+		rc = cam_sfe_add_command_buffers(
+			prepare, kmd_buf, &ctx->base[base_idx],
+			cam_sfe_packet_generic_blob_handler,
+			ctx->res_list_sfe_out,
+			CAM_ISP_SFE_OUT_RES_BASE,
+			CAM_ISP_SFE_OUT_RES_MAX);
+	else if (ctx->base[base_idx].hw_type == CAM_ISP_HW_TYPE_VFE)
+		rc = cam_isp_add_command_buffers(
+			prepare, kmd_buf, &ctx->base[base_idx],
+			cam_isp_packet_generic_blob_handler,
+			ctx->res_list_ife_out,
+			CAM_ISP_IFE_OUT_RES_BASE,
+			(CAM_ISP_IFE_OUT_RES_BASE +
+			max_ife_out_res));
+	else if (ctx->base[base_idx].hw_type == CAM_ISP_HW_TYPE_CSID)
+		rc = cam_isp_add_csid_command_buffers(prepare,
+			kmd_buf, &ctx->base[base_idx]);
+
+	CAM_DBG(CAM_ISP,
+		"Add cmdbuf, i=%d, split_id=%d, hw_type=%d",
+		base_idx, ctx->base[base_idx].split_id,
+		ctx->base[base_idx].hw_type);
+
+	if (rc)
+		CAM_ERR(CAM_ISP,
+			"Failed in add cmdbuf, i=%d, split_id=%d, rc=%d hw_type=%d",
+			base_idx, ctx->base[base_idx].split_id, rc,
+			ctx->base[base_idx].hw_type);
+	return rc;
+}
+
 static int cam_ife_mgr_prepare_hw_update(void *hw_mgr_priv,
 	void *prepare_hw_update_args)
 {
@@ -8804,9 +8884,9 @@ static int cam_ife_mgr_prepare_hw_update(void *hw_mgr_priv,
 	bool                                     frame_header_enable = false;
 	struct cam_isp_prepare_hw_update_data   *prepare_hw_data;
 	struct cam_isp_frame_header_info         frame_header_info;
-	struct cam_isp_change_base_args          change_base_info = {0};
 	struct list_head                        *res_list_ife_rd_tmp = NULL;
 	struct cam_isp_check_sfe_fe_io_cfg       sfe_fe_chk_cfg;
+	struct cam_isp_cmd_buf_count             cmd_buf_count = {0};
 
 	if (!hw_mgr_priv || !prepare_hw_update_args) {
 		CAM_ERR(CAM_ISP, "Invalid args");
@@ -8873,74 +8953,14 @@ static int cam_ife_mgr_prepare_hw_update(void *hw_mgr_priv,
 	if (ctx->ctx_type != CAM_IFE_CTX_TYPE_SFE)
 		res_list_ife_rd_tmp = &ctx->res_list_ife_in_rd;
 
+	rc = cam_isp_get_cmd_buf_count(prepare, &cmd_buf_count);
+
+	if (rc) {
+		CAM_ERR(CAM_ISP, "Invalid cmd buffers");
+		return rc;
+	}
+
 	for (i = 0; i < ctx->num_base; i++) {
-		CAM_DBG(CAM_ISP, "process cmd buffer for device %d", i);
-
-		CAM_DBG(CAM_ISP,
-			"change base i=%d, idx=%d, ctx->internal_cdm = %d",
-			i, ctx->base[i].idx, ctx->internal_cdm);
-
-		/* Add change base */
-		if (!ctx->internal_cdm) {
-			change_base_info.base_idx = ctx->base[i].idx;
-			change_base_info.cdm_id = ctx->cdm_id;
-			if (ctx->base[i].hw_type == CAM_ISP_HW_TYPE_SFE) {
-				CAM_DBG(CAM_ISP, "changing the base SFE: %u CDM ID: %d",
-					ctx->base[i].idx, ctx->cdm_id);
-				rc = cam_isp_add_change_base(prepare,
-					&ctx->res_list_sfe_src,
-					&change_base_info, &kmd_buf);
-			} else if (ctx->base[i].hw_type == CAM_ISP_HW_TYPE_VFE){
-				CAM_DBG(CAM_ISP, "changing the base for IFE: %u CDM ID: %d",
-					ctx->base[i].idx, ctx->cdm_id);
-				rc = cam_isp_add_change_base(prepare,
-					&ctx->res_list_ife_src,
-					&change_base_info, &kmd_buf);
-			} else if (ctx->base[i].hw_type == CAM_ISP_HW_TYPE_CSID){
-				CAM_DBG(CAM_ISP, "changing the base for CSID: %u CDM ID: %d",
-					ctx->base[i].idx, ctx->cdm_id);
-				rc = cam_isp_add_change_base(prepare,
-					&ctx->res_list_ife_csid,
-					&change_base_info, &kmd_buf);
-			}
-
-			if (rc) {
-				CAM_ERR(CAM_ISP,
-				"Failed in change base for hw_type: %d i: %d, idx: %d, rc: %d",
-				ctx->base[i].hw_type, i, ctx->base[i].idx, rc);
-				goto end;
-			}
-		}
-		/* get command buffers */
-		if (ctx->base[i].split_id != CAM_ISP_HW_SPLIT_MAX) {
-			if (ctx->base[i].hw_type == CAM_ISP_HW_TYPE_VFE)
-				rc = cam_isp_add_command_buffers(
-					prepare, &kmd_buf, &ctx->base[i],
-					cam_isp_packet_generic_blob_handler,
-					ctx->res_list_ife_out,
-					CAM_ISP_IFE_OUT_RES_BASE,
-					(CAM_ISP_IFE_OUT_RES_BASE +
-					max_ife_out_res));
-			else if (ctx->base[i].hw_type == CAM_ISP_HW_TYPE_SFE)
-				rc = cam_sfe_add_command_buffers(
-					prepare, &kmd_buf, &ctx->base[i],
-					cam_sfe_packet_generic_blob_handler,
-					ctx->res_list_sfe_out,
-					CAM_ISP_SFE_OUT_RES_BASE,
-					CAM_ISP_SFE_OUT_RES_MAX);
-			else if (ctx->base[i].hw_type == CAM_ISP_HW_TYPE_CSID)
-				rc = cam_isp_add_csid_command_buffers(prepare,
-					&kmd_buf, &ctx->base[i]);
-
-			if (rc) {
-				CAM_ERR(CAM_ISP,
-					"Failed in add cmdbuf, i=%d, split_id=%d, rc=%d hw_type=%s",
-					i, ctx->base[i].split_id, rc,
-					(ctx->base[i].hw_type ==
-					CAM_ISP_HW_TYPE_SFE ? "SFE" : "IFE"));
-				goto end;
-			}
-		}
 
 		memset(&frame_header_info, 0,
 			sizeof(struct cam_isp_frame_header_info));
@@ -8950,9 +8970,18 @@ static int cam_ife_mgr_prepare_hw_update(void *hw_mgr_priv,
 				prepare_hw_data->frame_header_iova;
 		}
 
+		rc = cam_ife_hw_mgr_update_cmd_buffer(ctx, prepare,
+			&kmd_buf, &cmd_buf_count, i);
+
+		if (rc) {
+			CAM_ERR(CAM_ISP, "Add cmd buffer failed base_idx: %d hw_type %d",
+				i, ctx->base[i].hw_type);
+			goto end;
+		}
+
 		sfe_fe_chk_cfg.sfe_fe_enabled = false;
 		if ((!ctx->is_offline) && (ctx->is_fe_enabled) &&
-			(ctx->base[i].hw_type == CAM_ISP_HW_TYPE_SFE)) {
+				(ctx->base[i].hw_type == CAM_ISP_HW_TYPE_SFE)) {
 			sfe_fe_chk_cfg.sfe_fe_enabled = true;
 			sfe_fe_chk_cfg.sfe_rdi_cfg_mask = 0;
 		}

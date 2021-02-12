@@ -909,7 +909,7 @@ static struct cam_ife_csid_ver2_common_reg_info
 	.global_reset                            = 1,
 	.rup_supported                           = 1,
 	.only_master_rup                         = 1,
-	.need_separate_base                      = 0,
+	.need_separate_base                      = 1,
 };
 
 static struct cam_ife_csid_ver2_top_reg_info

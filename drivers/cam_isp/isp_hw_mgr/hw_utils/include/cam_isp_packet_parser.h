@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CAM_ISP_HW_PARSER_H_
@@ -69,6 +69,19 @@ struct cam_isp_check_sfe_fe_io_cfg {
 struct cam_isp_change_base_args {
 	enum cam_cdm_id  cdm_id;
 	uint32_t         base_idx;
+};
+
+/*
+ * struct cam_isp_cmd_buf_count
+ *
+ * @csid_cnt:       CSID cmd buffer cnt
+ * @vfe_cnt:        ISP cmd buffer cnt
+ * @sfe_cnt:        SFE cmd buffer cnt
+ */
+struct cam_isp_cmd_buf_count {
+	uint32_t         csid_cnt;
+	uint32_t         isp_cnt;
+	uint32_t         sfe_cnt;
 };
 
 /*
@@ -347,4 +360,19 @@ int cam_isp_add_csid_command_buffers(
 	struct cam_hw_prepare_update_args   *prepare,
 	struct cam_kmd_buf_info             *kmd_buf_info,
 	struct cam_isp_ctx_base_info        *base_info);
+
+/*
+ * cam_isp_get_cmd_buf_count()
+ *
+ * @brief                  Counts the number of command buffers
+ *
+ * @prepare:               Contain the packet and HW update variables
+ * @cmd_buf_count:         Cmd buffer count container
+ *
+ * @return:                0 for success
+ *                         Negative for Failure
+ */
+int cam_isp_get_cmd_buf_count(
+	struct cam_hw_prepare_update_args    *prepare,
+	struct cam_isp_cmd_buf_count         *cmd_buf_count);
 #endif /*_CAM_ISP_HW_PARSER_H */
