@@ -12,6 +12,7 @@
 #include "cam_soc_util.h"
 #include "cam_debug_util.h"
 #include "cam_io_util.h"
+#include "cam_common_util.h"
 
 static int cam_csid_ppi_reset(struct cam_csid_ppi_hw *ppi_hw)
 {
@@ -34,9 +35,10 @@ static int cam_csid_ppi_reset(struct cam_csid_ppi_hw *ppi_hw)
 	cam_io_w_mb(PPI_IRQ_CMD_SET, soc_info->reg_map[0].mem_base +
 		ppi_reg->ppi_irq_cmd_addr);
 
-	rc = readl_poll_timeout(soc_info->reg_map[0].mem_base +
-		ppi_reg->ppi_irq_status_addr, status,
-		(status & 0x1) == 0x1, 1000, 500000);
+	rc = cam_common_read_poll_timeout(soc_info->reg_map[0].mem_base +
+		ppi_reg->ppi_irq_status_addr,
+		1000, 500000, 0x1, 0x1, &status);
+
 	CAM_DBG(CAM_ISP, "PPI:%d reset status %d", ppi_hw->hw_intf->hw_idx,
 		status);
 	if (rc < 0) {

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2016-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/module.h>
@@ -16,6 +16,7 @@
 #include "cam_debug_util.h"
 #include "cam_req_mgr_dev.h"
 #include "cam_req_mgr_debug.h"
+#include "cam_common_util.h"
 
 static struct cam_req_mgr_core_device *g_crm_core_dev;
 static struct cam_req_mgr_core_link g_links[MAXIMUM_LINKS_PER_SESSION];
@@ -4233,7 +4234,7 @@ int cam_req_mgr_flush_requests(
 	rc = cam_req_mgr_workq_enqueue_task(task, link, CRM_TASK_PRIORITY_0);
 
 	/* Blocking call */
-	rc = wait_for_completion_timeout(
+	rc = cam_common_wait_for_completion_timeout(
 		&link->workq_comp,
 		msecs_to_jiffies(CAM_REQ_MGR_SCHED_REQ_TIMEOUT));
 end:

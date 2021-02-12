@@ -19,6 +19,7 @@
 #include "lx7_core.h"
 #include "lx7_reg.h"
 #include "lx7_soc.h"
+#include "cam_common_util.h"
 
 #define TZ_STATE_SUSPEND 0
 #define TZ_STATE_RESUME  1
@@ -344,9 +345,10 @@ static int __cam_lx7_power_collapse(struct cam_hw_info *lx7_info)
 	 * and Host can then proceed. No interrupt is expected
 	 * from FW at this time.
 	 */
-	if (readl_poll_timeout(base + ICP_LX7_SYS_STATUS,
-				status, status & ICP_LX7_STANDBYWFI,
-				PC_POLL_DELAY_US, PC_POLL_TIMEOUT_US)) {
+	if (cam_common_read_poll_timeout(base + ICP_LX7_SYS_STATUS,
+		PC_POLL_DELAY_US, PC_POLL_TIMEOUT_US,
+		ICP_LX7_STANDBYWFI, ICP_LX7_STANDBYWFI,
+		&status)) {
 		CAM_ERR(CAM_ICP, "WFI poll timed out: status=0x%08x", status);
 		return -ETIMEDOUT;
 	}

@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  */
 
 #include "cam_fd_hw_core.h"
 #include "cam_fd_hw_soc.h"
 #include "cam_trace.h"
+#include "cam_common_util.h"
 
 #define CAM_FD_REG_VAL_PAIR_SIZE 256
 
@@ -117,8 +118,9 @@ static int cam_fd_hw_util_fdwrapper_sync_reset(struct cam_hw_info *fd_hw)
 	cam_fd_soc_register_write(soc_info, CAM_FD_REG_WRAPPER,
 		hw_static_info->wrapper_regs.sw_reset, 0x1);
 
-	time_left = wait_for_completion_timeout(&fd_core->reset_complete,
-		msecs_to_jiffies(CAM_FD_HW_HALT_RESET_TIMEOUT));
+	time_left = cam_common_wait_for_completion_timeout(
+			&fd_core->reset_complete,
+			msecs_to_jiffies(CAM_FD_HW_HALT_RESET_TIMEOUT));
 	if (time_left <= 0)
 		CAM_WARN(CAM_FD, "HW reset timeout time_left=%ld", time_left);
 
@@ -147,8 +149,9 @@ static int cam_fd_hw_util_fdwrapper_halt(struct cam_hw_info *fd_hw)
 	cam_fd_soc_register_write(soc_info, CAM_FD_REG_WRAPPER,
 		hw_static_info->wrapper_regs.hw_stop, 0x1);
 
-	time_left = wait_for_completion_timeout(&fd_core->halt_complete,
-		msecs_to_jiffies(CAM_FD_HW_HALT_RESET_TIMEOUT));
+	time_left = cam_common_wait_for_completion_timeout(
+			&fd_core->halt_complete,
+			msecs_to_jiffies(CAM_FD_HW_HALT_RESET_TIMEOUT));
 	if (time_left <= 0)
 		CAM_WARN(CAM_FD, "HW halt timeout time_left=%ld", time_left);
 

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/module.h>
@@ -46,7 +46,7 @@ static void cam_cci_flush_queue(struct cci_device *cci_dev,
 	if (!cci_dev->cci_master_info[master].status)
 		reinit_completion(&cci_dev->cci_master_info[master]
 			.reset_complete);
-	if (!wait_for_completion_timeout(
+	if (!cam_common_wait_for_completion_timeout(
 		&cci_dev->cci_master_info[master].reset_complete,
 		CCI_TIMEOUT)) {
 		CAM_DBG(CAM_CCI,
@@ -66,7 +66,7 @@ static void cam_cci_flush_queue(struct cci_device *cci_dev,
 				base + CCI_RESET_CMD_ADDR);
 
 		/* wait for reset done irq */
-		if (!wait_for_completion_timeout(
+		if (!cam_common_wait_for_completion_timeout(
 			&cci_dev->cci_master_info[master].reset_complete,
 			CCI_TIMEOUT)) {
 			rc = -EINVAL;
@@ -127,7 +127,7 @@ static int32_t cam_cci_validate_queue(struct cci_device *cci_dev,
 		atomic_set(&cci_dev->cci_master_info[master].q_free[queue], 1);
 		spin_unlock_irqrestore(
 			&cci_dev->cci_master_info[master].lock_q[queue], flags);
-		if (!wait_for_completion_timeout(
+		if (!cam_common_wait_for_completion_timeout(
 			&cci_dev->cci_master_info[master].report_q[queue],
 			CCI_TIMEOUT)) {
 			CAM_ERR(CAM_CCI,
@@ -270,7 +270,7 @@ static uint32_t cam_cci_wait(struct cci_device *cci_dev,
 		return -EINVAL;
 	}
 
-	if (!wait_for_completion_timeout(
+	if (!cam_common_wait_for_completion_timeout(
 		&cci_dev->cci_master_info[master].report_q[queue],
 		CCI_TIMEOUT)) {
 		cam_cci_dump_registers(cci_dev, master, queue);
@@ -1085,7 +1085,7 @@ static int32_t cam_cci_burst_read(struct v4l2_subdev *sd,
 	CAM_DBG(CAM_CCI, "waiting for threshold [exp_words %d]", exp_words);
 
 	while (total_read_words != exp_words) {
-		rem_jiffies = wait_for_completion_timeout(
+		rem_jiffies = cam_common_wait_for_completion_timeout(
 			&cci_dev->cci_master_info[master].th_complete,
 			CCI_TIMEOUT);
 		if (!rem_jiffies) {
@@ -1174,7 +1174,7 @@ static int32_t cam_cci_burst_read(struct v4l2_subdev *sd,
 		    * wait is to compensate for the complete invoked for
 		    * RD_DONE exclusively.
 		    */
-			rem_jiffies = wait_for_completion_timeout(
+			rem_jiffies = cam_common_wait_for_completion_timeout(
 			&cci_dev->cci_master_info[master].rd_done,
 			CCI_TIMEOUT);
 			if (!rem_jiffies) {
@@ -1355,7 +1355,7 @@ static int32_t cam_cci_read(struct v4l2_subdev *sd,
 	CAM_DBG(CAM_CCI, "exp_words to be read: %d",
 		((read_cfg->num_byte / 4) + 1));
 
-	if (!wait_for_completion_timeout(
+	if (!cam_common_wait_for_completion_timeout(
 		&cci_dev->cci_master_info[master].rd_done, CCI_TIMEOUT)) {
 		cam_cci_dump_registers(cci_dev, master, queue);
 
