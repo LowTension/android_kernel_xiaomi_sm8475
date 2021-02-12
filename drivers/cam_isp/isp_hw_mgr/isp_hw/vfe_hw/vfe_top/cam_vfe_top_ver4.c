@@ -274,13 +274,10 @@ static int cam_vfe_core_config_control(
 	struct cam_vfe_top_ver4_priv *top_priv,
 	 void *cmd_args, uint32_t arg_size)
 {
-	struct cam_vfe_core_config_args *vfe_core_cfg =
-		(struct cam_vfe_core_config_args *)cmd_args;
+	struct cam_vfe_core_config_args *vfe_core_cfg = cmd_args;
 	struct cam_isp_resource_node *rsrc_node = vfe_core_cfg->node_res;
-	struct cam_vfe_mux_ver4_data *vfe_priv;
+	struct cam_vfe_mux_ver4_data *vfe_priv = rsrc_node->res_priv;
 
-	vfe_priv =
-		(struct cam_vfe_mux_ver4_data *)rsrc_node->res_priv;
 	vfe_priv->cam_common_cfg.vid_ds16_r2pd =
 		vfe_core_cfg->core_config.vid_ds16_r2pd;
 	vfe_priv->cam_common_cfg.vid_ds4_r2pd =
@@ -293,6 +290,12 @@ static int cam_vfe_core_config_control(
 		vfe_core_cfg->core_config.dsp_streaming_tap_point;
 	vfe_priv->cam_common_cfg.ihist_src_sel =
 		vfe_core_cfg->core_config.ihist_src_sel;
+	vfe_priv->cam_common_cfg.input_pp_fmt =
+		vfe_core_cfg->core_config.core_cfg_flag
+			& CAM_ISP_PARAM_CORE_CFG_PP_FORMAT;
+	vfe_priv->cam_common_cfg.hdr_mux_sel_pp =
+		vfe_core_cfg->core_config.core_cfg_flag
+			& CAM_ISP_PARAM_CORE_CFG_HDR_MUX_SEL;
 
 	return 0;
 }
@@ -371,11 +374,6 @@ int cam_vfe_top_acquire_resource(
 	res_data  = (struct cam_vfe_mux_ver4_data *)
 		vfe_full_res->res_priv;
 	acquire_data = (struct cam_vfe_acquire_args *)acquire_param;
-
-	if (rc) {
-		CAM_ERR(CAM_ISP, "Validate pix pattern failed, rc = %d", rc);
-		return rc;
-	}
 
 	res_data->sync_mode      = acquire_data->vfe_in.sync_mode;
 	res_data->event_cb       = acquire_data->event_cb;
@@ -1096,10 +1094,14 @@ static int cam_vfe_resource_start(
 		CAM_SHIFT_TOP_CORE_VER_4_CFG_DISP_DS16_R2PD;
 	val |= (~rsrc_data->cam_common_cfg.disp_ds4_r2pd & 0x1) <<
 		CAM_SHIFT_TOP_CORE_VER_4_CFG_DISP_DS4_R2PD;
-	val |= (rsrc_data->cam_common_cfg.dsp_streaming_tap_point & 0x3) <<
+	val |= (rsrc_data->cam_common_cfg.dsp_streaming_tap_point & 0x7) <<
 		CAM_SHIFT_TOP_CORE_VER_4_CFG_DSP_STREAMING;
 	val |= (rsrc_data->cam_common_cfg.ihist_src_sel & 0x1) <<
 		CAM_SHIFT_TOP_CORE_VER_4_CFG_STATS_IHIST;
+	val |= (rsrc_data->cam_common_cfg.input_pp_fmt & 0x3) <<
+		CAM_SHIFT_TOP_CORE_VER_4_CFG_PP_INPUT_FMT;
+	val |= (rsrc_data->cam_common_cfg.hdr_mux_sel_pp & 0x1) <<
+		CAM_SHIFT_TOP_CORE_VER_4_CFG_HDR_MUX_PP;
 
 	CAM_DBG(CAM_ISP, "VFE:%d TOP core_cfg: 0x%X",
 		vfe_res->hw_intf->hw_idx, val);

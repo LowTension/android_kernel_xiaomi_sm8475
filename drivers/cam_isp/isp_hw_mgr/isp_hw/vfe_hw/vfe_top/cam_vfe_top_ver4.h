@@ -17,6 +17,7 @@
 #define CAM_SHIFT_TOP_CORE_VER_4_CFG_DISP_DS4_R2PD     13
 #define CAM_SHIFT_TOP_CORE_VER_4_CFG_DSP_STREAMING     10
 #define CAM_SHIFT_TOP_CORE_VER_4_CFG_STATS_IHIST       4
+#define CAM_SHIFT_TOP_CORE_VER_4_CFG_PP_INPUT_FMT      2
 #define CAM_SHIFT_TOP_CORE_VER_4_CFG_HDR_MUX_PP        0
 #define CAM_SHIFT_TOP_CORE_VER_4_CFG_DSP_MODE          9
 #define CAM_SHIFT_TOP_CORE_VER_4_CFG_DSP_EN            8
@@ -93,6 +94,8 @@ struct cam_vfe_top_common_cfg {
 	uint32_t     disp_ds4_r2pd;
 	uint32_t     dsp_streaming_tap_point;
 	uint32_t     ihist_src_sel;
+	uint32_t     input_pp_fmt;
+	uint32_t     hdr_mux_sel_pp;
 };
 
 struct cam_vfe_top_ver4_module_desc {
