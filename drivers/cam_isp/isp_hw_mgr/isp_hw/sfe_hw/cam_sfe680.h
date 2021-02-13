@@ -10,6 +10,105 @@
 #include "cam_sfe_bus_rd.h"
 #include "cam_sfe_bus_wr.h"
 
+static struct cam_sfe_top_module_desc sfe_mod_desc[] = {
+	{
+		.id = 0,
+		.desc = "CRC_ZSL",
+	},
+	{
+		.id = 1,
+		.desc = "COMP",
+	},
+	{
+		.id = 2,
+		.desc = "CRC_PREV",
+	},
+	{
+		.id = 3,
+		.desc = "HDRC",
+	},
+	{
+		.id = 4,
+		.desc = "DECOMP",
+	},
+	{
+		.id = 5,
+		.desc = "BPC_PDPC",
+	},
+	{
+		.id = 6,
+		.desc = "BHIST_CH0",
+	},
+	{
+		.id = 7,
+		.desc = "BG_CH0",
+	},
+	{
+		.id = 8,
+		.desc = "LSC_CH0",
+	},
+	{
+		.id = 9,
+		.desc = "CRC_CH0",
+	},
+	{
+		.id = 10,
+		.desc = "CCIF_2x2_2x1",
+	},
+	{
+		.id = 11,
+		.desc = "GAIN_CH0",
+	},
+	{
+		.id = 12,
+		.desc = "BHIST_CH1",
+	},
+	{
+		.id = 13,
+		.desc = "BG_CH1",
+	},
+	{
+		.id = 14,
+		.desc = "LSC_CH1",
+	},
+	{
+		.id = 15,
+		.desc = "CRC_CH1",
+	},
+	{
+		.id = 16,
+		.desc = "GAIN_CH1",
+	},
+	{
+		.id = 17,
+		.desc = "BHIST_CH2",
+	},
+	{
+		.id = 18,
+		.desc = "BG_CH2",
+	},
+	{
+		.id = 19,
+		.desc = "LSC_CH2",
+	},
+	{
+		.id = 20,
+		.desc = "CRC_CH2",
+	},
+	{
+		.id = 21,
+		.desc = "GAIN_CH2",
+	},
+	{
+		.id = 22,
+		.desc = "LCR",
+	},
+	{
+		.id = 23,
+		.desc = "QCFA_DEMUX",
+	},
+};
+
 static struct cam_sfe_top_common_reg_offset  sfe680_top_commong_reg  = {
 	.hw_version                    = 0x00000000,
 	.hw_capability                 = 0x00000004,
@@ -101,6 +200,7 @@ static struct cam_sfe_top_hw_info sfe680_top_hw_info = {
 	.common_reg = &sfe680_top_commong_reg,
 	.modules_hw_info = &sfe680_modules_common_reg,
 	.common_reg_data = &sfe_680_top_common_reg_data,
+	.module_desc = sfe_mod_desc,
 	.pix_reg_data = &sfe_680_pix_reg_data,
 	.rdi_reg_data[0] = &sfe_680_rdi0_reg_data,
 	.rdi_reg_data[1] = &sfe_680_rdi1_reg_data,

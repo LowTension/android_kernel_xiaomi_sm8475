@@ -48,6 +48,7 @@ struct cam_sfe_top_priv {
 	uint32_t                        sfe_debug_cfg;
 	uint32_t                        sensor_sel_diag_cfg;
 	spinlock_t                      spin_lock;
+	struct cam_sfe_top_module_desc *module_desc;
 };
 
 struct cam_sfe_path_data {
@@ -928,7 +929,7 @@ static int cam_sfe_top_handle_irq_bottom_half(
 	void *handler_priv, void *evt_payload_priv)
 {
 	int i;
-	uint32_t val0, val1, frame_cnt, offset0, offset1;
+	uint32_t val0, val1, frame_cnt, offset0, offset1, viol_sts;
 	uint32_t irq_status[CAM_SFE_IRQ_REGISTERS_MAX] = {0};
 	enum cam_sfe_hw_irq_status          ret = CAM_SFE_IRQ_STATUS_MAX;
 	struct cam_isp_hw_event_info        evt_info;
@@ -956,8 +957,14 @@ static int cam_sfe_top_handle_irq_bottom_half(
 		if (irq_status[0] & 0x10000)
 			CAM_ERR(CAM_SFE, "LINE SMOOTH VIOLATION");
 
+		viol_sts = payload->violation_status;
 		CAM_INFO(CAM_SFE, "Violation status 0x%x",
-			payload->violation_status);
+			viol_sts);
+		if (top_priv->module_desc)
+			CAM_ERR(CAM_ISP, "SFE:%u Violating Module [ID: %d name: %s]",
+				evt_info.hw_idx,
+				top_priv->module_desc[viol_sts].id,
+				top_priv->module_desc[viol_sts].desc);
 
 		evt_info.err_type = CAM_SFE_IRQ_STATUS_VIOLATION;
 		cam_sfe_top_print_debug_reg_info(path_data);
@@ -1340,6 +1347,7 @@ int cam_sfe_top_init(
 	top_priv->common_data.hw_intf = hw_intf;
 	top_priv->common_data.common_reg =
 		sfe_top_hw_info->common_reg;
+	top_priv->module_desc = sfe_top_hw_info->module_desc;
 	top_priv->sfe_debug_cfg = 0;
 
 	/* Remove after driver stabilizes */
