@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only WITH Linux-syscall-note */
 /*
- * Copyright (c) 2016-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
  */
 
 #ifndef __UAPI_CAM_DEFS_H__
@@ -237,6 +237,11 @@ struct cam_iommu_handle {
 #define CAM_REG_DUMP_BASE_TYPE_ISP_LEFT         1
 #define CAM_REG_DUMP_BASE_TYPE_ISP_RIGHT        2
 #define CAM_REG_DUMP_BASE_TYPE_CAMNOC           3
+#define CAM_REG_DUMP_BASE_TYPE_CSID_WRAPPER     4
+#define CAM_REG_DUMP_BASE_TYPE_CSID_LEFT        5
+#define CAM_REG_DUMP_BASE_TYPE_CSID_RIGHT       6
+#define CAM_REG_DUMP_BASE_TYPE_SFE_LEFT         7
+#define CAM_REG_DUMP_BASE_TYPE_SFE_RIGHT        8
 
 /* Register dump read type */
 #define CAM_REG_DUMP_READ_TYPE_CONT_RANGE       1
