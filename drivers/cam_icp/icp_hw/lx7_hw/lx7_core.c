@@ -428,7 +428,7 @@ static int32_t __cam_non_sec_load_fw(void *device_priv)
 	scnprintf(firmware_name, ARRAY_SIZE(firmware_name),
 		"%s.elf", fw_name);
 
-	rc = request_firmware(&core_info->fw_params.fw_elf,
+	rc = firmware_request_nowarn(&core_info->fw_params.fw_elf,
 		firmware_name, &pdev->dev);
 	if (rc) {
 		CAM_ERR(CAM_ICP, "Failed to locate %s fw: %d",
@@ -573,7 +573,7 @@ static int __load_firmware(struct platform_device *pdev)
 	res_start = res.start;
 	res_size = (size_t)resource_size(&res);
 
-	rc = request_firmware(&firmware, firmware_name, &pdev->dev);
+	rc = firmware_request_nowarn(&firmware, firmware_name, &pdev->dev);
 	if (rc) {
 		CAM_ERR(CAM_ICP,
 			"error requesting %s firmware rc=%d",
