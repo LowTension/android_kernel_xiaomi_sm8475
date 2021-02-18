@@ -987,7 +987,7 @@ static int cam_ife_csid_ver1_stop_rdi_path(
 		return -EINVAL;
 	}
 
-	if (res->res_id >= CAM_IFE_PIX_PATH_RES_MAX) {
+	if (res->res_id >= CAM_IFE_CSID_RDI_MAX) {
 		CAM_DBG(CAM_ISP, "CSID:%d Invalid res id%d",
 			csid_hw->hw_intf->hw_idx, res->res_id);
 		return -EINVAL;
