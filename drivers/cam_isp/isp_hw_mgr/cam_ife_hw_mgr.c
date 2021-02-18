@@ -62,75 +62,132 @@ static int cam_ife_hw_mgr_event_handler(
 	uint32_t                             evt_id,
 	void                                *evt_info);
 
+static inline int __cam_ife_mgr_get_hw_soc_info(
+	struct list_head          *res_list,
+	enum cam_isp_hw_split_id   split_id,
+	enum cam_isp_hw_type       hw_type,
+	struct cam_hw_soc_info   **soc_info_ptr)
+{
+	int rc  = -EINVAL;
+	struct cam_hw_soc_info    *soc_info = NULL;
+	struct cam_hw_intf        *hw_intf = NULL;
+	struct cam_isp_hw_mgr_res *hw_mgr_res;
+	struct cam_isp_hw_mgr_res *hw_mgr_res_temp;
+
+	list_for_each_entry_safe(hw_mgr_res, hw_mgr_res_temp,
+		res_list, list) {
+		if (!hw_mgr_res->hw_res[split_id])
+			continue;
+
+		hw_intf = hw_mgr_res->hw_res[split_id]->hw_intf;
+		if (hw_intf && hw_intf->hw_ops.process_cmd) {
+			rc = hw_intf->hw_ops.process_cmd(
+				hw_intf->hw_priv,
+				CAM_ISP_HW_CMD_QUERY_REGSPACE_DATA, &soc_info,
+				sizeof(void *));
+			if (rc) {
+				CAM_ERR(CAM_ISP,
+					"Failed in %d regspace data query res_id: %u split idx: %d rc : %d",
+					hw_type, hw_mgr_res->res_id, split_id, rc);
+				return rc;
+			}
+
+			*soc_info_ptr = soc_info;
+			CAM_DBG(CAM_ISP,
+				"Obtained soc info for split %d for hw_type %d",
+				split_id, hw_type);
+			break;
+		}
+	}
+
+	return rc;
+}
+
 static int cam_ife_mgr_regspace_data_cb(uint32_t reg_base_type,
 	void *hw_mgr_ctx, struct cam_hw_soc_info **soc_info_ptr,
 	uint32_t *reg_base_idx)
 {
-	int rc = 0;
-	struct cam_isp_hw_mgr_res *hw_mgr_res;
-	struct cam_isp_hw_mgr_res *hw_mgr_res_temp;
-	struct cam_hw_soc_info    *soc_info = NULL;
+	int rc = -EINVAL;
 	struct cam_ife_hw_mgr_ctx *ctx =
 		(struct cam_ife_hw_mgr_ctx *) hw_mgr_ctx;
 
 	*soc_info_ptr = NULL;
-	list_for_each_entry_safe(hw_mgr_res, hw_mgr_res_temp,
-		&ctx->res_list_ife_src, list) {
-		if (hw_mgr_res->res_id != CAM_ISP_HW_VFE_IN_CAMIF)
-			continue;
+	switch (reg_base_type) {
+	case CAM_REG_DUMP_BASE_TYPE_CAMNOC:
+	case CAM_REG_DUMP_BASE_TYPE_ISP_LEFT:
+		rc = __cam_ife_mgr_get_hw_soc_info(
+			&ctx->res_list_ife_src,
+			CAM_ISP_HW_SPLIT_LEFT, CAM_ISP_HW_TYPE_VFE,
+			soc_info_ptr);
+		if (rc)
+			return rc;
 
-		switch (reg_base_type) {
-		case CAM_REG_DUMP_BASE_TYPE_CAMNOC:
-		case CAM_REG_DUMP_BASE_TYPE_ISP_LEFT:
-			if (!hw_mgr_res->hw_res[CAM_ISP_HW_SPLIT_LEFT])
-				continue;
-
-			rc = hw_mgr_res->hw_res[
-				CAM_ISP_HW_SPLIT_LEFT]->process_cmd(
-				hw_mgr_res->hw_res[CAM_ISP_HW_SPLIT_LEFT],
-				CAM_ISP_HW_CMD_QUERY_REGSPACE_DATA, &soc_info,
-				sizeof(void *));
-			if (rc) {
-				CAM_ERR(CAM_ISP,
-					"Failed in regspace data query split idx: %d rc : %d",
-					CAM_ISP_HW_SPLIT_LEFT, rc);
-				return rc;
-			}
-
-			if (reg_base_type == CAM_REG_DUMP_BASE_TYPE_ISP_LEFT)
-				*reg_base_idx = 0;
-			else
-				*reg_base_idx = 1;
-
-			*soc_info_ptr = soc_info;
-			break;
-		case CAM_REG_DUMP_BASE_TYPE_ISP_RIGHT:
-			if (!hw_mgr_res->hw_res[CAM_ISP_HW_SPLIT_RIGHT])
-				continue;
-
-			rc = hw_mgr_res->hw_res[
-				CAM_ISP_HW_SPLIT_RIGHT]->process_cmd(
-				hw_mgr_res->hw_res[CAM_ISP_HW_SPLIT_RIGHT],
-				CAM_ISP_HW_CMD_QUERY_REGSPACE_DATA, &soc_info,
-				sizeof(void *));
-			if (rc) {
-				CAM_ERR(CAM_ISP,
-					"Failed in regspace data query split idx: %d rc : %d",
-					CAM_ISP_HW_SPLIT_RIGHT, rc);
-				return rc;
-			}
-
+		if (reg_base_type == CAM_REG_DUMP_BASE_TYPE_ISP_LEFT)
 			*reg_base_idx = 0;
-			*soc_info_ptr = soc_info;
-			break;
-		default:
-			CAM_ERR(CAM_ISP,
-				"Unrecognized reg base type: %u",
-				reg_base_type);
-			return -EINVAL;
-		}
+		else
+			*reg_base_idx = 1;
 
 		break;
+	case CAM_REG_DUMP_BASE_TYPE_ISP_RIGHT:
+		rc = __cam_ife_mgr_get_hw_soc_info(
+			&ctx->res_list_ife_src,
+			CAM_ISP_HW_SPLIT_RIGHT, CAM_ISP_HW_TYPE_VFE,
+			soc_info_ptr);
+		if (rc)
+			return rc;
+
+		*reg_base_idx = 0;
+		break;
+	case CAM_REG_DUMP_BASE_TYPE_CSID_WRAPPER:
+	case CAM_REG_DUMP_BASE_TYPE_CSID_LEFT:
+		rc = __cam_ife_mgr_get_hw_soc_info(
+			&ctx->res_list_ife_csid,
+			CAM_ISP_HW_SPLIT_LEFT, CAM_ISP_HW_TYPE_CSID,
+			soc_info_ptr);
+		if (rc)
+			return rc;
+
+		if (reg_base_type == CAM_REG_DUMP_BASE_TYPE_CSID_LEFT)
+			*reg_base_idx = 0;
+		else
+			*reg_base_idx = 1;
+
+		break;
+	case CAM_REG_DUMP_BASE_TYPE_CSID_RIGHT:
+		rc = __cam_ife_mgr_get_hw_soc_info(
+			&ctx->res_list_ife_csid,
+			CAM_ISP_HW_SPLIT_RIGHT, CAM_ISP_HW_TYPE_CSID,
+			soc_info_ptr);
+		if (rc)
+			return rc;
+
+		*reg_base_idx = 0;
+		break;
+	case CAM_REG_DUMP_BASE_TYPE_SFE_LEFT:
+		rc = __cam_ife_mgr_get_hw_soc_info(
+			&ctx->res_list_sfe_src,
+			CAM_ISP_HW_SPLIT_LEFT, CAM_ISP_HW_TYPE_SFE,
+			soc_info_ptr);
+		if (rc)
+			return rc;
+
+		*reg_base_idx = 0;
+		break;
+	case CAM_REG_DUMP_BASE_TYPE_SFE_RIGHT:
+		rc = __cam_ife_mgr_get_hw_soc_info(
+			&ctx->res_list_sfe_src,
+			CAM_ISP_HW_SPLIT_RIGHT, CAM_ISP_HW_TYPE_SFE,
+			soc_info_ptr);
+		if (rc)
+			return rc;
+
+		*reg_base_idx = 0;
+		break;
+	default:
+		CAM_ERR(CAM_ISP,
+			"Unrecognized reg base type: %u",
+			reg_base_type);
+		return rc;
 	}
 
 	return rc;
