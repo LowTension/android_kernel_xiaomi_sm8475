@@ -20,6 +20,11 @@
 #define CAM_SHIFT_TOP_CORE_CFG_OPS_MODE_CFG    1
 #define CAM_SHIFT_TOP_CORE_CFG_FS_MODE_CFG     0
 
+struct cam_sfe_top_module_desc {
+	uint32_t id;
+	uint8_t *desc;
+};
+
 struct cam_sfe_top {
 	void                   *top_priv;
 	struct cam_hw_ops       hw_ops;
@@ -86,6 +91,7 @@ struct cam_sfe_top_hw_info {
 	struct cam_sfe_top_common_reg_offset     *common_reg;
 	struct cam_sfe_modules_common_reg_offset *modules_hw_info;
 	struct cam_sfe_top_common_reg_data       *common_reg_data;
+	struct cam_sfe_top_module_desc           *module_desc;
 	struct cam_sfe_path_common_reg_data      *pix_reg_data;
 	struct cam_sfe_path_common_reg_data      *rdi_reg_data[CAM_SFE_RDI_MAX];
 	uint32_t                                  num_inputs;

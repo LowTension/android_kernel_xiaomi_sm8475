@@ -118,7 +118,6 @@ struct cam_sfe_bus_wr_wm_resource_data {
 	enum cam_sfe_bus_wr_packer_format pack_fmt;
 	enum cam_sfe_bus_wr_wm_mode wm_mode;
 
-	uint32_t             packer_cfg;
 	uint32_t             h_init;
 
 	uint32_t             irq_subsample_period;
@@ -534,7 +533,10 @@ static int cam_sfe_bus_acquire_wm(
 
 	rsrc_data->width = out_port_info->width;
 	rsrc_data->height = out_port_info->height;
+	rsrc_data->acquired_width = out_port_info->width;
+	rsrc_data->acquired_height = out_port_info->height;
 	rsrc_data->is_dual = is_dual;
+
 	/* RDI0-2 line based mode by default */
 	if (sfe_out_res_id == CAM_SFE_BUS_SFE_OUT_RDI0 ||
 		sfe_out_res_id == CAM_SFE_BUS_SFE_OUT_RDI1 ||
@@ -622,7 +624,6 @@ static int cam_sfe_bus_release_wm(void   *bus_priv,
 	rsrc_data->irq_subsample_pattern = 0;
 	rsrc_data->framedrop_period = 0;
 	rsrc_data->framedrop_pattern = 0;
-	rsrc_data->packer_cfg = 0;
 	rsrc_data->h_init = 0;
 	rsrc_data->init_cfg_done = false;
 	rsrc_data->hfr_cfg_done = false;
@@ -1688,6 +1689,7 @@ static int cam_sfe_bus_init_sfe_out_resource(
 		return -ENOMEM;
 	}
 
+	/* All SFE clients have 1 WM hence i = 0 always */
 	rc = cam_sfe_bus_init_wm_resource(
 			hw_info->sfe_out_hw_info[index].wm_idx,
 			bus_priv, hw_info,
@@ -1752,11 +1754,24 @@ static int cam_sfe_bus_deinit_sfe_out_resource(
 	return 0;
 }
 
+static inline void __cam_sfe_bus_wr_print_wm_info(
+	struct cam_sfe_bus_wr_wm_resource_data  *wm_data)
+{
+	CAM_INFO(CAM_SFE,
+		"SFE:%d WM:%d width:%u height:%u stride:%u x_init:%u en_cfg:%u acquired width:%u height:%u pack_cfg: 0x%x",
+		wm_data->common_data->core_index, wm_data->index,
+		wm_data->width, wm_data->height,
+		wm_data->stride, wm_data->h_init,
+		wm_data->en_cfg, wm_data->acquired_width,
+		wm_data->acquired_height, wm_data->pack_fmt);
+}
+
 static int cam_sfe_bus_wr_print_dimensions(
 	enum cam_sfe_bus_sfe_out_type        sfe_out_res_id,
 	struct cam_sfe_bus_wr_priv          *bus_priv)
 {
 	struct cam_isp_resource_node            *rsrc_node = NULL;
+	struct cam_isp_resource_node            *wm_res = NULL;
 	struct cam_sfe_bus_wr_out_data          *rsrc_data = NULL;
 	struct cam_sfe_bus_wr_wm_resource_data  *wm_data   = NULL;
 	int                                      i, wm_idx;
@@ -1764,8 +1779,9 @@ static int cam_sfe_bus_wr_print_dimensions(
 	rsrc_node = &bus_priv->sfe_out[sfe_out_res_id];
 	rsrc_data = rsrc_node->res_priv;
 	for (i = 0; i < rsrc_data->num_wm; i++) {
+		wm_res = &rsrc_data->wm_res[i];
 		wm_data = (struct cam_sfe_bus_wr_wm_resource_data  *)
-			&rsrc_data->wm_res[i].res_priv;
+			wm_res->res_priv;
 		wm_idx = wm_data->index;
 		if (wm_idx < 0 || wm_idx >= bus_priv->num_client) {
 			CAM_ERR(CAM_SFE, "Unsupported SFE out %d",
@@ -1773,15 +1789,7 @@ static int cam_sfe_bus_wr_print_dimensions(
 			return -EINVAL;
 		}
 
-		CAM_INFO(CAM_SFE,
-			"SFE:%d WM:%d width:%u height:%u stride:%u x_init:%u en_cfg:%u acquired width:%u height:%u",
-			wm_data->common_data->core_index, wm_idx,
-			wm_data->width,
-			wm_data->height,
-			wm_data->stride, wm_data->h_init,
-			wm_data->en_cfg,
-			wm_data->acquired_width,
-			wm_data->acquired_height);
+		__cam_sfe_bus_wr_print_wm_info(wm_data);
 	}
 	return 0;
 }
@@ -1842,6 +1850,37 @@ static int cam_sfe_bus_wr_err_irq_top_half(uint32_t evt_id,
 	return rc;
 }
 
+static void cam_sfe_bus_wr_print_violation_info(
+	uint32_t status, struct cam_sfe_bus_wr_priv *bus_priv)
+{
+	int i, j, wm_idx;
+	struct cam_isp_resource_node           *sfe_out = NULL;
+	struct cam_isp_resource_node           *wm_res = NULL;
+	struct cam_sfe_bus_wr_out_data         *rsrc_data = NULL;
+	struct cam_sfe_bus_wr_wm_resource_data *wm_data = NULL;
+
+	for (i = 0; i < bus_priv->num_client; i++) {
+		sfe_out = &bus_priv->sfe_out[i];
+		rsrc_data = (struct cam_sfe_bus_wr_out_data *)
+			sfe_out->res_priv;
+
+		for (j = 0; j < rsrc_data->num_wm; j++) {
+			wm_res = &rsrc_data->wm_res[j];
+			wm_data = (struct cam_sfe_bus_wr_wm_resource_data  *)
+				wm_res->res_priv;
+			wm_idx = wm_data->index;
+			if (wm_idx < 0 || wm_idx >= bus_priv->num_client) {
+				CAM_ERR(CAM_SFE, "Unsupported SFE out %d",
+					wm_idx);
+				return;
+			}
+
+			if (status & (1 << wm_idx))
+				__cam_sfe_bus_wr_print_wm_info(wm_data);
+		}
+	}
+}
+
 static int cam_sfe_bus_wr_irq_bottom_half(
 	void *handler_priv, void *evt_payload_priv)
 {
@@ -1863,6 +1902,11 @@ static int cam_sfe_bus_wr_irq_bottom_half(
 		bus_priv->common_data.core_index, status,
 		evt_payload->image_size_violation_status,
 		evt_payload->ccif_violation_status);
+
+	if (evt_payload->image_size_violation_status)
+		cam_sfe_bus_wr_print_violation_info(
+			evt_payload->image_size_violation_status,
+			bus_priv);
 
 	cam_sfe_bus_wr_put_evt_payload(common_data, &evt_payload);
 
@@ -2458,8 +2502,7 @@ static int cam_sfe_bus_wr_process_cmd(
 			cmd_args, arg_size);
 		break;
 	case CAM_ISP_HW_CMD_STOP_BUS_ERR_IRQ:
-		bus_priv = (struct cam_sfe_bus_wr_priv  *) priv;
-		/* Handle bus err IRQ */
+		rc = 0;
 		break;
 	case CAM_ISP_HW_CMD_DUMP_BUS_INFO: {
 		struct cam_isp_hw_event_info  *event_info;
