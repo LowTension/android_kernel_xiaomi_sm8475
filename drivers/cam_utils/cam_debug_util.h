@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CAM_DEBUG_UTIL_H_
@@ -50,6 +50,15 @@
 
 #define STR_BUFFER_MAX_LENGTH  512
 
+/*
+ * enum cam_debug_priority - Priority of debug log (0 = Lowest)
+ */
+enum cam_debug_priority {
+	CAM_DBG_PRIORITY_0,
+	CAM_DBG_PRIORITY_1,
+	CAM_DBG_PRIORITY_2,
+};
+
 /**
  * struct cam_cpas_debug_settings - Sysfs debug settings for cpas driver
  */
@@ -83,14 +92,15 @@ struct camera_debug_settings {
  *               respective debug logs
  *
  * @module_id :  Respective Module ID which is calling this function
+ * @priority  :  Priority of the debug log
  * @func      :  Function which is calling to print logs
  * @line      :  Line number associated with the function which is calling
  *               to print log
  * @fmt       :  Formatted string which needs to be print in the log
  *
  */
-void cam_debug_log(unsigned int module_id, const char *func, const int line,
-	const char *fmt, ...);
+void cam_debug_log(unsigned int module_id, unsigned int priority,
+	const char *func, const int line, const char *fmt, ...);
 
 /*
  *  cam_debug_trace()
@@ -202,14 +212,22 @@ const char *cam_get_module_name(unsigned int module_id);
 
 /*
  * CAM_DBG
- * @brief    :  This Macro will print debug logs when enabled using GROUP
+ * @brief    :  This Macro will print debug logs when enabled using GROUP and
+ *              if its priority is greater than the priority parameter
  *
  * @__module :  Respective module id which is been calling this Macro
  * @fmt      :  Formatted string which needs to be print in log
  * @args     :  Arguments which needs to be print in log
  */
-#define CAM_DBG(__module, fmt, args...)                            \
-	cam_debug_log(__module, __func__, __LINE__, fmt, ##args)
+#define CAM_DBG(__module, fmt, args...)                                        \
+	cam_debug_log(__module, CAM_DBG_PRIORITY_0, __func__, __LINE__,        \
+			fmt, ##args)
+#define CAM_DBG_PR1(__module, fmt, args...)                                    \
+	cam_debug_log(__module, CAM_DBG_PRIORITY_1, __func__, __LINE__,        \
+			fmt, ##args)
+#define CAM_DBG_PR2(__module, fmt, args...)                                    \
+	cam_debug_log(__module, CAM_DBG_PRIORITY_2, __func__, __LINE__,        \
+			fmt, ##args)
 
 /*
  * CAM_ERR_RATE_LIMIT
