@@ -2581,7 +2581,8 @@ static int cam_ife_hw_mgr_acquire_ife_src_for_sfe(
 			break;
 	}
 
-	if (rc || !vfe_acquire.vfe_in.rsrc_node) {
+	if (i == CAM_IFE_HW_NUM_MAX || rc ||
+			!vfe_acquire.vfe_in.rsrc_node) {
 		CAM_ERR(CAM_ISP, "Unable to acquire LEFT IFE res: %d",
 			vfe_acquire.vfe_in.res_id);
 		return -EAGAIN;
@@ -5122,7 +5123,7 @@ static int cam_isp_blob_bw_update_v2(
 	struct cam_vfe_bw_update_args_v2       bw_upd_args;
 	struct cam_sfe_bw_update_args          sfe_bw_update_args;
 	int                                    rc = -EINVAL;
-	uint32_t                               i, split_idx;
+	uint32_t                               i, split_idx = INT_MIN;
 	bool                                   nrdi_l_bw_updated = false;
 	bool                                   nrdi_r_bw_updated = false;
 
@@ -5176,6 +5177,11 @@ static int cam_isp_blob_bw_update_v2(
 				CAM_WARN(CAM_ISP, "NULL hw_intf!");
 			}
 		}
+	}
+
+	if (split_idx == CAM_ISP_HW_SPLIT_MAX || split_idx == INT_MIN) {
+		CAM_ERR(CAM_ISP, "Invalide hw res");
+		return -EINVAL;
 	}
 
 	nrdi_l_bw_updated = false;
@@ -8814,6 +8820,10 @@ static int cam_ife_hw_mgr_update_cmd_buffer(
 		if (!cmd_buf_count->csid_cnt)
 			return rc;
 		res_list = &ctx->res_list_ife_csid;
+	}else {
+		CAM_ERR(CAM_ISP,
+			"Invalide hw_type=%d", ctx->base[base_idx].hw_type);
+		return -EINVAL;
 	}
 
 	if (!ctx->internal_cdm) {
