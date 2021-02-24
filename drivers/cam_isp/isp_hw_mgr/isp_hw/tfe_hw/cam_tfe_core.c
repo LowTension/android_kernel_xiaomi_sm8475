@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/delay.h>
@@ -2140,7 +2140,7 @@ int cam_tfe_top_start(struct cam_tfe_hw_core_info *core_info,
 
 	if (in_res->res_id == CAM_ISP_HW_TFE_IN_CAMIF) {
 		cam_tfe_camif_resource_start(core_info, in_res);
-	} else if (in_res->res_id >= CAM_ISP_HW_TFE_IN_RDI0 ||
+	} else if (in_res->res_id >= CAM_ISP_HW_TFE_IN_RDI0 &&
 		in_res->res_id <= CAM_ISP_HW_TFE_IN_RDI2) {
 		rsrc_rdi_data = (struct cam_tfe_rdi_data *) in_res->res_priv;
 		val = (rsrc_rdi_data->pix_pattern <<
