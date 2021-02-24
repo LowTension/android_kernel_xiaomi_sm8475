@@ -890,7 +890,7 @@ static int cam_sfe_bus_release_bus_rd(void *bus_priv, void *release_args,
 static int cam_sfe_bus_start_bus_rd(
 	void *hw_priv, void *stop_hw_args, uint32_t arg_size)
 {
-	int rc, i;
+	int rc = -1, i;
 	const uint32_t buf_done_shift = 2;
 	uint32_t bus_rd_done_irq_mask[1] = {0};
 	struct cam_isp_resource_node	  *sfe_bus_rd = NULL;

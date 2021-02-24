@@ -102,12 +102,14 @@ static void cam_ife_csid_component_unbind(struct device *dev,
 {
 	struct cam_hw_intf             *hw_intf;
 	struct cam_hw_info             *hw_info;
-	struct cam_ife_csid_core_info    *core_info = NULL;
+	struct cam_ife_csid_core_info  *core_info = NULL;
 	struct platform_device *pdev = to_platform_device(dev);
 	const struct of_device_id      *match_dev = NULL;
 
 	hw_intf = (struct cam_hw_intf *)platform_get_drvdata(pdev);
 	hw_info = hw_intf->hw_priv;
+	core_info = hw_info->core_info;
+
 	CAM_DBG(CAM_ISP, "CSID:%d component unbind",
 		hw_intf->hw_idx);
 	match_dev = of_match_device(pdev->dev.driver->of_match_table,
