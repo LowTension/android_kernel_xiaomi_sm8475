@@ -33,7 +33,7 @@
 #define CSIPHY_NUM_CLK_MAX          16
 
 #define MAX_LANES                   5
-#define MAX_SETTINGS_PER_LANE       43
+#define MAX_SETTINGS_PER_LANE       50
 #define MAX_DATA_RATES              3
 #define MAX_DATA_RATE_REGS          30
 
