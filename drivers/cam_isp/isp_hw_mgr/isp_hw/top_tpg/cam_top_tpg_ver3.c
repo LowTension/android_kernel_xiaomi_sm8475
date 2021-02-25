@@ -47,6 +47,34 @@ static int cam_top_tpg_ver3_get_hw_caps(
 	return rc;
 }
 
+static int cam_top_tpg_ver3_print_reserved_vcdt(
+	struct cam_top_tpg_hw                  *tpg_hw)
+{
+	struct cam_top_tpg_cfg_v2              *tpg_data;
+	int                                     i, j;
+
+	if (!tpg_hw)
+		return -EINVAL;
+
+	tpg_data = (struct cam_top_tpg_cfg_v2 *)tpg_hw->tpg_res.res_priv;
+	CAM_INFO(CAM_ISP, "tpg:%d Active_VCs: %d",
+		tpg_hw->hw_intf->hw_idx, tpg_data->num_active_vcs);
+
+	for (i = 0; i < tpg_data->num_active_vcs; i++)
+	{
+		CAM_INFO(CAM_ISP, "VC[%d]: 0x%x", i, tpg_data->vc_dt[i].vc_num);
+
+		for (j = 0; j < tpg_data->vc_dt[i].num_active_dts; j++)
+		{
+			CAM_INFO(CAM_ISP, "DT[%d]: 0x%x", j,
+				tpg_data->vc_dt[i].dt_cfg[j].data_type);
+		}
+	}
+
+	return 0;
+}
+
+
 static int cam_top_tpg_ver3_process_cmd(void *hw_priv,
 	uint32_t cmd_type, void *cmd_args, uint32_t arg_size)
 {
@@ -207,9 +235,10 @@ static int cam_top_tpg_ver3_reserve(
 	struct cam_hw_info                           *tpg_hw_info;
 	struct cam_top_tpg_reserve_args              *reserv;
 	struct cam_top_tpg_cfg_v2                    *tpg_data;
-	uint32_t                                      num_active_vcs = 0;
 	struct cam_top_tpg_vc_dt_info
 		in_port_vc_dt[CAM_TOP_TPG_MAX_SUPPORTED_VC];
+	const struct cam_top_tpg_debugfs             *tpg_debug = NULL;
+	uint32_t                                      num_active_vcs = 0;
 	int                                           i;
 
 	if (!hw_priv || !reserve_args || (arg_size !=
@@ -223,6 +252,8 @@ static int cam_top_tpg_ver3_reserve(
 	reserv = (struct cam_top_tpg_reserve_args  *)reserve_args;
 
 	mutex_lock(&tpg_hw->hw_info->hw_mutex);
+
+	tpg_debug = cam_top_tpg_get_debugfs();
 
 	if ((reserv->in_port[0]->lane_num <= 0 ||
 		reserv->in_port[0]->lane_num > 4) ||
@@ -292,6 +323,8 @@ static int cam_top_tpg_ver3_reserve(
 	reserv->node_res = &tpg_hw->tpg_res;
 	tpg_hw->tpg_res.res_state = CAM_ISP_RESOURCE_STATE_RESERVED;
 error:
+	if ((tpg_debug != NULL) && tpg_debug->enable_vcdt_dump)
+		cam_top_tpg_ver3_print_reserved_vcdt(tpg_hw);
 	mutex_unlock(&tpg_hw->hw_info->hw_mutex);
 	CAM_DBG(CAM_ISP, "exit rc %u", rc);
 
@@ -536,5 +569,7 @@ int cam_top_tpg_ver3_init(
 	tpg_hw->hw_intf->hw_ops.start       = cam_top_tpg_ver3_start;
 	tpg_hw->hw_intf->hw_ops.stop        = cam_top_tpg_ver3_stop;
 	tpg_hw->hw_intf->hw_ops.process_cmd = cam_top_tpg_ver3_process_cmd;
+
+	cam_top_tpg_debug_register();
 	return 0;
 }

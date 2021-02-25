@@ -17,6 +17,8 @@
 #include "cam_top_tpg_ver2.h"
 #include "cam_top_tpg_ver3.h"
 
+struct cam_top_tpg_debugfs tpg_debug = {0};
+
 int cam_top_tpg_get_format(
 	uint32_t                                     in_format,
 	uint32_t                                    *tpg_encode_format)
@@ -48,6 +50,43 @@ int cam_top_tpg_get_format(
 		rc = -EINVAL;
 	}
 	return rc;
+}
+
+int cam_top_tpg_debug_register(void)
+{
+	int rc = 0;
+	struct dentry *dbgfileptr = NULL;
+
+	if (tpg_debug.root) {
+		CAM_DBG(CAM_ISP, "Debugfs root already created");
+		return 0;
+	}
+
+	dbgfileptr = debugfs_create_dir("camera_tpg", NULL);
+	if (!dbgfileptr) {
+		CAM_ERR(CAM_ISP, "DebugFS could not create directory!");
+		rc = -ENOENT;
+		goto end;
+	}
+
+	tpg_debug.root = dbgfileptr;
+
+	dbgfileptr = debugfs_create_bool("enable_vcdt_dump", 0644,
+		tpg_debug.root, &tpg_debug.enable_vcdt_dump);
+
+	if (IS_ERR(dbgfileptr)) {
+		if (PTR_ERR(dbgfileptr) == -ENODEV)
+			CAM_WARN(CAM_ISP, "DebugFS not enabled in kernel!");
+		else
+			rc = PTR_ERR(dbgfileptr);
+	}
+end:
+	return rc;
+}
+
+const struct cam_top_tpg_debugfs* cam_top_tpg_get_debugfs(void)
+{
+	return &tpg_debug;
 }
 
 static int cam_top_tpg_init_hw(void *hw_priv,
@@ -332,6 +371,9 @@ int cam_top_tpg_deinit(struct cam_top_tpg_hw *top_tpg_hw)
 	/* release the privdate data memory from resources */
 	kfree(top_tpg_hw->tpg_res.res_priv);
 	cam_top_tpg_deinit_soc_resources(&top_tpg_hw->hw_info->soc_info);
+
+	debugfs_remove_recursive(tpg_debug.root);
+	tpg_debug.root = NULL;
 
 	return 0;
 }

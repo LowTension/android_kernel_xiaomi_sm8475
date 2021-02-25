@@ -164,6 +164,21 @@ struct cam_top_tpg_hw {
 	struct completion                tpg_complete;
 };
 
+/**
+ * struct cam_top_tpg_debugfs- debugfs structure for TPG
+ *
+ * @root:                  A pointer to a root directory for debugfs
+ * @enable_vcdt_dump:      A flag to indicate if the VCDT dump is enabled
+ *
+ */
+struct cam_top_tpg_debugfs {
+	struct dentry *root;
+	bool enable_vcdt_dump;
+};
+
+int cam_top_tpg_debug_register(void);
+const struct cam_top_tpg_debugfs* cam_top_tpg_get_debugfs(void);
+
 int cam_top_tpg_get_format(uint32_t    in_format, uint32_t *tpg_encode_format);
 
 int cam_top_tpg_probe_init(struct cam_hw_intf *tpg_hw_intf,
