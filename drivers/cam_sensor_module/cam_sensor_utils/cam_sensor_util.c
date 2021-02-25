@@ -2215,7 +2215,7 @@ int cam_sensor_core_power_up(struct cam_sensor_power_ctrl_t *ctrl,
 
 	return 0;
 power_up_failed:
-	CAM_ERR(CAM_SENSOR, "failed");
+	CAM_ERR(CAM_SENSOR, "failed. rc:%d", rc);
 	for (index--; index >= 0; index--) {
 		CAM_DBG(CAM_SENSOR, "index %d",  index);
 		power_setting = &ctrl->power_setting[index];
@@ -2317,7 +2317,7 @@ power_up_failed:
 	ctrl->cam_pinctrl_status = 0;
 	cam_sensor_util_request_gpio_table(soc_info, 0);
 
-	return rc;
+	return -EINVAL;
 }
 
 static struct cam_sensor_power_setting*
