@@ -170,6 +170,7 @@
 #define CAM_ISP_DYNAMIC_SENOR_SWITCH_EN        BIT(2)
 #define CAM_ISP_SFE_BINNED_EPOCH_CFG_ENABLE    BIT(3)
 #define CAM_ISP_EPD_SUPPORT                    BIT(4)
+#define CAM_ISP_SFE_FS_MODE_EN                 BIT(5)
 
 /* ISP core cfg flag params */
 #define CAM_ISP_PARAM_CORE_CFG_HDR_MUX_SEL BIT(0)
