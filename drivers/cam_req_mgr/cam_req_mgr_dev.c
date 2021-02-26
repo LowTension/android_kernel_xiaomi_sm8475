@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2016-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/module.h>
@@ -778,7 +778,7 @@ static int cam_req_mgr_component_master_bind(struct device *dev)
 				g_cam_req_mgr_timer_cachep->name);
 	}
 
-	CAM_INFO(CAM_CRM, "All probes done, binding slave components");
+	CAM_DBG(CAM_CRM, "All probes done, binding slave components");
 	rc = component_bind_all(dev, NULL);
 	if (rc) {
 		CAM_ERR(CAM_CRM,
@@ -787,7 +787,8 @@ static int cam_req_mgr_component_master_bind(struct device *dev)
 		goto req_mgr_device_deinit;
 	}
 
-	CAM_DBG(CAM_CRM, "All camera components bound successfully");
+	CAM_INFO(CAM_CRM,
+		"All components bound successfully, Spectra camera driver initialized");
 	rc = sysfs_create_file(&dev->kobj, &camera_debug_sysfs_attr.attr);
 	if (rc < 0) {
 		CAM_ERR(CAM_CPAS,
