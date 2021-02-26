@@ -115,12 +115,13 @@ static void cam_custom_csid_component_unbind(struct device *dev,
 {
 	struct cam_hw_intf             *csid_hw_intf;
 	struct cam_hw_info             *csid_hw_info;
-	struct cam_ife_csid_core_info    *core_info = NULL;
+	struct cam_ife_csid_core_info  *core_info = NULL;
 	struct platform_device *pdev = to_platform_device(dev);
 	const struct of_device_id      *match_dev = NULL;
 
 	csid_hw_intf = (struct cam_hw_intf *)platform_get_drvdata(pdev);
 	csid_hw_info = csid_hw_intf->hw_priv;
+	core_info = csid_hw_info->core_info;
 
 	CAM_DBG(CAM_CUSTOM, "CSID:%d component unbind",
 		csid_hw_intf->hw_idx);
