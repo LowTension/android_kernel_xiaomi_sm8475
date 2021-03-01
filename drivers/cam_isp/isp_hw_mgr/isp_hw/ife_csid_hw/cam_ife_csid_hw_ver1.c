@@ -3945,7 +3945,6 @@ static int cam_ife_csid_ver1_rx_bottom_half_handler(
 		evt_payload->irq_status[CAM_IFE_CSID_IRQ_REG_RX]);
 
 	if (irq_status) {
-		cam_ife_csid_ver1_disable_csi2(csid_hw);
 		len += scnprintf(log_buf, CAM_IFE_CSID_LOG_BUF_LEN - len,
 			"Fatal Errors:\n");
 
@@ -4011,7 +4010,10 @@ static int cam_ife_csid_ver1_rx_bottom_half_handler(
 		if (irq_status & IFE_CSID_VER1_RX_CPHY_EOT_RECEPTION)
 			len += scnprintf(log_buf + len,
 				CAM_IFE_CSID_LOG_BUF_LEN - len,
-				"CPHY_EOT_RECEPTION: No EOT on lane/s\n");
+				"CPHY_EOT_RECEPTION: No EOT on lane/s, is_EPD: %d, PHY_Type: %s(%u)\n",
+				csid_hw->rx_cfg.epd_supported,
+				(csid_hw->rx_cfg.lane_type) ? "cphy" : "dphy",
+				csid_hw->rx_cfg.lane_type);
 
 		if (irq_status & IFE_CSID_VER1_RX_CPHY_SOT_RECEPTION)
 			len += scnprintf(log_buf + len,

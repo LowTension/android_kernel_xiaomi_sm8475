@@ -830,9 +830,9 @@ static struct cam_ife_csid_csi2_rx_reg_info
 		.epd_mode_shift_en               = 8,
 		.eotp_shift_en                   = 9,
 		.dyn_sensor_switch_shift_en      = 10,
-		.fatal_err_mask                  = 0x78000,
-		.part_fatal_err_mask             = 0x1801800,
-		.non_fatal_err_mask              = 0x380000,
+		.fatal_err_mask                  = 0x097A000,
+		.part_fatal_err_mask             = 0x1081800,
+		.non_fatal_err_mask              = 0x0200000,
 };
 
 static struct cam_ife_csid_ver2_common_reg_info
