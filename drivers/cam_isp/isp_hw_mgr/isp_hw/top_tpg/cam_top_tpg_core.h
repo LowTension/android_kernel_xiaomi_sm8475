@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CAM_TOP_TPG_CORE_H_
@@ -14,6 +14,7 @@
 #define CAM_TOP_TPG_VERSION_2             0x10000002
 #define CAM_TOP_TPG_VERSION_3             0x20000000
 
+#define CAM_TPG_LFSR_SEED                 0x12345678
 
 enum cam_top_tpg_encode_format {
 	CAM_TOP_TPG_ENCODE_FORMAT_RAW6,
@@ -79,7 +80,6 @@ struct cam_top_tpg_dt_cfg {
  * @v_blank_count:    vertical blanking count value
  * @num_active_dts:   number of active dts need to configure
  * @num_frames:       number of output frames
- * @throttle_pattern: Define bubble pattern in throttler
  * @qcfa_en:          enable qcfa in color bar cfg
  * @dt_cfg:           dt configuration values
  *
@@ -94,9 +94,51 @@ struct cam_top_tpg_cfg {
 	uint32_t                        num_active_dts;
 	uint32_t                        num_frames;
 	uint32_t                        vc_dt_pattern_id;
-	uint32_t                        throttle_pattern;
 	uint32_t                        qcfa_en;
 	struct cam_top_tpg_dt_cfg       dt_cfg[4];
+};
+
+/**
+ * struct cam_top_tpg_vc_dt_info- VC DT information for tpg HW
+ *
+ * @vc_num:          Virtual channel number
+ * @num_active_dts:  number of active dts need to configure
+ * @dt_cfg:          dt configuration values
+ */
+struct cam_top_tpg_vc_dt_info {
+	uint32_t                        vc_num;
+	uint32_t                        num_active_dts;
+	struct cam_top_tpg_dt_cfg       dt_cfg[CAM_TOP_TPG_MAX_SUPPORTED_DT];
+};
+
+/**
+ * struct cam_top_tpg_cfg_v2- tpg congiguration
+ * @pix_pattern      : pixel pattern output of the tpg
+ * @phy_sel          : phy selection 0:dphy or 1:cphy
+ * @num_active_lanes : Number of active lines
+ * @h_blank_count    : horizontal blanking count value
+ * @h_blank_count    : vertical blanking count value
+ * @vbi_cnt          : vbi count
+ * @num_frames       : number of output frames
+ * @qcfa_en          : enable qcfa in color bar cfg
+ * @num_active_vcs   : number of currently configured vcs in tpg hw
+ * @throttle_pattern : Define bubble pattern in throttler
+ * @vc_dt            : VC DT information that the TPG HW holds
+ *
+ */
+struct cam_top_tpg_cfg_v2 {
+	uint32_t                       pix_pattern;
+	uint32_t                       phy_sel;
+	uint32_t                       num_active_lanes;
+	uint32_t                       v_blank_count;
+	uint32_t                       h_blank_count;
+	uint32_t                       vbi_cnt;
+	uint32_t                       num_frames;
+	uint32_t                       vc_dt_pattern_id;
+	uint32_t                       qcfa_en;
+	uint32_t                       num_active_vcs;
+	uint32_t                       throttle_pattern;
+	struct cam_top_tpg_vc_dt_info  vc_dt[CAM_TOP_TPG_MAX_SUPPORTED_VC];
 };
 
 /**
@@ -108,7 +150,6 @@ struct cam_top_tpg_cfg {
  * @tpg_res:                  tpg resource
  * @tpg_cfg:                  tpg configuration
  * @clk_rate                  clock rate
- * @reserve_cnt:              reserve cnt
  * @lock_state                lock state
  * @tpg_complete              tpg completion
  *
@@ -119,7 +160,6 @@ struct cam_top_tpg_hw {
 	struct cam_top_tpg_hw_info      *tpg_info;
 	struct cam_isp_resource_node     tpg_res;
 	uint64_t                         clk_rate;
-	uint32_t                         reserve_cnt;
 	spinlock_t                       lock_state;
 	struct completion                tpg_complete;
 };
@@ -130,5 +170,6 @@ int cam_top_tpg_probe_init(struct cam_hw_intf *tpg_hw_intf,
 	uint32_t tpg_idx);
 
 int cam_top_tpg_deinit(struct cam_top_tpg_hw *top_tpg_hw);
+int cam_top_tpg_set_phy_clock(struct cam_top_tpg_hw *csid_hw, void *cmd_args);
 
 #endif /* _CAM_TOP_TPG_CORE_H_ */

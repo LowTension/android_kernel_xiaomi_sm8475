@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/iopoll.h>
@@ -47,48 +47,6 @@ int cam_top_tpg_get_format(
 			in_format);
 		rc = -EINVAL;
 	}
-	return rc;
-}
-
-static int cam_top_tpg_release(void *hw_priv,
-	void *release_args, uint32_t arg_size)
-{
-	int rc = 0;
-	struct cam_top_tpg_hw           *tpg_hw;
-	struct cam_hw_info              *tpg_hw_info;
-	struct cam_top_tpg_cfg          *tpg_data;
-	struct cam_isp_resource_node    *tpg_res;
-
-	if (!hw_priv || !release_args ||
-		(arg_size != sizeof(struct cam_isp_resource_node))) {
-		CAM_ERR(CAM_ISP, "TPG: Invalid args");
-		return -EINVAL;
-	}
-
-	tpg_hw_info = (struct cam_hw_info  *)hw_priv;
-	tpg_hw = (struct cam_top_tpg_hw   *)tpg_hw_info->core_info;
-	tpg_res = (struct cam_isp_resource_node *)release_args;
-
-	mutex_lock(&tpg_hw->hw_info->hw_mutex);
-	if ((tpg_res->res_type != CAM_ISP_RESOURCE_TPG) ||
-		(tpg_res->res_state <= CAM_ISP_RESOURCE_STATE_AVAILABLE)) {
-		CAM_ERR(CAM_ISP, "TPG:%d Invalid res type:%d res_state:%d",
-			tpg_hw->hw_intf->hw_idx, tpg_res->res_type,
-			tpg_res->res_state);
-		rc = -EINVAL;
-		goto end;
-	}
-
-	CAM_DBG(CAM_ISP, "TPG:%d res type :%d",
-		tpg_hw->hw_intf->hw_idx, tpg_res->res_type);
-
-	tpg_hw->reserve_cnt = 0;
-	tpg_res->res_state = CAM_ISP_RESOURCE_STATE_AVAILABLE;
-	tpg_data = (struct cam_top_tpg_cfg *)tpg_res->res_priv;
-	memset(tpg_data, 0, sizeof(struct cam_top_tpg_cfg));
-
-end:
-	mutex_unlock(&tpg_hw->hw_info->hw_mutex);
 	return rc;
 }
 
@@ -230,7 +188,7 @@ static int cam_top_tpg_write(void *hw_priv,
 	return -EINVAL;
 }
 
-static int cam_top_tpg_set_phy_clock(
+int cam_top_tpg_set_phy_clock(
 	struct cam_top_tpg_hw *csid_hw, void *cmd_args)
 {
 	struct cam_top_tpg_clock_update_args *clk_update = NULL;
@@ -283,40 +241,10 @@ irqreturn_t cam_top_tpg_irq(int irq_num, void *data)
 	return IRQ_HANDLED;
 }
 
-static int cam_top_tpg_process_cmd(void *hw_priv,
-	uint32_t cmd_type, void *cmd_args, uint32_t arg_size)
-{
-	int rc = 0;
-	struct cam_top_tpg_hw               *tpg_hw;
-	struct cam_hw_info                  *tpg_hw_info;
-
-	if (!hw_priv || !cmd_args) {
-		CAM_ERR(CAM_ISP, "CSID: Invalid arguments");
-		return -EINVAL;
-	}
-
-	tpg_hw_info = (struct cam_hw_info  *)hw_priv;
-	tpg_hw = (struct cam_top_tpg_hw   *)tpg_hw_info->core_info;
-
-	switch (cmd_type) {
-	case CAM_ISP_HW_CMD_TPG_PHY_CLOCK_UPDATE:
-		rc = cam_top_tpg_set_phy_clock(tpg_hw, cmd_args);
-		break;
-	default:
-		CAM_ERR(CAM_ISP, "TPG:%d unsupported cmd:%d",
-			tpg_hw->hw_intf->hw_idx, cmd_type);
-		rc = -EINVAL;
-		break;
-	}
-
-	return 0;
-}
-
 int cam_top_tpg_probe_init(struct cam_hw_intf  *tpg_hw_intf,
 	uint32_t tpg_idx)
 {
 	int rc = -EINVAL;
-	struct cam_top_tpg_cfg             *tpg_data;
 	struct cam_hw_info                 *tpg_hw_info;
 	struct cam_top_tpg_hw              *tpg_hw = NULL;
 	uint32_t hw_version = 0;
@@ -352,10 +280,8 @@ int cam_top_tpg_probe_init(struct cam_hw_intf  *tpg_hw_intf,
 	tpg_hw->hw_intf->hw_ops.init        = cam_top_tpg_init_hw;
 	tpg_hw->hw_intf->hw_ops.deinit      = cam_top_tpg_deinit_hw;
 	tpg_hw->hw_intf->hw_ops.reset       = NULL;
-	tpg_hw->hw_intf->hw_ops.release     = cam_top_tpg_release;
 	tpg_hw->hw_intf->hw_ops.read        = cam_top_tpg_read;
 	tpg_hw->hw_intf->hw_ops.write       = cam_top_tpg_write;
-	tpg_hw->hw_intf->hw_ops.process_cmd = cam_top_tpg_process_cmd;
 
 	hw_version = tpg_hw->tpg_info->hw_dts_version;
 	if (hw_version == CAM_TOP_TPG_VERSION_1)
@@ -368,12 +294,22 @@ int cam_top_tpg_probe_init(struct cam_hw_intf  *tpg_hw_intf,
 	tpg_hw->tpg_res.res_type = CAM_ISP_RESOURCE_TPG;
 	tpg_hw->tpg_res.res_state = CAM_ISP_RESOURCE_STATE_AVAILABLE;
 	tpg_hw->tpg_res.hw_intf = tpg_hw->hw_intf;
-	tpg_data = kzalloc(sizeof(*tpg_data), GFP_KERNEL);
-	if (!tpg_data) {
-		rc = -ENOMEM;
-		goto err;
+
+	if (hw_version < CAM_TOP_TPG_VERSION_3) {
+		tpg_hw->tpg_res.res_priv =
+			kzalloc(sizeof(struct cam_top_tpg_cfg), GFP_KERNEL);
+		if (!tpg_hw->tpg_res.res_priv) {
+			rc = -ENOMEM;
+			goto err;
+		}
+	} else {
+		tpg_hw->tpg_res.res_priv =
+			kzalloc(sizeof(struct cam_top_tpg_cfg_v2), GFP_KERNEL);
+		if (!tpg_hw->tpg_res.res_priv) {
+			rc = -ENOMEM;
+			goto err;
+		}
 	}
-	tpg_hw->tpg_res.res_priv = tpg_data;
 
 	cam_top_tpg_enable_soc_resources(&tpg_hw->hw_info->soc_info,
 		CAM_SVS_VOTE);

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/iopoll.h>
@@ -50,6 +50,40 @@ static int cam_top_tpg_ver1_get_hw_caps(
 		"TPG:%d major:%d minor:%d ver :%d",
 		tpg_hw->hw_intf->hw_idx, hw_caps->major_version,
 		hw_caps->minor_version, hw_caps->version_incr);
+
+	return rc;
+}
+
+static int cam_top_tpg_ver1_process_cmd(void *hw_priv,
+	uint32_t cmd_type, void *cmd_args, uint32_t arg_size)
+{
+	int rc = 0;
+	struct cam_top_tpg_hw               *tpg_hw;
+	struct cam_hw_info                  *tpg_hw_info;
+
+	if (!hw_priv || !cmd_args) {
+		CAM_ERR(CAM_ISP, "CSID: Invalid arguments");
+		return -EINVAL;
+	}
+
+	tpg_hw_info = (struct cam_hw_info  *)hw_priv;
+	tpg_hw = (struct cam_top_tpg_hw   *)tpg_hw_info->core_info;
+
+	switch (cmd_type) {
+	case CAM_ISP_HW_CMD_TPG_PHY_CLOCK_UPDATE:
+		rc = cam_top_tpg_set_phy_clock(tpg_hw, cmd_args);
+		break;
+	case CAM_ISP_HW_CMD_TPG_CORE_CFG_CMD:
+		CAM_DBG(CAM_ISP,
+			"CORE_CFG_CMD is not supported by tpg version:%u",
+			tpg_hw->tpg_info->hw_dts_version);
+		break;
+	default:
+		CAM_ERR(CAM_ISP, "TPG:%d unsupported cmd:%d",
+			tpg_hw->hw_intf->hw_idx, cmd_type);
+		rc = -EINVAL;
+		break;
+	}
 
 	return rc;
 }
@@ -191,6 +225,47 @@ error:
 	return rc;
 }
 
+static int cam_top_tpg_ver1_release(void *hw_priv,
+	void *release_args, uint32_t arg_size)
+{
+	int rc = 0;
+	struct cam_top_tpg_hw           *tpg_hw;
+	struct cam_hw_info              *tpg_hw_info;
+	struct cam_top_tpg_cfg          *tpg_data;
+	struct cam_isp_resource_node    *tpg_res;
+
+	if (!hw_priv || !release_args ||
+		(arg_size != sizeof(struct cam_isp_resource_node))) {
+		CAM_ERR(CAM_ISP, "TPG: Invalid args");
+		return -EINVAL;
+	}
+
+	tpg_hw_info = (struct cam_hw_info  *)hw_priv;
+	tpg_hw = (struct cam_top_tpg_hw   *)tpg_hw_info->core_info;
+	tpg_res = (struct cam_isp_resource_node *)release_args;
+
+	mutex_lock(&tpg_hw->hw_info->hw_mutex);
+	if ((tpg_res->res_type != CAM_ISP_RESOURCE_TPG) ||
+		(tpg_res->res_state <= CAM_ISP_RESOURCE_STATE_AVAILABLE)) {
+		CAM_ERR(CAM_ISP, "TPG:%d Invalid res type:%d res_state:%d",
+			tpg_hw->hw_intf->hw_idx, tpg_res->res_type,
+			tpg_res->res_state);
+		rc = -EINVAL;
+		goto end;
+	}
+
+	CAM_DBG(CAM_ISP, "TPG:%d res type :%d",
+		tpg_hw->hw_intf->hw_idx, tpg_res->res_type);
+
+	tpg_res->res_state = CAM_ISP_RESOURCE_STATE_AVAILABLE;
+	tpg_data = (struct cam_top_tpg_cfg *)tpg_res->res_priv;
+	memset(tpg_data, 0, sizeof(struct cam_top_tpg_cfg));
+
+end:
+	mutex_unlock(&tpg_hw->hw_info->hw_mutex);
+	return rc;
+}
+
 static int cam_top_tpg_ver1_start(
 	void                                         *hw_priv,
 	void                                         *start_args,
@@ -226,7 +301,7 @@ static int cam_top_tpg_ver1_start(
 		rc = -EINVAL;
 		goto end;
 	}
-	cam_io_w_mb(0x12345678, soc_info->reg_map[0].mem_base +
+	cam_io_w_mb(CAM_TPG_LFSR_SEED, soc_info->reg_map[0].mem_base +
 		tpg_reg->tpg_lfsr_seed);
 
 	for (i = 0; i < tpg_data->num_active_dts; i++) {
@@ -361,7 +436,9 @@ int cam_top_tpg_ver1_init(
 	struct cam_top_tpg_hw                        *tpg_hw)
 {
 	tpg_hw->hw_intf->hw_ops.get_hw_caps = cam_top_tpg_ver1_get_hw_caps;
+	tpg_hw->hw_intf->hw_ops.process_cmd = cam_top_tpg_ver1_process_cmd;
 	tpg_hw->hw_intf->hw_ops.reserve     = cam_top_tpg_ver1_reserve;
+	tpg_hw->hw_intf->hw_ops.release     = cam_top_tpg_ver1_release;
 	tpg_hw->hw_intf->hw_ops.start       = cam_top_tpg_ver1_start;
 	tpg_hw->hw_intf->hw_ops.stop        = cam_top_tpg_ver1_stop;
 
