@@ -1661,11 +1661,6 @@ static int __cam_req_mgr_process_req(struct cam_req_mgr_core_link *link,
 		in_q->slot[in_q->rd_idx].additional_timeout);
 
 	slot = &in_q->slot[in_q->rd_idx];
-	if (slot->status == CRM_SLOT_STATUS_NO_REQ) {
-		CAM_DBG(CAM_CRM, "No Pending req");
-		rc = 0;
-		goto end;
-	}
 
 	if ((trigger != CAM_TRIGGER_POINT_SOF) &&
 		(trigger != CAM_TRIGGER_POINT_EOF))
@@ -1679,6 +1674,15 @@ static int __cam_req_mgr_process_req(struct cam_req_mgr_core_link *link,
 	}
 
 	if (trigger == CAM_TRIGGER_POINT_SOF) {
+
+		if (slot->status == CRM_SLOT_STATUS_NO_REQ) {
+			CAM_DBG(CAM_CRM, "No Pending req");
+			rc = 0;
+			__cam_req_mgr_notify_frame_skip(link,
+				trigger);
+			goto end;
+		}
+
 		/*
 		 * Update the timestamp in session lock protection
 		 * to avoid timing issue.
