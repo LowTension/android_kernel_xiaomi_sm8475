@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only WITH Linux-syscall-note */
 /*
- * Copyright (c) 2016-2018, 2020 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2021, 2020 The Linux Foundation. All rights reserved.
  */
 
 #ifndef __UAPI_CAM_SYNC_H__
@@ -115,7 +115,17 @@
 #define CAM_SYNC_OPE_EVENT_HW_RESET_FAILED    (CAM_SYNC_OPE_EVENT_START + 10)
 #define CAM_SYNC_OPE_EVENT_END                (CAM_SYNC_OPE_EVENT_START + 50)
 
-#define CAM_SYNC_EVENT_CNT                7
+/* CRE Sync event reason types */
+#define CAM_SYNC_CRE_EVENT_START               (CAM_SYNC_OPE_EVENT_END + 1)
+#define CAM_SYNC_CRE_EVENT_UNKNOWN             (CAM_SYNC_CRE_EVENT_START + 0)
+#define CAM_SYNC_CRE_EVENT_CONFIG_ERR          (CAM_SYNC_CRE_EVENT_START + 1)
+#define CAM_SYNC_CRE_EVENT_INVLD_CMD           (CAM_SYNC_CRE_EVENT_START + 2)
+#define CAM_SYNC_CRE_EVENT_SET_IRQ_CB          (CAM_SYNC_CRE_EVENT_START + 3)
+#define CAM_SYNC_CRE_EVENT_HW_RESET_FAILED     (CAM_SYNC_CRE_EVENT_START + 4)
+#define CAM_SYNC_CRE_EVENT_HW_ERR              (CAM_SYNC_CRE_EVENT_START + 5)
+#define CAM_SYNC_CRE_EVENT_END                 (CAM_SYNC_CRE_EVENT_START + 50)
+
+#define CAM_SYNC_EVENT_CNT                8
 #define CAM_SYNC_EVENT_REASON_CODE_INDEX  0
 
 
