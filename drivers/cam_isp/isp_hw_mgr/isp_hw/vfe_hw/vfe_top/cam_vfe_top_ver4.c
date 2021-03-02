@@ -1195,8 +1195,10 @@ int cam_vfe_top_acquire_resource(
 
 config_done:
 	CAM_DBG(CAM_ISP,
-		"VFE:%d pix_pattern:%d dsp_mode=%d is_dual:%d dual_hw_idx:%d",
+		"VFE:%d Res:[id:%d name:%s] pix_pattern:%d dsp_mode=%d is_dual:%d dual_hw_idx:%d",
 		vfe_full_res->hw_intf->hw_idx,
+		vfe_full_res->res_id,
+		vfe_full_res->res_name,
 		res_data->pix_pattern, res_data->dsp_mode,
 		res_data->is_dual, res_data->dual_hw_idx);
 
@@ -1933,7 +1935,9 @@ subscribe_err:
 		}
 	}
 
-	CAM_DBG(CAM_ISP, "VFE:%d Start Done", vfe_res->hw_intf->hw_idx);
+	CAM_DBG(CAM_ISP, "VFE:%d Res: %s Start Done",
+		vfe_res->hw_intf->hw_idx,
+		vfe_res->res_name);
 
 	return rc;
 }
@@ -2000,6 +2004,10 @@ skip_core_decfg:
 		vfe_priv->irq_err_handle = 0;
 	}
 
+	CAM_DBG(CAM_ISP, "VFE:%d Res: %s Stopped",
+		vfe_res->hw_intf->hw_idx,
+		vfe_res->res_name);
+
 	return rc;
 }
 
@@ -2036,6 +2044,10 @@ static int cam_vfe_resource_init(
 	rsrc_data->error_ts.tv_sec = 0;
 	rsrc_data->error_ts.tv_nsec = 0;
 
+	CAM_DBG(CAM_ISP, "VFE:%d Res: %s Init Done",
+		vfe_res->hw_intf->hw_idx,
+		vfe_res->res_name);
+
 	return rc;
 }
 
@@ -2062,6 +2074,9 @@ static int cam_vfe_resource_deinit(
 			CAM_ERR(CAM_ISP, "failed to disable dsp clk");
 	}
 
+	CAM_DBG(CAM_ISP, "VFE:%d Res: %s DeInit Done",
+		vfe_res->hw_intf->hw_idx,
+		vfe_res->res_name);
 	return rc;
 }
 
@@ -2203,6 +2218,8 @@ int cam_vfe_top_ver4_init(
 				&hw_info->vfe_full_hw_info,
 				&top_priv->top_common.mux_rsrc[i],
 				vfe_irq_controller);
+			scnprintf(top_priv->top_common.mux_rsrc[i].res_name,
+				CAM_ISP_RES_NAME_LEN, "CAMIF");
 		} else if (hw_info->mux_type[i] ==
 			CAM_VFE_PDLIB_VER_1_0) {
 			/* set the PDLIB resource id */
@@ -2214,12 +2231,16 @@ int cam_vfe_top_ver4_init(
 				&hw_info->pdlib_hw_info,
 				&top_priv->top_common.mux_rsrc[i],
 				vfe_irq_controller);
+			scnprintf(top_priv->top_common.mux_rsrc[i].res_name,
+				CAM_ISP_RES_NAME_LEN, "PDLIB");
 		} else if (hw_info->mux_type[i] ==
 			CAM_VFE_RDI_VER_1_0) {
 			/* set the RDI resource id */
 			top_priv->top_common.mux_rsrc[i].res_id =
 				CAM_ISP_HW_VFE_IN_RDI0 + j;
 
+			scnprintf(top_priv->top_common.mux_rsrc[i].res_name,
+				CAM_ISP_RES_NAME_LEN, "RDI_%d", j);
 			rc = cam_vfe_res_mux_init(top_priv,
 				hw_intf, soc_info,
 				hw_info->rdi_hw_info[j++],

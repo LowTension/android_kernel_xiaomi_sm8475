@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CAM_VFE_LITE48x_H_
@@ -378,6 +378,9 @@ static struct cam_vfe_bus_ver3_hw_info vfe48x_bus_hw_info = {
 			.wm_idx        = {
 				0,
 			},
+			.name          = {
+				"LITE_0",
+			},
 		},
 		{
 			.vfe_out_type  = CAM_VFE_BUS_VER3_VFE_OUT_RDI1,
@@ -388,6 +391,9 @@ static struct cam_vfe_bus_ver3_hw_info vfe48x_bus_hw_info = {
 			.num_wm        = 1,
 			.wm_idx        = {
 				1,
+			},
+			.name          = {
+				"LITE_1",
 			},
 		},
 		{
@@ -400,6 +406,9 @@ static struct cam_vfe_bus_ver3_hw_info vfe48x_bus_hw_info = {
 			.wm_idx        = {
 				2,
 			},
+			.name          = {
+				"LITE_2",
+			},
 		},
 		{
 			.vfe_out_type  = CAM_VFE_BUS_VER3_VFE_OUT_RDI3,
@@ -410,6 +419,9 @@ static struct cam_vfe_bus_ver3_hw_info vfe48x_bus_hw_info = {
 			.num_wm        = 1,
 			.wm_idx        = {
 				3,
+			},
+			.name          = {
+				"LITE_3",
 			},
 		},
 	},

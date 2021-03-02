@@ -952,8 +952,10 @@ static int cam_ife_hw_mgr_free_hw_res(
 				sizeof(struct cam_isp_resource_node));
 			if (rc)
 				CAM_ERR(CAM_ISP,
-					"Release HW:%d resource id %d failed",
-					hw_intf->hw_idx, isp_hw_res->res_id);
+					"Release HW:%d Res: %s resource id %d failed",
+					hw_intf->hw_idx,
+					isp_hw_res->hw_res[i]->res_name,
+					isp_hw_res->res_id);
 			isp_hw_res->hw_res[i] = NULL;
 		} else
 			CAM_ERR(CAM_ISP, "Release null");
@@ -982,75 +984,6 @@ static const char *cam_ife_hw_mgr_get_res_state(
 		return "STREAMING";
 	default:
 		return "INVALID STATE";
-	}
-}
-
-static const char *cam_ife_hw_mgr_get_csid_res_id(
-	uint32_t res_id)
-{
-	switch (res_id) {
-	case CAM_IFE_PIX_PATH_RES_RDI_0:
-		return "RDI_0";
-	case CAM_IFE_PIX_PATH_RES_RDI_1:
-		return "RDI_1";
-	case CAM_IFE_PIX_PATH_RES_RDI_2:
-		return "RDI_2";
-	case CAM_IFE_PIX_PATH_RES_RDI_3:
-		return "RDI_3";
-	case CAM_IFE_PIX_PATH_RES_IPP:
-		return "IPP";
-	case CAM_IFE_PIX_PATH_RES_PPP:
-		return "PPP";
-	default:
-		return "INVALID";
-	}
-}
-
-static const char *cam_ife_hw_mgr_get_src_res_id(
-	uint32_t res_id)
-{
-	switch (res_id) {
-	case CAM_ISP_HW_VFE_IN_CAMIF:
-		return "CAMIF";
-	case CAM_ISP_HW_VFE_IN_TESTGEN:
-		return "TESTGEN";
-	case CAM_ISP_HW_VFE_IN_RD:
-		return "BUS_RD";
-	case CAM_ISP_HW_VFE_IN_RDI0:
-		return "RDI_0";
-	case CAM_ISP_HW_VFE_IN_RDI1:
-		return "RDI_1";
-	case CAM_ISP_HW_VFE_IN_RDI2:
-		return "RDI_2";
-	case CAM_ISP_HW_VFE_IN_RDI3:
-		return "RDI_3";
-	case CAM_ISP_HW_VFE_IN_PDLIB:
-		return "PDLIB";
-	case CAM_ISP_HW_VFE_IN_LCR:
-		return "LCR";
-	default:
-		return "INVALID";
-	}
-}
-
-static const char *cam_ife_hw_mgr_get_sfe_src_res_id(
-	uint32_t res_id)
-{
-	switch (res_id) {
-	case CAM_ISP_HW_SFE_IN_PIX:
-		return "PIX";
-	case CAM_ISP_HW_SFE_IN_RDI0:
-		return "RDI_0";
-	case CAM_ISP_HW_SFE_IN_RDI1:
-		return "RDI_1";
-	case CAM_ISP_HW_SFE_IN_RDI2:
-		return "RDI_2";
-	case CAM_ISP_HW_SFE_IN_RDI3:
-		return "RDI_3";
-	case CAM_ISP_HW_SFE_IN_RDI4:
-		return "RDI_4";
-	default:
-		return "INVALID";
 	}
 }
 
@@ -1089,9 +1022,10 @@ static void cam_ife_hw_mgr_dump_all_ctx(void)
 					continue;
 
 				CAM_INFO_RATE_LIMIT(CAM_ISP,
-					"csid:%d res_type:%d res_id:%d res_state:%d",
+					"csid:%d res_type:%d res: %s res_id:%d res_state:%d",
 					hw_mgr_res->hw_res[i]->hw_intf->hw_idx,
 					hw_mgr_res->hw_res[i]->res_type,
+					hw_mgr_res->hw_res[i]->res_name,
 					hw_mgr_res->hw_res[i]->res_id,
 					hw_mgr_res->hw_res[i]->res_state);
 			}
@@ -1222,10 +1156,9 @@ fail:
 			hw_res = hw_mgr_res->hw_res[i];
 			if (hw_res && hw_res->hw_intf)
 				CAM_INFO(CAM_ISP,
-					"IFE src split_id:%d res_id:%s hw_idx:%u state:%s",
+					"IFE src split_id:%d res:%s hw_idx:%u state:%s",
 					i,
-					cam_ife_hw_mgr_get_src_res_id(
-					hw_res->res_id),
+					hw_res->res_name,
 					hw_res->hw_intf->hw_idx,
 					cam_ife_hw_mgr_get_res_state
 					(hw_res->res_state));
@@ -1238,10 +1171,9 @@ fail:
 			hw_res = hw_mgr_res->hw_res[i];
 			if (hw_res && hw_res->hw_intf)
 				CAM_INFO(CAM_ISP,
-					"SFE src split_id:%d res_id:%s hw_idx:%u state:%s",
+					"SFE src split_id:%d res:%s hw_idx:%u state:%s",
 					i,
-					cam_ife_hw_mgr_get_sfe_src_res_id(
-					hw_res->res_id),
+					hw_res->res_name,
 					hw_res->hw_intf->hw_idx,
 					cam_ife_hw_mgr_get_res_state
 					(hw_res->res_state));
@@ -1281,10 +1213,9 @@ static void cam_ife_hw_mgr_dump_acq_data(
 			hw_res = hw_mgr_res->hw_res[i];
 			if (hw_res && hw_res->hw_intf)
 				CAM_INFO(CAM_ISP,
-					"CSID split_id: %d res_id: %s hw_idx: %u state: %s",
+					"CSID split_id: %d res: %s hw_idx: %u state: %s",
 					i,
-					cam_ife_hw_mgr_get_csid_res_id(
-					hw_res->res_id),
+					hw_res->res_name,
 					hw_res->hw_intf->hw_idx,
 					cam_ife_hw_mgr_get_res_state
 					(hw_res->res_state));
@@ -1298,10 +1229,9 @@ static void cam_ife_hw_mgr_dump_acq_data(
 			hw_res = hw_mgr_res->hw_res[i];
 			if (hw_res && hw_res->hw_intf)
 				CAM_INFO(CAM_ISP,
-					"IFE src split_id: %d res_id: %s hw_idx: %u state: %s",
+					"IFE src split_id: %d res: %s hw_idx: %u state: %s",
 					i,
-					cam_ife_hw_mgr_get_src_res_id(
-					hw_res->res_id),
+					hw_res->res_name,
 					hw_res->hw_intf->hw_idx,
 					cam_ife_hw_mgr_get_res_state
 					(hw_res->res_state));
@@ -1315,10 +1245,9 @@ static void cam_ife_hw_mgr_dump_acq_data(
 			hw_res = hw_mgr_res->hw_res[i];
 			if (hw_res && hw_res->hw_intf)
 				CAM_INFO(CAM_ISP,
-					"IFE src_rd split_id: %d res_id: %s hw_idx: %u state: %s",
+					"IFE src_rd split_id: %d res: %s hw_idx: %u state: %s",
 					i,
-					cam_ife_hw_mgr_get_src_res_id(
-					hw_res->res_id),
+					hw_res->res_name,
 					hw_res->hw_intf->hw_idx,
 					cam_ife_hw_mgr_get_res_state
 					(hw_res->res_state));
@@ -1332,8 +1261,8 @@ static void cam_ife_hw_mgr_dump_acq_data(
 			hw_res = hw_mgr_res->hw_res[j];
 			if (hw_res && hw_res->hw_intf)
 				CAM_INFO(CAM_ISP,
-					"IFE out split_id: %d res_id: 0x%x hw_idx: %u state: %s",
-					j, hw_res->res_id,
+					"IFE out split_id: %d res: %s res_id: 0x%x hw_idx: %u state: %s",
+					j, hw_res->res_name, hw_res->res_id,
 					hw_res->hw_intf->hw_idx,
 					cam_ife_hw_mgr_get_res_state
 					(hw_res->res_state));
@@ -1409,8 +1338,9 @@ static int cam_ife_mgr_csid_stop_hw(
 			isp_res = hw_mgr_res->hw_res[i];
 			if (isp_res->hw_intf->hw_idx != base_idx)
 				continue;
-			CAM_DBG(CAM_ISP, "base_idx %d res_id %d cnt %u",
-				base_idx, isp_res->res_id, cnt);
+			CAM_DBG(CAM_ISP, "base_idx %d res:%s res_id %d cnt %u",
+				base_idx, isp_res->res_name,
+				isp_res->res_id, cnt);
 			stop_res[cnt] = isp_res;
 			cnt++;
 		}
@@ -2023,8 +1953,9 @@ static int cam_ife_hw_mgr_acquire_res_sfe_out_pix(
 
 			sfe_out_res->hw_res[j] =
 				sfe_acquire.sfe_out.rsrc_node;
-			CAM_DBG(CAM_ISP, "resource type: 0x%x res id: 0x%x",
+			CAM_DBG(CAM_ISP, "resource type: 0x%x res: %s res id: 0x%x",
 				sfe_out_res->hw_res[j]->res_type,
+				sfe_out_res->hw_res[j]->res_name,
 				sfe_out_res->hw_res[j]->res_id);
 
 		}
@@ -2419,9 +2350,10 @@ static int cam_ife_hw_mgr_acquire_res_sfe_src(
 			sfe_acquire.sfe_in.rsrc_node;
 
 		CAM_DBG(CAM_ISP,
-				"acquire success LEFT SFE: %u res_type: %u res_id: %u",
+				"acquire success LEFT SFE: %u res: %s res_type: %u res_id: %u",
 				hw_intf->hw_idx,
 				sfe_src_res->hw_res[0]->res_type,
+				sfe_src_res->hw_res[0]->res_name,
 				sfe_src_res->hw_res[0]->res_id);
 
 		if ((csid_res->is_dual_isp) &&
@@ -2709,9 +2641,10 @@ static int cam_ife_hw_mgr_acquire_sfe_bus_rd(
 
 acquire_successful:
 	CAM_DBG(CAM_ISP,
-		"SFE RD left [%u] acquired success for path: %u is_dual: %d res_id: 0x%x",
+		"SFE RD left [%u] acquired success for path: %u is_dual: %d res: %s res_id: 0x%x",
 		sfe_rd_res->hw_res[0]->hw_intf->hw_idx, path_res_id,
-		in_port->usage_type, sfe_rd_res->hw_res[0]->res_id);
+		in_port->usage_type, sfe_rd_res->hw_res[0]->res_name,
+		sfe_rd_res->hw_res[0]->res_id);
 
 	sfe_rd_res->res_id = in_port->sfe_in_path_type;
 	sfe_rd_res->res_type = sfe_acquire.rsrc_type;
@@ -2837,9 +2770,10 @@ static int cam_ife_hw_mgr_acquire_ife_src_for_sfe(
 	acquired_hw_path[0] |= cam_convert_res_id_to_hw_path(
 				ife_src_res->hw_res[0]->res_id);
 	CAM_DBG(CAM_ISP,
-		"acquire success LEFT IFE: %d res type: 0x%x res id: 0x%x",
+		"acquire success LEFT IFE: %d res type: 0x%x res: %s res id: 0x%x",
 		hw_intf->hw_idx,
 		ife_src_res->hw_res[0]->res_type,
+		ife_src_res->hw_res[0]->res_name,
 		ife_src_res->hw_res[0]->res_id);
 
 	if (ife_ctx->flags.is_dual) {
@@ -2879,9 +2813,10 @@ static int cam_ife_hw_mgr_acquire_ife_src_for_sfe(
 		acquired_hw_path[1] |= cam_convert_res_id_to_hw_path(
 				ife_src_res->hw_res[0]->res_id);
 		CAM_DBG(CAM_ISP,
-			"acquire success RIGHT IFE: %u res type: 0x%x res id: 0x%x",
+			"acquire success RIGHT IFE: %u res type: 0x%x res: %s res id: 0x%x",
 			hw_intf->hw_idx,
 			ife_src_res->hw_res[1]->res_type,
+			ife_src_res->hw_res[1]->res_name,
 			ife_src_res->hw_res[1]->res_id);
 	}
 
@@ -3032,9 +2967,10 @@ static int cam_ife_hw_mgr_acquire_res_ife_src(
 				ife_src_res->hw_res[i]->res_id);
 
 			CAM_DBG(CAM_ISP,
-				"acquire success IFE:%d res type :0x%x res id:0x%x",
+				"acquire success IFE:%d res type :0x%x res: %s res id:0x%x",
 				hw_intf->hw_idx,
 				ife_src_res->hw_res[i]->res_type,
+				ife_src_res->hw_res[i]->res_name,
 				ife_src_res->hw_res[i]->res_id);
 
 		}

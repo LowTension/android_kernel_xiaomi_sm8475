@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/slab.h>
@@ -185,7 +185,8 @@ static int cam_vfe_camif_lite_get_reg_update(
 		return -EINVAL;
 	}
 
-	CAM_DBG(CAM_ISP, "CAMIF LITE:%d get RUP", camif_lite_res->res_id);
+	CAM_DBG(CAM_ISP, "CAMIF LITE:%d %s get RUP", camif_lite_res->res_id,
+		camif_lite_res->res_name);
 
 	cdm_util_ops = (struct cam_cdm_utils_ops *)cdm_args->res->cdm_ops;
 
@@ -205,8 +206,9 @@ static int cam_vfe_camif_lite_get_reg_update(
 	rsrc_data = camif_lite_res->res_priv;
 	reg_val_pair[0] = rsrc_data->camif_lite_reg->reg_update_cmd;
 	reg_val_pair[1] = rsrc_data->reg_data->reg_update_cmd_data;
-	CAM_DBG(CAM_ISP, "CAMIF LITE:%d reg_update_cmd 0x%X offset 0x%X",
-		camif_lite_res->res_id, reg_val_pair[1], reg_val_pair[0]);
+	CAM_DBG(CAM_ISP, "CAMIF LITE:%d %s reg_update_cmd 0x%X offset 0x%X",
+		camif_lite_res->res_id, camif_lite_res->res_name,
+		reg_val_pair[1], reg_val_pair[0]);
 
 	cdm_util_ops->cdm_write_regrandom(cdm_args->cmd.cmd_buf_addr,
 		1, reg_val_pair);
@@ -236,9 +238,10 @@ int cam_vfe_camif_lite_ver3_acquire_resource(
 	camif_lite_data->event_cb    = acquire_data->event_cb;
 	camif_lite_data->priv        = acquire_data->priv;
 	camif_lite_res->rdi_only_ctx = 0;
-	CAM_DBG(CAM_ISP, "Acquired VFE:%d CAMIF LITE:%d sync_mode=%d",
+	CAM_DBG(CAM_ISP, "Acquired VFE:%d CAMIF LITE:%d %s sync_mode=%d",
 		camif_lite_res->hw_intf->hw_idx,
 		camif_lite_res->res_id,
+		camif_lite_res->res_name,
 		camif_lite_data->sync_mode);
 	return 0;
 }
@@ -264,7 +267,8 @@ static int cam_vfe_camif_lite_resource_start(
 		return -EINVAL;
 	}
 
-	CAM_DBG(CAM_ISP, "CAMIF LITE:%d Start", camif_lite_res->res_id);
+	CAM_DBG(CAM_ISP, "CAMIF LITE:%d %s Start", camif_lite_res->res_id,
+		camif_lite_res->res_name);
 
 	rsrc_data = (struct cam_vfe_mux_camif_lite_data *)
 		camif_lite_res->res_priv;
@@ -397,9 +401,9 @@ subscribe_err:
 		}
 	}
 
-	CAM_DBG(CAM_ISP, "VFE:%d CAMIF LITE:%d Start Done",
+	CAM_DBG(CAM_ISP, "VFE:%d CAMIF LITE:%d %s Start Done",
 		camif_lite_res->hw_intf->hw_idx,
-		camif_lite_res->res_id);
+		camif_lite_res->res_id, camif_lite_res->res_name);
 	return rc;
 }
 
@@ -672,9 +676,10 @@ static int cam_vfe_camif_lite_resource_stop(
 		return -EINVAL;
 	}
 
-	CAM_DBG(CAM_ISP, "VFE:%d CAMIF LITE:%d Stop",
+	CAM_DBG(CAM_ISP, "VFE:%d CAMIF LITE:%d %s Stop",
 		camif_lite_res->hw_intf->hw_idx,
-		camif_lite_res->res_id);
+		camif_lite_res->res_id,
+		camif_lite_res->res_name);
 
 	if ((camif_lite_res->res_state == CAM_ISP_RESOURCE_STATE_RESERVED) ||
 		(camif_lite_res->res_state == CAM_ISP_RESOURCE_STATE_AVAILABLE))
@@ -1065,9 +1070,10 @@ static int cam_vfe_camif_lite_handle_irq_top_half(uint32_t evt_id,
 	camif_lite_priv = camif_lite_node->res_priv;
 
 	CAM_DBG(CAM_ISP,
-		"VFE:%d CAMIF LITE:%d IRQ status_0: 0x%X status_1: 0x%X status_2: 0x%X",
+		"VFE:%d CAMIF LITE:%d %s IRQ status_0: 0x%X status_1: 0x%X status_2: 0x%X",
 		camif_lite_node->hw_intf->hw_idx,
 		camif_lite_node->res_id,
+		camif_lite_node->res_name,
 		th_payload->evt_status_arr[0],
 		th_payload->evt_status_arr[1],
 		th_payload->evt_status_arr[2]);
@@ -1133,16 +1139,17 @@ static int cam_vfe_camif_lite_handle_irq_bottom_half(
 	evt_info.res_type = camif_lite_node->res_type;
 
 	CAM_DBG(CAM_ISP,
-		"VFE:%d CAMIF LITE:%d IRQ status_0: 0x%X status_1: 0x%X status_2: 0x%X",
-		evt_info.hw_idx, evt_info.res_id,
+		"VFE:%d CAMIF LITE:%d %s IRQ status_0: 0x%X status_1: 0x%X status_2: 0x%X",
+		evt_info.hw_idx, evt_info.res_id, camif_lite_node->res_name,
 		irq_status[CAM_IFE_IRQ_CAMIF_REG_STATUS0],
 		irq_status[CAM_IFE_IRQ_CAMIF_REG_STATUS1],
 		irq_status[CAM_IFE_IRQ_CAMIF_REG_STATUS2]);
 
 	if (irq_status[CAM_IFE_IRQ_CAMIF_REG_STATUS1]
 		& camif_lite_priv->reg_data->sof_irq_mask) {
-		CAM_DBG(CAM_ISP, "VFE:%d CAMIF LITE:%d Received SOF",
-			evt_info.hw_idx, evt_info.res_id);
+		CAM_DBG(CAM_ISP, "VFE:%d CAMIF LITE:%d %s Received SOF",
+			evt_info.hw_idx, evt_info.res_id,
+			camif_lite_node->res_name);
 		ret = CAM_VFE_IRQ_STATUS_SUCCESS;
 		camif_lite_priv->sof_ts.tv_sec =
 			payload->ts.mono_time.tv_sec;
@@ -1156,8 +1163,9 @@ static int cam_vfe_camif_lite_handle_irq_bottom_half(
 
 	if (irq_status[CAM_IFE_IRQ_CAMIF_REG_STATUS1]
 		& camif_lite_priv->reg_data->epoch0_irq_mask) {
-		CAM_DBG(CAM_ISP, "VFE:%d CAMIF LITE:%d Received EPOCH",
-			evt_info.hw_idx, evt_info.res_id);
+		CAM_DBG(CAM_ISP, "VFE:%d CAMIF LITE:%d %s Received EPOCH",
+			evt_info.hw_idx, evt_info.res_id,
+			camif_lite_node->res_name);
 		ret = CAM_VFE_IRQ_STATUS_SUCCESS;
 		camif_lite_priv->epoch_ts.tv_sec =
 			payload->ts.mono_time.tv_sec;
@@ -1171,8 +1179,9 @@ static int cam_vfe_camif_lite_handle_irq_bottom_half(
 
 	if (irq_status[CAM_IFE_IRQ_CAMIF_REG_STATUS1]
 		& camif_lite_priv->reg_data->eof_irq_mask) {
-		CAM_DBG(CAM_ISP, "VFE:%d CAMIF LITE:%d Received EOF",
-			evt_info.hw_idx, evt_info.res_id);
+		CAM_DBG(CAM_ISP, "VFE:%d CAMIF LITE:%d %s Received EOF",
+			evt_info.hw_idx, evt_info.res_id,
+			camif_lite_node->res_name);
 		ret = CAM_VFE_IRQ_STATUS_SUCCESS;
 		camif_lite_priv->eof_ts.tv_sec =
 			payload->ts.mono_time.tv_sec;
@@ -1275,8 +1284,9 @@ int cam_vfe_camif_lite_ver3_init(
 		camif_lite_hw_info;
 	int                                       i = 0;
 
-	CAM_DBG(CAM_ISP, "VFE:%d CAMIF LITE:%d Init",
-		camif_lite_node->res_id, camif_lite_node->res_id);
+	CAM_DBG(CAM_ISP, "VFE:%d CAMIF LITE:%d %s Init",
+		camif_lite_node->res_id, camif_lite_node->res_id,
+		camif_lite_node->res_name);
 
 	camif_lite_priv = kzalloc(sizeof(*camif_lite_priv),
 		GFP_KERNEL);
@@ -1322,8 +1332,9 @@ int cam_vfe_camif_lite_ver3_deinit(
 		camif_lite_node->res_priv;
 	int                                 i = 0;
 
-	CAM_DBG(CAM_ISP, "VFE:%d CAMIF LITE:%d Deinit",
-		camif_lite_node->hw_intf->hw_idx, camif_lite_node->res_id);
+	CAM_DBG(CAM_ISP, "VFE:%d CAMIF LITE:%d %s Deinit",
+		camif_lite_node->hw_intf->hw_idx, camif_lite_node->res_id,
+		camif_lite_node->res_name);
 
 	INIT_LIST_HEAD(&camif_lite_priv->free_payload_list);
 	for (i = 0; i < CAM_VFE_CAMIF_LITE_EVT_MAX; i++)
