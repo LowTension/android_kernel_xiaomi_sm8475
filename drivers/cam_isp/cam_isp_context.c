@@ -616,6 +616,14 @@ static const char *__cam_isp_tfe_resource_handle_id_to_type(
 		return "STATS_BF";
 	case CAM_ISP_TFE_OUT_RES_STATS_AWB_BG:
 		return "STATS_AWB_BG";
+	case CAM_ISP_TFE_OUT_RES_STATS_RS:
+		return "STATS_RS";
+	case CAM_ISP_TFE_OUT_RES_DS4:
+		return "DS_4";
+	case CAM_ISP_TFE_OUT_RES_DS16:
+		return "DS_16";
+	case CAM_ISP_TFE_OUT_RES_AI:
+		return "AI";
 	default:
 		return "CAM_ISP_Invalid_Resource_Type";
 	}

@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
  */
 
 
@@ -11,7 +11,7 @@
 #include "cam_isp_hw.h"
 #include "cam_tfe_hw_intf.h"
 
-#define CAM_TFE_BUS_MAX_CLIENTS            10
+#define CAM_TFE_BUS_MAX_CLIENTS            16
 #define CAM_TFE_BUS_MAX_SUB_GRPS            4
 #define CAM_TFE_BUS_MAX_PERF_CNT_REG        8
 #define CAM_TFE_BUS_MAX_IRQ_REGISTERS       2
@@ -57,6 +57,9 @@ enum cam_tfe_bus_comp_grp_id {
 	CAM_TFE_BUS_COMP_GRP_5,
 	CAM_TFE_BUS_COMP_GRP_6,
 	CAM_TFE_BUS_COMP_GRP_7,
+	CAM_TFE_BUS_COMP_GRP_8,
+	CAM_TFE_BUS_COMP_GRP_9,
+	CAM_TFE_BUS_COMP_GRP_10,
 	CAM_TFE_BUS_COMP_GRP_MAX,
 };
 
@@ -80,6 +83,10 @@ enum cam_tfe_bus_tfe_out_id {
 	CAM_TFE_BUS_TFE_OUT_STATS_TL_BG,
 	CAM_TFE_BUS_TFE_OUT_STATS_AWB_BG,
 	CAM_TFE_BUS_TFE_OUT_STATS_BF,
+	CAM_TFE_BUS_TFE_OUT_STATS_RS,
+	CAM_TFE_BUS_TFE_OUT_DS4,
+	CAM_TFE_BUS_TFE_OUT_DS16,
+	CAM_TFE_BUS_TFE_OUT_AI,
 	CAM_TFE_BUS_TFE_OUT_MAX,
 };
 
@@ -178,12 +185,14 @@ struct cam_tfe_bus_tfe_out_hw_info {
  * @num_client:            Total number of write clients
  * @bus_client_reg:        Bus client register info
  * @tfe_out_hw_info:       TFE output capability
+ * @num_comp_grp:          Number of composite group
  * @comp_done_shift:       Mask shift for comp done mask
  * @top_bus_wr_irq_shift:  Mask shift for top level BUS WR irq
  * @comp_buf_done_mask:    Composite buf done bits mask
  * @comp_rup_done_mask:    Reg update done mask
  * @bus_irq_error_mask:    Bus irq error mask bits
  * @support_consumed_addr: Indicate if bus support consumed address
+ * @pdaf_rdi2_mux_en:      Indicate is PDAF is muxed with RDI2
  */
 struct cam_tfe_bus_hw_info {
 	struct cam_tfe_bus_reg_offset_common common_reg;
@@ -193,12 +202,14 @@ struct cam_tfe_bus_hw_info {
 	uint32_t num_out;
 	struct cam_tfe_bus_tfe_out_hw_info
 		tfe_out_hw_info[CAM_TFE_BUS_TFE_OUT_MAX];
+	uint32_t num_comp_grp;
 	uint32_t comp_done_shift;
 	uint32_t top_bus_wr_irq_shift;
 	uint32_t comp_buf_done_mask;
 	uint32_t comp_rup_done_mask;
 	uint32_t bus_irq_error_mask[CAM_TFE_BUS_IRQ_REGISTERS_MAX];
 	bool support_consumed_addr;
+	bool pdaf_rdi2_mux_en;
 };
 
 /*

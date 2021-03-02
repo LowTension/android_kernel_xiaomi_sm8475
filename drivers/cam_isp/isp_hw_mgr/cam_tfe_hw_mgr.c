@@ -1651,9 +1651,16 @@ static int cam_tfe_hw_mgr_preprocess_port(
 	uint32_t i;
 	struct cam_isp_tfe_out_port_info      *out_port;
 	struct cam_tfe_hw_mgr                 *tfe_hw_mgr;
+	struct cam_hw_intf                    *tfe_device;
+	bool pdaf_rdi2_mux_en = false;
 
 	tfe_hw_mgr = tfe_ctx->hw_mgr;
+	tfe_device = tfe_hw_mgr->tfe_devices[0]->hw_intf;
 
+	tfe_device->hw_ops.process_cmd(tfe_device->hw_priv,
+		CAM_ISP_HW_CMD_IS_PDAF_RDI2_MUX_EN,
+		&pdaf_rdi2_mux_en,
+		sizeof(pdaf_rdi2_mux_en));
 
 	for (i = 0; i < in_port->num_out_res; i++) {
 		out_port = &in_port->data[i];
@@ -1670,8 +1677,9 @@ static int cam_tfe_hw_mgr_preprocess_port(
 		}
 	}
 
-	if (*pdaf_enable && rdi2_enable) {
-		CAM_ERR(CAM_ISP, "invalid outports both RDI2 and PDAF enabled");
+	if (pdaf_rdi2_mux_en && *pdaf_enable && rdi2_enable) {
+		CAM_ERR(CAM_ISP,
+			"invalid outports both RDI2 and PDAF enabled");
 		return -EINVAL;
 	}
 

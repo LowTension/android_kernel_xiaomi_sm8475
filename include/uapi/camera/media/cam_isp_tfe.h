@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only WITH Linux-syscall-note */
 /*
- * Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
  */
 
 #ifndef __UAPI_CAM_ISP_TFE_H__
@@ -20,7 +20,11 @@
 #define CAM_ISP_TFE_OUT_RES_STATS_TL_BG        (CAM_ISP_TFE_OUT_RES_BASE + 8)
 #define CAM_ISP_TFE_OUT_RES_STATS_BF           (CAM_ISP_TFE_OUT_RES_BASE + 9)
 #define CAM_ISP_TFE_OUT_RES_STATS_AWB_BG       (CAM_ISP_TFE_OUT_RES_BASE + 10)
-#define CAM_ISP_TFE_OUT_RES_MAX                (CAM_ISP_TFE_OUT_RES_BASE + 11)
+#define CAM_ISP_TFE_OUT_RES_STATS_RS           (CAM_ISP_TFE_OUT_RES_BASE + 11)
+#define CAM_ISP_TFE_OUT_RES_DS4                (CAM_ISP_TFE_OUT_RES_BASE + 12)
+#define CAM_ISP_TFE_OUT_RES_DS16               (CAM_ISP_TFE_OUT_RES_BASE + 13)
+#define CAM_ISP_TFE_OUT_RES_AI                 (CAM_ISP_TFE_OUT_RES_BASE + 14)
+#define CAM_ISP_TFE_OUT_RES_MAX                (CAM_ISP_TFE_OUT_RES_BASE + 15)
 
 
 /* TFE input port resource type */

@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
  */
 
 
@@ -25,8 +25,10 @@
 #define CAM_TFE_MAX_REG_DUMP_ENTRIES  20
 #define CAM_TFE_MAX_LUT_DUMP_ENTRIES  10
 
-#define CAM_TFE_MAX_CLC               30
+#define CAM_TFE_MAX_CLC               40
 #define CAM_TFE_CLC_NAME_LENGTH_MAX   32
+#define CAM_TFE_MAX_DEBUG_REG         10
+#define CAM_TFE_MAX_PERF_CNT           2
 
 /*we take each word as uint32_t, for dumping uint64_t count as 2 words
  * soc index
@@ -67,6 +69,15 @@ struct cam_tfe_reg_dump_data {
 		lut_entry[CAM_TFE_MAX_LUT_DUMP_ENTRIES];
 };
 
+struct cam_tfe_top_reg_perf_cfg {
+	uint32_t perf_cnt_cfg;
+	uint32_t perf_pixel_count;
+	uint32_t perf_line_count;
+	uint32_t perf_stall_count;
+	uint32_t perf_always_count;
+	uint32_t perf_count_status;
+};
+
 struct cam_tfe_top_reg_offset_common {
 	uint32_t hw_version;
 	uint32_t hw_capability;
@@ -86,17 +97,11 @@ struct cam_tfe_top_reg_offset_common {
 	uint32_t violation_status;
 	uint32_t stats_throttle_cnt_cfg_0;
 	uint32_t stats_throttle_cnt_cfg_1;
-	uint32_t debug_0;
-	uint32_t debug_1;
-	uint32_t debug_2;
-	uint32_t debug_3;
+	uint32_t num_debug_reg;
+	uint32_t debug_reg[CAM_TFE_MAX_DEBUG_REG];
 	uint32_t debug_cfg;
-	uint32_t perf_cnt_cfg;
-	uint32_t perf_pixel_count;
-	uint32_t perf_line_count;
-	uint32_t perf_stall_count;
-	uint32_t perf_always_count;
-	uint32_t perf_count_status;
+	uint32_t num_perf_cfg;
+	struct   cam_tfe_top_reg_perf_cfg perf_cfg[CAM_TFE_MAX_PERF_CNT];
 
 	/*reg data */
 	uint32_t diag_min_hbi_error_shift;
