@@ -64,9 +64,8 @@ int cam_tfe_init_soc_resources(struct cam_hw_soc_info *soc_info,
 
 clk_option:
 
-	rc = cam_soc_util_get_option_clk_by_name(soc_info,
-		CAM_TFE_DSP_CLK_NAME, &soc_private->dsp_clk,
-		&soc_private->dsp_clk_index, &soc_private->dsp_clk_rate);
+	rc = cam_soc_util_get_option_clk_by_name(soc_info, CAM_TFE_DSP_CLK_NAME,
+		&soc_private->dsp_clk_index);
 	if (rc)
 		CAM_WARN(CAM_ISP, "Option clk get failed with rc %d", rc);
 
@@ -129,10 +128,13 @@ int cam_tfe_deinit_soc_resources(struct cam_hw_soc_info *soc_info)
 			"Error! Release platform resource failed rc=%d", rc);
 
 
-	rc = cam_soc_util_clk_put(&soc_private->dsp_clk);
-	if (rc < 0)
-		CAM_ERR(CAM_ISP,
-			"Error Put dsp clk failed rc=%d", rc);
+	if (soc_private->dsp_clk_index != -1) {
+		rc = cam_soc_util_put_optional_clk(soc_info,
+			soc_private->dsp_clk_index);
+		if (rc)
+			CAM_ERR(CAM_ISP,
+				"Error Put dsp clk failed rc=%d", rc);
+	}
 
 	kfree(soc_private);
 
@@ -198,8 +200,8 @@ int cam_tfe_soc_enable_clk(struct cam_hw_soc_info *soc_info,
 	soc_private = soc_info->soc_private;
 
 	if (strcmp(clk_name, CAM_TFE_DSP_CLK_NAME) == 0) {
-		rc = cam_soc_util_clk_enable(soc_private->dsp_clk,
-			CAM_TFE_DSP_CLK_NAME, soc_private->dsp_clk_rate, NULL);
+		rc = cam_soc_util_clk_enable(soc_info, true,
+			soc_private->dsp_clk_index, 0, NULL);
 		if (rc)
 			CAM_ERR(CAM_ISP,
 			"Error enable dsp clk failed rc=%d", rc);
@@ -222,8 +224,8 @@ int cam_tfe_soc_disable_clk(struct cam_hw_soc_info *soc_info,
 	soc_private = soc_info->soc_private;
 
 	if (strcmp(clk_name, CAM_TFE_DSP_CLK_NAME) == 0) {
-		rc = cam_soc_util_clk_disable(soc_private->dsp_clk,
-			CAM_TFE_DSP_CLK_NAME);
+		rc = cam_soc_util_clk_disable(soc_info, true,
+			soc_private->dsp_clk_index);
 		if (rc)
 			CAM_ERR(CAM_ISP,
 			"Error enable dsp clk failed rc=%d", rc);

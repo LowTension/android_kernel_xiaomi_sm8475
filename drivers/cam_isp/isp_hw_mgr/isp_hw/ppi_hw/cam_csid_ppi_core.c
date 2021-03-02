@@ -76,8 +76,7 @@ static int cam_csid_ppi_enable_hw(struct cam_csid_ppi_hw  *ppi_hw)
 	}
 
 	for (i = 0; i < soc_info->num_clk; i++) {
-		rc = cam_soc_util_clk_enable(soc_info->clk[i],
-			soc_info->clk_name[i], 0, NULL);
+		rc = cam_soc_util_clk_enable(soc_info, false, i, -1, NULL);
 		if (rc)
 			goto clk_disable;
 	}
@@ -107,8 +106,7 @@ static int cam_csid_ppi_enable_hw(struct cam_csid_ppi_hw  *ppi_hw)
 	return 0;
 clk_disable:
 	for (--i; i >= 0; i--)
-		cam_soc_util_clk_disable(soc_info->clk[i],
-			soc_info->clk_name[i]);
+		cam_soc_util_clk_disable(soc_info, false, i);
 	ppi_hw->hw_info->open_count--;
 	return rc;
 }
@@ -154,8 +152,7 @@ static int cam_csid_ppi_disable_hw(struct cam_csid_ppi_hw *ppi_hw)
 	ppi_hw->device_enabled = 0;
 
 	for (i = 0; i < soc_info->num_clk; i++)
-		cam_soc_util_clk_disable(soc_info->clk[i],
-			soc_info->clk_name[i]);
+		cam_soc_util_clk_disable(soc_info, false, i);
 
 	return rc;
 }

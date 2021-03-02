@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CAM_TFE_SOC_H_
@@ -26,15 +26,14 @@ enum cam_cpas_handle_id {
  *                           This handle is used for all further interface
  *                           with CPAS.
  * @cpas_version:            Has cpas version read from Hardware
+ * @dsp_clk_index:           DSP clk index in optional clocks
  * @num_pid:                 number of pids of tfe
  * @pid:                     TFE pid value list
  */
 struct cam_tfe_soc_private {
 	uint32_t    cpas_handle;
 	uint32_t    cpas_version;
-	struct clk *dsp_clk;
 	int32_t     dsp_clk_index;
-	int32_t     dsp_clk_rate;
 	uint32_t    num_pid;
 	uint32_t    pid[CAM_ISP_HW_MAX_PID_VAL];
 };

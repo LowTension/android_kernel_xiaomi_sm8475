@@ -13,7 +13,273 @@
 #include "cam_cx_ipeak.h"
 #include "cam_mem_mgr.h"
 
+#define CAM_TO_MASK(bitn)          (1 << (int)(bitn))
+#define CAM_IS_BIT_SET(mask, bit)  ((mask) & CAM_TO_MASK(bit))
+#define CAM_SET_BIT(mask, bit)     ((mask) |= CAM_TO_MASK(bit))
+#define CAM_CLEAR_BIT(mask, bit)   ((mask) &= ~CAM_TO_MASK(bit))
+
+/**
+ * struct cam_clk_wrapper_clk: This represents an entry corresponding to a
+ *                             shared clock in Clk wrapper. Clients that share
+ *                             the same clock are registered to this clk entry
+ *                             and set rate from them is consolidated before
+ *                             setting it to clk driver.
+ *
+ * @list:           List pointer to point to next shared clk entry
+ * @clk_id:         Clk Id of this clock
+ * @curr_clk_rate:  Current clock rate set for this clock
+ * @client_list:    List of clients registered to this shared clock entry
+ * @num_clients:    Number of clients
+ **/
+struct cam_clk_wrapper_clk {
+	struct list_head list;
+	uint32_t clk_id;
+	int64_t curr_clk_rate;
+	struct list_head client_list;
+	uint32_t num_clients;
+};
+
+/**
+ * struct cam_clk_wrapper_client: This represents a client (device) that wants
+ *                                to share the clock with some other client.
+ *
+ * @list:           List pointer to point to next client that share the
+ *                  same clock
+ * @soc_info:       soc_info of client. This is used as unique identifier
+ *                  for a client
+ * @clk:            Clk handle
+ * @curr_clk_rate:  Current clock rate set for this client
+ **/
+struct cam_clk_wrapper_client {
+	struct list_head list;
+	struct cam_hw_soc_info *soc_info;
+	struct clk *clk;
+	int64_t curr_clk_rate;
+};
+
 static char supported_clk_info[256];
+
+static DEFINE_MUTEX(wrapper_lock);
+static LIST_HEAD(wrapper_clk_list);
+
+static int cam_soc_util_clk_wrapper_register_entry(
+	uint32_t clk_id, struct clk *clk, struct cam_hw_soc_info *soc_info,
+	const char *clk_name)
+{
+	struct cam_clk_wrapper_clk *wrapper_clk;
+	struct cam_clk_wrapper_client *wrapper_client;
+	bool clock_found = false;
+	int rc = 0;
+
+	mutex_lock(&wrapper_lock);
+
+	list_for_each_entry(wrapper_clk, &wrapper_clk_list, list) {
+		CAM_DBG(CAM_UTIL, "Clk list id %d num clients %d",
+			wrapper_clk->clk_id, wrapper_clk->num_clients);
+
+		if (wrapper_clk->clk_id == clk_id) {
+			clock_found = true;
+			list_for_each_entry(wrapper_client,
+				&wrapper_clk->client_list, list) {
+				CAM_DBG(CAM_UTIL,
+					"Clk id %d entry client %s",
+					wrapper_clk->clk_id,
+					wrapper_client->soc_info->dev_name);
+				if (wrapper_client->soc_info == soc_info) {
+					CAM_ERR(CAM_UTIL,
+						"Register with same soc info, clk id %d, client %s",
+						clk_id, soc_info->dev_name);
+					rc = -EINVAL;
+					goto end;
+				}
+			}
+			break;
+		}
+	}
+
+	if (!clock_found) {
+		CAM_DBG(CAM_UTIL, "Adding new entry for clk id %d", clk_id);
+		wrapper_clk = kzalloc(sizeof(struct cam_clk_wrapper_clk),
+			GFP_KERNEL);
+		if (!wrapper_clk) {
+			CAM_ERR(CAM_UTIL,
+				"Failed in allocating new clk entry %d",
+				clk_id);
+			rc = -ENOMEM;
+			goto end;
+		}
+
+		wrapper_clk->clk_id = clk_id;
+		INIT_LIST_HEAD(&wrapper_clk->list);
+		INIT_LIST_HEAD(&wrapper_clk->client_list);
+		list_add_tail(&wrapper_clk->list, &wrapper_clk_list);
+	}
+	wrapper_client = kzalloc(sizeof(struct cam_clk_wrapper_client),
+		GFP_KERNEL);
+	if (!wrapper_client) {
+		CAM_ERR(CAM_UTIL, "Failed in allocating new client entry %d",
+			clk_id);
+		rc = -ENOMEM;
+		goto end;
+	}
+
+	wrapper_client->soc_info = soc_info;
+	wrapper_client->clk = clk;
+
+	INIT_LIST_HEAD(&wrapper_client->list);
+	list_add_tail(&wrapper_client->list, &wrapper_clk->client_list);
+	wrapper_clk->num_clients++;
+
+	CAM_DBG(CAM_UTIL,
+		"Adding new client %s for clk[%s] id %d, num clients %d",
+		soc_info->dev_name, clk_name, clk_id, wrapper_clk->num_clients);
+end:
+	mutex_unlock(&wrapper_lock);
+	return rc;
+}
+
+static int cam_soc_util_clk_wrapper_unregister_entry(
+	uint32_t clk_id, struct cam_hw_soc_info *soc_info)
+{
+	struct cam_clk_wrapper_clk *wrapper_clk;
+	struct cam_clk_wrapper_client *wrapper_client;
+	bool clock_found = false;
+	bool client_found = false;
+	int rc = 0;
+
+	mutex_lock(&wrapper_lock);
+
+	list_for_each_entry(wrapper_clk, &wrapper_clk_list, list) {
+		CAM_DBG(CAM_UTIL, "Clk list id %d num clients %d",
+			wrapper_clk->clk_id, wrapper_clk->num_clients);
+
+		if (wrapper_clk->clk_id == clk_id) {
+			clock_found = true;
+			list_for_each_entry(wrapper_client,
+				&wrapper_clk->client_list, list) {
+				CAM_DBG(CAM_UTIL, "Clk id %d entry client %s",
+					wrapper_clk->clk_id,
+					wrapper_client->soc_info->dev_name);
+				if (wrapper_client->soc_info == soc_info) {
+					client_found = true;
+					wrapper_clk->num_clients--;
+					list_del_init(&wrapper_client->list);
+					kfree(wrapper_client);
+					break;
+				}
+			}
+			break;
+		}
+	}
+
+	if (!clock_found) {
+		CAM_ERR(CAM_UTIL, "Shared clk id %d entry not found", clk_id);
+		rc = -EINVAL;
+		goto end;
+	}
+
+	if (!client_found) {
+		CAM_ERR(CAM_UTIL,
+			"Client %pK for Shared clk id %d entry not found",
+			soc_info, clk_id);
+		rc = -EINVAL;
+		goto end;
+	}
+
+	CAM_DBG(CAM_UTIL, "Unregister client %s for clk id %d, num clients %d",
+		soc_info->dev_name, clk_id, wrapper_clk->num_clients);
+
+	if (!wrapper_clk->num_clients) {
+		list_del_init(&wrapper_clk->list);
+		kfree(wrapper_clk);
+	}
+end:
+	mutex_unlock(&wrapper_lock);
+	return rc;
+}
+
+static int cam_soc_util_clk_wrapper_set_clk_rate(
+	uint32_t clk_id, struct cam_hw_soc_info *soc_info,
+	struct clk *clk, int64_t clk_rate)
+{
+	struct cam_clk_wrapper_clk *wrapper_clk;
+	struct cam_clk_wrapper_client *wrapper_client;
+	bool clk_found = false;
+	bool client_found = false;
+	int rc = 0;
+	int64_t final_clk_rate = 0;
+
+	if (!soc_info || !clk) {
+		CAM_ERR(CAM_UTIL, "Invalid param soc_info %pK clk %pK",
+			soc_info, clk);
+		return -EINVAL;
+	}
+
+	mutex_lock(&wrapper_lock);
+
+	list_for_each_entry(wrapper_clk, &wrapper_clk_list, list) {
+		CAM_DBG(CAM_UTIL, "Clk list id %d num clients %d",
+			wrapper_clk->clk_id, wrapper_clk->num_clients);
+		if (wrapper_clk->clk_id == clk_id) {
+			clk_found = true;
+			break;
+		}
+	}
+
+	if (!clk_found) {
+		CAM_ERR(CAM_UTIL, "Clk entry not found id %d client %s",
+			clk_id, soc_info->dev_name);
+		rc = -EINVAL;
+		goto end;
+	}
+
+	list_for_each_entry(wrapper_client, &wrapper_clk->client_list, list) {
+		CAM_DBG(CAM_UTIL, "Clk id %d client %s, clk rate %lld",
+			wrapper_clk->clk_id, wrapper_client->soc_info->dev_name,
+			wrapper_client->curr_clk_rate);
+		if (wrapper_client->soc_info == soc_info) {
+			client_found = true;
+			CAM_DBG(CAM_UTIL,
+				"Clk enable clk id %d, client %s curr %ld new %ld",
+				clk_id, wrapper_client->soc_info->dev_name,
+				wrapper_client->curr_clk_rate, clk_rate);
+
+			wrapper_client->curr_clk_rate = clk_rate;
+		}
+
+		if (final_clk_rate < wrapper_client->curr_clk_rate)
+			final_clk_rate = wrapper_client->curr_clk_rate;
+	}
+
+	if (!client_found) {
+		CAM_ERR(CAM_UTIL,
+			"Wrapper clk enable without client entry clk id %d client %s",
+			clk_id, soc_info->dev_name);
+		rc = -EINVAL;
+		goto end;
+	}
+
+	CAM_DBG(CAM_UTIL,
+		"Clk id %d, client %s, clients rate %ld, curr %ld final %ld",
+		wrapper_clk->clk_id, soc_info->dev_name, clk_rate,
+		wrapper_clk->curr_clk_rate, final_clk_rate);
+
+	if (final_clk_rate != wrapper_clk->curr_clk_rate) {
+		if (final_clk_rate) {
+			rc = clk_set_rate(clk, final_clk_rate);
+			if (rc) {
+				CAM_ERR(CAM_UTIL, "set_rate failed on clk %d",
+					wrapper_clk->clk_id);
+				goto end;
+			}
+		}
+		wrapper_clk->curr_clk_rate = final_clk_rate;
+	}
+
+end:
+	mutex_unlock(&wrapper_lock);
+	return rc;
+}
 
 int cam_soc_util_get_clk_level(struct cam_hw_soc_info *soc_info,
 	int64_t clk_rate, int clk_idx, int32_t *clk_lvl)
@@ -366,18 +632,26 @@ long cam_soc_util_get_clk_round_rate(struct cam_hw_soc_info *soc_info,
  * @clk:              Clock structure information for which rate is to be set
  * @clk_name:         Name of the clock for which rate is being set
  * @clk_rate:         Clock rate to be set
+ * @shared_clk:       Whether this is a shared clk
+ * @clk_id:           Clock ID
  * @applied_clk_rate: Final clock rate set to the clk
  *
  * @return:         Success or failure
  */
-static int cam_soc_util_set_clk_rate(struct clk *clk, const char *clk_name,
-	int64_t clk_rate, unsigned long *applied_clk_rate)
+static int cam_soc_util_set_clk_rate(struct cam_hw_soc_info *soc_info,
+	struct clk *clk, const char *clk_name,
+	int64_t clk_rate, bool shared_clk, uint32_t clk_id,
+	unsigned long *applied_clk_rate)
 {
 	int rc = 0;
 	long clk_rate_round = -1;
+	bool set_rate = false;
 
-	if (!clk || !clk_name)
+	if (!clk || !clk_name) {
+		CAM_ERR(CAM_UTIL, "Invalid input clk %pK clk_name %pK",
+			clk, clk_name);
 		return -EINVAL;
+	}
 
 	CAM_DBG(CAM_UTIL, "set %s, rate %lld", clk_name, clk_rate);
 	if (clk_rate > 0) {
@@ -388,11 +662,7 @@ static int cam_soc_util_set_clk_rate(struct clk *clk, const char *clk_name,
 				clk_name, clk_rate_round);
 			return clk_rate_round;
 		}
-		rc = clk_set_rate(clk, clk_rate_round);
-		if (rc) {
-			CAM_ERR(CAM_UTIL, "set_rate failed on %s", clk_name);
-			return rc;
-		}
+		set_rate = true;
 	} else if (clk_rate == INIT_RATE) {
 		clk_rate_round = clk_get_rate(clk);
 		CAM_DBG(CAM_UTIL, "init new_rate %ld", clk_rate_round);
@@ -404,10 +674,23 @@ static int cam_soc_util_set_clk_rate(struct clk *clk, const char *clk_name,
 				return clk_rate_round;
 			}
 		}
-		rc = clk_set_rate(clk, clk_rate_round);
-		if (rc) {
-			CAM_ERR(CAM_UTIL, "set_rate failed on %s", clk_name);
-			return rc;
+		set_rate = true;
+	}
+
+	if (set_rate) {
+		if (shared_clk) {
+			CAM_DBG(CAM_UTIL,
+				"Dev %s clk %s id %d Set Shared clk %ld",
+				soc_info->dev_name, clk_name, clk_id,
+				clk_rate_round);
+			cam_soc_util_clk_wrapper_set_clk_rate(
+				clk_id, soc_info, clk, clk_rate_round);
+		} else {
+			rc = clk_set_rate(clk, clk_rate_round);
+			if (rc) {
+				CAM_ERR(CAM_UTIL, "set_rate failed on %s", clk_name);
+				return rc;
+			}
 		}
 	}
 
@@ -461,8 +744,10 @@ int cam_soc_util_set_src_clk_rate(struct cam_hw_soc_info *soc_info,
 			apply_level);
 	}
 
-	rc = cam_soc_util_set_clk_rate(clk,
+	rc = cam_soc_util_set_clk_rate(soc_info, clk,
 		soc_info->clk_name[src_clk_idx], clk_rate,
+		CAM_IS_BIT_SET(soc_info->shared_clk_mask, src_clk_idx),
+		soc_info->clk_id[src_clk_idx],
 		&soc_info->applied_src_clk_rate);
 	if (rc) {
 		CAM_ERR(CAM_UTIL,
@@ -481,9 +766,11 @@ int cam_soc_util_set_src_clk_rate(struct cam_hw_soc_info *soc_info,
 			continue;
 		}
 		clk = soc_info->clk[scl_clk_idx];
-		rc = cam_soc_util_set_clk_rate(clk,
+		rc = cam_soc_util_set_clk_rate(soc_info, clk,
 			soc_info->clk_name[scl_clk_idx],
 			soc_info->clk_rate[apply_level][scl_clk_idx],
+			CAM_IS_BIT_SET(soc_info->shared_clk_mask, scl_clk_idx),
+			soc_info->clk_id[scl_clk_idx],
 			NULL);
 		if (rc) {
 			CAM_WARN(CAM_UTIL,
@@ -497,21 +784,26 @@ int cam_soc_util_set_src_clk_rate(struct cam_hw_soc_info *soc_info,
 	return 0;
 }
 
-int cam_soc_util_clk_put(struct clk **clk)
+int cam_soc_util_put_optional_clk(struct cam_hw_soc_info *soc_info,
+	int32_t clk_indx)
 {
-	if (!(*clk)) {
-		CAM_ERR(CAM_UTIL, "Invalid params clk");
+	if (clk_indx < 0) {
+		CAM_ERR(CAM_UTIL, "Invalid params clk %d", clk_indx);
 		return -EINVAL;
 	}
 
-	clk_put(*clk);
-	*clk = NULL;
+	if (CAM_IS_BIT_SET(soc_info->optional_shared_clk_mask, clk_indx))
+		cam_soc_util_clk_wrapper_unregister_entry(
+			soc_info->optional_clk_id[clk_indx], soc_info);
+
+	clk_put(soc_info->optional_clk[clk_indx]);
+	soc_info->optional_clk[clk_indx] = NULL;
 
 	return 0;
 }
 
 static struct clk *cam_soc_util_option_clk_get(struct device_node *np,
-	int index)
+	int index, uint32_t *clk_id)
 {
 	struct of_phandle_args clkspec;
 	struct clk *clk;
@@ -526,23 +818,25 @@ static struct clk *cam_soc_util_option_clk_get(struct device_node *np,
 		return ERR_PTR(rc);
 
 	clk = of_clk_get_from_provider(&clkspec);
+
+	*clk_id = clkspec.args[0];
 	of_node_put(clkspec.np);
 
 	return clk;
 }
 
 int cam_soc_util_get_option_clk_by_name(struct cam_hw_soc_info *soc_info,
-	const char *clk_name, struct clk **clk, int32_t *clk_index,
-	int32_t *clk_rate)
+	const char *clk_name, int32_t *clk_index)
 {
 	int index = 0;
 	int rc = 0;
 	struct device_node *of_node = NULL;
+	uint32_t shared_clk_val;
 
-	if (!soc_info || !clk_name || !clk) {
+	if (!soc_info || !clk_name || !clk_index) {
 		CAM_ERR(CAM_UTIL,
-			"Invalid params soc_info %pK clk_name %s clk %pK",
-			soc_info, clk_name, clk);
+			"Invalid params soc_info %pK clk_name %s clk_index %pK",
+			soc_info, clk_name, clk_index);
 		return -EINVAL;
 	}
 
@@ -553,52 +847,129 @@ int cam_soc_util_get_option_clk_by_name(struct cam_hw_soc_info *soc_info,
 	if (index < 0) {
 		CAM_DBG(CAM_UTIL, "No clk data for %s", clk_name);
 		*clk_index = -1;
-		*clk = ERR_PTR(-EINVAL);
 		return -EINVAL;
 	}
 
-	*clk = cam_soc_util_option_clk_get(of_node, index);
-	if (IS_ERR(*clk)) {
+	if (index >= CAM_SOC_MAX_OPT_CLK) {
+		CAM_ERR(CAM_UTIL, "Insufficient optional clk entries %d %d",
+			index, CAM_SOC_MAX_OPT_CLK);
+		return -EINVAL;
+	}
+
+	of_property_read_string_index(of_node, "clock-names-option",
+		index, &(soc_info->optional_clk_name[index]));
+
+	soc_info->optional_clk[index] = cam_soc_util_option_clk_get(of_node,
+		index, &soc_info->optional_clk_id[index]);
+	if (IS_ERR(soc_info->optional_clk[index])) {
 		CAM_ERR(CAM_UTIL, "No clk named %s found. Dev %s", clk_name,
 			soc_info->dev_name);
 		*clk_index = -1;
-		*clk = NULL;
 		return -EFAULT;
 	}
 	*clk_index = index;
 
 	rc = of_property_read_u32_index(of_node, "clock-rates-option",
-		index, clk_rate);
+		index, &soc_info->optional_clk_rate[index]);
 	if (rc) {
 		CAM_ERR(CAM_UTIL,
 			"Error reading clock-rates clk_name %s index %d",
 			clk_name, index);
-		cam_soc_util_clk_put(clk);
-		*clk_rate = 0;
-		return rc;
+		goto error;
 	}
 
 	/*
 	 * Option clocks are assumed to be available to single Device here.
 	 * Hence use INIT_RATE instead of NO_SET_RATE.
 	 */
-	*clk_rate = (*clk_rate == 0) ? (int32_t)INIT_RATE : *clk_rate;
+	soc_info->optional_clk_rate[index] =
+		(soc_info->optional_clk_rate[index] == 0) ?
+		(int32_t)INIT_RATE : soc_info->optional_clk_rate[index];
 
 	CAM_DBG(CAM_UTIL, "clk_name %s index %d clk_rate %d",
-		clk_name, *clk_index, *clk_rate);
+		clk_name, *clk_index, soc_info->optional_clk_rate[index]);
+
+	rc = of_property_read_u32_index(of_node, "shared-clks-option",
+		index, &shared_clk_val);
+	if (rc) {
+		CAM_DBG(CAM_UTIL, "Not shared clk  %s index %d",
+			clk_name, index);
+	} else if (shared_clk_val > 1) {
+		CAM_WARN(CAM_UTIL, "Invalid shared clk val %d", shared_clk_val);
+	} else {
+		CAM_DBG(CAM_UTIL,
+			"Dev %s shared clk  %s index %d, clk id %d, shared_clk_val %d",
+			soc_info->dev_name, clk_name, index,
+			soc_info->optional_clk_id[index], shared_clk_val);
+
+		if (shared_clk_val) {
+			CAM_SET_BIT(soc_info->optional_shared_clk_mask, index);
+
+			/* Create a wrapper entry if this is a shared clock */
+			CAM_DBG(CAM_UTIL,
+				"Dev %s, clk %s, id %d register wrapper entry for shared clk",
+				soc_info->dev_name,
+				soc_info->optional_clk_name[index],
+				soc_info->optional_clk_id[index]);
+
+			rc = cam_soc_util_clk_wrapper_register_entry(
+				soc_info->optional_clk_id[index],
+				soc_info->optional_clk[index], soc_info,
+				soc_info->optional_clk_name[index]);
+			if (rc) {
+				CAM_ERR(CAM_UTIL,
+					"Failed in registering shared clk Dev %s id %d",
+					soc_info->dev_name,
+					soc_info->optional_clk_id[index]);
+				goto error;
+			}
+		}
+	}
 
 	return 0;
+error:
+	clk_put(soc_info->optional_clk[index]);
+	soc_info->optional_clk_rate[index] = 0;
+	soc_info->optional_clk[index] = NULL;
+	*clk_index = -1;
+
+	return rc;
 }
 
-int cam_soc_util_clk_enable(struct clk *clk, const char *clk_name,
-	int32_t clk_rate, unsigned long *applied_clock_rate)
+int cam_soc_util_clk_enable(struct cam_hw_soc_info *soc_info,
+	bool optional_clk, int32_t clk_idx, int32_t apply_level,
+	unsigned long *applied_clock_rate)
 {
 	int rc = 0;
+	struct clk *clk;
+	const char *clk_name;
+	int32_t clk_rate;
+	uint32_t shared_clk_mask;
+	uint32_t clk_id;
 
-	if (!clk || !clk_name)
+	if (!soc_info || (clk_idx < 0) || (apply_level >= CAM_MAX_VOTE)) {
+		CAM_ERR(CAM_UTIL, "Invalid param %d %d", clk_idx, apply_level);
 		return -EINVAL;
+	}
 
-	rc = cam_soc_util_set_clk_rate(clk, clk_name, clk_rate,
+	if (optional_clk) {
+		clk = soc_info->optional_clk[clk_idx];
+		clk_name = soc_info->optional_clk_name[clk_idx];
+		clk_rate = (apply_level == -1) ?
+			0 : soc_info->optional_clk_rate[clk_idx];
+		shared_clk_mask = soc_info->optional_shared_clk_mask;
+		clk_id = soc_info->optional_clk_id[clk_idx];
+	} else {
+		clk = soc_info->clk[clk_idx];
+		clk_name = soc_info->clk_name[clk_idx];
+		clk_rate = (apply_level == -1) ?
+			0 : soc_info->clk_rate[apply_level][clk_idx];
+		shared_clk_mask = soc_info->shared_clk_mask;
+		clk_id = soc_info->clk_id[clk_idx];
+	}
+
+	rc = cam_soc_util_set_clk_rate(soc_info, clk, clk_name, clk_rate,
+		CAM_IS_BIT_SET(shared_clk_mask, clk_idx), clk_id,
 		applied_clock_rate);
 	if (rc)
 		return rc;
@@ -612,13 +983,41 @@ int cam_soc_util_clk_enable(struct clk *clk, const char *clk_name,
 	return rc;
 }
 
-int cam_soc_util_clk_disable(struct clk *clk, const char *clk_name)
+int cam_soc_util_clk_disable(struct cam_hw_soc_info *soc_info,
+	bool optional_clk, int32_t clk_idx)
 {
-	if (!clk || !clk_name)
+
+	struct clk *clk;
+	const char *clk_name;
+	uint32_t shared_clk_mask;
+	uint32_t clk_id;
+
+	if (!soc_info || (clk_idx < 0)) {
+		CAM_ERR(CAM_UTIL, "Invalid param %d", clk_idx);
 		return -EINVAL;
+	}
+
+	if (optional_clk) {
+		clk = soc_info->optional_clk[clk_idx];
+		clk_name = soc_info->optional_clk_name[clk_idx];
+		shared_clk_mask = soc_info->optional_shared_clk_mask;
+		clk_id = soc_info->optional_clk_id[clk_idx];
+	} else {
+		clk = soc_info->clk[clk_idx];
+		clk_name = soc_info->clk_name[clk_idx];
+		shared_clk_mask = soc_info->shared_clk_mask;
+		clk_id = soc_info->clk_id[clk_idx];
+	}
 
 	CAM_DBG(CAM_UTIL, "disable %s", clk_name);
 	clk_disable_unprepare(clk);
+
+	if (CAM_IS_BIT_SET(shared_clk_mask, clk_idx)) {
+		CAM_DBG(CAM_UTIL,
+			"Dev %s clk %s Disabling Shared clk, set 0 rate",
+			soc_info->dev_name, clk_name);
+		cam_soc_util_clk_wrapper_set_clk_rate(clk_id, soc_info, clk, 0);
+	}
 
 	return 0;
 }
@@ -657,9 +1056,7 @@ int cam_soc_util_clk_enable_default(struct cam_hw_soc_info *soc_info,
 		cam_cx_ipeak_update_vote_cx_ipeak(soc_info, apply_level);
 
 	for (i = 0; i < soc_info->num_clk; i++) {
-		rc = cam_soc_util_clk_enable(soc_info->clk[i],
-			soc_info->clk_name[i],
-			soc_info->clk_rate[apply_level][i],
+		rc = cam_soc_util_clk_enable(soc_info, false, i, apply_level,
 			&applied_clk_rate);
 		if (rc)
 			goto clk_disable;
@@ -683,8 +1080,7 @@ clk_disable:
 	if (soc_info->cam_cx_ipeak_enable)
 		cam_cx_ipeak_update_vote_cx_ipeak(soc_info, 0);
 	for (i--; i >= 0; i--) {
-		cam_soc_util_clk_disable(soc_info->clk[i],
-			soc_info->clk_name[i]);
+		cam_soc_util_clk_disable(soc_info, false, i);
 	}
 
 	return rc;
@@ -710,8 +1106,7 @@ void cam_soc_util_clk_disable_default(struct cam_hw_soc_info *soc_info)
 	if (soc_info->cam_cx_ipeak_enable)
 		cam_cx_ipeak_unvote_cx_ipeak(soc_info);
 	for (i = soc_info->num_clk - 1; i >= 0; i--)
-		cam_soc_util_clk_disable(soc_info->clk[i],
-			soc_info->clk_name[i]);
+		cam_soc_util_clk_disable(soc_info, false, i);
 }
 
 /**
@@ -736,6 +1131,8 @@ static int cam_soc_util_get_dt_clk_info(struct cam_hw_soc_info *soc_info)
 	const char *clk_control_debugfs = NULL;
 	const char *clk_cntl_lvl_string = NULL;
 	enum cam_vote_level level;
+	int shared_clk_cnt;
+	struct of_phandle_args clk_args = {0};
 
 	if (!soc_info || !soc_info->dev)
 		return -EINVAL;
@@ -856,8 +1253,54 @@ static int cam_soc_util_get_dt_clk_info(struct cam_hw_soc_info *soc_info)
 			soc_info->src_clk_idx = i;
 			CAM_DBG(CAM_UTIL, "src clock = %s, index = %d",
 				src_clk_str, i);
-			break;
 		}
+
+		rc = of_parse_phandle_with_args(of_node, "clocks",
+			"#clock-cells", i, &clk_args);
+		if (rc) {
+			CAM_ERR(CAM_CPAS,
+				"failed to clock info rc=%d", rc);
+			rc = -EINVAL;
+			goto end;
+		}
+
+		soc_info->clk_id[i] = clk_args.args[0];
+		of_node_put(clk_args.np);
+
+		CAM_DBG(CAM_UTIL, "Dev %s clk %s id %d",
+			soc_info->dev_name, soc_info->clk_name[i],
+			soc_info->clk_id[i]);
+	}
+
+	soc_info->shared_clk_mask = 0;
+	shared_clk_cnt = of_property_count_u32_elems(of_node, "shared-clks");
+	if (shared_clk_cnt <= 0) {
+		CAM_DBG(CAM_UTIL, "Dev %s, no shared clks", soc_info->dev_name);
+	} else if (shared_clk_cnt != count) {
+		CAM_ERR(CAM_UTIL, "Dev %s, incorrect shared clock count %d %d",
+			soc_info->dev_name, shared_clk_cnt, count);
+		rc = -EINVAL;
+		goto end;
+	} else {
+		uint32_t shared_clk_val;
+
+		for (i = 0; i < shared_clk_cnt; i++) {
+			rc = of_property_read_u32_index(of_node,
+				"shared-clks", i, &shared_clk_val);
+			if (rc || (shared_clk_val > 1)) {
+				CAM_ERR(CAM_UTIL,
+					"Incorrect shared clk info at %d, val=%d, count=%d",
+					i, shared_clk_val, shared_clk_cnt);
+				rc = -EINVAL;
+				goto end;
+			}
+
+			if (shared_clk_val)
+				CAM_SET_BIT(soc_info->shared_clk_mask, i);
+		}
+
+		CAM_DBG(CAM_UTIL, "Dev %s shared clk mask 0x%x",
+			soc_info->dev_name, soc_info->shared_clk_mask);
 	}
 
 	/* scalable clk info parsing */
@@ -952,9 +1395,11 @@ int cam_soc_util_set_clk_rate_level(struct cam_hw_soc_info *soc_info,
 			soc_info->clk_name[i],
 			soc_info->clk_rate[apply_level][i]);
 
-		rc = cam_soc_util_set_clk_rate(soc_info->clk[i],
+		rc = cam_soc_util_set_clk_rate(soc_info, soc_info->clk[i],
 			soc_info->clk_name[i],
 			soc_info->clk_rate[apply_level][i],
+			CAM_IS_BIT_SET(soc_info->shared_clk_mask, i),
+			soc_info->clk_id[i],
 			&applied_clk_rate);
 		if (rc < 0) {
 			CAM_DBG(CAM_UTIL,
@@ -1633,6 +2078,26 @@ int cam_soc_util_request_platform_resource(
 			rc = -ENOENT;
 			goto put_clk;
 		}
+
+		/* Create a wrapper entry if this is a shared clock */
+		if (CAM_IS_BIT_SET(soc_info->shared_clk_mask, i)) {
+			CAM_DBG(CAM_UTIL,
+				"Dev %s, clk %s, id %d register wrapper entry for shared clk",
+				soc_info->dev_name, soc_info->clk_name[i],
+				soc_info->clk_id[i]);
+			rc = cam_soc_util_clk_wrapper_register_entry(
+				soc_info->clk_id[i], soc_info->clk[i], soc_info,
+				soc_info->clk_name[i]);
+			if (rc) {
+				CAM_ERR(CAM_UTIL,
+					"Failed in registering shared clk Dev %s id %d",
+					soc_info->dev_name,
+					soc_info->clk_id[i]);
+				clk_put(soc_info->clk[i]);
+				soc_info->clk[i] = NULL;
+				goto put_clk;
+			}
+		}
 	}
 
 	rc = cam_soc_util_request_pinctrl(soc_info);
@@ -1655,6 +2120,10 @@ put_clk:
 		i = soc_info->num_clk;
 	for (i = i - 1; i >= 0; i--) {
 		if (soc_info->clk[i]) {
+			if (CAM_IS_BIT_SET(soc_info->shared_clk_mask, i))
+				cam_soc_util_clk_wrapper_unregister_entry(
+					soc_info->clk_id[i], soc_info);
+
 			clk_put(soc_info->clk[i]);
 			soc_info->clk[i] = NULL;
 		}
@@ -1702,6 +2171,10 @@ int cam_soc_util_release_platform_resource(struct cam_hw_soc_info *soc_info)
 	}
 
 	for (i = soc_info->num_clk - 1; i >= 0; i--) {
+		if (CAM_IS_BIT_SET(soc_info->shared_clk_mask, i))
+			cam_soc_util_clk_wrapper_unregister_entry(
+				soc_info->clk_id[i], soc_info);
+
 		clk_put(soc_info->clk[i]);
 		soc_info->clk[i] = NULL;
 	}
