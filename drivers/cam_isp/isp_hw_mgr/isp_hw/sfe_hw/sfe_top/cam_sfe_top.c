@@ -752,38 +752,46 @@ static int cam_sfe_top_put_evt_payload(
 }
 
 static void cam_sfe_top_print_debug_reg_info(
-	struct cam_sfe_path_data           *path_data)
+	struct cam_sfe_top_priv *top_priv)
 {
+	void __iomem                    *mem_base;
+	struct cam_sfe_top_common_data  *common_data;
+	struct cam_hw_soc_info          *soc_info;
+
+	common_data = &top_priv->common_data;
+	soc_info = common_data->soc_info;
+	mem_base = soc_info->reg_map[SFE_CORE_BASE_IDX].mem_base;
+
 	CAM_INFO(CAM_SFE,
 		"Debug0: 0x%x Debug1: 0x%x Debug2: 0x%x Debug3: 0x%x",
-		cam_io_r_mb(path_data->mem_base +
-			path_data->common_reg->top_debug_0),
-		cam_io_r_mb(path_data->mem_base +
-			path_data->common_reg->top_debug_1),
-		cam_io_r_mb(path_data->mem_base +
-			path_data->common_reg->top_debug_2),
-		cam_io_r_mb(path_data->mem_base +
-			path_data->common_reg->top_debug_3));
+		cam_io_r_mb(mem_base +
+			common_data->common_reg->top_debug_0),
+		cam_io_r_mb(mem_base +
+			common_data->common_reg->top_debug_1),
+		cam_io_r_mb(mem_base +
+			common_data->common_reg->top_debug_2),
+		cam_io_r_mb(mem_base +
+			common_data->common_reg->top_debug_3));
 	CAM_INFO(CAM_SFE,
 		"Debug4: 0x%x Debug5: 0x%x Debug6: 0x%x Debug7: 0x%x",
-		cam_io_r_mb(path_data->mem_base +
-			path_data->common_reg->top_debug_4),
-		cam_io_r_mb(path_data->mem_base +
-			path_data->common_reg->top_debug_5),
-		cam_io_r_mb(path_data->mem_base +
-			path_data->common_reg->top_debug_6),
-		cam_io_r_mb(path_data->mem_base +
-			path_data->common_reg->top_debug_7));
+		cam_io_r_mb(mem_base +
+			common_data->common_reg->top_debug_4),
+		cam_io_r_mb(mem_base +
+			common_data->common_reg->top_debug_5),
+		cam_io_r_mb(mem_base +
+			common_data->common_reg->top_debug_6),
+		cam_io_r_mb(mem_base +
+			common_data->common_reg->top_debug_7));
 	CAM_INFO(CAM_SFE,
 		"Debug8: 0x%x Debug9: 0x%x Debug10: 0x%x Debug11: 0x%x",
-		cam_io_r_mb(path_data->mem_base +
-			path_data->common_reg->top_debug_8),
-		cam_io_r_mb(path_data->mem_base +
-			path_data->common_reg->top_debug_9),
-		cam_io_r_mb(path_data->mem_base +
-			path_data->common_reg->top_debug_10),
-		cam_io_r_mb(path_data->mem_base +
-			path_data->common_reg->top_debug_11));
+		cam_io_r_mb(mem_base +
+			common_data->common_reg->top_debug_8),
+		cam_io_r_mb(mem_base +
+			common_data->common_reg->top_debug_9),
+		cam_io_r_mb(mem_base +
+			common_data->common_reg->top_debug_10),
+		cam_io_r_mb(mem_base +
+			common_data->common_reg->top_debug_11));
 }
 
 static int cam_sfe_top_handle_err_irq_top_half(
@@ -967,7 +975,7 @@ static int cam_sfe_top_handle_irq_bottom_half(
 				top_priv->module_desc[viol_sts].desc);
 
 		evt_info.err_type = CAM_SFE_IRQ_STATUS_VIOLATION;
-		cam_sfe_top_print_debug_reg_info(path_data);
+		cam_sfe_top_print_debug_reg_info(top_priv);
 		if (path_data->event_cb)
 			path_data->event_cb(NULL,
 				CAM_ISP_HW_EVENT_ERROR, (void *)&evt_info);
@@ -977,7 +985,7 @@ static int cam_sfe_top_handle_irq_bottom_half(
 
 	if (irq_status[0] & path_data->path_reg_data->subscribe_irq_mask) {
 		if (irq_status[0] & path_data->path_reg_data->sof_irq_mask) {
-			CAM_INFO_RATE_LIMIT(CAM_SFE, "SFE:%d Received %s SOF",
+			CAM_DBG(CAM_SFE, "SFE:%d Received %s SOF",
 				evt_info.hw_idx,
 				cam_sfe_top_res_id_to_string(res->res_id));
 			offset0 = path_data->common_reg->diag_sensor_status_0;
@@ -1005,7 +1013,7 @@ static int cam_sfe_top_handle_irq_bottom_half(
 
 		if (irq_status[0] &
 			path_data->path_reg_data->eof_irq_mask) {
-			CAM_INFO_RATE_LIMIT(CAM_SFE, "SFE:%d Received %s EOF",
+			CAM_DBG(CAM_SFE, "SFE:%d Received %s EOF",
 				evt_info.hw_idx,
 				cam_sfe_top_res_id_to_string(res->res_id));
 		}
