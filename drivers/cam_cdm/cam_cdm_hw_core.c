@@ -1285,7 +1285,8 @@ static void cam_hw_cdm_work(struct work_struct *work)
 	cdm_hw = payload->hw;
 	core = (struct cam_cdm *)cdm_hw->core_info;
 	fifo_idx = payload->fifo_idx;
-	if (fifo_idx >= core->offsets->reg_data->num_bl_fifo) {
+	if ((fifo_idx >= core->offsets->reg_data->num_bl_fifo) ||
+		(!core->bl_fifo[fifo_idx].bl_depth)) {
 		CAM_ERR(CAM_CDM, "Invalid fifo idx %d",
 			fifo_idx);
 		kfree(payload);
@@ -1386,8 +1387,7 @@ static void cam_hw_cdm_work(struct work_struct *work)
 			cdm_hw->soc_info.index, payload->irq_status);
 		set_bit(CAM_CDM_ERROR_HW_STATUS, &core->cdm_status);
 		mutex_lock(&cdm_hw->hw_mutex);
-		for (i = 0; i < core->offsets->reg_data->num_bl_fifo;
-				i++)
+		for (i = 0; i < core->offsets->reg_data->num_bl_fifo; i++)
 			mutex_lock(&core->bl_fifo[i].fifo_lock);
 		/*
 		 * First pause CDM, If it fails still proceed
@@ -1420,8 +1420,7 @@ static void cam_hw_cdm_work(struct work_struct *work)
 		}
 		/* Resume CDM back */
 		cam_hw_cdm_pause_core(cdm_hw, false);
-		for (i = 0; i < core->offsets->reg_data->num_bl_fifo;
-				i++)
+		for (i = 0; i < core->offsets->reg_data->num_bl_fifo; i++)
 			mutex_unlock(&core->bl_fifo[i].fifo_lock);
 
 		if (payload->irq_status &
@@ -1669,6 +1668,9 @@ int cam_hw_cdm_release_genirq_mem(void *hw_priv)
 
 	cdm_core = (struct cam_cdm *)cdm_hw->core_info;
 	for (i = 0; i < cdm_core->offsets->reg_data->num_bl_fifo; i++) {
+		if (!cdm_core->bl_fifo[i].bl_depth)
+			continue;
+
 		genirq_release_cmd.mem_handle = cdm_core->gen_irq[i].handle;
 		rc = cam_mem_mgr_release_mem(&genirq_release_cmd);
 		if (rc)
@@ -1921,7 +1923,8 @@ int cam_hw_cdm_hang_detect(
 	for (i = 0; i < cdm_core->offsets->reg_data->num_bl_fifo; i++)
 		if (atomic_read(&cdm_core->bl_fifo[i].work_record)) {
 			CAM_WARN(CAM_CDM,
-				"workqueue got delayed, work_record :%u",
+				"fifo: %d Workqueue got delayed, work_record :%u",
+				i,
 				atomic_read(&cdm_core->bl_fifo[i].work_record));
 			rc = 0;
 			break;
