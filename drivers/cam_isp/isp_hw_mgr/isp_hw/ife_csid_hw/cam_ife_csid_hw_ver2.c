@@ -3862,6 +3862,13 @@ static int cam_ife_csid_ver2_process_cmd(void *hw_priv,
 		break;
 	case CAM_ISP_HW_CMD_CSID_CHANGE_HALT_MODE:
 		break;
+	case CAM_ISP_HW_CMD_QUERY_REGSPACE_DATA: {
+		struct cam_hw_soc_info *soc_info;
+
+		soc_info = &csid_hw->hw_info->soc_info;
+		*((struct cam_hw_soc_info **)cmd_args) = soc_info;
+		break;
+	}
 	default:
 		CAM_ERR(CAM_ISP, "CSID:%d unsupported cmd:%d",
 			csid_hw->hw_intf->hw_idx, cmd_type);

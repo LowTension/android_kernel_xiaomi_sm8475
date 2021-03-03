@@ -552,6 +552,10 @@ int cam_vfe_process_cmd(void *hw_priv, uint32_t cmd_type,
 				cmd_args, arg_size);
 		}
 		break;
+	case CAM_ISP_HW_CMD_QUERY_REGSPACE_DATA:
+		*((struct cam_hw_soc_info **)cmd_args) = soc_info;
+		rc = 0;
+		break;
 	default:
 		CAM_ERR(CAM_ISP, "Invalid cmd type:%d", cmd_type);
 		rc = -EINVAL;
