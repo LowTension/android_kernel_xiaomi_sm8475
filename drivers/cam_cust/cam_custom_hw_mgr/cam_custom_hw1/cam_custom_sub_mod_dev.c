@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/slab.h>
@@ -15,8 +15,6 @@
 
 static struct cam_hw_intf *cam_custom_hw_sub_mod_list
 	[CAM_CUSTOM_SUB_MOD_MAX_INSTANCES] = {0, 0};
-
-static char cam_custom_hw_sub_mod_name[8];
 
 struct cam_custom_device_hw_info cam_custom_hw_info = {
 	.hw_ver = 0x0,
@@ -62,14 +60,9 @@ static int cam_custom_hw_sub_mod_component_bind(struct device *dev,
 		goto free_hw_intf;
 	}
 
-	memset(cam_custom_hw_sub_mod_name, 0,
-		sizeof(cam_custom_hw_sub_mod_name));
-	snprintf(cam_custom_hw_sub_mod_name, sizeof(cam_custom_hw_sub_mod_name),
-		"custom_hw%1u", hw_intf->hw_idx);
-
 	hw->soc_info.pdev = pdev;
 	hw->soc_info.dev = &pdev->dev;
-	hw->soc_info.dev_name = cam_custom_hw_sub_mod_name;
+	hw->soc_info.dev_name = pdev->name;
 	hw_intf->hw_priv = hw;
 	hw_intf->hw_ops.get_hw_caps = cam_custom_hw_sub_mod_get_hw_caps;
 	hw_intf->hw_ops.init = cam_custom_hw_sub_mod_init_hw;

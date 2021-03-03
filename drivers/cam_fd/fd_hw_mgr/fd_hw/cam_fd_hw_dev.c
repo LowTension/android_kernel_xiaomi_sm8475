@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/platform_device.h>
@@ -18,8 +18,6 @@
 #include "cam_fd_hw_v501.h"
 #include "cam_fd_hw_v600.h"
 #include "camera_main.h"
-
-static char fd_dev_name[8];
 
 static int cam_fd_hw_dev_component_bind(struct device *dev,
 	struct device *master_dev, void *data)
@@ -58,14 +56,10 @@ static int cam_fd_hw_dev_component_bind(struct device *dev,
 	fd_hw->core_info = fd_core;
 	fd_hw_intf->hw_idx = hw_idx;
 
-	memset(fd_dev_name, 0, sizeof(fd_dev_name));
-	snprintf(fd_dev_name, sizeof(fd_dev_name),
-		"fd%1u", fd_hw_intf->hw_idx);
-
 	fd_hw->hw_state = CAM_HW_STATE_POWER_DOWN;
 	fd_hw->soc_info.pdev = pdev;
 	fd_hw->soc_info.dev = &pdev->dev;
-	fd_hw->soc_info.dev_name = fd_dev_name;
+	fd_hw->soc_info.dev_name = pdev->name;
 	fd_hw->open_count = 0;
 	mutex_init(&fd_hw->hw_mutex);
 	spin_lock_init(&fd_hw->hw_lock);

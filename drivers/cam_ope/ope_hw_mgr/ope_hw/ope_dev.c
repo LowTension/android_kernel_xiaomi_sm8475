@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/module.h>
@@ -29,8 +29,6 @@ EXPORT_SYMBOL(ope_soc_info);
 static struct hw_version_reg ope_hw_version_reg = {
 	.hw_ver = 0x0,
 };
-
-static char ope_dev_name[8];
 
 static int cam_ope_init_hw_version(struct cam_hw_soc_info *soc_info,
 	struct cam_ope_device_core_info *core_info)
@@ -140,13 +138,9 @@ static int cam_ope_component_bind(struct device *dev,
 		goto ope_dev_alloc_failed;
 	}
 
-	memset(ope_dev_name, 0, sizeof(ope_dev_name));
-	snprintf(ope_dev_name, sizeof(ope_dev_name),
-		"ope%1u", ope_dev_intf->hw_idx);
-
 	ope_dev->soc_info.pdev = pdev;
 	ope_dev->soc_info.dev = &pdev->dev;
-	ope_dev->soc_info.dev_name = ope_dev_name;
+	ope_dev->soc_info.dev_name = pdev->name;
 	ope_dev_intf->hw_priv = ope_dev;
 	ope_dev_intf->hw_ops.init = cam_ope_init_hw;
 	ope_dev_intf->hw_ops.deinit = cam_ope_deinit_hw;

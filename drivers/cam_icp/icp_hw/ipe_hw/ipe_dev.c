@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/module.h>
@@ -33,8 +33,6 @@ static struct cam_ipe_device_hw_info cam_ipe_hw_info[] = {
 		.reserved = 0,
 	},
 };
-
-static char ipe_dev_name[8];
 
 int cam_ipe_register_cpas(struct cam_hw_soc_info *soc_info,
 	struct cam_ipe_device_core_info *core_info,
@@ -100,13 +98,9 @@ static int cam_ipe_component_bind(struct device *dev,
 		return -ENOMEM;
 	}
 
-	memset(ipe_dev_name, 0, sizeof(ipe_dev_name));
-	snprintf(ipe_dev_name, sizeof(ipe_dev_name),
-		"ipe%1u", ipe_dev_intf->hw_idx);
-
 	ipe_dev->soc_info.pdev = pdev;
 	ipe_dev->soc_info.dev = &pdev->dev;
-	ipe_dev->soc_info.dev_name = ipe_dev_name;
+	ipe_dev->soc_info.dev_name = pdev->name;
 	ipe_dev_intf->hw_priv = ipe_dev;
 	ipe_dev_intf->hw_ops.init = cam_ipe_init_hw;
 	ipe_dev_intf->hw_ops.deinit = cam_ipe_deinit_hw;

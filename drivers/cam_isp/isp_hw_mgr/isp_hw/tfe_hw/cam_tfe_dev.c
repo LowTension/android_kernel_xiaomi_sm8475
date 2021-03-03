@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/slab.h>
@@ -13,8 +13,6 @@
 #include "camera_main.h"
 
 static struct cam_isp_hw_intf_data  cam_tfe_hw_list[CAM_TFE_HW_NUM_MAX];
-
-static char tfe_dev_name[8];
 
 static int cam_tfe_component_bind(struct device *dev,
 	struct device *master_dev, void *data)
@@ -44,13 +42,9 @@ static int cam_tfe_component_bind(struct device *dev,
 		goto free_tfe_hw_intf;
 	}
 
-	memset(tfe_dev_name, 0, sizeof(tfe_dev_name));
-	snprintf(tfe_dev_name, sizeof(tfe_dev_name),
-		"tfe%1u", tfe_hw_intf->hw_idx);
-
 	tfe_hw->soc_info.pdev = pdev;
 	tfe_hw->soc_info.dev = &pdev->dev;
-	tfe_hw->soc_info.dev_name = tfe_dev_name;
+	tfe_hw->soc_info.dev_name = pdev->name;
 	tfe_hw_intf->hw_priv = tfe_hw;
 	tfe_hw_intf->hw_ops.get_hw_caps = cam_tfe_get_hw_caps;
 	tfe_hw_intf->hw_ops.init = cam_tfe_init_hw;
