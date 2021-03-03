@@ -432,7 +432,7 @@ int cam_ipe_process_cmd(void *device_priv, uint32_t cmd_type,
 		}
 		CAM_DBG(CAM_PERF, "clock rate %d", clk_rate);
 
-		rc = cam_ipe_update_clk_rate(soc_info, clk_rate);
+		rc = cam_ipe_update_clk_rate(soc_info, &clk_rate);
 		if (rc)
 			CAM_ERR(CAM_PERF, "Failed to update clk %d", clk_rate);
 
