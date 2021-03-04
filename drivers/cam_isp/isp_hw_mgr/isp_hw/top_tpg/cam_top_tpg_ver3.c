@@ -66,7 +66,7 @@ static int cam_top_tpg_ver3_print_reserved_vcdt(
 
 		for (j = 0; j < tpg_data->vc_dt[i].num_active_dts; j++)
 		{
-			CAM_INFO(CAM_ISP, "DT[%d]: 0x%x", j,
+			CAM_INFO(CAM_ISP, "\tDT[%d]: 0x%x", j,
 				tpg_data->vc_dt[i].dt_cfg[j].data_type);
 		}
 	}
@@ -79,6 +79,7 @@ static int cam_top_tpg_ver3_process_cmd(void *hw_priv,
 	uint32_t cmd_type, void *cmd_args, uint32_t arg_size)
 {
 	int                                     rc = 0;
+	int                                     i;
 	struct cam_top_tpg_hw                  *tpg_hw;
 	struct cam_hw_info                     *tpg_hw_info;
 	struct cam_isp_tpg_core_config         *core_cfg;
@@ -104,19 +105,24 @@ static int cam_top_tpg_ver3_process_cmd(void *hw_priv,
 		}
 
 		core_cfg = (struct cam_isp_tpg_core_config *)cmd_args;
-		tpg_data->pix_pattern = core_cfg->pix_pattern;
+
 		tpg_data->vc_dt_pattern_id = core_cfg->vc_dt_pattern_id;
-		tpg_data->qcfa_en = core_cfg->qcfa_en;
-		tpg_data->h_blank_count = core_cfg->hbi_clk_cnt;
-		tpg_data->v_blank_count = core_cfg->vbi_clk_cnt;
-		if (core_cfg->throttle_pattern <= 0xFFFF)
-			tpg_data->throttle_pattern = core_cfg->throttle_pattern;
+		tpg_data->throttle_pattern = core_cfg->throttle_pattern;
+
+		for (i = 0; i < tpg_data->num_active_vcs; i++) {
+			tpg_data->vc_dt[i].pix_pattern = core_cfg->pix_pattern;
+			tpg_data->vc_dt[i].qcfa_en = core_cfg->qcfa_en;
+			tpg_data->vc_dt[i].h_blank_count =
+				core_cfg->hbi_clk_cnt;
+			tpg_data->vc_dt[i].v_blank_count =
+				core_cfg->vbi_clk_cnt;
+		}
 
 		CAM_DBG(CAM_ISP,
 			"pattern_id: 0x%x pix_pattern: 0x%x qcfa_en: 0x%x hbi: 0x%x vbi: 0x%x throttle: 0x%x",
-			tpg_data->vc_dt_pattern_id, tpg_data->pix_pattern,
-			tpg_data->qcfa_en, tpg_data->h_blank_count,
-			tpg_data->v_blank_count, tpg_data->throttle_pattern);
+			core_cfg->vc_dt_pattern_id, core_cfg->pix_pattern,
+			core_cfg->qcfa_en, core_cfg->hbi_clk_cnt,
+			core_cfg->vbi_clk_cnt, core_cfg->throttle_pattern);
 		break;
 	default:
 		CAM_ERR(CAM_ISP, "Invalid TPG cmd type %u", cmd_type);
@@ -194,6 +200,7 @@ static int cam_top_tpg_ver3_add_append_vc_dt_info(uint32_t *num_active_vcs,
 			}
 
 			tpg_vcdt[*num_active_vcs].vc_num = in_port->vc[i];
+			tpg_vcdt[*num_active_vcs].num_frames = 0;
 			tpg_vcdt[*num_active_vcs].dt_cfg[0].data_type =
 				in_port->dt[i];
 			tpg_vcdt[*num_active_vcs].dt_cfg[0].encode_format =
@@ -210,7 +217,7 @@ static int cam_top_tpg_ver3_add_append_vc_dt_info(uint32_t *num_active_vcs,
 				= in_port->left_width;
 
 			CAM_DBG(CAM_ISP,
-				"vc:%d dt:%d format:%d height:%d width:%d",
+				"vc:0x%x dt:0x%x format:%d height:%d width:%d",
 				in_port->vc[i], in_port->dt[i],
 				encode_format, in_port->height,
 				tpg_vcdt[*num_active_vcs].dt_cfg[0].frame_width
@@ -240,6 +247,8 @@ static int cam_top_tpg_ver3_reserve(
 	const struct cam_top_tpg_debugfs             *tpg_debug = NULL;
 	uint32_t                                      num_active_vcs = 0;
 	int                                           i;
+	uint32_t                                      phy_sel = 0;
+	uint32_t                                      num_active_lanes = 0;
 
 	if (!hw_priv || !reserve_args || (arg_size !=
 		sizeof(struct cam_top_tpg_reserve_args))) {
@@ -251,9 +260,19 @@ static int cam_top_tpg_ver3_reserve(
 	tpg_hw = (struct cam_top_tpg_hw *)tpg_hw_info->core_info;
 	reserv = (struct cam_top_tpg_reserve_args  *)reserve_args;
 
+	CAM_DBG(CAM_ISP, "TPG: %u enter", tpg_hw->hw_intf->hw_idx);
+
 	mutex_lock(&tpg_hw->hw_info->hw_mutex);
 
 	tpg_debug = cam_top_tpg_get_debugfs();
+
+	if (tpg_hw->tpg_res.res_state != CAM_ISP_RESOURCE_STATE_AVAILABLE) {
+		CAM_ERR(CAM_ISP, "TPG:%d can not be reserved. State: %u",
+			tpg_hw->hw_intf->hw_idx,
+			tpg_hw->tpg_res.res_state);
+		rc = -EINVAL;
+		goto error;
+	}
 
 	if ((reserv->in_port[0]->lane_num <= 0 ||
 		reserv->in_port[0]->lane_num > 4) ||
@@ -272,12 +291,13 @@ static int cam_top_tpg_ver3_reserve(
 		CAM_TOP_TPG_MAX_SUPPORTED_VC *
 		sizeof(struct cam_top_tpg_vc_dt_info));
 	num_active_vcs = tpg_data->num_active_vcs;
+	phy_sel = tpg_data->phy_sel;
+	num_active_lanes = tpg_data->num_active_lanes;
 
 	for (i = 0; i < reserv->num_inport; i++) {
-		if (tpg_data->num_active_vcs) {
-			if ((tpg_data->phy_sel !=
-				reserv->in_port[i]->lane_type) ||
-				(tpg_data->num_active_lanes !=
+		if (num_active_vcs) {
+			if ((phy_sel != reserv->in_port[i]->lane_type) ||
+				(num_active_lanes !=
 					reserv->in_port[i]->lane_num)) {
 				CAM_ERR_RATE_LIMIT(CAM_ISP,
 					"TPG: %u invalid DT config for tpg",
@@ -286,8 +306,8 @@ static int cam_top_tpg_ver3_reserve(
 				goto error;
 			}
 		} else {
-			tpg_data->phy_sel = reserv->in_port[0]->lane_type;
-			tpg_data->num_active_lanes =
+			phy_sel = reserv->in_port[0]->lane_type;
+			num_active_lanes =
 				reserv->in_port[0]->lane_num;
 		}
 
@@ -304,21 +324,15 @@ static int cam_top_tpg_ver3_reserve(
 		}
 	}
 
-	CAM_DBG(CAM_ISP, "TPG: %u enter", tpg_hw->hw_intf->hw_idx);
-
+	tpg_data->phy_sel = phy_sel;
+	tpg_data->num_active_lanes = num_active_lanes;
 	tpg_data->num_active_vcs = num_active_vcs;
 	memcpy((void *)&tpg_data->vc_dt[0], (void *)&in_port_vc_dt[0],
 		CAM_TOP_TPG_MAX_SUPPORTED_VC *
 		sizeof(struct cam_top_tpg_vc_dt_info));
 
-	CAM_DBG(CAM_ISP,
-		"TPG:%u phy:%d lines:%d pattern:%d hbi: %d vbi: %d",
-		tpg_hw->hw_intf->hw_idx,
-		tpg_data->phy_sel,
-		tpg_data->num_active_lanes,
-		tpg_data->pix_pattern,
-		tpg_data->h_blank_count,
-		tpg_data->v_blank_count);
+	CAM_DBG(CAM_ISP, "TPG:%u phy:%d lines:%d", tpg_hw->hw_intf->hw_idx,
+		tpg_data->phy_sel, tpg_data->num_active_lanes);
 
 	reserv->node_res = &tpg_hw->tpg_res;
 	tpg_hw->tpg_res.res_state = CAM_ISP_RESOURCE_STATE_RESERVED;
@@ -415,24 +429,24 @@ static int cam_top_tpg_ver3_start(
 		vc_dt = &tpg_data->vc_dt[i];
 
 		val = (1 << tpg_reg->tpg_split_en_shift);
-		val |= tpg_data->pix_pattern;
-		if (tpg_data->qcfa_en)
+		val |= vc_dt->pix_pattern;
+		if (vc_dt->qcfa_en)
 			val |=
 			(1 << tpg_reg->tpg_color_bar_qcfa_en_shift);
 		cam_io_w_mb(val, soc_info->reg_map[0].mem_base +
 			tpg_reg->tpg_vc0_color_bar_cfg + (0x60 * i));
 		CAM_DBG(CAM_ISP, "vc%d_color_bar_cfg: 0x%x", i, val);
 
-		if (tpg_data->h_blank_count)
-			val = tpg_data->h_blank_count;
+		if (vc_dt->h_blank_count)
+			val = vc_dt->h_blank_count;
 		else
 			val = 0x40;
 		cam_io_w_mb(val, soc_info->reg_map[0].mem_base +
 			tpg_reg->tpg_vc0_hbi_cfg + (0x60 * i));
 		CAM_DBG(CAM_ISP, "vc%d_hbi_cfg: 0x%x", i, val);
 
-		if (tpg_data->v_blank_count)
-			val = tpg_data->v_blank_count;
+		if (vc_dt->v_blank_count)
+			val = vc_dt->v_blank_count;
 		else
 			val = 0xC600;
 		cam_io_w_mb(val, soc_info->reg_map[0].mem_base +
@@ -443,8 +457,10 @@ static int cam_top_tpg_ver3_start(
 			soc_info->reg_map[0].mem_base +
 			tpg_reg->tpg_vc0_lfsr_seed + (0x60 * i));
 
-		val = (((vc_dt->num_active_dts-1) <<
-			tpg_reg->tpg_num_dts_shift_val) |
+		val = ((vc_dt->num_frames
+				<< tpg_reg->tpg_num_frames_shift_val) |
+			((vc_dt->num_active_dts-1) <<
+				tpg_reg->tpg_num_dts_shift_val) |
 			vc_dt->vc_num);
 		cam_io_w_mb(val, soc_info->reg_map[0].mem_base +
 			tpg_reg->tpg_vc0_cfg0 + (0x60 * i));
@@ -475,7 +491,8 @@ static int cam_top_tpg_ver3_start(
 		}
 	}
 
-	if (tpg_data->throttle_pattern)
+	if ((tpg_data->throttle_pattern > 0) &&
+		(tpg_data->throttle_pattern <= 0xFFFF))
 		val = tpg_data->throttle_pattern;
 	else
 		val = 0x1111;

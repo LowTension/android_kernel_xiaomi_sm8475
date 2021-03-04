@@ -104,6 +104,7 @@ static struct cam_top_tpg_ver3_reg_offset cam_top_tpg103_reg = {
 	.tpg_fe_pkt_en_shift = 2,
 	.tpg_fs_pkt_en_shift = 1,
 	.tpg_line_interleaving_mode_shift = 10,
+	.tpg_num_frames_shift_val = 16,
 	.tpg_num_dts_shift_val = 8,
 	.tpg_v_blank_cnt_shift = 12,
 	.tpg_dt_encode_format_shift = 20,

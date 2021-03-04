@@ -103,6 +103,7 @@ struct cam_top_tpg_ver3_reg_offset {
 	uint32_t tpg_fe_pkt_en_shift;
 	uint32_t tpg_fs_pkt_en_shift;
 	uint32_t tpg_line_interleaving_mode_shift;
+	uint32_t tpg_num_frames_shift_val;
 	uint32_t tpg_num_dts_shift_val;
 	uint32_t tpg_v_blank_cnt_shift;
 	uint32_t tpg_dt_encode_format_shift;

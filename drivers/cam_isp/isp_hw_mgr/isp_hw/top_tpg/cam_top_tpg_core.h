@@ -101,41 +101,39 @@ struct cam_top_tpg_cfg {
 /**
  * struct cam_top_tpg_vc_dt_info- VC DT information for tpg HW
  *
- * @vc_num:          Virtual channel number
- * @num_active_dts:  number of active dts need to configure
- * @dt_cfg:          dt configuration values
+ * @vc_num           : Virtual channel number
+ * @h_blank_count    : Horizontal blanking count value
+ * @h_blank_count    : Vertical blanking count value
+ * @num_frames       : Number of output frames
+ * @pix_pattern      : Pixel pattern output of the tpg
+ * @qcfa_en          : Enable qcfa in color bar cfg
+ * @num_active_dts   : Number of active dts need to configure
+ * @dt_cfg           : Dt configuration values
  */
 struct cam_top_tpg_vc_dt_info {
 	uint32_t                        vc_num;
+	uint32_t                        v_blank_count;
+	uint32_t                        h_blank_count;
+	uint32_t                        num_frames;
+	uint32_t                        pix_pattern;
+	uint32_t                        qcfa_en;
 	uint32_t                        num_active_dts;
 	struct cam_top_tpg_dt_cfg       dt_cfg[CAM_TOP_TPG_MAX_SUPPORTED_DT];
 };
 
 /**
  * struct cam_top_tpg_cfg_v2- tpg congiguration
- * @pix_pattern      : pixel pattern output of the tpg
  * @phy_sel          : phy selection 0:dphy or 1:cphy
  * @num_active_lanes : Number of active lines
- * @h_blank_count    : horizontal blanking count value
- * @h_blank_count    : vertical blanking count value
- * @vbi_cnt          : vbi count
- * @num_frames       : number of output frames
- * @qcfa_en          : enable qcfa in color bar cfg
  * @num_active_vcs   : number of currently configured vcs in tpg hw
  * @throttle_pattern : Define bubble pattern in throttler
  * @vc_dt            : VC DT information that the TPG HW holds
  *
  */
 struct cam_top_tpg_cfg_v2 {
-	uint32_t                       pix_pattern;
 	uint32_t                       phy_sel;
 	uint32_t                       num_active_lanes;
-	uint32_t                       v_blank_count;
-	uint32_t                       h_blank_count;
-	uint32_t                       vbi_cnt;
-	uint32_t                       num_frames;
 	uint32_t                       vc_dt_pattern_id;
-	uint32_t                       qcfa_en;
 	uint32_t                       num_active_vcs;
 	uint32_t                       throttle_pattern;
 	struct cam_top_tpg_vc_dt_info  vc_dt[CAM_TOP_TPG_MAX_SUPPORTED_VC];
