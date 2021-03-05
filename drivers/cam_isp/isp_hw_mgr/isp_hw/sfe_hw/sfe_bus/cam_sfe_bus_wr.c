@@ -2520,6 +2520,15 @@ static int cam_sfe_bus_wr_process_cmd(
 	case CAM_ISP_HW_CMD_WM_CONFIG_UPDATE:
 		rc = cam_sfe_bus_wr_update_wm_config(cmd_args);
 		break;
+	case CAM_ISP_HW_CMD_QUERY_BUS_CAP: {
+		struct cam_isp_hw_bus_cap *sfe_bus_cap;
+
+		bus_priv = (struct cam_sfe_bus_wr_priv  *) priv;
+		sfe_bus_cap = (struct cam_isp_hw_bus_cap *) cmd_args;
+		sfe_bus_cap->max_out_res_type = bus_priv->num_out;
+		rc = 0;
+	}
+		break;
 	default:
 		CAM_ERR_RATE_LIMIT(CAM_SFE, "Invalid HW command type:%d",
 			cmd_type);

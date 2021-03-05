@@ -3761,7 +3761,7 @@ static int cam_vfe_bus_ver3_process_cmd(
 	case CAM_ISP_HW_CMD_QUERY_BUS_CAP:
 		bus_priv = (struct cam_vfe_bus_ver3_priv  *) priv;
 		vfe_bus_cap = (struct cam_isp_hw_bus_cap *) cmd_args;
-		vfe_bus_cap->max_vfe_out_res_type = bus_priv->max_out_res;
+		vfe_bus_cap->max_out_res_type = bus_priv->max_out_res;
 		vfe_bus_cap->support_consumed_addr =
 			bus_priv->common_data.support_consumed_addr;
 		break;

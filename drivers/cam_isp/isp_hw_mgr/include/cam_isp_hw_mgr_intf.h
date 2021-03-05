@@ -37,6 +37,7 @@
 #define CAM_IFE_CTX_FRAME_HEADER_EN    BIT(1)
 #define CAM_IFE_CTX_CONSUME_ADDR_EN    BIT(2)
 #define CAM_IFE_CTX_APPLY_DEFAULT_CFG  BIT(3)
+#define CAM_IFE_CTX_SFE_EN             BIT(4)
 
 /**
  *  enum cam_isp_hw_event_type - Collection of the ISP hardware events
