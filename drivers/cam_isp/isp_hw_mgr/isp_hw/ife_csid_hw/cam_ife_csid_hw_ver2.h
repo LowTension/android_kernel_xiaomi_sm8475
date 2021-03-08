@@ -57,7 +57,7 @@
 #define IFE_CSID_VER2_PATH_VCDT_GRP1_SEL                         BIT(16)
 #define IFE_CSID_VER2_PATH_VCDT_GRP_CHANGE                       BIT(17)
 #define IFE_CSID_VER2_PATH_FRAME_DROP                            BIT(18)
-#define IFE_CSID_VER2_PATH_OVERFLOW_RECOVERY                     BIT(19)
+#define IFE_CSID_VER2_PATH_RECOVERY_OVERFLOW                     BIT(19)
 #define IFE_CSID_VER2_PATH_ERROR_REC_CCIF_VIOLATION              BIT(20)
 #define IFE_CSID_VER2_PATH_CAMIF_EPOCH0                          BIT(21)
 #define IFE_CSID_VER2_PATH_CAMIF_EPOCH1                          BIT(22)
@@ -533,6 +533,10 @@ struct cam_ife_csid_ver2_common_reg_info {
 	uint32_t crop_pix_end_mask;
 	uint32_t crop_line_start_mask;
 	uint32_t crop_line_end_mask;
+	uint32_t format_measure_height_mask_val;
+	uint32_t format_measure_height_shift_val;
+	uint32_t format_measure_width_mask_val;
+	uint32_t format_measure_width_shift_val;
 	uint32_t measure_en_hbi_vbi_cnt_mask;
 	uint32_t measure_pixel_line_en_mask;
 	uint32_t ipp_irq_mask_all;

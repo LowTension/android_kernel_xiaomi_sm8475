@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CAM_VFE_TOP_COMMON_H_
@@ -29,6 +29,20 @@ struct cam_vfe_top_priv_common {
 	uint64_t                        total_bw_applied;
 	uint32_t                        hw_version;
 	enum cam_vfe_bw_control_action  axi_vote_control[CAM_VFE_TOP_MUX_MAX];
+};
+
+
+struct cam_vfe_top_camnoc_reg_data {
+	uint8_t                              *desc;
+	uint32_t                              offset;
+};
+
+struct cam_vfe_top_camnoc_debug_data {
+	uint32_t                               pending_mask;
+	uint32_t                               pending_shift;
+	uint32_t                               queued_mask;
+	uint32_t                               num_reg;
+	struct cam_vfe_top_camnoc_reg_data    *camnoc_reg;
 };
 
 struct cam_vfe_top_reg_dump_entry {

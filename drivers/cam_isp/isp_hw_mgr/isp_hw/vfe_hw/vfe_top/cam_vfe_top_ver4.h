@@ -88,10 +88,14 @@ struct cam_vfe_top_ver4_module_desc {
 	uint8_t *desc;
 };
 
+struct cam_vfe_top_ver4_wr_client_desc {
+	uint32_t  wm_id;
+	uint8_t  *desc;
+};
+
 struct cam_vfe_ver4_path_hw_info {
 	struct cam_vfe_top_ver4_reg_offset_common  *common_reg;
 	struct cam_vfe_ver4_path_reg_data          *reg_data;
-	struct cam_vfe_top_ver4_module_desc        *module_desc;
 };
 
 struct cam_vfe_top_ver4_hw_info {
@@ -104,7 +108,11 @@ struct cam_vfe_top_ver4_hw_info {
 	struct cam_vfe_fe_ver1_hw_info      fe_hw_info;
 
 	struct cam_vfe_ver4_path_reg_data               *reg_data;
-	uint32_t                                    num_mux;
+	struct cam_vfe_top_ver4_wr_client_desc          *wr_client_desc;
+	struct cam_vfe_top_ver4_module_desc             *module_desc;
+	struct cam_vfe_top_camnoc_debug_data            *camnoc_debug_data;
+	uint32_t                                         num_reg;
+	uint32_t                                         num_mux;
 	uint32_t mux_type[CAM_VFE_TOP_MUX_MAX];
 };
 

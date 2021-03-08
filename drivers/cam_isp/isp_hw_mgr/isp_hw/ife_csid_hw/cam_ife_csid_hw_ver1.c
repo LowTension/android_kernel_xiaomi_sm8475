@@ -3857,15 +3857,15 @@ static int cam_ife_csid_ver1_handle_event_err(
 {
 	struct cam_isp_hw_event_info event_info;
 	int rc = 0;
-	int dummy = 0;
 
 	event_info.hw_idx = evt_payload->hw_idx;
 	event_info.err_type = err_type;
+	event_info.hw_type = CAM_ISP_HW_TYPE_CSID;
 
 	CAM_DBG(CAM_ISP, "CSID[%d] Error type %d",
 		csid_hw->hw_intf->hw_idx, err_type);
 
-	rc = csid_hw->event_cb((void *)&dummy,
+	rc = csid_hw->event_cb(csid_hw->token,
 		CAM_ISP_HW_EVENT_ERROR, (void *)&event_info);
 
 	return rc;
@@ -3978,7 +3978,7 @@ static int cam_ife_csid_ver1_rx_bottom_half_handler(
 				soc_info->applied_src_clk_rate);
 
 		if (irq_status & IFE_CSID_VER1_RX_TG_FIFO_OVERFLOW) {
-			event_type |= CAM_ISP_HW_ERROR_CSID_OVERFLOW;
+			event_type |= CAM_ISP_HW_ERROR_CSID_FIFO_OVERFLOW;
 			len += scnprintf(log_buf + len,
 				CAM_IFE_CSID_LOG_BUF_LEN - len,
 				"RX_ERROR_TPG_FIFO_OVERFLOW: Backpressure from IFE\n");
@@ -4111,7 +4111,7 @@ static int cam_ife_csid_ver1_path_bottom_half_handler(
 	if (evt_payload->irq_status[index] &
 		IFE_CSID_VER1_PATH_ERROR_FIFO_OVERFLOW)
 		cam_ife_csid_ver1_handle_event_err(csid_hw,
-			evt_payload, CAM_ISP_HW_ERROR_CSID_OVERFLOW);
+			evt_payload, CAM_ISP_HW_ERROR_CSID_FIFO_OVERFLOW);
 
 	return 0;
 }

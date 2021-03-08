@@ -49,6 +49,7 @@ struct cam_sfe_top_priv {
 	uint32_t                        sensor_sel_diag_cfg;
 	spinlock_t                      spin_lock;
 	struct cam_sfe_top_module_desc *module_desc;
+	struct cam_sfe_wr_client_desc  *wr_client_desc;
 };
 
 struct cam_sfe_path_data {
@@ -88,6 +89,49 @@ static const char *cam_sfe_top_res_id_to_string(
 	default:
 		return "";
 	}
+}
+
+static void cam_sfe_top_print_debug_reg_info(
+	struct cam_sfe_top_priv *top_priv)
+{
+	void __iomem                    *mem_base;
+	struct cam_sfe_top_common_data  *common_data;
+	struct cam_hw_soc_info          *soc_info;
+
+	common_data = &top_priv->common_data;
+	soc_info = common_data->soc_info;
+	mem_base = soc_info->reg_map[SFE_CORE_BASE_IDX].mem_base;
+
+	CAM_INFO(CAM_SFE,
+		"Debug0: 0x%x Debug1: 0x%x Debug2: 0x%x Debug3: 0x%x",
+		cam_io_r_mb(mem_base +
+			common_data->common_reg->top_debug_0),
+		cam_io_r_mb(mem_base +
+			common_data->common_reg->top_debug_1),
+		cam_io_r_mb(mem_base +
+			common_data->common_reg->top_debug_2),
+		cam_io_r_mb(mem_base +
+			common_data->common_reg->top_debug_3));
+	CAM_INFO(CAM_SFE,
+		"Debug4: 0x%x Debug5: 0x%x Debug6: 0x%x Debug7: 0x%x",
+		cam_io_r_mb(mem_base +
+			common_data->common_reg->top_debug_4),
+		cam_io_r_mb(mem_base +
+			common_data->common_reg->top_debug_5),
+		cam_io_r_mb(mem_base +
+			common_data->common_reg->top_debug_6),
+		cam_io_r_mb(mem_base +
+			common_data->common_reg->top_debug_7));
+	CAM_INFO(CAM_SFE,
+		"Debug8: 0x%x Debug9: 0x%x Debug10: 0x%x Debug11: 0x%x",
+		cam_io_r_mb(mem_base +
+			common_data->common_reg->top_debug_8),
+		cam_io_r_mb(mem_base +
+			common_data->common_reg->top_debug_9),
+		cam_io_r_mb(mem_base +
+			common_data->common_reg->top_debug_10),
+		cam_io_r_mb(mem_base +
+			common_data->common_reg->top_debug_11));
 }
 
 static struct cam_axi_vote *cam_sfe_top_delay_bw_reduction(
@@ -568,6 +612,38 @@ static int cam_sfe_set_top_debug(
 	return 0;
 }
 
+static int cam_sfe_top_handle_overflow(
+	struct cam_sfe_top_priv *top_priv, uint32_t cmd_type)
+{
+	struct cam_sfe_top_common_data      *common_data;
+	struct cam_hw_soc_info              *soc_info;
+	uint32_t                             status = 0;
+	uint32_t                             i = 0;
+
+	common_data = &top_priv->common_data;
+	soc_info = common_data->soc_info;
+
+	status  = cam_io_r(soc_info->reg_map[SFE_CORE_BASE_IDX].mem_base +
+		    top_priv->common_data.common_reg->bus_overflow_status);
+
+	CAM_INFO_RATE_LIMIT(CAM_ISP,
+		"SFE%d src_clk_rate:%luHz overflow_status 0x%x",
+		soc_info->index, soc_info->applied_src_clk_rate,
+		status);
+
+	while (status) {
+		if (status & 0x1)
+			CAM_INFO_RATE_LIMIT(CAM_ISP, "SFE Overflow %s ",
+				top_priv->wr_client_desc[i].desc);
+		status = status >> 1;
+		i++;
+	}
+
+	cam_sfe_top_print_debug_reg_info(top_priv);
+
+	return 0;
+}
+
 int cam_sfe_top_process_cmd(void *priv, uint32_t cmd_type,
 	void *cmd_args, uint32_t arg_size)
 {
@@ -611,6 +687,9 @@ int cam_sfe_top_process_cmd(void *priv, uint32_t cmd_type,
 		break;
 	case CAM_ISP_HW_CMD_SET_SFE_DEBUG_CFG:
 		rc = cam_sfe_set_top_debug(top_priv, cmd_args);
+		break;
+	case CAM_ISP_HW_NOTIFY_OVERFLOW:
+		rc = cam_sfe_top_handle_overflow(top_priv, cmd_type);
 		break;
 	default:
 		CAM_ERR(CAM_SFE, "Invalid cmd type: %d", cmd_type);
@@ -751,48 +830,6 @@ static int cam_sfe_top_put_evt_payload(
 	return 0;
 }
 
-static void cam_sfe_top_print_debug_reg_info(
-	struct cam_sfe_top_priv *top_priv)
-{
-	void __iomem                    *mem_base;
-	struct cam_sfe_top_common_data  *common_data;
-	struct cam_hw_soc_info          *soc_info;
-
-	common_data = &top_priv->common_data;
-	soc_info = common_data->soc_info;
-	mem_base = soc_info->reg_map[SFE_CORE_BASE_IDX].mem_base;
-
-	CAM_INFO(CAM_SFE,
-		"Debug0: 0x%x Debug1: 0x%x Debug2: 0x%x Debug3: 0x%x",
-		cam_io_r_mb(mem_base +
-			common_data->common_reg->top_debug_0),
-		cam_io_r_mb(mem_base +
-			common_data->common_reg->top_debug_1),
-		cam_io_r_mb(mem_base +
-			common_data->common_reg->top_debug_2),
-		cam_io_r_mb(mem_base +
-			common_data->common_reg->top_debug_3));
-	CAM_INFO(CAM_SFE,
-		"Debug4: 0x%x Debug5: 0x%x Debug6: 0x%x Debug7: 0x%x",
-		cam_io_r_mb(mem_base +
-			common_data->common_reg->top_debug_4),
-		cam_io_r_mb(mem_base +
-			common_data->common_reg->top_debug_5),
-		cam_io_r_mb(mem_base +
-			common_data->common_reg->top_debug_6),
-		cam_io_r_mb(mem_base +
-			common_data->common_reg->top_debug_7));
-	CAM_INFO(CAM_SFE,
-		"Debug8: 0x%x Debug9: 0x%x Debug10: 0x%x Debug11: 0x%x",
-		cam_io_r_mb(mem_base +
-			common_data->common_reg->top_debug_8),
-		cam_io_r_mb(mem_base +
-			common_data->common_reg->top_debug_9),
-		cam_io_r_mb(mem_base +
-			common_data->common_reg->top_debug_10),
-		cam_io_r_mb(mem_base +
-			common_data->common_reg->top_debug_11));
-}
 
 static int cam_sfe_top_handle_err_irq_top_half(
 	uint32_t evt_id,
@@ -1356,6 +1393,7 @@ int cam_sfe_top_init(
 	top_priv->common_data.common_reg =
 		sfe_top_hw_info->common_reg;
 	top_priv->module_desc = sfe_top_hw_info->module_desc;
+	top_priv->wr_client_desc = sfe_top_hw_info->wr_client_desc;
 	top_priv->sfe_debug_cfg = 0;
 
 	/* Remove after driver stabilizes */

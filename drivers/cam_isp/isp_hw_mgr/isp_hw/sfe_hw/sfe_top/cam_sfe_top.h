@@ -30,6 +30,11 @@ struct cam_sfe_top {
 	struct cam_hw_ops       hw_ops;
 };
 
+struct cam_sfe_wr_client_desc {
+	uint32_t  wm_id;
+	uint8_t  *desc;
+};
+
 struct cam_sfe_top_common_reg_offset {
 	uint32_t hw_version;
 	uint32_t hw_capability;
@@ -62,6 +67,7 @@ struct cam_sfe_top_common_reg_offset {
 	uint32_t lcr_throttle_cfg;
 	uint32_t hdr_throttle_cfg;
 	uint32_t sfe_op_throttle_cfg;
+	uint32_t bus_overflow_status;
 };
 
 struct cam_sfe_modules_common_reg_offset {
@@ -92,6 +98,7 @@ struct cam_sfe_top_hw_info {
 	struct cam_sfe_modules_common_reg_offset *modules_hw_info;
 	struct cam_sfe_top_common_reg_data       *common_reg_data;
 	struct cam_sfe_top_module_desc           *module_desc;
+	struct cam_sfe_wr_client_desc            *wr_client_desc;
 	struct cam_sfe_path_common_reg_data      *pix_reg_data;
 	struct cam_sfe_path_common_reg_data      *rdi_reg_data[CAM_SFE_RDI_MAX];
 	uint32_t                                  num_inputs;

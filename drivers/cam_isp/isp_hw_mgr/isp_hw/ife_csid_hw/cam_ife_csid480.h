@@ -82,8 +82,8 @@ static struct cam_ife_csid_ver1_path_reg_info
 	.crop_h_en_shift_val              = 5,
 	.timestamp_en_shift_val           = 1,
 	.format_measure_en_shift_val      = 0,
-	.fatal_err_mask                   = 0x4,
-	.non_fatal_err_mask               = 0x2e000,
+	.fatal_err_mask                   = 0x26004,
+	.non_fatal_err_mask               = 0xe000,
 };
 
 static struct cam_ife_csid_ver1_path_reg_info
@@ -149,8 +149,8 @@ static struct cam_ife_csid_ver1_path_reg_info
 	.overflow_ctrl_mode_val           = 0x8,
 	.timestamp_en_shift_val           = 1,
 	.format_measure_en_shift_val      = 0,
-	.fatal_err_mask                   = 0x4,
-	.non_fatal_err_mask               = 0x2e000,
+	.fatal_err_mask                   = 0x26004,
+	.non_fatal_err_mask               = 0xe000,
 };
 
 static struct cam_ife_csid_ver1_path_reg_info
@@ -217,8 +217,8 @@ static struct cam_ife_csid_ver1_path_reg_info
 	.mipi_pack_supported              = 1,
 	.timestamp_en_shift_val           = 2,
 	.format_measure_en_shift_val      = 1,
-	.fatal_err_mask                   = 0x4,
-	.non_fatal_err_mask               = 0x2e000,
+	.fatal_err_mask                   = 0x26004,
+	.non_fatal_err_mask               = 0xe000,
 };
 
 static struct cam_ife_csid_ver1_path_reg_info
@@ -285,8 +285,8 @@ static struct cam_ife_csid_ver1_path_reg_info
 	.mipi_pack_supported             = 1,
 	.timestamp_en_shift_val          = 2,
 	.format_measure_en_shift_val     = 1,
-	.fatal_err_mask                  = 0x4,
-	.non_fatal_err_mask              = 0x2e000,
+	.fatal_err_mask                  = 0x26004,
+	.non_fatal_err_mask              = 0xe000,
 };
 
 static struct cam_ife_csid_ver1_path_reg_info
@@ -354,8 +354,8 @@ static struct cam_ife_csid_ver1_path_reg_info
 	.mipi_pack_supported             = 1,
 	.timestamp_en_shift_val          = 2,
 	.format_measure_en_shift_val     = 1,
-	.fatal_err_mask                  = 0x4,
-	.non_fatal_err_mask              = 0x2e000,
+	.fatal_err_mask                  = 0x26004,
+	.non_fatal_err_mask              = 0xe000,
 };
 
 static struct cam_ife_csid_csi2_rx_reg_info

@@ -109,6 +109,60 @@ static struct cam_sfe_top_module_desc sfe_mod_desc[] = {
 	},
 };
 
+static struct cam_sfe_wr_client_desc sfe_wr_client_desc[] = {
+	{
+		.wm_id = 0,
+		.desc = "REMOSAIC",
+	},
+	{
+		.wm_id = 1,
+		.desc = "LCR",
+	},
+	{
+		.wm_id = 2,
+		.desc = "STATS_BE0",
+	},
+	{
+		.wm_id = 3,
+		.desc = "STATS_BHIST0",
+	},
+	{
+		.wm_id = 4,
+		.desc = "STATS_BE1",
+	},
+	{ .wm_id = 5,
+		.desc = "STATS_BHIST1",
+	},
+	{
+		.wm_id = 6,
+		.desc = "STATS_BE2",
+	},
+	{
+		.wm_id = 7,
+		.desc = "STATS_BHIST2",
+	},
+	{
+		.wm_id = 8,
+		.desc = "RDI_0",
+	},
+	{
+		.wm_id = 9,
+		.desc = "RDI_1",
+	},
+	{
+		.wm_id = 10,
+		.desc = "RDI_2",
+	},
+	{
+		.wm_id = 11,
+		.desc = "RDI_3",
+	},
+	{
+		.wm_id = 12,
+		.desc = "RDI_4",
+	},
+};
+
 static struct cam_sfe_top_common_reg_offset  sfe680_top_commong_reg  = {
 	.hw_version                    = 0x00000000,
 	.hw_capability                 = 0x00000004,
@@ -141,6 +195,7 @@ static struct cam_sfe_top_common_reg_offset  sfe680_top_commong_reg  = {
 	.lcr_throttle_cfg              = 0x000000BC,
 	.hdr_throttle_cfg              = 0x000000C0,
 	.sfe_op_throttle_cfg           = 0x000000C4,
+	.bus_overflow_status           = 0x00000868,
 };
 
 static struct cam_sfe_modules_common_reg_offset sfe680_modules_common_reg = {
@@ -200,8 +255,9 @@ static struct cam_sfe_top_hw_info sfe680_top_hw_info = {
 	.common_reg = &sfe680_top_commong_reg,
 	.modules_hw_info = &sfe680_modules_common_reg,
 	.common_reg_data = &sfe_680_top_common_reg_data,
-	.module_desc = sfe_mod_desc,
-	.pix_reg_data = &sfe_680_pix_reg_data,
+	.module_desc     =  sfe_mod_desc,
+	.wr_client_desc  =  sfe_wr_client_desc,
+	.pix_reg_data    = &sfe_680_pix_reg_data,
 	.rdi_reg_data[0] = &sfe_680_rdi0_reg_data,
 	.rdi_reg_data[1] = &sfe_680_rdi1_reg_data,
 	.rdi_reg_data[2] = &sfe_680_rdi2_reg_data,

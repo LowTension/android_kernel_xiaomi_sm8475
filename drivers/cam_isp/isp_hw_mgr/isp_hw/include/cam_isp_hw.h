@@ -146,7 +146,7 @@ enum cam_isp_hw_cmd_type {
 	CAM_ISP_HW_CMD_CSID_MUP_UPDATE,
 	CAM_ISP_HW_CMD_BUF_UPDATE,
 	CAM_ISP_HW_CMD_BUF_UPDATE_RM,
-	CAM_ISP_HW_DUMP_HW_SRC_CLK_RATE,
+	CAM_ISP_HW_NOTIFY_OVERFLOW,
 	CAM_ISP_HW_CMD_MAX,
 };
 
@@ -225,6 +225,7 @@ struct cam_isp_blanking_config {
  * @hw_idx:         IFE hw index
  * @err_type:       Error type if any
  * @reg_val:        Any critical register value captured during irq handling
+ * @hw_type:        Hw Type sending the event
  *
  */
 struct cam_isp_hw_event_info {
@@ -233,6 +234,7 @@ struct cam_isp_hw_event_info {
 	uint32_t                       hw_idx;
 	uint32_t                       err_type;
 	uint32_t                       reg_val;
+	uint32_t                       hw_type;
 };
 
 /*
