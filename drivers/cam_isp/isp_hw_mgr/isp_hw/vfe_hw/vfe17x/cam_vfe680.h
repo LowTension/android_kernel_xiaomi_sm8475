@@ -11,7 +11,7 @@
 #include "cam_vfe_bus_ver3.h"
 #include "cam_irq_controller.h"
 
-static struct cam_vfe_top_ver4_module_desc vfe_pp_mod_desc[] = {
+static struct cam_vfe_top_ver4_module_desc vfe680_pp_mod_desc[] = {
 	{
 		.id = 0,
 		.desc = "CLC_DEMUX",
@@ -326,23 +326,26 @@ static struct cam_vfe_top_ver4_reg_offset_common vfe680_top_common_reg = {
 	.bus_violation_status     = 0x00000C64,
 	.bus_overflow_status      = 0x00000C68,
 	.top_debug_cfg            = 0x000000FC,
-	.top_debug_0              = 0x000000A0,
-	.top_debug_1              = 0x000000A4,
-	.top_debug_2              = 0x000000A8,
-	.top_debug_3              = 0x000000AC,
-	.top_debug_4              = 0x000000B0,
-	.top_debug_5              = 0x000000B4,
-	.top_debug_6              = 0x000000B8,
-	.top_debug_7              = 0x000000BC,
-	.top_debug_8              = 0x000000C0,
-	.top_debug_9              = 0x000000C4,
-	.top_debug_10             = 0x000000C8,
-	.top_debug_11             = 0x000000CC,
-	.top_debug_12             = 0x000000D0,
-	.top_debug_13             = 0x000000D4,
-	.top_debug_14             = 0x000000D8,
-	.top_debug_15             = 0x000000DC,
-	.top_debug_16             = 0x000000E0,
+	.num_top_debug_reg        = 17,
+	.top_debug = {
+		0x000000A0,
+		0x000000A4,
+		0x000000A8,
+		0x000000AC,
+		0x000000B0,
+		0x000000B4,
+		0x000000B8,
+		0x000000BC,
+		0x000000C0,
+		0x000000C4,
+		0x000000C8,
+		0x000000CC,
+		0x000000D0,
+		0x000000D4,
+		0x000000D8,
+		0x000000DC,
+		0x000000E0,
+	},
 };
 
 static struct cam_vfe_ver4_path_reg_data vfe_common_reg_data = {
@@ -360,19 +363,19 @@ static struct cam_vfe_ver4_path_reg_data vfe680_vfe_full_rdi_reg_data[3] = {
 	{
 		.sof_irq_mask                    = 0x100,
 		.eof_irq_mask                    = 0x200,
-		.error_irq_mask                 = 0x10000000,
+		.error_irq_mask                  = 0x0,
 		.enable_diagnostic_hw            = 0x1,
 	},
 	{
 		.sof_irq_mask                    = 0x400,
 		.eof_irq_mask                    = 0x800,
-		.error_irq_mask                 = 0x10000000,
+		.error_irq_mask                  = 0x0,
 		.enable_diagnostic_hw            = 0x1,
 	},
 	{
 		.sof_irq_mask                    = 0x1000,
 		.eof_irq_mask                    = 0x2000,
-		.error_irq_mask                 = 0x10000000,
+		.error_irq_mask                  = 0x0,
 		.enable_diagnostic_hw            = 0x1,
 	},
 };
@@ -380,7 +383,7 @@ static struct cam_vfe_ver4_path_reg_data vfe680_vfe_full_rdi_reg_data[3] = {
 static struct cam_vfe_ver4_path_reg_data vfe680_pdlib_reg_data = {
 	.sof_irq_mask                    = 0x100,
 	.eof_irq_mask                    = 0x200,
-	.error_irq_mask                 = 0x10000000,
+	.error_irq_mask                  = 0x0,
 	.enable_diagnostic_hw            = 0x1,
 };
 
@@ -412,7 +415,7 @@ static struct cam_vfe_top_ver4_hw_info vfe680_top_hw_info = {
 	.vfe_full_hw_info = {
 		.common_reg     = &vfe680_top_common_reg,
 		.reg_data       = &vfe_common_reg_data,
-		.module_desc    = vfe_pp_mod_desc,
+		.module_desc    = vfe680_pp_mod_desc,
 	},
 	.pdlib_hw_info = {
 		.common_reg     = &vfe680_top_common_reg,

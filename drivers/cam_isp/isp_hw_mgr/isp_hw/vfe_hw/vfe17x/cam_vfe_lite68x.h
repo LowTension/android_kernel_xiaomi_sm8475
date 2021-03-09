@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
  */
 
 
@@ -11,6 +11,21 @@
 #include "cam_vfe_core.h"
 #include "cam_vfe_bus_ver3.h"
 #include "cam_irq_controller.h"
+
+static struct cam_vfe_top_ver4_module_desc vfe68x_pp_mod_desc[] = {
+	{
+		.id = 0,
+		.desc = "CLC_BLS",
+	},
+	{
+		.id = 1,
+		.desc = "CLC_GLUT",
+	},
+	{
+		.id = 2,
+		.desc = "CLC_STATS_BG",
+	},
+};
 
 static struct cam_irq_register_set vfe68x_top_irq_reg_set[3] = {
 	{
@@ -42,21 +57,27 @@ static struct cam_vfe_top_ver4_reg_offset_common vfe68x_top_common_reg = {
 	.diag_sensor_status_0     = 0x00001044,
 	.diag_sensor_status_1     = 0x00001048,
 	.violation_status         = 0x00001054,
+	.bus_violation_status     = 0x00001264,
+	.bus_overflow_status      = 0x00001268,
 	.top_debug_cfg            = 0x00001074,
-	.top_debug_0              = 0x0000105C,
-	.top_debug_1              = 0x00001060,
-	.top_debug_2              = 0x00001064,
-	.top_debug_3              = 0x00001068,
-	.top_debug_4              = 0x0000106C,
+	.num_top_debug_reg        = 5,
+	.top_debug                = {
+		0x0000105C,
+		0x00001060,
+		0x00001064,
+		0x00001068,
+		0x0000106C,
+	},
 };
 
 static struct cam_vfe_ver4_path_reg_data vfe68x_ipp_reg_data =
 {
 	.sof_irq_mask                    = 0x1,
 	.eof_irq_mask                    = 0x2,
-	.error_irq_mask                  = 0x3,
+	.error_irq_mask                  = 0x2,
 	.enable_diagnostic_hw            = 0x1,
-	.top_debug_cfg_en                = 0x1,
+	.top_debug_cfg_en                = 0x3,
+	.pp_violation_mask               = 0x10,
 };
 
 static struct cam_vfe_ver4_path_reg_data vfe68x_rdi_reg_data[4] = {
@@ -64,30 +85,30 @@ static struct cam_vfe_ver4_path_reg_data vfe68x_rdi_reg_data[4] = {
 	{
 		.sof_irq_mask                    = 0x4,
 		.eof_irq_mask                    = 0x8,
-		.error_irq_mask                 = 0x1,
+		.error_irq_mask                  = 0x0,
 		.enable_diagnostic_hw            = 0x1,
-		.top_debug_cfg_en                = 0x1,
+		.top_debug_cfg_en                = 0x3,
 	},
 	{
 		.sof_irq_mask                    = 0x10,
 		.eof_irq_mask                    = 0x20,
-		.error_irq_mask                 = 0x1,
+		.error_irq_mask                  = 0x0,
 		.enable_diagnostic_hw            = 0x1,
-		.top_debug_cfg_en                = 0x1,
+		.top_debug_cfg_en                = 0x3,
 	},
 	{
 		.sof_irq_mask                    = 0x40,
 		.eof_irq_mask                    = 0x80,
-		.error_irq_mask                 = 0x1,
+		.error_irq_mask                  = 0x0,
 		.enable_diagnostic_hw            = 0x1,
-		.top_debug_cfg_en                = 0x1,
+		.top_debug_cfg_en                = 0x3,
 	},
 	{
 		.sof_irq_mask                    = 0x100,
 		.eof_irq_mask                    = 0x200,
-		.error_irq_mask                 = 0x1,
+		.error_irq_mask                  = 0x0,
 		.enable_diagnostic_hw            = 0x1,
-		.top_debug_cfg_en                = 0x1,
+		.top_debug_cfg_en                = 0x3,
 	},
 };
 
@@ -121,6 +142,7 @@ static struct cam_vfe_top_ver4_hw_info vfe68x_top_hw_info = {
 	.vfe_full_hw_info = {
 		.common_reg     = &vfe68x_top_common_reg,
 		.reg_data       = &vfe68x_ipp_reg_data,
+		.module_desc    = vfe68x_pp_mod_desc,
 	},
 	.num_mux = 5,
 	.mux_type = {

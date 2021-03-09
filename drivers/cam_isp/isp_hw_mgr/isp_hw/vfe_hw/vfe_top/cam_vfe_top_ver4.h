@@ -22,9 +22,9 @@
 #define CAM_SHIFT_TOP_CORE_VER_4_CFG_DSP_MODE          9
 #define CAM_SHIFT_TOP_CORE_VER_4_CFG_DSP_EN            8
 
-#define CAM_VFE_RDI_VER2_MAX 4
-#define CAM_VFE_CAMIF_LITE_EVT_MAX 256
-
+#define CAM_VFE_RDI_VER2_MAX                           4
+#define CAM_VFE_CAMIF_LITE_EVT_MAX                     256
+#define CAM_VFE_TOP_DBG_REG_MAX                        17
 
 struct cam_vfe_top_ver4_reg_offset_common {
 	uint32_t hw_version;
@@ -68,23 +68,8 @@ struct cam_vfe_top_ver4_reg_offset_common {
 	uint32_t epoch1_pattern_cfg;
 	uint32_t epoch_height_cfg;
 	uint32_t top_debug_cfg;
-	uint32_t top_debug_0;
-	uint32_t top_debug_1;
-	uint32_t top_debug_2;
-	uint32_t top_debug_3;
-	uint32_t top_debug_4;
-	uint32_t top_debug_5;
-	uint32_t top_debug_6;
-	uint32_t top_debug_7;
-	uint32_t top_debug_8;
-	uint32_t top_debug_9;
-	uint32_t top_debug_10;
-	uint32_t top_debug_11;
-	uint32_t top_debug_12;
-	uint32_t top_debug_13;
-	uint32_t top_debug_14;
-	uint32_t top_debug_15;
-	uint32_t top_debug_16;
+	uint32_t num_top_debug_reg;
+	uint32_t top_debug[CAM_VFE_TOP_DBG_REG_MAX];
 };
 
 struct cam_vfe_top_common_cfg {
