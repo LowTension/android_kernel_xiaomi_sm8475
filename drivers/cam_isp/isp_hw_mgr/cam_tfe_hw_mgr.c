@@ -5175,7 +5175,7 @@ static int  cam_tfe_hw_mgr_find_affected_ctx(
 		 */
 		if (notify_err_cb) {
 			notify_err_cb(tfe_hwr_mgr_ctx->common.cb_priv,
-			CAM_ISP_HW_EVENT_ERROR, error_event_data);
+			CAM_ISP_HW_EVENT_ERROR, (void *)error_event_data);
 		} else {
 			CAM_WARN(CAM_ISP, "Error call back is not set");
 			goto end;
@@ -5309,7 +5309,7 @@ static int cam_tfe_hw_mgr_handle_hw_rup(
 		if (atomic_read(&tfe_hw_mgr_ctx->overflow_pending))
 			break;
 		tfe_hwr_irq_rup_cb(tfe_hw_mgr_ctx->common.cb_priv,
-			CAM_ISP_HW_EVENT_REG_UPDATE, &rup_event_data);
+			CAM_ISP_HW_EVENT_REG_UPDATE, (void *)&rup_event_data);
 		break;
 
 	default:
@@ -5341,7 +5341,8 @@ static int cam_tfe_hw_mgr_handle_hw_epoch(
 		if (atomic_read(&tfe_hw_mgr_ctx->overflow_pending))
 			break;
 		tfe_hw_irq_epoch_cb(tfe_hw_mgr_ctx->common.cb_priv,
-			CAM_ISP_HW_EVENT_EPOCH, &epoch_done_event_data);
+			CAM_ISP_HW_EVENT_EPOCH,
+			(void *)&epoch_done_event_data);
 		break;
 
 	case CAM_ISP_HW_TFE_IN_RDI0:
@@ -5382,7 +5383,7 @@ static int cam_tfe_hw_mgr_handle_hw_sof(
 			break;
 
 		tfe_hw_irq_sof_cb(tfe_hw_mgr_ctx->common.cb_priv,
-			CAM_ISP_HW_EVENT_SOF, &sof_done_event_data);
+			CAM_ISP_HW_EVENT_SOF, (void *)&sof_done_event_data);
 
 		break;
 
@@ -5397,7 +5398,7 @@ static int cam_tfe_hw_mgr_handle_hw_sof(
 		if (atomic_read(&tfe_hw_mgr_ctx->overflow_pending))
 			break;
 		tfe_hw_irq_sof_cb(tfe_hw_mgr_ctx->common.cb_priv,
-			CAM_ISP_HW_EVENT_SOF, &sof_done_event_data);
+			CAM_ISP_HW_EVENT_SOF, (void *)&sof_done_event_data);
 		break;
 
 	default:
@@ -5428,7 +5429,7 @@ static int cam_tfe_hw_mgr_handle_hw_eof(
 		if (atomic_read(&tfe_hw_mgr_ctx->overflow_pending))
 			break;
 		tfe_hw_irq_eof_cb(tfe_hw_mgr_ctx->common.cb_priv,
-			CAM_ISP_HW_EVENT_EOF, &eof_done_event_data);
+			CAM_ISP_HW_EVENT_EOF, (void *)&eof_done_event_data);
 
 		break;
 
@@ -5471,7 +5472,7 @@ static int cam_tfe_hw_mgr_handle_hw_buf_done(
 	if (buf_done_event_data.num_handles > 0 && tfe_hwr_irq_wm_done_cb) {
 		CAM_DBG(CAM_ISP, "Notify ISP context");
 		tfe_hwr_irq_wm_done_cb(tfe_hw_mgr_ctx->common.cb_priv,
-			CAM_ISP_HW_EVENT_DONE, &buf_done_event_data);
+			CAM_ISP_HW_EVENT_DONE, (void *)&buf_done_event_data);
 	}
 
 	CAM_DBG(CAM_ISP, "Buf done for out_res->res_id: 0x%x",
