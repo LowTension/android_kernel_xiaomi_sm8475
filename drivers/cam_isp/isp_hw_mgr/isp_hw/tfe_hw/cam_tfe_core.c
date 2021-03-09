@@ -20,6 +20,7 @@
 #include "cam_cpas_api.h"
 #include "cam_compat.h"
 #include "cam_common_util.h"
+#include "cam_tfe_csid_hw_intf.h"
 
 static const char drv_name[] = "tfe";
 
@@ -85,6 +86,9 @@ struct cam_tfe_camif_data {
 	uint32_t                           dual_tfe_sync_sel;
 	uint32_t                           hbi_value;
 	uint32_t                           vbi_value;
+	uint32_t                           qcfa_bin;
+	uint32_t                           bayer_bin;
+	uint32_t                           core_cfg;
 };
 
 struct cam_tfe_rdi_data {
@@ -1887,6 +1891,12 @@ int cam_tfe_top_reserve(void *device_priv,
 				camif_data->sync_mode = acquire_args->sync_mode;
 				camif_data->event_cb = args->event_cb;
 				camif_data->priv = args->priv;
+				camif_data->qcfa_bin =
+					acquire_args->in_port->qcfa_bin;
+				camif_data->bayer_bin =
+					acquire_args->in_port->bayer_bin;
+				camif_data->core_cfg =
+					acquire_args->in_port->core_cfg;
 
 				CAM_DBG(CAM_ISP,
 					"TFE:%d pix_pattern:%d dsp_mode=%d",
@@ -2017,6 +2027,18 @@ static int cam_tfe_camif_resource_start(
 	/* enables the Delay Line CLC in the pixel pipeline */
 	val |= BIT(rsrc_data->reg_data->delay_line_en_shift);
 
+	if (rsrc_data->common_reg->serializer_supported) {
+		val |= rsrc_data->core_cfg &
+			(1 << rsrc_data->reg_data->ai_c_srl_en_shift);
+
+		val |= rsrc_data->core_cfg &
+			(1 << rsrc_data->reg_data->ds16_c_srl_en_shift);
+
+		val |= rsrc_data->core_cfg &
+			(1 << rsrc_data->reg_data->ds4_c_srl_en_shift);
+	}
+
+
 	cam_io_w_mb(val, rsrc_data->mem_base +
 		rsrc_data->common_reg->core_cfg_0);
 
@@ -2042,6 +2064,9 @@ static int cam_tfe_camif_resource_start(
 	if (epoch0_irq_mask > (rsrc_data->last_line - rsrc_data->first_line))
 		epoch0_irq_mask = (rsrc_data->last_line -
 					rsrc_data->first_line);
+
+	if (rsrc_data->bayer_bin || rsrc_data->qcfa_bin)
+		epoch0_irq_mask >>= 1;
 
 	epoch1_irq_mask = rsrc_data->reg_data->epoch_line_cfg &
 			0xFFFF;

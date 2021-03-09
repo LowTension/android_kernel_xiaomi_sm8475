@@ -51,6 +51,7 @@ static struct cam_tfe_top_reg_offset_common  tfe530_top_commong_reg  = {
 	.diag_min_hbi_error_shift               = 15,
 	.diag_neq_hbi_shift                     = 14,
 	.diag_sensor_hbi_mask                   = 0x3FFF,
+	.serializer_supported                   = false,
 };
 
 static struct cam_tfe_camif_reg  tfe530_camif_reg = {

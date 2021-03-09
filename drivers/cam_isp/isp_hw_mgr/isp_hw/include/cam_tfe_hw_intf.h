@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CAM_TFE_HW_INTF_H_
@@ -94,14 +94,14 @@ struct cam_tfe_hw_get_hw_cap {
  * @ctx:                     Context data
  */
 struct cam_tfe_hw_tfe_out_acquire_args {
-	struct cam_isp_resource_node      *rsrc_node;
-	struct cam_isp_tfe_out_port_info  *out_port_info;
-	uint32_t                           unique_id;
-	uint32_t                           is_dual;
-	enum cam_isp_hw_split_id           split_id;
-	uint32_t                           is_master;
-	struct cam_cdm_utils_ops          *cdm_ops;
-	void                              *ctx;
+	struct cam_isp_resource_node             *rsrc_node;
+	struct cam_isp_tfe_out_port_generic_info *out_port_info;
+	uint32_t                                  unique_id;
+	uint32_t                                  is_dual;
+	enum cam_isp_hw_split_id                  split_id;
+	uint32_t                                  is_master;
+	struct cam_cdm_utils_ops                 *cdm_ops;
+	void                                     *ctx;
 };
 
 /*
@@ -119,13 +119,13 @@ struct cam_tfe_hw_tfe_out_acquire_args {
  * @dual_tfe_sync_sel_idx    Dual tfe master hardware index
  */
 struct cam_tfe_hw_tfe_in_acquire_args {
-	struct cam_isp_resource_node         *rsrc_node;
-	struct cam_isp_tfe_in_port_info      *in_port;
-	uint32_t                              res_id;
-	void                                 *cdm_ops;
-	enum cam_isp_hw_sync_mode             sync_mode;
-	bool                                  camif_pd_enable;
-	uint32_t                              dual_tfe_sync_sel_idx;
+	struct cam_isp_resource_node            *rsrc_node;
+	struct cam_isp_tfe_in_port_generic_info *in_port;
+	uint32_t                                 res_id;
+	void                                    *cdm_ops;
+	enum cam_isp_hw_sync_mode                sync_mode;
+	bool                                     camif_pd_enable;
+	uint32_t                                 dual_tfe_sync_sel_idx;
 };
 
 /*

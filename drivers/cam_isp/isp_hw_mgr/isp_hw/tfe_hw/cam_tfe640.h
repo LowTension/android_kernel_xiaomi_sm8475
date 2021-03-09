@@ -64,6 +64,7 @@ static struct cam_tfe_top_reg_offset_common  tfe640_top_commong_reg  = {
 	.diag_min_hbi_error_shift               = 15,
 	.diag_neq_hbi_shift                     = 14,
 	.diag_sensor_hbi_mask                   = 0x3FFF,
+	.serializer_supported                   = true,
 };
 
 static struct cam_tfe_camif_reg  tfe640_camif_reg = {
@@ -119,6 +120,9 @@ static struct cam_tfe_camif_reg_data tfe640_camif_reg_data = {
 	.perf_client_sel_shift        = 8,
 	.perf_window_start_shift      = 16,
 	.perf_window_end_shift        = 20,
+	.ai_c_srl_en_shift            = 11,
+	.ds16_c_srl_en_shift          = 10,
+	.ds4_c_srl_en_shift           = 9,
 };
 
 static struct cam_tfe_rdi_reg  tfe640_rdi0_reg = {

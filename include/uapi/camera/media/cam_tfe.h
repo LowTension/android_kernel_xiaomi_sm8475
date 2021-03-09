@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only WITH Linux-syscall-note */
 /*
- * Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
  */
 
 #ifndef __UAPI_CAM_TFE_H__
@@ -87,6 +87,12 @@
 #define CAM_ISP_TFE_WM_FRAME_BASED_MODE    0
 #define CAM_ISP_TFE_WM_LINE_BASED_MODE     1
 #define CAM_ISP_TFE_WM_INDEX_BASED_MODE    2
+
+#define CAM_ISP_TFE_VC_DT_CFG              2
+
+/* Feature Flag indicators */
+#define CAM_ISP_TFE_FLAG_QCFA_BIN                        BIT(0)
+#define CAM_ISP_TFE_FLAG_BAYER_BIN                       BIT(1)
 
 /* Query devices */
 /**
@@ -217,6 +223,92 @@ struct cam_isp_tfe_in_port_info {
 	__u32                            sensor_fps;
 	__u32                            init_frame_drop;
 	__u32                            num_out_res;
+	struct cam_isp_tfe_out_port_info data[1];
+};
+
+/**
+ * struct cam_isp_tfe_in_port_info_v2 - An input port resource info
+ *
+ * @res_id:                     input resource id CAM_ISP_TFE_IN_RES_XXX
+ * @lane_type:                  lane type: c-phy or d-phy.
+ * @lane_num:                   active lane number
+ * @lane_cfg:                   lane configurations: 4 bits per lane
+ * @vc:                         input virtual channel number
+ * @dt:                         input data type number
+ * @format:                     input format
+ * @pix_pattern:                pixel pattern
+ * @usage_type:                 whether dual tfe is required
+ * @left_start:                 left input start offset in pixels
+ * @left_end:                   left input stop offset in pixels
+ * @left_width:                 left input width in pixels
+ * @right_start:                right input start offset in pixels.
+ *                              Only for Dual TFE
+ * @right_end:                  right input stop offset in
+ *                              pixels. Only for Dual TFE
+ * @right_width:                right input width in pixels.
+ *                              Only for dual TFE
+ * @line_start:                 top of the line number
+ * @line_stop:                  bottome of the line number
+ * @height:                     input height in lines
+ * @batch_size:                 batch size for HFR mode
+ * @dsp_mode:                   DSP stream mode(Defines as
+ *                              CAM_ISP_TFE_DSP_MODE_*)
+ * @sensor_width:               sensor width
+ * @sensor_height:              sensor height
+ * @sensor_hbi:                 sensor HBI value
+ * @sensor_vbi:                 sensor VBI value
+ * @sensor_fps:                 sensor fps
+ * @init_frame_drop             init frame drop value.
+ * @num_out_res:                number of the output resource associated
+ * @feature_flag:               Feature flags for indicating QCFA, Bayer bin
+ * @core_cfg:                   Core configuration
+ * @reserve_field_1:            Reserve field 1
+ * @reserve_field_2:            Reserve field 2
+ * @reserve_field_3:            Reserve field 3
+ * @reserve_field_4:            Reserve field 4
+ * @reserve_field_5:            Reserve field 5
+ * @reserve_field_6:            Reserve filed 6
+ * @data:                       payload that contains the output resources,
+ *                              array of cam_isp_tfe_out_port_info data
+ *
+ */
+struct cam_isp_tfe_in_port_info_v2 {
+	__u32                            res_id;
+	__u32                            lane_type;
+	__u32                            lane_num;
+	__u32                            lane_cfg;
+	__u32                            vc[CAM_ISP_TFE_VC_DT_CFG];
+	__u32                            dt[CAM_ISP_TFE_VC_DT_CFG];
+	__u32                            num_valid_vc_dt;
+	__u32                            format;
+	__u32                            pix_pattern;
+	__u32                            usage_type;
+	__u32                            left_start;
+	__u32                            left_end;
+	__u32                            left_width;
+	__u32                            right_start;
+	__u32                            right_end;
+	__u32                            right_width;
+	__u32                            line_start;
+	__u32                            line_end;
+	__u32                            height;
+	__u32                            batch_size;
+	__u32                            dsp_mode;
+	__u32                            sensor_width;
+	__u32                            sensor_height;
+	__u32                            sensor_hbi;
+	__u32                            sensor_vbi;
+	__u32                            sensor_fps;
+	__u32                            init_frame_drop;
+	__u32                            num_out_res;
+	__u32                            feature_flag;
+	__u32                            core_cfg;
+	__u32                            reserve_field_1;
+	__u32                            reserve_field_2;
+	__u32                            reserve_field_3;
+	__u32                            reserve_field_4;
+	__u32                            reserve_field_5;
+	__u32                            reserve_field_6;
 	struct cam_isp_tfe_out_port_info data[1];
 };
 
