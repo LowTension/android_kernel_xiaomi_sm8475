@@ -6,7 +6,7 @@
 #ifndef _CAM_VFE_CORE_H_
 #define _CAM_VFE_CORE_H_
 
-#include <linux/spinlock.h>
+#include <linux/spinlock_types.h>
 #include "cam_hw_intf.h"
 #include "cam_vfe_top.h"
 #include "cam_vfe_bus.h"
