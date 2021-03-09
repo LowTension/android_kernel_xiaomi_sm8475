@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only WITH Linux-syscall-note */
 /*
- * Copyright (c) 2016-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
  */
 
 #ifndef __UAPI_CAM_ICP_H__
@@ -50,8 +50,10 @@
 #define CAM_ICP_IPE_OUTPUT_IMAGE_DS4_REF        0xB
 #define CAM_ICP_IPE_OUTPUT_IMAGE_DS16_REF       0xC
 #define CAM_ICP_IPE_OUTPUT_IMAGE_DS64_REF       0xD
+#define CAM_ICP_IPE_OUTPUT_IMAGE_FD             0x33
+#define CAM_ICP_IPE_OUTPUT_IMAGE_STATS_IHIST    0x3D
 
-#define CAM_ICP_IPE_IMAGE_MAX                   0xE
+#define CAM_ICP_IPE_IMAGE_MAX         (CAM_ICP_IPE_OUTPUT_IMAGE_STATS_IHIST + 1)
 
 /* BPS input port resource type */
 #define CAM_ICP_BPS_INPUT_IMAGE                 0x0
