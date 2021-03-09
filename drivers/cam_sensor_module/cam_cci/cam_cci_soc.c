@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  */
 
 #include "cam_cci_dev.h"
@@ -49,7 +49,7 @@ static int cam_cci_init_master(struct cci_device *cci_dev,
 				CCI_M0_RESET_RMSK : CCI_M1_RESET_RMSK,
 				base + CCI_RESET_CMD_ADDR);
 		}
-		if (!wait_for_completion_timeout(
+		if (!cam_common_wait_for_completion_timeout(
 			&cci_dev->cci_master_info[master].reset_complete,
 			CCI_TIMEOUT)) {
 			CAM_ERR(CAM_CCI,

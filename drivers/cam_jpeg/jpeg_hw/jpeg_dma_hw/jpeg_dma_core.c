@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/of.h>
@@ -22,6 +22,7 @@
 #include "cam_jpeg_hw_mgr_intf.h"
 #include "cam_cpas_api.h"
 #include "cam_debug_util.h"
+#include "cam_common_util.h"
 
 #define CAM_JPEG_HW_IRQ_IS_FRAME_DONE(jpeg_irq_status, hi) \
 	((jpeg_irq_status) & (hi)->int_status.framedone)
@@ -280,8 +281,9 @@ int cam_jpeg_dma_reset_hw(void *data,
 	cam_io_w_mb(hw_info->reg_val.reset_cmd,
 		mem_base + hw_info->reg_offset.reset_cmd);
 
-	rem_jiffies = wait_for_completion_timeout(&jpeg_dma_dev->hw_complete,
-		CAM_JPEG_DMA_RESET_TIMEOUT);
+	rem_jiffies = cam_common_wait_for_completion_timeout(
+			&jpeg_dma_dev->hw_complete,
+			CAM_JPEG_DMA_RESET_TIMEOUT);
 	if (!rem_jiffies) {
 		CAM_ERR(CAM_JPEG, "dma error Reset Timeout");
 		core_info->core_state = CAM_JPEG_DMA_CORE_NOT_READY;
@@ -361,8 +363,9 @@ int cam_jpeg_dma_stop_hw(void *data,
 	cam_io_w_mb(hw_info->reg_val.hw_cmd_stop,
 		mem_base + hw_info->reg_offset.hw_cmd);
 
-	rem_jiffies = wait_for_completion_timeout(&jpeg_dma_dev->hw_complete,
-		CAM_JPEG_DMA_RESET_TIMEOUT);
+	rem_jiffies = cam_common_wait_for_completion_timeout(
+			&jpeg_dma_dev->hw_complete,
+			CAM_JPEG_DMA_RESET_TIMEOUT);
 	if (!rem_jiffies) {
 		CAM_ERR(CAM_JPEG, "error Reset Timeout");
 		core_info->core_state = CAM_JPEG_DMA_CORE_NOT_READY;

@@ -602,12 +602,13 @@ int cam_hfi_resume(struct hfi_mem_info *hfi_mem)
 		return -EINVAL;
 	}
 
-	if (readl_poll_timeout(icp_base + HFI_REG_ICP_HOST_INIT_RESPONSE,
-			       status, status == ICP_INIT_RESP_SUCCESS,
-			       HFI_POLL_DELAY_US, HFI_POLL_TIMEOUT_US)) {
-		CAM_ERR(CAM_HFI, "response poll timed out: status=0x%08x",
-			status);
-		return -ETIMEDOUT;
+	if (cam_common_read_poll_timeout(icp_base +
+		    HFI_REG_ICP_HOST_INIT_RESPONSE,
+		    HFI_POLL_DELAY_US, HFI_POLL_TIMEOUT_US,
+		    0x1, ICP_INIT_RESP_SUCCESS, &status)) {
+	    CAM_ERR(CAM_HFI, "response poll timed out: status=0x%08x",
+		    status);
+	    return -ETIMEDOUT;
 	}
 
 	hfi_irq_enable(g_hfi);
@@ -873,11 +874,11 @@ int cam_hfi_init(struct hfi_mem_info *hfi_mem, const struct hfi_ops *hfi_ops,
 		hfi_mem->qtbl.iova, hfi_mem->qtbl.len,
 		hfi_mem->sfr_buf.iova, hfi_mem->sfr_buf.len);
 
-	if (readl_poll_timeout(icp_base + HFI_REG_ICP_HOST_INIT_RESPONSE,
-			status, status == ICP_INIT_RESP_SUCCESS,
-			HFI_POLL_DELAY_US, HFI_POLL_TIMEOUT_US)) {
-		CAM_ERR(CAM_HFI,
-			"response poll timed out: status=0x%08x",
+	if (cam_common_read_poll_timeout(icp_base +
+		    HFI_REG_ICP_HOST_INIT_RESPONSE,
+		    HFI_POLL_DELAY_US, HFI_POLL_TIMEOUT_US,
+		    0x1, ICP_INIT_RESP_SUCCESS, &status)) {
+		CAM_ERR(CAM_HFI, "response poll timed out: status=0x%08x",
 			status);
 		rc = -ETIMEDOUT;
 		goto regions_fail;

@@ -22,6 +22,7 @@
 #include "cam_irq_controller.h"
 #include "cam_tasklet_util.h"
 #include "cam_cdm_util.h"
+#include "cam_common_util.h"
 
 
 /* CSIPHY TPG VC/DT values */
@@ -1175,7 +1176,7 @@ static int cam_ife_csid_ver2_wait_for_reset(
 	unsigned long rem_jiffies = 0;
 	int rc = 0;
 
-	rem_jiffies = wait_for_completion_timeout(
+	rem_jiffies = cam_common_wait_for_completion_timeout(
 		&csid_hw->irq_complete[CAM_IFE_CSID_IRQ_REG_TOP],
 		msecs_to_jiffies(CAM_IFE_CSID_RESET_TIMEOUT_MS));
 

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/iopoll.h>
@@ -20,6 +20,7 @@
 #include "cam_cpas_api.h"
 #include "cam_isp_hw_mgr_intf.h"
 #include "cam_tasklet_util.h"
+#include "cam_common_util.h"
 
 #define IFE_CSID_TIMEOUT                               1000
 
@@ -440,7 +441,7 @@ static int cam_ife_csid_ver1_hw_reset(
 	spin_unlock_irqrestore(&csid_hw->hw_info->hw_lock, flags);
 	CAM_DBG(CAM_ISP, "CSID reset start");
 
-	rem_jiffies = wait_for_completion_timeout(
+	rem_jiffies = cam_common_wait_for_completion_timeout(
 			&csid_hw->irq_complete[CAM_IFE_CSID_IRQ_REG_TOP],
 			msecs_to_jiffies(CAM_IFE_CSID_RESET_TIMEOUT_MS));
 
@@ -516,7 +517,7 @@ static int cam_ife_csid_ver1_sw_reset(
 	CAM_DBG(CAM_ISP, "CSID[%d] top reset start",
 		csid_hw->hw_intf->hw_idx);
 
-	rem_jiffies = wait_for_completion_timeout(
+	rem_jiffies = cam_common_wait_for_completion_timeout(
 			&csid_hw->irq_complete[CAM_IFE_CSID_IRQ_REG_TOP],
 			msecs_to_jiffies(CAM_IFE_CSID_RESET_TIMEOUT_MS));
 
@@ -651,7 +652,7 @@ static int cam_ife_csid_path_reset(
 	irq_reg = cam_ife_csid_convert_res_to_irq_reg(res->res_id);
 	reinit_completion(&csid_hw->irq_complete[irq_reg]);
 
-	rem_jiffies = wait_for_completion_timeout(
+	rem_jiffies = cam_common_wait_for_completion_timeout(
 			&csid_hw->irq_complete[irq_reg],
 			msecs_to_jiffies(IFE_CSID_TIMEOUT));
 
@@ -3060,16 +3061,20 @@ static int cam_ife_csid_poll_stop_status(
 		CAM_DBG(CAM_ISP, "start polling CSID:%d res_id:%d",
 			csid_hw->hw_intf->hw_idx, res_id);
 
-		rc = readl_poll_timeout(soc_info->reg_map[0].mem_base +
-			status_addr, val, (val & 0x1) == 0x1,
-				CAM_IFE_CSID_TIMEOUT_SLEEP_US,
-				CAM_IFE_CSID_TIMEOUT_ALL_US);
+		rc = cam_common_read_poll_timeout(
+			    soc_info->reg_map[0].mem_base +
+			    status_addr,
+			    CAM_IFE_CSID_TIMEOUT_SLEEP_US,
+			    CAM_IFE_CSID_TIMEOUT_ALL_US,
+			    0x1, 0x1, &val);
+
 		if (rc < 0) {
 			CAM_ERR(CAM_ISP, "CSID:%d res:%d halt failed rc %d",
 				csid_hw->hw_intf->hw_idx, res_id, rc);
 			rc = -ETIMEDOUT;
 			break;
 		}
+
 		CAM_DBG(CAM_ISP, "End polling CSID:%d res_id:%d",
 			csid_hw->hw_intf->hw_idx, res_id);
 	}

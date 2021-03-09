@@ -3179,8 +3179,9 @@ static int cam_icp_mgr_send_pc_prep(struct cam_icp_hw_mgr *hw_mgr)
 		return rc;
 
 	CAM_DBG(CAM_ICP, "Wait for PC_PREP_DONE Message\n");
-	rem_jiffies = wait_for_completion_timeout(&icp_hw_mgr.icp_complete,
-		msecs_to_jiffies((timeout)));
+	rem_jiffies = cam_common_wait_for_completion_timeout(
+			&icp_hw_mgr.icp_complete,
+			msecs_to_jiffies((timeout)));
 	if (!rem_jiffies) {
 		rc = -ETIMEDOUT;
 		CAM_ERR(CAM_ICP, "PC_PREP response timed out %d\n", rc);
@@ -3512,7 +3513,7 @@ static int cam_icp_retry_wait_for_abort(
 	CAM_WARN(CAM_ICP, "FW timeout in abort ctx: %u retry_left: %d",
 		ctx_data->ctx_id, retry_cnt);
 	while (retry_cnt > 0) {
-		rem_jiffies = wait_for_completion_timeout(
+		rem_jiffies = cam_common_wait_for_completion_timeout(
 			&ctx_data->wait_complete,
 			msecs_to_jiffies((timeout)));
 		if (!rem_jiffies) {
@@ -3624,7 +3625,8 @@ static int cam_icp_mgr_abort_handle(
 	}
 	CAM_DBG(CAM_ICP, "fw_handle = %x ctx_data = %pK",
 		ctx_data->fw_handle, ctx_data);
-	rem_jiffies = wait_for_completion_timeout(&ctx_data->wait_complete,
+	rem_jiffies = cam_common_wait_for_completion_timeout(
+			&ctx_data->wait_complete,
 			msecs_to_jiffies((timeout)));
 	if (!rem_jiffies) {
 		rc = cam_icp_retry_wait_for_abort(ctx_data);
@@ -3682,7 +3684,8 @@ static int cam_icp_mgr_destroy_handle(
 	}
 	CAM_DBG(CAM_ICP, "fw_handle = %x ctx_data = %pK",
 		ctx_data->fw_handle, ctx_data);
-	rem_jiffies = wait_for_completion_timeout(&ctx_data->wait_complete,
+	rem_jiffies = cam_common_wait_for_completion_timeout(
+			&ctx_data->wait_complete,
 			msecs_to_jiffies((timeout)));
 	if (!rem_jiffies) {
 		rc = -ETIMEDOUT;
@@ -3952,8 +3955,9 @@ static int cam_icp_mgr_send_fw_init(struct cam_icp_hw_mgr *hw_mgr)
 	if (rc)
 		return rc;
 
-	rem_jiffies = wait_for_completion_timeout(&icp_hw_mgr.icp_complete,
-		msecs_to_jiffies((timeout)));
+	rem_jiffies = cam_common_wait_for_completion_timeout(
+			&icp_hw_mgr.icp_complete,
+			msecs_to_jiffies((timeout)));
 	if (!rem_jiffies) {
 		rc = -ETIMEDOUT;
 		CAM_ERR(CAM_ICP, "FW response timed out %d", rc);
@@ -4218,8 +4222,9 @@ static int cam_icp_mgr_send_config_io(struct cam_icp_hw_ctx_data *ctx_data,
 		return rc;
 	}
 
-	rem_jiffies = wait_for_completion_timeout(&ctx_data->wait_complete,
-		msecs_to_jiffies((timeout)));
+	rem_jiffies = cam_common_wait_for_completion_timeout(
+			&ctx_data->wait_complete,
+			msecs_to_jiffies((timeout)));
 	if (!rem_jiffies) {
 		/* send specific error for io config failure */
 		rc = -EREMOTEIO;
@@ -4675,8 +4680,9 @@ static int cam_icp_process_stream_settings(
 	CAM_DBG(CAM_ICP, "Sent FW %s cmd",
 		map_unmap ? "Map" : "Unmap");
 
-	rem_jiffies = wait_for_completion_timeout(&ctx_data->wait_complete,
-		msecs_to_jiffies((timeout)));
+	rem_jiffies = cam_common_wait_for_completion_timeout(
+			&ctx_data->wait_complete,
+			msecs_to_jiffies((timeout)));
 	if (!rem_jiffies) {
 		rc = -ETIMEDOUT;
 		CAM_ERR(CAM_ICP, "FW response timed out %d", rc);
@@ -5392,8 +5398,9 @@ static int cam_icp_mgr_enqueue_abort(
 	cam_req_mgr_workq_enqueue_task(task, &icp_hw_mgr,
 		CRM_TASK_PRIORITY_0);
 
-	rem_jiffies = wait_for_completion_timeout(&ctx_data->wait_complete,
-		msecs_to_jiffies((timeout)));
+	rem_jiffies = cam_common_wait_for_completion_timeout(
+			&ctx_data->wait_complete,
+			msecs_to_jiffies((timeout)));
 	if (!rem_jiffies) {
 		rc = cam_icp_retry_wait_for_abort(ctx_data);
 		if (rc) {
@@ -5673,7 +5680,8 @@ static int cam_icp_mgr_create_handle(uint32_t dev_type,
 	if (rc)
 		return rc;
 
-	rem_jiffies = wait_for_completion_timeout(&ctx_data->wait_complete,
+	rem_jiffies = cam_common_wait_for_completion_timeout(
+			&ctx_data->wait_complete,
 			msecs_to_jiffies((timeout)));
 	if (!rem_jiffies) {
 		rc = -ETIMEDOUT;
@@ -5720,7 +5728,8 @@ static int cam_icp_mgr_send_ping(struct cam_icp_hw_ctx_data *ctx_data)
 	if (rc)
 		return rc;
 
-	rem_jiffies = wait_for_completion_timeout(&ctx_data->wait_complete,
+	rem_jiffies = cam_common_wait_for_completion_timeout(
+			&ctx_data->wait_complete,
 			msecs_to_jiffies((timeout)));
 	if (!rem_jiffies) {
 		rc = -ETIMEDOUT;

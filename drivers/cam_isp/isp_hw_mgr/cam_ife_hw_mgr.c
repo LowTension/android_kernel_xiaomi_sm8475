@@ -5543,7 +5543,7 @@ static int cam_ife_mgr_config_hw(void *hw_mgr_priv,
 
 		if (cfg->init_packet || hw_update_data->mup_en ||
 			(ctx->ctx_config & CAM_IFE_CTX_CFG_SW_SYNC_ON)) {
-			rem_jiffies = wait_for_completion_timeout(
+			rem_jiffies = cam_common_wait_for_completion_timeout(
 				&ctx->config_done_complete,
 				msecs_to_jiffies(60));
 			if (rem_jiffies == 0) {
@@ -5804,7 +5804,7 @@ static int cam_ife_mgr_stop_hw(void *hw_mgr_priv, void *stop_hw_args)
 		sizeof(struct cam_sfe_scratch_buf_cfg));
 	cam_ife_mgr_pause_hw(ctx);
 
-	rem_jiffies = wait_for_completion_timeout(
+	rem_jiffies = cam_common_wait_for_completion_timeout(
 		&ctx->config_done_complete,
 		msecs_to_jiffies(10));
 	if (rem_jiffies == 0)
@@ -9764,7 +9764,7 @@ static int cam_ife_mgr_cmd(void *hw_mgr_priv, void *cmd_args)
 		if (ctx->last_dump_flush_req_id == ctx->applied_req_id)
 			return 0;
 
-		rem_jiffies = wait_for_completion_timeout(
+		rem_jiffies = cam_common_wait_for_completion_timeout(
 			&ctx->config_done_complete, msecs_to_jiffies(30));
 		if (rem_jiffies == 0)
 			CAM_ERR(CAM_ISP,

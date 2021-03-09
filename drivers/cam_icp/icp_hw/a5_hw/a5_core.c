@@ -27,6 +27,7 @@
 #include "cam_cpas_api.h"
 #include "cam_debug_util.h"
 #include "cam_icp_utils.h"
+#include "cam_common_util.h"
 
 #define PC_POLL_DELAY_US 100
 #define PC_POLL_TIMEOUT_US 10000
@@ -333,9 +334,12 @@ static int cam_a5_power_collapse(struct cam_hw_info *a5_info)
 	 * and Host can then proceed. No interrupt is expected
 	 * from FW at this time.
 	 */
-	if (readl_poll_timeout(base + ICP_SIERRA_A5_CSR_A5_STATUS,
-				status, status & A5_CSR_A5_STANDBYWFI,
-				PC_POLL_DELAY_US, PC_POLL_TIMEOUT_US)) {
+
+	if (cam_common_read_poll_timeout(base +
+		    ICP_SIERRA_A5_CSR_A5_STATUS,
+		    PC_POLL_DELAY_US, PC_POLL_TIMEOUT_US,
+		    A5_CSR_A5_STANDBYWFI,
+		    A5_CSR_A5_STANDBYWFI, &status)) {
 		CAM_ERR(CAM_ICP, "WFI poll timed out: status=0x%08x", status);
 		return -ETIMEDOUT;
 	}

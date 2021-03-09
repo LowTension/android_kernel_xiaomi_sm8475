@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CAM_COMMON_UTIL_H_
@@ -64,4 +64,41 @@ int cam_common_util_get_string_index(const char **strings,
 uint32_t cam_common_util_remove_duplicate_arr(int32_t *array,
 	uint32_t num);
 
+/**
+ * cam_common_wait_for_completion_timeout()
+ *
+ * @brief                  common interface to implement wait for completion
+ *                         for slow environment like presil, single debug
+ *                         timeout variable can take care
+ *
+ * @complete:              Pointer to the first integer of array
+ * @timeout_jiffies:       Timeout value in jiffie
+ *
+ * @return:                Remaining jiffies, non-zero for success, zero
+ *                         in case of failure
+ */
+unsigned long cam_common_wait_for_completion_timeout(
+	struct completion   *complete,
+	unsigned long        timeout_jiffies);
+/**
+ * cam_common_read_poll_timeout()
+ *
+ * @brief                  common interface to read poll timeout
+ *
+ * @addr:                  Address of IO register
+ * @delay:                 Delay interval of poll
+ * @timeout:               Timeout for poll
+ * @mask:                  Mask to be checked
+ * @check_val:             Value to be compared to break poll
+ * @status:                Status of register of IO
+ *
+ * @return:                0 if success and negative if fail
+ * */
+int cam_common_read_poll_timeout(
+	void __iomem        *addr,
+	unsigned long        delay,
+	unsigned long        timeout,
+	uint32_t             mask,
+	uint32_t             check_val,
+	uint32_t            *status);
 #endif /* _CAM_COMMON_UTIL_H_ */

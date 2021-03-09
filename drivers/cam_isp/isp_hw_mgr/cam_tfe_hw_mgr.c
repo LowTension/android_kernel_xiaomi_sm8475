@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/slab.h>
@@ -2613,7 +2613,7 @@ static int cam_tfe_mgr_config_hw(void *hw_mgr_priv,
 		goto end;
 
 	for (i = 0; i < CAM_TFE_HW_CONFIG_WAIT_MAX_TRY; i++) {
-		rc = wait_for_completion_timeout(
+		rc = cam_common_wait_for_completion_timeout(
 			&ctx->config_done_complete,
 			msecs_to_jiffies(
 			CAM_TFE_HW_CONFIG_TIMEOUT));
@@ -2873,7 +2873,7 @@ static int cam_tfe_mgr_stop_hw(void *hw_mgr_priv, void *stop_hw_args)
 
 	cam_tfe_mgr_pause_hw(ctx);
 
-	wait_for_completion_timeout(&ctx->config_done_complete,
+	cam_common_wait_for_completion_timeout(&ctx->config_done_complete,
 		msecs_to_jiffies(5));
 
 	if (ctx->is_tpg)

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/delay.h>
@@ -26,6 +26,7 @@
 #include "camera_main.h"
 #include "cam_trace.h"
 #include "cam_req_mgr_workq.h"
+#include "cam_common_util.h"
 
 #define CAM_CDM_BL_FIFO_WAIT_TIMEOUT 2000
 #define CAM_CDM_DBG_GEN_IRQ_USR_DATA 0xff
@@ -688,7 +689,7 @@ int cam_hw_cdm_wait_for_bl_fifo(
 				CAM_ERR(CAM_CDM, "Enable BL done irq failed");
 				break;
 			}
-			time_left = wait_for_completion_timeout(
+			time_left = cam_common_wait_for_completion_timeout(
 				&core->bl_fifo[fifo_idx].bl_complete,
 				msecs_to_jiffies(
 				CAM_CDM_BL_FIFO_WAIT_TIMEOUT));
@@ -1727,8 +1728,9 @@ int cam_hw_cdm_reset_hw(struct cam_hw_info *cdm_hw, uint32_t handle)
 
 	CAM_DBG(CAM_CDM, "Waiting for %s%u HW reset done",
 		soc_info->label_name, soc_info->index);
-	time_left = wait_for_completion_timeout(&cdm_core->reset_complete,
-		msecs_to_jiffies(CAM_CDM_HW_RESET_TIMEOUT));
+	time_left = cam_common_wait_for_completion_timeout(
+			&cdm_core->reset_complete,
+			msecs_to_jiffies(CAM_CDM_HW_RESET_TIMEOUT));
 
 	if (time_left <= 0) {
 		rc = -ETIMEDOUT;
@@ -1829,8 +1831,9 @@ int cam_hw_cdm_handle_error_info(
 	}
 
 	CAM_DBG(CAM_CDM, "Waiting for CDM HW resetdone");
-	time_left = wait_for_completion_timeout(&cdm_core->reset_complete,
-		msecs_to_jiffies(CAM_CDM_HW_RESET_TIMEOUT));
+	time_left = cam_common_wait_for_completion_timeout(
+			&cdm_core->reset_complete,
+			msecs_to_jiffies(CAM_CDM_HW_RESET_TIMEOUT));
 
 	if (time_left <= 0) {
 		rc = -ETIMEDOUT;
@@ -2131,8 +2134,9 @@ int cam_hw_cdm_deinit(void *hw_priv,
 
 	CAM_DBG(CAM_CDM, "Waiting for %s%u HW reset done",
 		soc_info->label_name, soc_info->index);
-	time_left = wait_for_completion_timeout(&cdm_core->reset_complete,
-		msecs_to_jiffies(CAM_CDM_HW_RESET_TIMEOUT));
+	time_left = cam_common_wait_for_completion_timeout(
+			&cdm_core->reset_complete,
+			msecs_to_jiffies(CAM_CDM_HW_RESET_TIMEOUT));
 
 	if (time_left <= 0) {
 		rc = -ETIMEDOUT;

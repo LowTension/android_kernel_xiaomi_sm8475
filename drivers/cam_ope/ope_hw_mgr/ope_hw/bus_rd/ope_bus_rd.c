@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/of.h>
@@ -26,6 +26,7 @@
 #include "ope_hw.h"
 #include "ope_dev_intf.h"
 #include "ope_bus_rd.h"
+#include "cam_common_util.h"
 
 static struct ope_bus_rd *bus_rd;
 
@@ -692,7 +693,7 @@ static int cam_ope_bus_rd_init(struct ope_hw *ope_hw_info,
 	cam_io_w_mb(bus_rd_reg_val->sw_reset,
 		ope_hw_info->bus_rd_reg->base + bus_rd_reg->sw_reset);
 
-	rc = wait_for_completion_timeout(
+	rc = cam_common_wait_for_completion_timeout(
 		&bus_rd->reset_complete, msecs_to_jiffies(30000));
 
 	if (!rc || rc < 0) {

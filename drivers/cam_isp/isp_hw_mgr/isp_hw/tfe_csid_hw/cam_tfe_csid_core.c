@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/iopoll.h>
@@ -19,6 +19,7 @@
 #include "cam_isp_hw_mgr_intf.h"
 #include "cam_subdev.h"
 #include "cam_tasklet_util.h"
+#include "cam_common_util.h"
 
 /* Timeout value in msec */
 #define TFE_CSID_TIMEOUT                               1000
@@ -309,10 +310,11 @@ static int cam_tfe_csid_global_reset(struct cam_tfe_csid_hw *csid_hw)
 		soc_info->reg_map[0].mem_base +
 		csid_reg->cmn_reg->csid_rst_strobes_addr);
 
-	rc = readl_poll_timeout(soc_info->reg_map[0].mem_base +
+	rc = cam_common_read_poll_timeout(soc_info->reg_map[0].mem_base +
 		csid_reg->cmn_reg->csid_top_irq_status_addr,
-			status, (status & 0x1) == 0x1,
-		CAM_TFE_CSID_TIMEOUT_SLEEP_US, CAM_TFE_CSID_TIMEOUT_ALL_US);
+		CAM_TFE_CSID_TIMEOUT_SLEEP_US, CAM_TFE_CSID_TIMEOUT_ALL_US,
+		0x1, 0x1, &status);
+
 	if (rc < 0) {
 		CAM_ERR(CAM_ISP, "CSID:%d csid_reset fail rc = %d",
 			  csid_hw->hw_intf->hw_idx, rc);
@@ -329,8 +331,9 @@ static int cam_tfe_csid_global_reset(struct cam_tfe_csid_hw *csid_hw)
 		soc_info->reg_map[0].mem_base +
 		csid_reg->cmn_reg->csid_rst_strobes_addr);
 
-	rc = wait_for_completion_timeout(&csid_hw->csid_top_complete,
-		msecs_to_jiffies(TFE_CSID_TIMEOUT));
+	rc = cam_common_wait_for_completion_timeout(
+			&csid_hw->csid_top_complete,
+			msecs_to_jiffies(TFE_CSID_TIMEOUT));
 	if (rc <= 0) {
 		CAM_ERR(CAM_ISP, "CSID:%d soft reg reset fail rc = %d",
 			 csid_hw->hw_intf->hw_idx, rc);
@@ -429,7 +432,7 @@ static int cam_tfe_csid_path_reset(struct cam_tfe_csid_hw *csid_hw,
 	cam_io_w_mb(reset_strb_val, soc_info->reg_map[0].mem_base +
 				reset_strb_addr);
 
-	rc = wait_for_completion_timeout(complete,
+	rc = cam_common_wait_for_completion_timeout(complete,
 		msecs_to_jiffies(TFE_CSID_TIMEOUT));
 	if (rc <= 0) {
 		CAM_ERR(CAM_ISP, "CSID:%d Res id %d fail rc = %d",
@@ -1651,10 +1654,13 @@ static int cam_tfe_csid_poll_stop_status(
 		CAM_DBG(CAM_ISP, "start polling CSID:%d res_id:%d",
 			csid_hw->hw_intf->hw_idx, res_id);
 
-		rc = readl_poll_timeout(soc_info->reg_map[0].mem_base +
-			csid_status_addr, val, (val & 0x1) == 0x1,
-				CAM_TFE_CSID_TIMEOUT_SLEEP_US,
-				CAM_TFE_CSID_TIMEOUT_ALL_US);
+		rc = cam_common_read_poll_timeout(
+			    soc_info->reg_map[0].mem_base +
+			    csid_status_addr,
+			    CAM_TFE_CSID_TIMEOUT_SLEEP_US,
+			    CAM_TFE_CSID_TIMEOUT_ALL_US,
+			    0x1, 0x1, &val);
+
 		if (rc < 0) {
 			CAM_ERR(CAM_ISP, "CSID:%d res:%d halt failed rc %d",
 				csid_hw->hw_intf->hw_idx, res_id, rc);
@@ -1992,10 +1998,12 @@ static int cam_tfe_csid_reset_retain_sw_reg(
 	cam_io_w_mb(csid_reg->cmn_reg->csid_rst_stb,
 		soc_info->reg_map[0].mem_base +
 		csid_reg->cmn_reg->csid_rst_strobes_addr);
-	rc = readl_poll_timeout(soc_info->reg_map[0].mem_base +
+
+	rc = cam_common_read_poll_timeout(soc_info->reg_map[0].mem_base +
 		csid_reg->cmn_reg->csid_top_irq_status_addr,
-			status, (status & 0x1) == 0x1,
-		CAM_TFE_CSID_TIMEOUT_SLEEP_US, CAM_TFE_CSID_TIMEOUT_ALL_US);
+		CAM_TFE_CSID_TIMEOUT_SLEEP_US, CAM_TFE_CSID_TIMEOUT_ALL_US,
+		0x1, 0x1, &status);
+
 	if (rc < 0) {
 		CAM_ERR(CAM_ISP, "CSID:%d csid_reset fail rc = %d",
 			  csid_hw->hw_intf->hw_idx, rc);

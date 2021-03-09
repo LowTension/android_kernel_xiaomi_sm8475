@@ -17,6 +17,7 @@
 #include "cam_ife_hw_mgr.h"
 #include "cam_debug_util.h"
 #include "cam_cpas_api.h"
+#include "cam_common_util.h"
 
 static const char drv_name[] = "vfe";
 
@@ -268,7 +269,8 @@ int cam_vfe_reset(void *hw_priv, void *reset_core_args, uint32_t arg_size)
 		reset_core_args, arg_size);
 
 	/* Wait for Completion or Timeout of 500ms */
-	rc = wait_for_completion_timeout(&vfe_hw->hw_complete, 500);
+	rc = cam_common_wait_for_completion_timeout(
+			&vfe_hw->hw_complete, 500);
 
 	if (!rc)
 		CAM_ERR(CAM_ISP, "Reset Timeout");

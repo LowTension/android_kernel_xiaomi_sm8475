@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/timer.h>
@@ -461,7 +461,7 @@ static int cam_lrme_hw_util_reset(struct cam_hw_info *lrme_hw,
 		reinit_completion(&lrme_core->reset_complete);
 		cam_io_w_mb(0x1, soc_info->reg_map[0].mem_base +
 			hw_info->titan_reg.top_rst_cmd);
-		time_left = wait_for_completion_timeout(
+		time_left = cam_common_wait_for_completion_timeout(
 			&lrme_core->reset_complete,
 			msecs_to_jiffies(CAM_LRME_HW_RESET_TIMEOUT));
 		if (time_left <= 0) {
@@ -479,7 +479,7 @@ static int cam_lrme_hw_util_reset(struct cam_hw_info *lrme_hw,
 		reinit_completion(&lrme_core->reset_complete);
 		cam_io_w_mb(0x2, soc_info->reg_map[0].mem_base +
 			hw_info->titan_reg.top_rst_cmd);
-		time_left = wait_for_completion_timeout(
+		time_left = cam_common_wait_for_completion_timeout(
 			&lrme_core->reset_complete,
 			msecs_to_jiffies(CAM_LRME_HW_RESET_TIMEOUT));
 		if (time_left <= 0) {
