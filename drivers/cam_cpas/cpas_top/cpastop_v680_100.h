@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CPASTOP_V680_100_H_
@@ -241,7 +241,7 @@ static struct cam_camnoc_specific
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
 			.offset = 0x5838, /* IFE_UBWC_URGENCY_LOW */
-			.value = 0x1B30,
+			.value = 0x1E30,
 		},
 		.danger_lut = {
 			.enable = true,
@@ -309,7 +309,7 @@ static struct cam_camnoc_specific
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
 			.offset = 0x5238, /* IFE_RDI_WR_URGENCY_LOW */
-			.value = 0x1B30,
+			.value = 0x1E30,
 		},
 		.danger_lut = {
 			.enable = true,
@@ -649,17 +649,17 @@ static struct cam_camnoc_specific
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
 			.offset = 0x7038, /* SFE_RD_URGENCY_LOW */
-			.value = 0x3,
+			.value = 0x4,
 		},
 		.danger_lut = {
-			.enable = true,
+			.enable = false,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
 			.offset = 0x7040, /* SFE_RD_DANGERLUT_LOW */
 			.value = 0x0,
 		},
 		.safe_lut = {
-			.enable = true,
+			.enable = false,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
 			.offset = 0x7048, /* SFE_RD_SAFELUT_LOW */
@@ -863,25 +863,25 @@ static struct cam_camnoc_specific
 			.enable = false,
 		},
 		.qosgen_mainctl = {
-			.enable = false,
+			.enable = true,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
 			.offset = 0x208, /* BPS_RD_QOSGEN_MAINCTL */
-			.value = 0x0,
+			.value = 0x2,
 		},
 		.qosgen_shaping_low = {
-			.enable = false,
+			.enable = true,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
 			.offset = 0x220, /* BPS_RD_QOSGEN_SHAPING_LOW */
-			.value = 0x0,
+			.value = 0x14141414,
 		},
 		.qosgen_shaping_high = {
-			.enable = false,
+			.enable = true,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
 			.offset = 0x224, /* BPS_RD_QOSGEN_SHAPING_HIGH */
-			.value = 0x0,
+			.value = 0x14141414,
 		},
 	},
 	{
@@ -926,25 +926,25 @@ static struct cam_camnoc_specific
 			.enable = false,
 		},
 		.qosgen_mainctl = {
-			.enable = false,
+			.enable = true,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
 			.offset = 0x7e08, /* JPEG_QOSGEN_MAINCTL */
-			.value = 0x0,
+			.value = 0x2,
 		},
 		.qosgen_shaping_low = {
-			.enable = false,
+			.enable = true,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
 			.offset = 0x7e20, /* JPEG_QOSGEN_SHAPING_LOW */
-			.value = 0x0,
+			.value = 0x10101010,
 		},
 		.qosgen_shaping_high = {
-			.enable = false,
+			.enable = true,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
 			.offset = 0x7e24, /* JPEG_QOSGEN_SHAPING_HIGH */
-			.value = 0x0,
+			.value = 0x10101010,
 		},
 	},
 	{
@@ -993,25 +993,25 @@ static struct cam_camnoc_specific
 			.value = 1,
 		},
 		.qosgen_mainctl = {
-			.enable = false,
+			.enable = true,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
 			.offset = 0x6008, /* IPE0_RD_QOSGEN_MAINCTL */
-			.value = 0x0,
+			.value = 0x2,
 		},
 		.qosgen_shaping_low = {
-			.enable = false,
+			.enable = true,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
 			.offset = 0x6020, /* IPE0_RD_QOSGEN_SHAPING_LOW */
-			.value = 0x0,
+			.value = 0x29292929,
 		},
 		.qosgen_shaping_high = {
-			.enable = false,
+			.enable = true,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
 			.offset = 0x6024, /* IPE0_RD_QOSGEN_SHAPING_HIGH */
-			.value = 0x0,
+			.value = 0x29292929,
 		},
 	},
 	{
@@ -1056,25 +1056,25 @@ static struct cam_camnoc_specific
 			.enable = false,
 		},
 		.qosgen_mainctl = {
-			.enable = false,
+			.enable = true,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
 			.offset = 0x6608, /* IPE1_RD_QOSGEN_MAINCTL */
-			.value = 0x0,
+			.value = 0x2,
 		},
 		.qosgen_shaping_low = {
-			.enable = false,
+			.enable = true,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
 			.offset = 0x6620, /* IPE1_RD_QOSGEN_SHAPING_LOW */
-			.value = 0x0,
+			.value = 0x29292929,
 		},
 		.qosgen_shaping_high = {
-			.enable = false,
+			.enable = true,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
 			.offset = 0x6624, /* IPE1_RD_QOSGEN_SHAPING_HIGH */
-			.value = 0x0,
+			.value = 0x29292929,
 		},
 	},
 	{
