@@ -231,6 +231,8 @@ static int cam_ife_csid_ver2_set_debug(
 	int bit_pos = 0;
 	uint32_t val;
 
+	memset(&csid_hw->debug_info, 0,
+		sizeof(struct cam_ife_csid_debug_info));
 	csid_hw->debug_info.debug_val = debug_val;
 
 	while (debug_val) {
@@ -1791,6 +1793,8 @@ int cam_ife_csid_ver2_release(void *hw_priv,
 			sizeof(struct cam_ife_csid_rx_cfg));
 		memset(&csid_hw->top_cfg, 0,
 			sizeof(struct cam_ife_csid_ver2_top_cfg));
+		memset(&csid_hw->debug_info, 0,
+			sizeof(struct cam_ife_csid_debug_info));
 		csid_hw->token = NULL;
 	}
 
