@@ -17,7 +17,7 @@
 #include "cam_top_tpg_ver2.h"
 #include "cam_top_tpg_ver3.h"
 
-struct cam_top_tpg_debugfs tpg_debug = {0};
+static struct cam_top_tpg_debugfs tpg_debug = {0};
 
 int cam_top_tpg_get_format(
 	uint32_t                                     in_format,

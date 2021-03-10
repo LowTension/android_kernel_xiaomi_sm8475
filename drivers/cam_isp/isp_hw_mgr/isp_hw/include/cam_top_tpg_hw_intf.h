@@ -59,8 +59,8 @@ struct cam_top_tpg_ver1_reserve_args {
 
 /**
  * struct cam_top_tpg_reserve_args
- *                TPG supports 1 VC/DT combo
- *                TPG supports 4 VC's and 4 DT's per VC
+ *                TPGv2 supports 1 VC/DT combo
+ *                TPGv3 supports 4 VC's and 4 DT's per VC
  * @num_inport:   number of inport
  * @in_port :     Input port resource info structure pointer
  * @node_res :    Reserved resource structure pointer
