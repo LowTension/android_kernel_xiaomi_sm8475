@@ -1535,6 +1535,8 @@ static int cam_ife_hw_mgr_acquire_res_ife_out_rdi(
 		vfe_acquire.vfe_out.split_id = CAM_ISP_HW_SPLIT_LEFT;
 		vfe_acquire.vfe_out.unique_id = ife_ctx->ctx_index;
 		vfe_acquire.vfe_out.is_dual = 0;
+		vfe_acquire.vfe_out.disable_ubwc_comp =
+			g_ife_hw_mgr.debug_cfg.disable_ubwc_comp;
 		vfe_acquire.event_cb = cam_ife_hw_mgr_event_handler;
 		vfe_acquire.buf_done_controller = ife_ctx->buf_done_controller;
 		hw_intf = ife_src_res->hw_res[0]->hw_intf;
@@ -1617,6 +1619,8 @@ static int cam_ife_hw_mgr_acquire_res_ife_out_pixel(
 		vfe_acquire.vfe_out.out_port_info =  out_port;
 		vfe_acquire.vfe_out.is_dual       = ife_src_res->is_dual_isp;
 		vfe_acquire.vfe_out.unique_id     = ife_ctx->ctx_index;
+		vfe_acquire.vfe_out.disable_ubwc_comp =
+			g_ife_hw_mgr.debug_cfg.disable_ubwc_comp;
 		vfe_acquire.event_cb = cam_ife_hw_mgr_event_handler;
 		vfe_acquire.buf_done_controller = ife_ctx->buf_done_controller;
 
@@ -5370,7 +5374,6 @@ static int cam_isp_blob_bw_update(
 			if (hw_intf && hw_intf->hw_ops.process_cmd) {
 				bw_upd_args.node_res =
 					hw_mgr_res->hw_res[i];
-
 				bw_upd_args.camnoc_bw_bytes = cam_bw_bps;
 				bw_upd_args.external_bw_bytes = ext_bw_bps;
 
@@ -6017,8 +6020,8 @@ static int cam_ife_mgr_start_hw(void *hw_mgr_priv, void *start_hw_args)
 	struct cam_ife_hw_mgr_ctx           *ctx;
 	struct cam_isp_hw_mgr_res           *hw_mgr_res;
 	struct cam_isp_resource_node        *rsrc_node = NULL;
-	uint32_t                             i, j;
-	uint32_t                             camif_debug, disable_ubwc_comp;
+	uint32_t                             i;
+	uint32_t                             camif_debug;
 	bool                                 res_rdi_context_set = false;
 	uint32_t                             primary_rdi_src_res;
 	uint32_t                             primary_rdi_out_res;
@@ -6134,27 +6137,6 @@ static int cam_ife_mgr_start_hw(void *hw_mgr_priv, void *start_hw_args)
 					&camif_debug,
 					sizeof(camif_debug));
 			}
-		}
-	}
-
-	if (g_ife_hw_mgr.debug_cfg.disable_ubwc_comp) {
-		disable_ubwc_comp = 1;
-		for (i = 0; i < max_ife_out_res; i++) {
-			hw_mgr_res = &ctx->res_list_ife_out[i];
-			for (j = 0; j < CAM_ISP_HW_SPLIT_MAX; j++) {
-				if (!hw_mgr_res->hw_res[i])
-					continue;
-
-				rsrc_node = hw_mgr_res->hw_res[i];
-				if (rsrc_node->hw_intf->hw_ops.process_cmd) {
-					rc = rsrc_node->hw_intf->hw_ops.process_cmd(
-						rsrc_node->hw_intf->hw_priv,
-						CAM_ISP_HW_CMD_DISABLE_UBWC_COMP,
-						&disable_ubwc_comp,
-						sizeof(disable_ubwc_comp));
-				}
-			}
-			break;
 		}
 	}
 

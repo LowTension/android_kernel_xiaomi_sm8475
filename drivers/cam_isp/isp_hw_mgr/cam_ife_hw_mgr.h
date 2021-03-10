@@ -39,8 +39,6 @@ enum cam_ife_ctx_master_type {
 #define CAM_IFE_CTX_CFG_SFE_FS_MODE       BIT(2)
 #define CAM_IFE_CTX_CFG_DYNAMIC_SWITCH_ON BIT(3)
 
-#define CAM_IFE_UBWC_COMP_EN                 BIT(1)
-
 /**
  * struct cam_ife_hw_mgr_debug - contain the debug information
  *
