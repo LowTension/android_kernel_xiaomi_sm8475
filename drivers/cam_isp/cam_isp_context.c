@@ -4315,6 +4315,8 @@ static void __cam_isp_ctx_free_mem_hw_entries(struct cam_context *ctx)
 	ctx->out_map_entries = NULL;
 	ctx->in_map_entries = NULL;
 	ctx->hw_update_entry = NULL;
+	ctx->max_out_map_entries = 0;
+	ctx->max_in_map_entries = 0;
 }
 
 static int __cam_isp_ctx_release_hw_in_top_state(struct cam_context *ctx,
@@ -4653,13 +4655,30 @@ free_req:
 	return rc;
 }
 
-static int __cam_isp_ctx_allocate_mem_hw_entries(struct cam_context *ctx)
+static int __cam_isp_ctx_allocate_mem_hw_entries(
+	struct cam_context *ctx,
+	struct cam_hw_acquire_args *param)
 {
 	int rc = 0;
+	uint32_t max_res = 0;
 	struct cam_ctx_request          *req;
 	struct cam_ctx_request          *temp_req;
 	struct cam_isp_ctx_req          *req_isp;
 	size_t num_entries = 0;
+
+	if (!param->op_params.param_list[0])
+		max_res = CAM_ISP_CTX_RES_MAX;
+	else {
+		max_res = param->op_params.param_list[0];
+		if (param->op_flags & CAM_IFE_CTX_SFE_EN)
+			max_res += param->op_params.param_list[1];
+	}
+
+	ctx->max_in_map_entries = max_res;
+	ctx->max_out_map_entries = max_res;
+
+	CAM_DBG(CAM_ISP, "Allocate max: 0x%x is_sfe_en: %d",
+		max_res, (param->op_flags & CAM_IFE_CTX_SFE_EN));
 
 	num_entries = ctx->max_hw_update_entries * CAM_ISP_CTX_REQ_MAX;
 	ctx->hw_update_entry = kcalloc(num_entries,
@@ -4772,12 +4791,13 @@ static int __cam_isp_ctx_acquire_dev_in_available(struct cam_context *ctx,
 		goto free_res;
 	}
 
+	memset(&param, 0, sizeof(param));
 	param.context_data = ctx;
 	param.event_cb = ctx->irq_cb_intf;
 	param.num_acq = cmd->num_resources;
 	param.acquire_info = (uintptr_t) isp_res;
 
-	rc = __cam_isp_ctx_allocate_mem_hw_entries(ctx);
+	rc = __cam_isp_ctx_allocate_mem_hw_entries(ctx, &param);
 	if (rc) {
 		CAM_ERR(CAM_ISP, "Ctx[%d] allocate hw entry fail",
 			ctx->ctx_id);
@@ -4895,13 +4915,13 @@ static int __cam_isp_ctx_acquire_hw_v1(struct cam_context *ctx,
 	int i;
 	struct cam_acquire_hw_cmd_v1 *cmd =
 		(struct cam_acquire_hw_cmd_v1 *)args;
-	struct cam_hw_acquire_args       param;
-	struct cam_hw_release_args       release;
-	struct cam_isp_context          *ctx_isp =
+	struct cam_hw_acquire_args        param;
+	struct cam_hw_release_args        release;
+	struct cam_isp_context           *ctx_isp =
 		(struct cam_isp_context *) ctx->ctx_priv;
-	struct cam_hw_cmd_args           hw_cmd_args;
-	struct cam_isp_hw_cmd_args       isp_hw_cmd_args;
-	struct cam_isp_acquire_hw_info  *acquire_hw_info = NULL;
+	struct cam_hw_cmd_args            hw_cmd_args;
+	struct cam_isp_hw_cmd_args        isp_hw_cmd_args;
+	struct cam_isp_acquire_hw_info   *acquire_hw_info = NULL;
 
 	if (!ctx->hw_mgr_intf) {
 		CAM_ERR(CAM_ISP, "HW interface is not ready");
@@ -4946,7 +4966,8 @@ static int __cam_isp_ctx_acquire_hw_v1(struct cam_context *ctx,
 	param.acquire_info_size = cmd->data_size;
 	param.acquire_info = (uint64_t) acquire_hw_info;
 
-	rc = __cam_isp_ctx_allocate_mem_hw_entries(ctx);
+	rc = __cam_isp_ctx_allocate_mem_hw_entries(ctx,
+		&param);
 	if (rc) {
 		CAM_ERR(CAM_ISP, "Ctx[%d] allocate hw entry fail",
 			ctx->ctx_id);
@@ -5096,19 +5117,19 @@ static int __cam_isp_ctx_acquire_hw_v2(struct cam_context *ctx,
 	param.acquire_info_size = cmd->data_size;
 	param.acquire_info = (uint64_t) acquire_hw_info;
 
-	rc = __cam_isp_ctx_allocate_mem_hw_entries(ctx);
-	if (rc) {
-		CAM_ERR(CAM_ISP, "Ctx[%d] allocate hw entry fail",
-			ctx->ctx_id);
-		goto free_res;
-	}
-
 	/* call HW manager to reserve the resource */
 	rc = ctx->hw_mgr_intf->hw_acquire(ctx->hw_mgr_intf->hw_mgr_priv,
 		&param);
 	if (rc != 0) {
 		CAM_ERR(CAM_ISP, "Acquire device failed");
 		goto free_res;
+	}
+
+	rc = __cam_isp_ctx_allocate_mem_hw_entries(ctx, &param);
+	if (rc) {
+		CAM_ERR(CAM_ISP, "Ctx[%d] allocate hw entry fail",
+			ctx->ctx_id);
+		goto free_hw;
 	}
 
 	/*
@@ -6183,8 +6204,6 @@ int cam_isp_context_init(struct cam_isp_context *ctx,
 	ctx_base->ctx_priv = ctx;
 
 	ctx_base->max_hw_update_entries = CAM_ISP_CTX_CFG_MAX;
-	ctx_base->max_in_map_entries = CAM_ISP_CTX_RES_MAX;
-	ctx_base->max_out_map_entries = CAM_ISP_CTX_RES_MAX;
 
 	/* initializing current state for error logging */
 	for (i = 0; i < CAM_ISP_CTX_STATE_MONITOR_MAX_ENTRIES; i++) {

@@ -400,13 +400,13 @@ struct cam_isp_hw_intf_data {
  *
  * @Brief:         ISP hw bus capabilities
  *
- * @support_consumed_addr:   Indicate whether HW has last consumed addr reg
- * @max_vfe_out_res_type:    Maximum value of out resource type supported by hw
+ * @support_consumed_addr:  Indicate whether HW has last consumed addr reg
+ * @max_out_res_type:       Maximum value of out resource type supported by hw
  *
  */
 struct cam_isp_hw_bus_cap {
 	bool                    support_consumed_addr;
-	uint32_t                max_vfe_out_res_type;
+	uint32_t                max_out_res_type;
 };
 
 #endif /* _CAM_ISP_HW_H_ */

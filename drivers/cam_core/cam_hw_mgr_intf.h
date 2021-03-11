@@ -104,6 +104,19 @@ struct cam_hw_done_event_data {
 };
 
 /**
+ * struct cam_hw_acquire_stream_caps - Any HW caps info from HW mgr to ctx
+ *                                     Params to be interpreted by the
+ *                                     respective drivers
+ * @num_valid_params : Number of valid params
+ * @param_list       : List of params interpreted by the driver
+ *
+ */
+struct cam_hw_acquire_stream_caps {
+	uint32_t          num_valid_params;
+	uint32_t          param_list[4];
+};
+
+/**
  * struct cam_hw_acquire_args - Payload for acquire command
  *
  * @context_data:          Context data pointer for the callback function
@@ -119,7 +132,8 @@ struct cam_hw_done_event_data {
  * @acquired_hw_path:      Acquired path mask for an input
  *                         if input splits into multiple paths,
  *                         its updated per hardware
- * valid_acquired_hw:      Valid num of acquired hardware
+ * @valid_acquired_hw:     Valid num of acquired hardware
+ * @op_params:             OP Params from hw_mgr to ctx
  *
  */
 struct cam_hw_acquire_args {
@@ -136,6 +150,8 @@ struct cam_hw_acquire_args {
 	uint32_t    acquired_hw_id[CAM_MAX_ACQ_RES];
 	uint32_t    acquired_hw_path[CAM_MAX_ACQ_RES][CAM_MAX_HW_SPLIT];
 	uint32_t    valid_acquired_hw;
+
+	struct cam_hw_acquire_stream_caps op_params;
 };
 
 /**

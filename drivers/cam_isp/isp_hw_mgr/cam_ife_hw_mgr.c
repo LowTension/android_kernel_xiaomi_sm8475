@@ -4674,7 +4674,7 @@ static int cam_ife_mgr_acquire_hw(void *hw_mgr_priv, void *acquire_hw_args)
 	atomic_set(&ife_ctx->cdm_done, 1);
 	ife_ctx->last_cdm_done_req = 0;
 
-	if (g_ife_hw_mgr.support_consumed_addr)
+	if (g_ife_hw_mgr.isp_bus_caps.support_consumed_addr)
 		acquire_args->op_flags |=
 			CAM_IFE_CTX_CONSUME_ADDR_EN;
 
@@ -4692,6 +4692,10 @@ static int cam_ife_mgr_acquire_hw(void *hw_mgr_priv, void *acquire_hw_args)
 		acquire_args->op_flags |=
 			CAM_IFE_CTX_FRAME_HEADER_EN;
 
+	if (ife_ctx->ctx_type == CAM_IFE_CTX_TYPE_SFE)
+		acquire_args->op_flags |=
+			CAM_IFE_CTX_SFE_EN;
+
 	ife_ctx->ctx_in_use = 1;
 	ife_ctx->num_reg_dump_buf = 0;
 	memset(&ife_ctx->scratch_config, 0,
@@ -4699,6 +4703,10 @@ static int cam_ife_mgr_acquire_hw(void *hw_mgr_priv, void *acquire_hw_args)
 
 	acquire_args->valid_acquired_hw =
 		acquire_hw_info->num_inputs;
+	acquire_args->op_params.num_valid_params = 2;
+	acquire_args->op_params.param_list[0] = max_ife_out_res;
+	acquire_args->op_params.param_list[1] =
+		ife_hw_mgr->isp_bus_caps.max_sfe_out_res_type;
 
 	ktime_get_real_ts64(&ife_ctx->ts);
 
@@ -6030,7 +6038,7 @@ static int cam_ife_mgr_start_hw(void *hw_mgr_priv, void *start_hw_args)
 	struct cam_hw_intf                  *hw_intf;
 
 	primary_rdi_src_res = CAM_ISP_HW_VFE_IN_MAX;
-	primary_rdi_out_res = g_ife_hw_mgr.max_vfe_out_res_type;
+	primary_rdi_out_res = g_ife_hw_mgr.isp_bus_caps.max_vfe_out_res_type;
 	primary_rdi_csid_res = CAM_IFE_PIX_PATH_RES_MAX;
 
 	if (!hw_mgr_priv || !start_isp) {
@@ -6209,7 +6217,7 @@ start_only:
 		}
 	}
 
-	if (primary_rdi_out_res < g_ife_hw_mgr.max_vfe_out_res_type) {
+	if (primary_rdi_out_res < g_ife_hw_mgr.isp_bus_caps.max_vfe_out_res_type) {
 		primary_rdi_src_res =
 			cam_convert_rdi_out_res_id_to_src(primary_rdi_out_res);
 		primary_rdi_csid_res =
@@ -7653,7 +7661,7 @@ static int cam_isp_packet_generic_blob_handler(void *user_data,
 
 		hfr_config = (struct cam_isp_resource_hfr_config *)blob_data;
 
-		if (hfr_config->num_ports > g_ife_hw_mgr.max_vfe_out_res_type ||
+		if (hfr_config->num_ports > g_ife_hw_mgr.isp_bus_caps.max_vfe_out_res_type ||
 			hfr_config->num_ports == 0) {
 			CAM_ERR(CAM_ISP, "Invalid num_ports %u in HFR config",
 				hfr_config->num_ports);
@@ -11044,7 +11052,7 @@ int cam_ife_hw_mgr_init(struct cam_hw_mgr_intf *hw_mgr_intf, int *iommu_hdl)
 					&isp_bus_cap,
 					sizeof(struct cam_isp_hw_bus_cap));
 				CAM_DBG(CAM_ISP, "max VFE out resources: 0x%x",
-					isp_bus_cap.max_vfe_out_res_type);
+					isp_bus_cap.max_out_res_type);
 			}
 
 			j++;
@@ -11066,9 +11074,13 @@ int cam_ife_hw_mgr_init(struct cam_hw_mgr_intf *hw_mgr_intf, int *iommu_hdl)
 		return -EINVAL;
 	}
 
-	g_ife_hw_mgr.support_consumed_addr = isp_bus_cap.support_consumed_addr;
-	g_ife_hw_mgr.max_vfe_out_res_type = isp_bus_cap.max_vfe_out_res_type;
-	max_ife_out_res = g_ife_hw_mgr.max_vfe_out_res_type & 0xFF;
+	g_ife_hw_mgr.isp_bus_caps.support_consumed_addr =
+		isp_bus_cap.support_consumed_addr;
+	g_ife_hw_mgr.isp_bus_caps.max_vfe_out_res_type =
+		isp_bus_cap.max_out_res_type;
+	max_ife_out_res =
+		g_ife_hw_mgr.isp_bus_caps.max_vfe_out_res_type & 0xFF;
+	memset(&isp_bus_cap, 0x0, sizeof(struct cam_isp_hw_bus_cap));
 
 	/* fill csid hw intf information */
 	for (i = 0, j = 0; i < CAM_IFE_CSID_HW_NUM_MAX; i++) {
@@ -11093,8 +11105,27 @@ int cam_ife_hw_mgr_init(struct cam_hw_mgr_intf *hw_mgr_intf, int *iommu_hdl)
 	/* fill sfe hw intf info */
 	for (i = 0, j = 0; i < CAM_SFE_HW_NUM_MAX; i++) {
 		rc = cam_sfe_hw_init(&g_ife_hw_mgr.sfe_devices[i], i);
-		if (!rc)
+		if (!rc) {
+			if (j == 0) {
+				struct cam_hw_intf *sfe_device =
+					g_ife_hw_mgr.sfe_devices[i];
+				struct cam_hw_info *sfe_hw =
+					(struct cam_hw_info *)
+					sfe_device->hw_priv;
+
+				rc = sfe_device->hw_ops.process_cmd(
+					sfe_hw,
+					CAM_ISP_HW_CMD_QUERY_BUS_CAP,
+					&isp_bus_cap,
+					sizeof(struct cam_isp_hw_bus_cap));
+				CAM_DBG(CAM_ISP, "max SFE out resources: 0x%x",
+					isp_bus_cap.max_out_res_type);
+				if (!rc)
+					g_ife_hw_mgr.isp_bus_caps.max_sfe_out_res_type =
+						isp_bus_cap.max_out_res_type;
+			}
 			j++;
+		}
 	}
 	if (!j)
 		CAM_ERR(CAM_ISP, "no valid SFE HW devices");

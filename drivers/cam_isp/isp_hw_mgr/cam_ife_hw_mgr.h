@@ -230,6 +230,19 @@ struct cam_ife_hw_mgr_ctx {
 };
 
 /**
+ * struct cam_isp_bus_hw_caps - BUS capabilities
+ *
+ * @max_vfe_out_res_type  :  max ife out res type value from hw
+ * @max_sfe_out_res_type  :  max sfe out res type value from hw
+ * @support_consumed_addr :  indicate whether hw supports last consumed address
+ */
+struct cam_isp_bus_hw_caps {
+	uint32_t     max_vfe_out_res_type;
+	uint32_t     max_sfe_out_res_type;
+	bool         support_consumed_addr;
+};
+
+/**
  * struct cam_ife_hw_mgr - IFE HW Manager
  *
  * @mgr_common:            common data for all HW managers
@@ -247,11 +260,10 @@ struct cam_ife_hw_mgr_ctx {
  * @work q                 work queue for IFE hw manager
  * @debug_cfg              debug configuration
  * @ctx_lock               context lock
- * @support_consumed_addr  indicate whether hw supports last consumed address
  * @hw_pid_support         hw pid support for this target
- * @max_vfe_out_res_type   max ife out res type value from hw
  * @csid_rup_en            Reg update at CSID side
  * @csid_global_reset_en   CSID global reset enable
+ * @isp_bus_caps           Capability of underlying SFE/IFE bus HW
  */
 struct cam_ife_hw_mgr {
 	struct cam_isp_hw_mgr          mgr_common;
@@ -273,11 +285,10 @@ struct cam_ife_hw_mgr {
 	struct cam_req_mgr_core_workq *workq;
 	struct cam_ife_hw_mgr_debug    debug_cfg;
 	spinlock_t                     ctx_lock;
-	bool                           support_consumed_addr;
 	bool                           hw_pid_support;
-	uint32_t                       max_vfe_out_res_type;
 	bool                           csid_rup_en;
 	bool                           csid_global_reset_en;
+	struct cam_isp_bus_hw_caps     isp_bus_caps;
 };
 
 /**
