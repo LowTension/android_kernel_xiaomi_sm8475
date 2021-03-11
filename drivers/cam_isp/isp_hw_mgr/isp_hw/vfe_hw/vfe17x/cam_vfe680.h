@@ -270,6 +270,156 @@ static struct cam_vfe_top_ver4_module_desc vfe680_pp_mod_desc[] = {
 	},
 };
 
+static struct cam_vfe_top_ver4_wr_client_desc vfe680_wr_client_desc[] = {
+	{
+		.wm_id = 0,
+		.desc = "VIDEO_FULL_Y",
+	},
+	{
+		.wm_id = 1,
+		.desc = "VIDEO_FULL_C",
+	},
+	{
+		.wm_id = 2,
+		.desc = "VIDEO_DS_4:1",
+	},
+	{
+		.wm_id = 3,
+		.desc = "VIDEO_DS_16:1",
+	},
+	{
+		.wm_id = 4,
+		.desc = "DISPLAY_FULL_Y",
+	},
+	{
+		.wm_id = 5,
+		.desc = "DISPLAY_FULL_C",
+	},
+	{
+		.wm_id = 6,
+		.desc = "DISPLAY_DS_4:1",
+	},
+	{
+		.wm_id = 7,
+		.desc = "DISPLAY_DS_16:1",
+	},
+	{
+		.wm_id = 8,
+		.desc = "FD_Y",
+	},
+	{
+		.wm_id = 9,
+		.desc = "FD_C",
+	},
+	{
+		.wm_id = 10,
+		.desc = "PIXEL_RAW",
+	},
+	{
+		.wm_id = 11,
+		.desc = "STATS_BE0",
+	},
+	{
+		.wm_id = 12,
+		.desc = "STATS_BHIST0",
+	},
+	{
+		.wm_id = 13,
+		.desc = "STATS_TINTLESS_BG",
+	},
+	{
+		.wm_id = 14,
+		.desc = "STATS_AWB_BG",
+	},
+	{
+		.wm_id = 15,
+		.desc = "STATS_AWB_BFW",
+	},
+	{
+		.wm_id = 16,
+		.desc = "STATS_BAF",
+	},
+	{
+		.wm_id = 17,
+		.desc = "STATS_BHIST",
+	},
+	{
+		.wm_id = 18,
+		.desc = "STATS_RS",
+	},
+	{
+		.wm_id = 19,
+		.desc = "STATS_IHIST",
+	},
+	{
+		.wm_id = 20,
+		.desc = "SPARSE_PD",
+	},
+	{
+		.wm_id = 21,
+		.desc = "PDAF_V2.0_PD_DATA",
+	},
+	{
+		.wm_id = 22,
+		.desc = "PDAF_V2.0_SAD",
+	},
+	{
+		.wm_id = 23,
+		.desc = "LCR",
+	},
+	{
+		.wm_id = 24,
+		.desc = "RDI0",
+	},
+	{
+		.wm_id = 25,
+		.desc = "RDI1",
+	},
+	{
+		.wm_id = 26,
+		.desc = "RDI2",
+	},
+	{
+		.wm_id = 27,
+		.desc = "LTM_STATS",
+	},
+};
+
+static struct cam_vfe_top_camnoc_reg_data vfe680_camnoc_reg_data[] = {
+	{
+		.desc = "linear_stats",
+		.offset = 0x4020,
+	},
+	{
+		.desc = "lite",
+		.offset = 0x4620,
+	},
+	{
+		.desc = "pdaf",
+		.offset = 0x4c20,
+	},
+	{
+		.desc = "rdi",
+		.offset = 0x5220,
+	},
+	{
+		.desc = "ubwc",
+		.offset = 0x5820,
+	},
+	{
+		.desc = "linear_stats_1",
+		.offset = 0x8220,
+	},
+};
+
+struct cam_vfe_top_camnoc_debug_data vfe680_camnoc_debug_data = {
+	.pending_mask      = 0x7f0000,
+	.pending_shift     = 16,
+	.queued_mask       = 0x7ff,
+	.num_reg           = 6,
+	.camnoc_reg        = vfe680_camnoc_reg_data,
+};
+
 static struct cam_irq_register_set vfe680_top_irq_reg_set[3] = {
 	{
 		.mask_reg_offset   = 0x00000034,
@@ -415,7 +565,6 @@ static struct cam_vfe_top_ver4_hw_info vfe680_top_hw_info = {
 	.vfe_full_hw_info = {
 		.common_reg     = &vfe680_top_common_reg,
 		.reg_data       = &vfe_common_reg_data,
-		.module_desc    = vfe680_pp_mod_desc,
 	},
 	.pdlib_hw_info = {
 		.common_reg     = &vfe680_top_common_reg,
@@ -428,6 +577,9 @@ static struct cam_vfe_top_ver4_hw_info vfe680_top_hw_info = {
 		.common_reg     = &vfe680_top_common_reg,
 		.reg_data       = &vfe680_lcr_reg_data,
 	},
+	.wr_client_desc         = vfe680_wr_client_desc,
+	.module_desc            = vfe680_pp_mod_desc,
+	.camnoc_debug_data      = &vfe680_camnoc_debug_data,
 	.num_mux = 6,
 	.mux_type = {
 		CAM_VFE_CAMIF_VER_4_0,
@@ -437,7 +589,6 @@ static struct cam_vfe_top_ver4_hw_info vfe680_top_hw_info = {
 		CAM_VFE_PDLIB_VER_1_0,
 		CAM_VFE_LCR_VER_1_0,
 	},
-
 };
 
 static struct cam_irq_register_set vfe680_bus_irq_reg[2] = {

@@ -180,7 +180,7 @@ static int cam_vfe_top_dump_info(
 	}
 
 	switch (cmd_type) {
-	case CAM_ISP_HW_DUMP_HW_SRC_CLK_RATE:
+	case CAM_ISP_HW_NOTIFY_OVERFLOW:
 		CAM_INFO_RATE_LIMIT(CAM_ISP, "VFE%d src_clk_rate:%luHz",
 			soc_info->index, soc_info->applied_src_clk_rate);
 		break;
@@ -817,7 +817,7 @@ int cam_vfe_top_process_cmd(void *device_priv, uint32_t cmd_type,
 		rc = cam_vfe_top_clock_update(top_priv, cmd_args,
 			arg_size);
 		break;
-	case CAM_ISP_HW_DUMP_HW_SRC_CLK_RATE:
+	case CAM_ISP_HW_NOTIFY_OVERFLOW:
 		rc = cam_vfe_top_dump_info(top_priv, cmd_type);
 		break;
 	case CAM_ISP_HW_CMD_FE_UPDATE_IN_RD:

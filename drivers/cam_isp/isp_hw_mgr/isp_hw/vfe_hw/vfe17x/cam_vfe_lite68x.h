@@ -27,6 +27,68 @@ static struct cam_vfe_top_ver4_module_desc vfe68x_pp_mod_desc[] = {
 	},
 };
 
+static struct cam_vfe_top_ver4_wr_client_desc vfe680x_wr_client_desc[] = {
+	{
+		.wm_id = 0,
+		.desc = "RDI_0",
+	},
+	{
+		.wm_id = 1,
+		.desc = "RDI_1",
+	},
+	{
+		.wm_id = 2,
+		.desc = "RDI_2",
+	},
+	{
+		.wm_id = 3,
+		.desc = "RDI_3",
+	},
+	{
+		.wm_id = 4,
+		.desc = "GAMMA",
+	},
+	{
+		.wm_id = 5,
+		.desc = "BE",
+	},
+};
+
+static struct cam_vfe_top_camnoc_reg_data vfe680x_camnoc_reg_data[] = {
+	{
+		.desc = "linear_stats",
+		.offset = 0x4020,
+	},
+	{
+		.desc = "lite",
+		.offset = 0x4620,
+	},
+	{
+		.desc = "pdaf",
+		.offset = 0x4c20,
+	},
+	{
+		.desc = "rdi",
+		.offset = 0x5220,
+	},
+	{
+		.desc = "ubwc",
+		.offset = 0x5820,
+	},
+	{
+		.desc = "linear_stats_1",
+		.offset = 0x8220,
+	},
+};
+
+struct cam_vfe_top_camnoc_debug_data vfe680x_camnoc_debug_data = {
+	.pending_mask      = 0x7f0000,
+	.pending_shift     = 16,
+	.queued_mask       = 0x7ff,
+	.num_reg           = 6,
+	.camnoc_reg        = vfe680x_camnoc_reg_data,
+};
+
 static struct cam_irq_register_set vfe68x_top_irq_reg_set[3] = {
 	{
 		.mask_reg_offset   = 0x00001024,
@@ -142,8 +204,10 @@ static struct cam_vfe_top_ver4_hw_info vfe68x_top_hw_info = {
 	.vfe_full_hw_info = {
 		.common_reg     = &vfe68x_top_common_reg,
 		.reg_data       = &vfe68x_ipp_reg_data,
-		.module_desc    = vfe68x_pp_mod_desc,
 	},
+	.module_desc            = vfe68x_pp_mod_desc,
+	.wr_client_desc         = vfe680x_wr_client_desc,
+	.camnoc_debug_data      = &vfe680x_camnoc_debug_data,
 	.num_mux = 5,
 	.mux_type = {
 		CAM_VFE_CAMIF_VER_4_0,

@@ -400,36 +400,74 @@ static int cam_ife_hw_mgr_is_rdi_res(uint32_t res_id)
 	return rc;
 }
 
-static int cam_ife_hw_mgr_dump_hw_src_clock(uint8_t hw_idx,
-	enum cam_isp_hw_type hw_type)
+static int cam_ife_hw_mgr_notify_overflow(
+	struct cam_isp_hw_event_info    *evt,
+	void                            *ctx)
 {
+	int                             i;
+	int                             res_id;
+	int                             ife_res_id = -1;
+	int                             sfe_res_id = -1;
+	struct cam_hw_intf             *hw_if = NULL;
+	struct cam_ife_hw_mgr_ctx      *hw_mgr_ctx = ctx;
 
-	struct cam_isp_hw_intf_data               *hw_intf_data = NULL;
-	struct cam_hw_intf                        *hw_intf = NULL;
-	uint8_t                                    dummy_args;
+	switch(evt->res_id) {
+	case  CAM_IFE_PIX_PATH_RES_IPP:
+		ife_res_id = CAM_ISP_HW_VFE_IN_CAMIF;
+		sfe_res_id = CAM_ISP_HW_SFE_IN_PIX;
+		break;
+	case CAM_IFE_PIX_PATH_RES_RDI_0:
+		ife_res_id = CAM_ISP_HW_VFE_IN_RDI0;
+		sfe_res_id =CAM_ISP_HW_SFE_IN_RDI0;
+		break;
+	case CAM_IFE_PIX_PATH_RES_RDI_1:
+		ife_res_id = CAM_ISP_HW_VFE_IN_RDI1;
+		sfe_res_id = CAM_ISP_HW_SFE_IN_RDI1;
+		break;
+	case CAM_IFE_PIX_PATH_RES_RDI_2:
+		ife_res_id = CAM_ISP_HW_VFE_IN_RDI2;
+		sfe_res_id = CAM_ISP_HW_SFE_IN_RDI2;
+		break;
+	case CAM_IFE_PIX_PATH_RES_RDI_3:
+		ife_res_id = CAM_ISP_HW_VFE_IN_RDI3;
+		sfe_res_id = CAM_ISP_HW_SFE_IN_RDI3;
+		break;
+	case CAM_IFE_PIX_PATH_RES_RDI_4:
+		sfe_res_id = CAM_ISP_HW_SFE_IN_RDI4;
+		break;
+	default:
+		CAM_ERR_RATE_LIMIT(CAM_ISP, "Invalid res_id %d", evt->res_id);
+		return -EINVAL;
+	}
 
-	switch (hw_type) {
-	case CAM_ISP_HW_TYPE_VFE:
-		if (!g_ife_hw_mgr.ife_devices[hw_idx]) {
-			CAM_ERR(CAM_ISP, "No vfe device added yet");
-			return -ENODEV;
+	for (i = 0; i < hw_mgr_ctx->num_base; i++) {
+
+		res_id = -1;
+		if (hw_mgr_ctx->base[i].idx != evt->hw_idx)
+			continue;
+
+		if (hw_mgr_ctx->base[i].hw_type == CAM_ISP_HW_TYPE_VFE) {
+			hw_if = g_ife_hw_mgr.ife_devices[evt->hw_idx]->hw_intf;
+			res_id = ife_res_id;
+		} else if (hw_mgr_ctx->base[i].hw_type == CAM_ISP_HW_TYPE_SFE) {
+			hw_if = g_ife_hw_mgr.sfe_devices[evt->hw_idx];
+			res_id = sfe_res_id;
+		} else {
+			continue;
 		}
 
-		hw_intf_data = g_ife_hw_mgr.ife_devices[hw_idx];
-		if (!hw_intf_data->hw_intf) {
-			CAM_ERR(CAM_ISP, "hw_intf is null");
+		if (res_id < 0)
+			continue;
+
+		if (!hw_if) {
+			CAM_ERR_RATE_LIMIT(CAM_ISP, "hw_intf is null");
 			return -EINVAL;
 		}
 
-		hw_intf = hw_intf_data->hw_intf;
-		if (hw_intf->hw_ops.process_cmd) {
-			hw_intf->hw_ops.process_cmd(hw_intf->hw_priv,
-				CAM_ISP_HW_DUMP_HW_SRC_CLK_RATE,
-				(void *)&dummy_args, sizeof(uint8_t));
-		}
-		break;
-	default:
-		CAM_ERR(CAM_ISP, "Unsupported HW Type: %u", hw_type);
+		if (hw_if->hw_ops.process_cmd)
+			hw_if->hw_ops.process_cmd(hw_if->hw_priv,
+				CAM_ISP_HW_NOTIFY_OVERFLOW,
+				&res_id, sizeof(int));
 	}
 
 	return 0;
@@ -10263,35 +10301,45 @@ end:
 }
 
 static int cam_ife_hw_mgr_handle_csid_error(
-	struct   cam_isp_hw_event_info *event_info)
+	struct   cam_isp_hw_event_info *event_info,
+	void                           *ctx)
 {
-	int rc = 0;
-	struct cam_isp_hw_error_event_data error_event_data = {0};
+	int                                      rc = -EINVAL;
+	struct cam_isp_hw_error_event_data       error_event_data = {0};
 	struct cam_ife_hw_event_recovery_data    recovery_data = {0};
+
+	CAM_DBG(CAM_ISP, "Entry CSID[%u] error %d", event_info->hw_idx,
+		event_info->err_type);
 
 	if ((event_info->err_type & CAM_ISP_HW_ERROR_CSID_FATAL) &&
 		g_ife_hw_mgr.debug_cfg.enable_csid_recovery) {
 
-		error_event_data.error_type = event_info->err_type;
-		cam_ife_hw_mgr_find_affected_ctx(&error_event_data,
+		error_event_data.error_type = CAM_ISP_HW_ERROR_CSID_FATAL;
+		rc = cam_ife_hw_mgr_find_affected_ctx(&error_event_data,
+			event_info->hw_idx, &recovery_data);
+		goto end;
+	}
+
+	if (event_info->err_type & (CAM_ISP_HW_ERROR_CSID_FIFO_OVERFLOW |
+		CAM_ISP_HW_ERROR_RECOVERY_OVERFLOW |
+		CAM_ISP_HW_ERROR_CSID_FRAME_SIZE)) {
+
+		cam_ife_hw_mgr_notify_overflow(event_info, ctx);
+		error_event_data.error_type = CAM_ISP_HW_ERROR_OVERFLOW;
+		rc = cam_ife_hw_mgr_find_affected_ctx(&error_event_data,
 			event_info->hw_idx, &recovery_data);
 	}
+end:
 
-	if (event_info->err_type & CAM_ISP_HW_ERROR_CSID_OVERFLOW) {
-		if (cam_ife_hw_mgr_dump_hw_src_clock(event_info->hw_idx,
-			CAM_ISP_HW_TYPE_VFE))
-			CAM_ERR_RATE_LIMIT(CAM_ISP,
-				"VFE%d src_clk_rate dump failed");
-	}
+	if (rc || !recovery_data.no_of_context)
+		return 0;
 
-	if (event_info->err_type & ~(CAM_ISP_HW_ERROR_CSID_FATAL |
-		CAM_ISP_HW_ERROR_CSID_OVERFLOW)) {
-		CAM_ERR(CAM_ISP, "Invalid event ID 0x%x",
-			event_info->err_type);
-		rc = -EINVAL;
-	}
+	recovery_data.error_type = CAM_ISP_HW_ERROR_OVERFLOW;
+	cam_ife_hw_mgr_do_error_recovery(&recovery_data);
+	CAM_DBG(CAM_ISP, "Exit CSID[%u] error %d", event_info->hw_idx,
+		event_info->err_type);
 
-	return rc;
+	return 0;
 }
 
 static int cam_ife_hw_mgr_handle_csid_rup(
@@ -10354,13 +10402,13 @@ static int cam_ife_hw_mgr_handle_csid_event(
 	struct    cam_isp_hw_event_info *event_info,
 	uint32_t                         evt_id)
 {
-	int rc = 0;
+	int                        rc = 0;
 
 	CAM_DBG(CAM_ISP, "CSID event %u", evt_id);
 
 	switch (evt_id) {
 	case CAM_ISP_HW_EVENT_ERROR:
-		rc = cam_ife_hw_mgr_handle_csid_error(event_info);
+		rc = cam_ife_hw_mgr_handle_csid_error(event_info, ctx);
 		break;
 	default:
 		CAM_ERR(CAM_ISP, "Invalid event ID %d",
@@ -10465,8 +10513,7 @@ static int cam_ife_hw_mgr_handle_hw_err(
 
 	spin_lock(&g_ife_hw_mgr.ctx_lock);
 
-	if (event_info->err_type & (CAM_ISP_HW_ERROR_CSID_FATAL |
-					CAM_ISP_HW_ERROR_CSID_OVERFLOW)) {
+	if (event_info->hw_type == CAM_ISP_HW_TYPE_CSID) {
 		rc = cam_ife_hw_mgr_handle_csid_event(ctx, event_info,
 			evt_id);
 		goto end;
@@ -10501,8 +10548,6 @@ static int cam_ife_hw_mgr_handle_hw_err(
 
 	rc = cam_ife_hw_mgr_find_affected_ctx(&error_event_data,
 		core_idx, &recovery_data);
-	if ((rc != 0) || !(recovery_data.no_of_context))
-		goto end;
 
 	if (rc || !recovery_data.no_of_context)
 		goto end;

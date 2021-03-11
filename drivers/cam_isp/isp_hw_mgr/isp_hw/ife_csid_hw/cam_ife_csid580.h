@@ -12,7 +12,6 @@
 #include "cam_ife_csid_common.h"
 #include "cam_ife_csid_hw_ver1.h"
 
-
 /* Settings for 580 CSID are leveraged from 480 */
 static struct cam_ife_csid_ver1_reg_info cam_ife_csid_580_reg_info = {
 	.cmn_reg          = &cam_ife_csid_480_cmn_reg_info,
