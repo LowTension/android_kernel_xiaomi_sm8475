@@ -1628,15 +1628,6 @@ int cam_vfe_top_ver4_init(
 				&top_priv->top_common.mux_rsrc[i],
 				vfe_irq_controller);
 		} else if (hw_info->mux_type[i] ==
-			CAM_VFE_IN_RD_VER_1_0) {
-			/* set the RD resource id */
-			top_priv->top_common.mux_rsrc[i].res_id =
-				CAM_ISP_HW_VFE_IN_RD;
-
-			rc = cam_vfe_fe_ver1_init(hw_intf, soc_info,
-				&hw_info->fe_hw_info,
-				&top_priv->top_common.mux_rsrc[i]);
-		} else if (hw_info->mux_type[i] ==
 			CAM_VFE_RDI_VER_1_0) {
 			/* set the RDI resource id */
 			top_priv->top_common.mux_rsrc[i].res_id =
