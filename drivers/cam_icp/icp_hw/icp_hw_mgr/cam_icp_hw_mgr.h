@@ -25,8 +25,8 @@
 
 #define CAM_FRAME_CMD_MAX       40
 
-#define CAM_MAX_OUT_RES         6
-#define CAM_MAX_IN_RES          8
+#define CAM_MAX_OUT_RES         14
+#define CAM_MAX_IN_RES          16
 
 #define ICP_WORKQ_NUM_TASK      100
 #define ICP_WORKQ_TASK_CMD_TYPE 1
