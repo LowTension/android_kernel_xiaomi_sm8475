@@ -572,8 +572,8 @@ static const char *__cam_isp_resource_handle_id_to_type(
 		return "LCR";
 	case CAM_ISP_IFE_OUT_RES_AWB_BFW:
 		return "AWB_BFW";
-	case CAM_ISP_IFE_OUT_RES_2PD_STATS:
-		return "2PD_STATS";
+	case CAM_ISP_IFE_OUT_RES_PREPROCESS_2PD:
+		return "PREPROCESS_2PD";
 	case CAM_ISP_IFE_OUT_RES_STATS_AEC_BE:
 		return "STATS_AEC_BE";
 	case CAM_ISP_IFE_OUT_RES_LTM_STATS:

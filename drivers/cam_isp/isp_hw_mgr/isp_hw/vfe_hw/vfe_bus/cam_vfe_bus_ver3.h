@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
  */
 
 
@@ -78,7 +78,7 @@ enum cam_vfe_bus_ver3_vfe_out_type {
 	CAM_VFE_BUS_VER3_VFE_OUT_2PD,
 	CAM_VFE_BUS_VER3_VFE_OUT_LCR,
 	CAM_VFE_BUS_VER3_VFE_OUT_AWB_BFW,
-	CAM_VFE_BUS_VER3_VFE_OUT_2PD_STATS,
+	CAM_VFE_BUS_VER3_VFE_OUT_PREPROCESS_2PD,
 	CAM_VFE_BUS_VER3_VFE_OUT_STATS_AEC_BE,
 	CAM_VFE_BUS_VER3_VFE_OUT_LTM_STATS,
 	CAM_VFE_BUS_VER3_VFE_OUT_STATS_GTM_BHIST,
