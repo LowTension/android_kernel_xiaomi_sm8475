@@ -10,6 +10,10 @@
 #include <linux/dma-buf.h>
 #include <linux/version.h>
 #include <linux/debugfs.h>
+#if IS_REACHABLE(CONFIG_DMABUF_HEAPS)
+#include <linux/mem-buf.h>
+#include <soc/qcom/secure_buffer.h>
+#endif
 
 #include "cam_compat.h"
 #include "cam_req_mgr_util.h"
@@ -437,6 +441,9 @@ end:
 EXPORT_SYMBOL(cam_mem_mgr_cache_ops);
 
 #if IS_REACHABLE(CONFIG_DMABUF_HEAPS)
+
+#define CAM_MAX_VMIDS 4
+
 static void cam_mem_mgr_put_dma_heaps(void)
 {
 	CAM_DBG(CAM_MEM, "Releasing DMA Buf heaps usage");
@@ -479,10 +486,10 @@ static int cam_mem_mgr_get_dma_heaps(void)
 		}
 	}
 
-	tbl.secure_display_heap = dma_heap_find("qcom,secure-display");
+	tbl.secure_display_heap = dma_heap_find("qcom,display");
 	if (IS_ERR_OR_NULL(tbl.secure_display_heap)) {
 		rc = PTR_ERR(tbl.secure_display_heap);
-		CAM_ERR(CAM_MEM, "qcom,secure-display heap not found, rc=%d",
+		CAM_ERR(CAM_MEM, "qcom,display heap not found, rc=%d",
 			rc);
 		tbl.secure_display_heap = NULL;
 		goto put_heaps;
@@ -526,6 +533,10 @@ static int cam_mem_util_get_dma_buf(size_t len,
 	struct timespec64 ts1, ts2;
 	long microsec = 0;
 	bool use_cached_heap = false;
+	struct mem_buf_lend_kernel_arg arg;
+	int vmids[CAM_MAX_VMIDS];
+	int perms[CAM_MAX_VMIDS];
+	int num_vmids = 0;
 
 	if (!buf) {
 		CAM_ERR(CAM_MEM, "Invalid params");
@@ -559,18 +570,21 @@ static int cam_mem_util_get_dma_buf(size_t len,
 		return -EINVAL;
 	}
 
-	if ((cam_flags & CAM_MEM_FLAG_PROTECTED_MODE) &&
-		(cam_flags & CAM_MEM_FLAG_CDSP_OUTPUT)) {
+	if (cam_flags & CAM_MEM_FLAG_PROTECTED_MODE) {
 		heap = tbl.secure_display_heap;
-		CAM_ERR(CAM_MEM, "Secure CDSP not supported yet");
-		return -EBADR;
-	} else if (cam_flags & CAM_MEM_FLAG_PROTECTED_MODE) {
-		heap = tbl.secure_display_heap;
-		CAM_ERR(CAM_MEM, "Secure mode not supported yet");
-		return -EBADR;
-	}
 
-	if (use_cached_heap) {
+		vmids[num_vmids] = VMID_CP_CAMERA;
+		perms[num_vmids] = PERM_READ | PERM_WRITE;
+		num_vmids++;
+
+		if (cam_flags & CAM_MEM_FLAG_CDSP_OUTPUT) {
+			CAM_DBG(CAM_MEM, "Secure mode CDSP flags");
+
+			vmids[num_vmids] = VMID_CP_CDSP;
+			perms[num_vmids] = PERM_READ | PERM_WRITE;
+			num_vmids++;
+		}
+	} else if (use_cached_heap) {
 		try_heap = tbl.camera_heap;
 		heap = tbl.system_heap;
 	} else {
@@ -610,6 +624,26 @@ static int cam_mem_util_get_dma_buf(size_t len,
 		}
 	}
 
+	if (cam_flags & CAM_MEM_FLAG_PROTECTED_MODE) {
+		if (num_vmids >= CAM_MAX_VMIDS) {
+			CAM_ERR(CAM_MEM, "Insufficient array size for vmids %d", num_vmids);
+			rc = -EINVAL;
+			goto end;
+		}
+
+		arg.nr_acl_entries = num_vmids;
+		arg.vmids = vmids;
+		arg.perms = perms;
+
+		rc = mem_buf_lend(*buf, &arg);
+		if (rc) {
+			CAM_ERR(CAM_MEM,
+				"Failed in buf lend rc=%d, buf=%pK, vmids [0]=0x%x, [1]=0x%x, [2]=0x%x",
+				rc, *buf, vmids[0], vmids[1], vmids[2]);
+			goto end;
+		}
+	}
+
 	CAM_DBG(CAM_MEM, "Allocate success, len=%zu, *buf=%pK", len, *buf);
 
 	if (tbl.alloc_profile_enable) {
@@ -619,6 +653,9 @@ static int cam_mem_util_get_dma_buf(size_t len,
 			len, microsec);
 	}
 
+	return rc;
+end:
+	dma_buf_put(*buf);
 	return rc;
 }
 #else
