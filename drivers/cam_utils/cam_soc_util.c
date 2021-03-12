@@ -2427,7 +2427,7 @@ int cam_soc_util_reg_dump_to_cmd_buf(void *ctx,
 
 		reg_base_type = reg_dump_desc->reg_base_type;
 		if (reg_base_type == 0 || reg_base_type >
-			CAM_REG_DUMP_BASE_TYPE_CAMNOC) {
+			CAM_REG_DUMP_BASE_TYPE_SFE_RIGHT) {
 			CAM_ERR(CAM_UTIL,
 				"Invalid Reg dump base type: %d",
 				reg_base_type);
