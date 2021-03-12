@@ -309,7 +309,8 @@ static int cam_ife_csid_ver2_sof_irq_debug(
 	if (csid_hw->hw_info->hw_state ==
 		CAM_HW_STATE_POWER_DOWN) {
 		CAM_WARN(CAM_ISP,
-			"CSID powered down unable to %s sof irq",
+			"CSID:%u powered down unable to %s sof irq",
+			csid_hw->hw_intf->hw_idx,
 			(sof_irq_enable) ? "enable" : "disable");
 		return 0;
 	}
@@ -343,7 +344,8 @@ static int cam_ife_csid_ver2_sof_irq_debug(
 		csid_hw->flags.sof_irq_triggered = false;
 	}
 
-	CAM_INFO(CAM_ISP, "SOF freeze: CSID SOF irq %s",
+	CAM_INFO(CAM_ISP, "SOF freeze: CSID:%u SOF irq %s",
+		csid_hw->hw_intf->hw_idx,
 		(sof_irq_enable) ? "enabled" : "disabled");
 
 	return 0;
