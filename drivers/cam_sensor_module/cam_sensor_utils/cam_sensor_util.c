@@ -2097,7 +2097,7 @@ int cam_sensor_core_power_up(struct cam_sensor_power_ctrl_t *ctrl,
 
 			for (j = 0; j < soc_info->num_clk; j++) {
 				rc = cam_soc_util_clk_enable(soc_info, false,
-					i, 0, NULL);
+					j, 0, NULL);
 				if (rc) {
 					CAM_ERR(CAM_UTIL,
 						"Failed in clk enable %d", i);

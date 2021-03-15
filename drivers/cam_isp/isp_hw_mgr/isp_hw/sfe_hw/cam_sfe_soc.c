@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/slab.h>
@@ -152,9 +152,9 @@ int cam_sfe_enable_soc_resources(struct cam_hw_soc_info *soc_info)
 	axi_vote.num_paths = 1;
 	axi_vote.axi_path[0].path_data_type = CAM_AXI_PATH_DATA_SFE_NRDI;
 	axi_vote.axi_path[0].transac_type = CAM_AXI_TRANSACTION_WRITE;
-	axi_vote.axi_path[0].camnoc_bw = 10640000000L;
-	axi_vote.axi_path[0].mnoc_ab_bw = 10640000000L;
-	axi_vote.axi_path[0].mnoc_ib_bw = 10640000000L;
+	axi_vote.axi_path[0].camnoc_bw = CAM_CPAS_DEFAULT_RT_AXI_BW;
+	axi_vote.axi_path[0].mnoc_ab_bw = CAM_CPAS_DEFAULT_RT_AXI_BW;
+	axi_vote.axi_path[0].mnoc_ib_bw = CAM_CPAS_DEFAULT_RT_AXI_BW;
 
 	rc = cam_cpas_start(soc_private->cpas_handle,
 			&ahb_vote, &axi_vote);

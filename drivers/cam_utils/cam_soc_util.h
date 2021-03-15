@@ -6,6 +6,7 @@
 #ifndef _CAM_SOC_UTIL_H_
 #define _CAM_SOC_UTIL_H_
 
+#include <linux/version.h>
 #include <linux/types.h>
 #include <linux/slab.h>
 #include <linux/clk.h>
@@ -20,6 +21,10 @@
 
 #include "cam_io_util.h"
 #include <media/cam_defs.h>
+
+#if IS_REACHABLE(CONFIG_MSM_MMRM)
+#include <linux/soc/qcom/msm_mmrm.h>
+#endif
 
 #define NO_SET_RATE  -1
 #define INIT_RATE    -2
@@ -129,6 +134,7 @@ struct cam_soc_gpio_data {
  * @hw_version:             Camera device version
  * @index:                  Instance id for the camera device
  * @dev_name:               Device Name
+ * @is_nrt_dev:             Whether this is a non-real time device
  * @irq_name:               Name of the irq associated with the device
  * @label_name:             label name
  * @irq_line:               Irq resource
@@ -166,6 +172,7 @@ struct cam_soc_gpio_data {
  * @src_clk_idx:            Source clock index that is rate-controllable
  * @applied_src_clk_rate    Current clock rate of the core source clk
  * @clk_level_valid:        Indicates whether corresponding level is valid
+ * @lowest_clk_level:       Lowest clock level that has valid freq info
  * @scl_clk_count:          Number of scalable clocks present
  * @scl_clk_idx:            Index of scalable clocks
  * @optional_clk_name:      Array of clock names
@@ -176,6 +183,7 @@ struct cam_soc_gpio_data {
  *                           other devices. Set rate on these clocks needs to go
  *                           through camera clk wrapper for aggregation.
  * @gpio_data:              Pointer to gpio info
+ * @mmrm_handle:            MMRM Client handle for src clock
  * @pinctrl_info:           Pointer to pinctrl info
  * @dentry:                 Debugfs entry
  * @clk_level_override:     Clk level set from debugfs
@@ -190,6 +198,7 @@ struct cam_hw_soc_info {
 	uint32_t                        hw_version;
 	uint32_t                        index;
 	const char                     *dev_name;
+	bool                            is_nrt_dev;
 	const char                     *irq_name;
 	const char                     *label_name;
 	struct resource                *irq_line;
@@ -225,6 +234,7 @@ struct cam_hw_soc_info {
 	int32_t                         src_clk_idx;
 	unsigned long                   applied_src_clk_rate;
 	bool                            clk_level_valid[CAM_MAX_VOTE];
+	uint32_t                        lowest_clk_level;
 	int32_t                         scl_clk_count;
 	int32_t                         scl_clk_idx[CAM_SOC_MAX_CLK];
 	const char                     *optional_clk_name[CAM_SOC_MAX_OPT_CLK];
@@ -232,6 +242,8 @@ struct cam_hw_soc_info {
 	int32_t                         optional_clk_rate[CAM_SOC_MAX_OPT_CLK];
 	uint32_t                        optional_clk_id[CAM_SOC_MAX_OPT_CLK];
 	uint32_t                        optional_shared_clk_mask;
+
+	void                           *mmrm_handle;
 
 	struct cam_soc_gpio_data       *gpio_data;
 	struct cam_soc_pinctrl_info     pinctrl_info;

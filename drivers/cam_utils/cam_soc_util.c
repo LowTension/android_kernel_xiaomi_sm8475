@@ -18,6 +18,9 @@
 #define CAM_SET_BIT(mask, bit)     ((mask) |= CAM_TO_MASK(bit))
 #define CAM_CLEAR_BIT(mask, bit)   ((mask) &= ~CAM_TO_MASK(bit))
 
+static uint skip_mmrm_set_rate;
+module_param(skip_mmrm_set_rate, uint, 0644);
+
 /**
  * struct cam_clk_wrapper_clk: This represents an entry corresponding to a
  *                             shared clock in Clk wrapper. Clients that share
@@ -29,7 +32,15 @@
  * @clk_id:         Clk Id of this clock
  * @curr_clk_rate:  Current clock rate set for this clock
  * @client_list:    List of clients registered to this shared clock entry
- * @num_clients:    Number of clients
+ * @num_clients:    Number of registered clients
+ * @active_clients: Number of active clients
+ * @mmrm_client:    MMRM Client handle for src clock
+ * @soc_info:       soc_info of client with which mmrm handle is created.
+ *                  This is used as unique identifier for a client and mmrm
+ *                  callback data. When client corresponds to this soc_info is
+ *                  unregistered, need to unregister mmrm handle as well.
+ * @is_nrt_dev:     Whether this clock corresponds to NRT device
+ * @min_clk_rate:   Minimum clk rate that this clock supports
  **/
 struct cam_clk_wrapper_clk {
 	struct list_head list;
@@ -37,6 +48,11 @@ struct cam_clk_wrapper_clk {
 	int64_t curr_clk_rate;
 	struct list_head client_list;
 	uint32_t num_clients;
+	uint32_t active_clients;
+	void *mmrm_handle;
+	struct cam_hw_soc_info *soc_info;
+	bool is_nrt_dev;
+	int64_t min_clk_rate;
 };
 
 /**
@@ -62,8 +78,167 @@ static char supported_clk_info[256];
 static DEFINE_MUTEX(wrapper_lock);
 static LIST_HEAD(wrapper_clk_list);
 
+#if IS_REACHABLE(CONFIG_MSM_MMRM)
+bool cam_is_mmrm_supported_on_current_chip(void)
+{
+	return false;
+}
+
+int cam_mmrm_notifier_callback(
+	struct mmrm_client_notifier_data *notifier_data)
+{
+	if (!notifier_data) {
+		CAM_ERR(CAM_UTIL, "Invalid notifier data");
+		return -EBADR;
+	}
+
+	if (notifier_data->cb_type == MMRM_CLIENT_RESOURCE_VALUE_CHANGE) {
+		struct cam_hw_soc_info *soc_info = notifier_data->pvt_data;
+
+		CAM_WARN(CAM_UTIL, "Dev %s Clk %s value change from %ld to %ld",
+			soc_info->dev_name,
+			(soc_info->src_clk_idx == -1) ? "No src clk" :
+			soc_info->clk_name[soc_info->src_clk_idx],
+			notifier_data->cb_data.val_chng.old_val,
+			notifier_data->cb_data.val_chng.new_val);
+	}
+
+	return 0;
+}
+
+int cam_soc_util_register_mmrm_client(
+	uint32_t clk_id, struct clk *clk, bool is_nrt_dev,
+	struct cam_hw_soc_info *soc_info, const char *clk_name,
+	void **mmrm_handle)
+{
+	struct mmrm_client *mmrm_client;
+	struct mmrm_client_desc desc = { };
+
+	if (!mmrm_handle) {
+		CAM_ERR(CAM_UTIL, "Invalid mmrm input");
+		return -EINVAL;
+	}
+
+	*mmrm_handle = (void *)NULL;
+
+	if (!cam_is_mmrm_supported_on_current_chip())
+		return 0;
+
+	desc.client_type = MMRM_CLIENT_CLOCK;
+	desc.client_info.desc.client_domain = MMRM_CLIENT_DOMAIN_CAMERA;
+	desc.client_info.desc.client_id = clk_id;
+	desc.client_info.desc.clk = clk;
+
+	snprintf((char *)desc.client_info.desc.name,
+		sizeof(desc.client_info.desc.name), "%s_%s",
+		soc_info->dev_name, clk_name);
+
+	desc.priority = is_nrt_dev ?
+		MMRM_CLIENT_PRIOR_LOW : MMRM_CLIENT_PRIOR_HIGH;
+	desc.pvt_data = soc_info;
+	desc.notifier_callback_fn = cam_mmrm_notifier_callback;
+
+	mmrm_client = mmrm_client_register(&desc);
+	if (!mmrm_client) {
+		CAM_ERR(CAM_UTIL, "MMRM Register failed Dev %s clk %s id %d",
+			soc_info->dev_name, clk_name, clk_id);
+		return -EINVAL;
+	}
+
+	CAM_DBG(CAM_UTIL,
+		"MMRM Register success Dev %s is_nrt_dev %d clk %s id %d handle=%pK",
+		soc_info->dev_name, is_nrt_dev, clk_name, clk_id, mmrm_client);
+
+	*mmrm_handle = (void *)mmrm_client;
+
+	return 0;
+}
+
+int cam_soc_util_unregister_mmrm_client(
+	void *mmrm_handle)
+{
+	int rc = 0;
+
+	CAM_DBG(CAM_UTIL, "MMRM UnRegister handle=%pK", mmrm_handle);
+
+	if (mmrm_handle) {
+		rc = mmrm_client_deregister((struct mmrm_client *)mmrm_handle);
+		if (rc)
+			CAM_ERR(CAM_UTIL,
+				"Failed in deregister handle=%pK, rc %d",
+				mmrm_handle, rc);
+	}
+
+	return rc;
+}
+
+static int cam_soc_util_set_rate_through_mmrm(
+	void *mmrm_handle, bool is_nrt_dev, long min_rate,
+	long req_rate, uint32_t num_hw_blocks)
+{
+	int rc = 0;
+	struct mmrm_client_data client_data;
+	struct mmrm_client_res_value val;
+
+	client_data.num_hw_blocks = num_hw_blocks;
+	client_data.flags = 0;
+
+
+	CAM_DBG(CAM_UTIL,
+		"mmrm=%pK, nrt=%d, min_rate=%ld req_rate %ld, num_blocks=%d",
+		mmrm_handle, is_nrt_dev, min_rate, req_rate, num_hw_blocks);
+
+	if (is_nrt_dev) {
+		val.min = min_rate;
+		val.cur = req_rate;
+
+		rc = mmrm_client_set_value_in_range(
+			(struct mmrm_client *)mmrm_handle, &client_data, &val);
+	} else {
+		rc = mmrm_client_set_value(
+			(struct mmrm_client *)mmrm_handle,
+			&client_data, req_rate);
+	}
+
+	if (rc)
+		CAM_ERR(CAM_UTIL, "Set rate failed rate %ld rc %d",
+			req_rate, rc);
+
+	return rc;
+}
+#else
+int cam_soc_util_register_mmrm_client(
+	uint32_t clk_id, struct clk *clk, bool is_nrt_dev,
+	struct cam_hw_soc_info *soc_info, const char *clk_name,
+	void **mmrm_handle)
+{
+	if (!mmrm_handle) {
+		CAM_ERR(CAM_UTIL, "Invalid mmrm input");
+		return -EINVAL;
+	}
+
+	*mmrm_handle = NULL;
+
+	return 0;
+}
+
+int cam_soc_util_unregister_mmrm_client(
+	void *mmrm_handle)
+{
+	return 0;
+}
+
+static int cam_soc_util_set_rate_through_mmrm(
+	void *mmrm_handle, bool is_nrt_dev, long min_rate,
+	long req_rate, uint32_t num_hw_blocks)
+{
+	return 0;
+}
+#endif
+
 static int cam_soc_util_clk_wrapper_register_entry(
-	uint32_t clk_id, struct clk *clk, struct cam_hw_soc_info *soc_info,
+	uint32_t clk_id, struct clk *clk, bool is_src_clk,
+	struct cam_hw_soc_info *soc_info, int64_t min_clk_rate,
 	const char *clk_name)
 {
 	struct cam_clk_wrapper_clk *wrapper_clk;
@@ -126,6 +301,23 @@ static int cam_soc_util_clk_wrapper_register_entry(
 	wrapper_client->soc_info = soc_info;
 	wrapper_client->clk = clk;
 
+	if (is_src_clk && !wrapper_clk->mmrm_handle) {
+		wrapper_clk->is_nrt_dev = soc_info->is_nrt_dev;
+		wrapper_clk->min_clk_rate = min_clk_rate;
+		wrapper_clk->soc_info = soc_info;
+
+		rc = cam_soc_util_register_mmrm_client(clk_id, clk,
+			wrapper_clk->is_nrt_dev, soc_info, clk_name,
+			&wrapper_clk->mmrm_handle);
+		if (rc) {
+			CAM_ERR(CAM_UTIL,
+				"Failed in register mmrm client Dev %s clk id %d",
+				soc_info->dev_name, clk_id);
+			kfree(wrapper_client);
+			goto end;
+		}
+	}
+
 	INIT_LIST_HEAD(&wrapper_client->list);
 	list_add_tail(&wrapper_client->list, &wrapper_clk->client_list);
 	wrapper_clk->num_clients++;
@@ -133,6 +325,7 @@ static int cam_soc_util_clk_wrapper_register_entry(
 	CAM_DBG(CAM_UTIL,
 		"Adding new client %s for clk[%s] id %d, num clients %d",
 		soc_info->dev_name, clk_name, clk_id, wrapper_clk->num_clients);
+
 end:
 	mutex_unlock(&wrapper_lock);
 	return rc;
@@ -162,9 +355,6 @@ static int cam_soc_util_clk_wrapper_unregister_entry(
 					wrapper_client->soc_info->dev_name);
 				if (wrapper_client->soc_info == soc_info) {
 					client_found = true;
-					wrapper_clk->num_clients--;
-					list_del_init(&wrapper_client->list);
-					kfree(wrapper_client);
 					break;
 				}
 			}
@@ -185,6 +375,16 @@ static int cam_soc_util_clk_wrapper_unregister_entry(
 		rc = -EINVAL;
 		goto end;
 	}
+
+	wrapper_clk->num_clients--;
+	if (wrapper_clk->mmrm_handle && (wrapper_clk->soc_info == soc_info)) {
+		cam_soc_util_unregister_mmrm_client(wrapper_clk->mmrm_handle);
+		wrapper_clk->mmrm_handle = NULL;
+		wrapper_clk->soc_info = NULL;
+	}
+
+	list_del_init(&wrapper_client->list);
+	kfree(wrapper_client);
 
 	CAM_DBG(CAM_UTIL, "Unregister client %s for clk id %d, num clients %d",
 		soc_info->dev_name, clk_id, wrapper_clk->num_clients);
@@ -208,6 +408,7 @@ static int cam_soc_util_clk_wrapper_set_clk_rate(
 	bool client_found = false;
 	int rc = 0;
 	int64_t final_clk_rate = 0;
+	uint32_t active_clients = 0;
 
 	if (!soc_info || !clk) {
 		CAM_ERR(CAM_UTIL, "Invalid param soc_info %pK clk %pK",
@@ -247,6 +448,9 @@ static int cam_soc_util_clk_wrapper_set_clk_rate(
 			wrapper_client->curr_clk_rate = clk_rate;
 		}
 
+		if (wrapper_client->curr_clk_rate > 0)
+			active_clients++;
+
 		if (final_clk_rate < wrapper_client->curr_clk_rate)
 			final_clk_rate = wrapper_client->curr_clk_rate;
 	}
@@ -264,8 +468,28 @@ static int cam_soc_util_clk_wrapper_set_clk_rate(
 		wrapper_clk->clk_id, soc_info->dev_name, clk_rate,
 		wrapper_clk->curr_clk_rate, final_clk_rate);
 
-	if (final_clk_rate != wrapper_clk->curr_clk_rate) {
-		if (final_clk_rate) {
+	if ((final_clk_rate != wrapper_clk->curr_clk_rate) ||
+		(active_clients != wrapper_clk->active_clients)) {
+		bool set_rate_finish = false;
+
+		if (!skip_mmrm_set_rate && wrapper_clk->mmrm_handle) {
+			rc = cam_soc_util_set_rate_through_mmrm(
+				wrapper_clk->mmrm_handle,
+				wrapper_clk->is_nrt_dev,
+				wrapper_clk->min_clk_rate,
+				final_clk_rate, active_clients);
+			if (rc) {
+				CAM_ERR(CAM_UTIL,
+					"set_rate through mmrm failed clk_id %d, rate=%ld",
+					wrapper_clk->clk_id, final_clk_rate);
+				goto end;
+			}
+
+			set_rate_finish = true;
+		}
+
+		if (!set_rate_finish && final_clk_rate &&
+			(final_clk_rate != wrapper_clk->curr_clk_rate)) {
 			rc = clk_set_rate(clk, final_clk_rate);
 			if (rc) {
 				CAM_ERR(CAM_UTIL, "set_rate failed on clk %d",
@@ -273,7 +497,9 @@ static int cam_soc_util_clk_wrapper_set_clk_rate(
 				goto end;
 			}
 		}
+
 		wrapper_clk->curr_clk_rate = final_clk_rate;
+		wrapper_clk->active_clients = active_clients;
 	}
 
 end:
@@ -633,6 +859,7 @@ long cam_soc_util_get_clk_round_rate(struct cam_hw_soc_info *soc_info,
  * @clk_name:         Name of the clock for which rate is being set
  * @clk_rate:         Clock rate to be set
  * @shared_clk:       Whether this is a shared clk
+ * @is_src_clk:       Whether this is source clk
  * @clk_id:           Clock ID
  * @applied_clk_rate: Final clock rate set to the clk
  *
@@ -640,7 +867,7 @@ long cam_soc_util_get_clk_round_rate(struct cam_hw_soc_info *soc_info,
  */
 static int cam_soc_util_set_clk_rate(struct cam_hw_soc_info *soc_info,
 	struct clk *clk, const char *clk_name,
-	int64_t clk_rate, bool shared_clk, uint32_t clk_id,
+	int64_t clk_rate, bool shared_clk, bool is_src_clk, uint32_t clk_id,
 	unsigned long *applied_clk_rate)
 {
 	int rc = 0;
@@ -686,10 +913,41 @@ static int cam_soc_util_set_clk_rate(struct cam_hw_soc_info *soc_info,
 			cam_soc_util_clk_wrapper_set_clk_rate(
 				clk_id, soc_info, clk, clk_rate_round);
 		} else {
-			rc = clk_set_rate(clk, clk_rate_round);
-			if (rc) {
-				CAM_ERR(CAM_UTIL, "set_rate failed on %s", clk_name);
-				return rc;
+			bool set_rate_finish = false;
+
+			CAM_DBG(CAM_UTIL,
+				"Dev %s clk %s clk_id %d src_idx %d src_clk_id %d",
+				soc_info->dev_name, clk_name, clk_id,
+				soc_info->src_clk_idx,
+				(soc_info->src_clk_idx == -1) ? -1 :
+				soc_info->clk_id[soc_info->src_clk_idx]);
+
+			if (is_src_clk && soc_info->mmrm_handle &&
+				!skip_mmrm_set_rate) {
+				uint32_t idx = soc_info->src_clk_idx;
+				uint32_t min_level = soc_info->lowest_clk_level;
+
+				rc = cam_soc_util_set_rate_through_mmrm(
+					soc_info->mmrm_handle,
+					soc_info->is_nrt_dev,
+					soc_info->clk_rate[min_level][idx],
+					clk_rate_round, 1);
+				if (rc) {
+					CAM_ERR(CAM_UTIL,
+						"set_rate through mmrm failed on %s clk_id %d, rate=%ld",
+						clk_name, clk_id,
+						clk_rate_round);
+					return rc;
+				}
+				set_rate_finish = true;
+			}
+
+			if (!set_rate_finish) {
+				rc = clk_set_rate(clk, clk_rate_round);
+				if (rc) {
+					CAM_ERR(CAM_UTIL, "set_rate failed on %s", clk_name);
+					return rc;
+				}
 			}
 		}
 	}
@@ -747,7 +1005,7 @@ int cam_soc_util_set_src_clk_rate(struct cam_hw_soc_info *soc_info,
 	rc = cam_soc_util_set_clk_rate(soc_info, clk,
 		soc_info->clk_name[src_clk_idx], clk_rate,
 		CAM_IS_BIT_SET(soc_info->shared_clk_mask, src_clk_idx),
-		soc_info->clk_id[src_clk_idx],
+		true, soc_info->clk_id[src_clk_idx],
 		&soc_info->applied_src_clk_rate);
 	if (rc) {
 		CAM_ERR(CAM_UTIL,
@@ -770,7 +1028,7 @@ int cam_soc_util_set_src_clk_rate(struct cam_hw_soc_info *soc_info,
 			soc_info->clk_name[scl_clk_idx],
 			soc_info->clk_rate[apply_level][scl_clk_idx],
 			CAM_IS_BIT_SET(soc_info->shared_clk_mask, scl_clk_idx),
-			soc_info->clk_id[scl_clk_idx],
+			false, soc_info->clk_id[scl_clk_idx],
 			NULL);
 		if (rc) {
 			CAM_WARN(CAM_UTIL,
@@ -914,7 +1172,9 @@ int cam_soc_util_get_option_clk_by_name(struct cam_hw_soc_info *soc_info,
 
 			rc = cam_soc_util_clk_wrapper_register_entry(
 				soc_info->optional_clk_id[index],
-				soc_info->optional_clk[index], soc_info,
+				soc_info->optional_clk[index], false,
+				soc_info,
+				soc_info->optional_clk_rate[index],
 				soc_info->optional_clk_name[index]);
 			if (rc) {
 				CAM_ERR(CAM_UTIL,
@@ -946,6 +1206,7 @@ int cam_soc_util_clk_enable(struct cam_hw_soc_info *soc_info,
 	int32_t clk_rate;
 	uint32_t shared_clk_mask;
 	uint32_t clk_id;
+	bool is_src_clk = false;
 
 	if (!soc_info || (clk_idx < 0) || (apply_level >= CAM_MAX_VOTE)) {
 		CAM_ERR(CAM_UTIL, "Invalid param %d %d", clk_idx, apply_level);
@@ -966,10 +1227,12 @@ int cam_soc_util_clk_enable(struct cam_hw_soc_info *soc_info,
 			0 : soc_info->clk_rate[apply_level][clk_idx];
 		shared_clk_mask = soc_info->shared_clk_mask;
 		clk_id = soc_info->clk_id[clk_idx];
+		if (clk_idx == soc_info->src_clk_idx)
+			is_src_clk = true;
 	}
 
 	rc = cam_soc_util_set_clk_rate(soc_info, clk, clk_name, clk_rate,
-		CAM_IS_BIT_SET(shared_clk_mask, clk_idx), clk_id,
+		CAM_IS_BIT_SET(shared_clk_mask, clk_idx), is_src_clk, clk_id,
 		applied_clock_rate);
 	if (rc)
 		return rc;
@@ -1200,6 +1463,8 @@ static int cam_soc_util_get_dt_clk_info(struct cam_hw_soc_info *soc_info)
 		return -EINVAL;
 	}
 
+	soc_info->lowest_clk_level = CAM_TURBO_VOTE;
+
 	for (i = 0; i < num_clk_levels; i++) {
 		rc = of_property_read_string_index(of_node,
 			"clock-cntl-level", i, &clk_cntl_lvl_string);
@@ -1237,6 +1502,10 @@ static int cam_soc_util_get_dt_clk_info(struct cam_hw_soc_info *soc_info)
 				level, j,
 				soc_info->clk_rate[level][j]);
 		}
+
+		if ((level > CAM_MINSVS_VOTE) &&
+			(level < soc_info->lowest_clk_level))
+			soc_info->lowest_clk_level = level;
 	}
 
 	soc_info->src_clk_idx = -1;
@@ -1271,6 +1540,10 @@ static int cam_soc_util_get_dt_clk_info(struct cam_hw_soc_info *soc_info)
 			soc_info->dev_name, soc_info->clk_name[i],
 			soc_info->clk_id[i]);
 	}
+
+	CAM_DBG(CAM_UTIL, "Dev %s src_clk_idx %d, lowest_clk_level %d",
+		soc_info->dev_name, soc_info->src_clk_idx,
+		soc_info->lowest_clk_level);
 
 	soc_info->shared_clk_mask = 0;
 	shared_clk_cnt = of_property_count_u32_elems(of_node, "shared-clks");
@@ -1399,6 +1672,7 @@ int cam_soc_util_set_clk_rate_level(struct cam_hw_soc_info *soc_info,
 			soc_info->clk_name[i],
 			soc_info->clk_rate[apply_level][i],
 			CAM_IS_BIT_SET(soc_info->shared_clk_mask, i),
+			(i == soc_info->src_clk_idx) ? true : false,
 			soc_info->clk_id[i],
 			&applied_clk_rate);
 		if (rc < 0) {
@@ -1781,6 +2055,12 @@ int cam_soc_util_get_dt_properties(struct cam_hw_soc_info *soc_info)
 		rc = 0;
 	}
 
+	soc_info->is_nrt_dev = false;
+	if (of_property_read_bool(of_node, "nrt-device"))
+		soc_info->is_nrt_dev = true;
+	CAM_DBG(CAM_UTIL, "Dev %s, nrt_dev %d",
+		soc_info->dev_name, soc_info->is_nrt_dev);
+
 	rc = cam_soc_util_get_dt_regulator_info(soc_info);
 	if (rc)
 		return rc;
@@ -2081,16 +2361,36 @@ int cam_soc_util_request_platform_resource(
 
 		/* Create a wrapper entry if this is a shared clock */
 		if (CAM_IS_BIT_SET(soc_info->shared_clk_mask, i)) {
+			uint32_t min_level = soc_info->lowest_clk_level;
+
 			CAM_DBG(CAM_UTIL,
 				"Dev %s, clk %s, id %d register wrapper entry for shared clk",
 				soc_info->dev_name, soc_info->clk_name[i],
 				soc_info->clk_id[i]);
+
 			rc = cam_soc_util_clk_wrapper_register_entry(
-				soc_info->clk_id[i], soc_info->clk[i], soc_info,
+				soc_info->clk_id[i], soc_info->clk[i],
+				(i == soc_info->src_clk_idx) ? true : false,
+				soc_info, soc_info->clk_rate[min_level][i],
 				soc_info->clk_name[i]);
 			if (rc) {
 				CAM_ERR(CAM_UTIL,
 					"Failed in registering shared clk Dev %s id %d",
+					soc_info->dev_name,
+					soc_info->clk_id[i]);
+				clk_put(soc_info->clk[i]);
+				soc_info->clk[i] = NULL;
+				goto put_clk;
+			}
+		} else if (i == soc_info->src_clk_idx) {
+			rc = cam_soc_util_register_mmrm_client(
+				soc_info->clk_id[i], soc_info->clk[i],
+				soc_info->is_nrt_dev,
+				soc_info, soc_info->clk_name[i],
+				&soc_info->mmrm_handle);
+			if (rc) {
+				CAM_ERR(CAM_UTIL,
+					"Failed in register mmrm client Dev %s clk id %d",
 					soc_info->dev_name,
 					soc_info->clk_id[i]);
 				clk_put(soc_info->clk[i]);
@@ -2116,6 +2416,12 @@ int cam_soc_util_request_platform_resource(
 	return rc;
 
 put_clk:
+
+	if (soc_info->mmrm_handle) {
+		cam_soc_util_unregister_mmrm_client(soc_info->mmrm_handle);
+		soc_info->mmrm_handle = NULL;
+	}
+
 	if (i == -1)
 		i = soc_info->num_clk;
 	for (i = i - 1; i >= 0; i--) {
@@ -2168,6 +2474,11 @@ int cam_soc_util_release_platform_resource(struct cam_hw_soc_info *soc_info)
 	if (!soc_info || !soc_info->dev) {
 		CAM_ERR(CAM_UTIL, "Invalid parameter");
 		return -EINVAL;
+	}
+
+	if (soc_info->mmrm_handle) {
+		cam_soc_util_unregister_mmrm_client(soc_info->mmrm_handle);
+		soc_info->mmrm_handle = NULL;
 	}
 
 	for (i = soc_info->num_clk - 1; i >= 0; i--) {

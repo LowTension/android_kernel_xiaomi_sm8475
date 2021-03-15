@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CAM_CPAS_API_H_
@@ -16,6 +16,9 @@
 
 /* Default AXI Bandwidth vote */
 #define CAM_CPAS_DEFAULT_AXI_BW 1024
+
+/* Default RT AXI Bandwidth vote */
+#define CAM_CPAS_DEFAULT_RT_AXI_BW 2000000000L
 
 #define CAM_CPAS_MAX_PATHS_PER_CLIENT 15
 #define CAM_CPAS_API_PATH_DATA_STD_START 512
