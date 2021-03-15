@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CAM_VFE_CORE_H_
@@ -48,18 +48,6 @@ struct cam_vfe_hw_info {
 
 	uint32_t                          camif_lite_version;
 	void                             *camif_lite_reg;
-
-	uint32_t                          testgen_version;
-	void                             *testgen_reg;
-
-	uint32_t                          num_qos_settings;
-	struct cam_isp_reg_val_pair      *qos_settings;
-
-	uint32_t                          num_ds_settings;
-	struct cam_isp_reg_val_pair      *ds_settings;
-
-	uint32_t                          num_vbif_settings;
-	struct cam_isp_reg_val_pair      *vbif_settings;
 };
 
 #define CAM_VFE_EVT_MAX                    256

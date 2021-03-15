@@ -17,14 +17,9 @@
 #include "cam_tasklet_util.h"
 #include "cam_cdm_intf_api.h"
 
-#define CAM_VFE_HW_RESET_HW_AND_REG_VAL       0x00000001
-#define CAM_VFE_HW_RESET_HW_VAL               0x00010000
-#define CAM_VFE_LITE_HW_RESET_AND_REG_VAL     0x00000002
-#define CAM_VFE_LITE_HW_RESET_HW_VAL          0x00000001
-#define CAM_CDM_WAIT_COMP_EVENT_BIT           0x2
-
-#define CAM_VFE_CAMIF_IRQ_SOF_DEBUG_CNT_MAX   2
-#define CAM_VFE_LEN_LOG_BUF                   256
+#define CAM_SHIFT_TOP_CORE_VER_4_CFG_DSP_EN            8
+#define CAM_VFE_CAMIF_IRQ_SOF_DEBUG_CNT_MAX            2
+#define CAM_VFE_LEN_LOG_BUF                            256
 
 struct cam_vfe_top_ver4_common_data {
 	struct cam_hw_soc_info                     *soc_info;
@@ -1252,14 +1247,6 @@ int cam_vfe_top_ver4_reserve(void *device_priv,
 					break;
 			}
 
-			if (acquire_args->res_id == CAM_ISP_HW_VFE_IN_RD) {
-				rc = cam_vfe_fe_ver1_acquire_resource(
-					&top_priv->top_common.mux_rsrc[i],
-					args);
-				if (rc)
-					break;
-			}
-
 			top_priv->top_common.mux_rsrc[i].cdm_ops =
 				acquire_args->cdm_ops;
 			top_priv->top_common.mux_rsrc[i].tasklet_info =
@@ -2238,17 +2225,6 @@ int cam_vfe_top_ver4_init(
 				hw_info->rdi_hw_info[j++],
 				&top_priv->top_common.mux_rsrc[i],
 				vfe_irq_controller);
-		} else if (hw_info->mux_type[i] ==
-			CAM_VFE_LCR_VER_1_0) {
-			/* set the LCR resource id */
-			top_priv->top_common.mux_rsrc[i].res_id =
-				CAM_ISP_HW_VFE_IN_LCR;
-
-			rc = cam_vfe_res_mux_init(top_priv,
-				hw_intf, soc_info,
-				&hw_info->lcr_hw_info,
-				&top_priv->top_common.mux_rsrc[i],
-				vfe_irq_controller);
 		} else {
 			CAM_WARN(CAM_ISP, "Invalid mux type: %u",
 				hw_info->mux_type[i]);
@@ -2285,10 +2261,6 @@ deinit_resources:
 			if (cam_vfe_res_mux_deinit(
 				&top_priv->top_common.mux_rsrc[i]))
 				CAM_ERR(CAM_ISP, "Camif Deinit failed");
-		} else if (hw_info->mux_type[i] == CAM_VFE_IN_RD_VER_1_0) {
-			if (cam_vfe_fe_ver1_deinit(
-				&top_priv->top_common.mux_rsrc[i]))
-				CAM_ERR(CAM_ISP, "Camif fe Deinit failed");
 		} else {
 			if (cam_vfe_res_mux_deinit(
 				&top_priv->top_common.mux_rsrc[i]))
@@ -2337,29 +2309,9 @@ int cam_vfe_top_ver4_deinit(struct cam_vfe_top  **vfe_top_ptr)
 	for (i = 0; i < top_priv->top_common.num_mux; i++) {
 		top_priv->top_common.mux_rsrc[i].res_state =
 			CAM_ISP_RESOURCE_STATE_UNAVAILABLE;
-		if (top_priv->top_common.mux_rsrc[i].res_type ==
-			CAM_VFE_CAMIF_VER_4_0) {
-			rc = cam_vfe_res_mux_deinit(
-				&top_priv->top_common.mux_rsrc[i]);
-			if (rc)
-				CAM_ERR(CAM_ISP, "Camif deinit failed rc=%d",
-					rc);
-		} else if (top_priv->top_common.mux_rsrc[i].res_type ==
-			CAM_VFE_IN_RD_VER_1_0) {
-			rc = cam_vfe_fe_ver1_deinit(
-				&top_priv->top_common.mux_rsrc[i]);
-			if (rc)
-				CAM_ERR(CAM_ISP, "Camif deinit failed rc=%d",
-					rc);
-		} else {
-			rc = cam_vfe_res_mux_deinit(
-				&top_priv->top_common.mux_rsrc[i]);
-			if (rc)
-				CAM_ERR(CAM_ISP,
-					"Camif lite res id %d Deinit failed",
-					top_priv->top_common.mux_rsrc[i]
-					.res_id);
-		}
+		rc = cam_vfe_res_mux_deinit(&top_priv->top_common.mux_rsrc[i]);
+		if (rc)
+			CAM_ERR(CAM_ISP, "Mux[%d] deinit failed rc=%d", i, rc);
 	}
 
 	kfree(vfe_top->top_priv);

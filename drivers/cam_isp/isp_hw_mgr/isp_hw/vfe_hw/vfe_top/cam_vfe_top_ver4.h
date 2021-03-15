@@ -6,21 +6,9 @@
 #ifndef _CAM_VFE_TOP_VER4_H_
 #define _CAM_VFE_TOP_VER4_H_
 
-#include "cam_vfe_fe_ver1.h"
 #include "cam_vfe_top_common.h"
 #include "cam_isp_hw.h"
 #include "cam_vfe_top.h"
-
-#define CAM_SHIFT_TOP_CORE_VER_4_CFG_VID_DS16_R2PD     16
-#define CAM_SHIFT_TOP_CORE_VER_4_CFG_VID_DS4_R2PD      15
-#define CAM_SHIFT_TOP_CORE_VER_4_CFG_DISP_DS16_R2PD    14
-#define CAM_SHIFT_TOP_CORE_VER_4_CFG_DISP_DS4_R2PD     13
-#define CAM_SHIFT_TOP_CORE_VER_4_CFG_DSP_STREAMING     10
-#define CAM_SHIFT_TOP_CORE_VER_4_CFG_STATS_IHIST       4
-#define CAM_SHIFT_TOP_CORE_VER_4_CFG_PP_INPUT_FMT      2
-#define CAM_SHIFT_TOP_CORE_VER_4_CFG_HDR_MUX_PP        0
-#define CAM_SHIFT_TOP_CORE_VER_4_CFG_DSP_MODE          9
-#define CAM_SHIFT_TOP_CORE_VER_4_CFG_DSP_EN            8
 
 #define CAM_VFE_RDI_VER2_MAX                           4
 #define CAM_VFE_CAMIF_LITE_EVT_MAX                     256
@@ -102,17 +90,15 @@ struct cam_vfe_top_ver4_hw_info {
 	struct cam_vfe_top_ver4_reg_offset_common  *common_reg;
 	struct cam_vfe_ver4_path_hw_info            vfe_full_hw_info;
 	struct cam_vfe_ver4_path_hw_info            pdlib_hw_info;
-		struct cam_vfe_ver4_path_hw_info
-			*rdi_hw_info[CAM_VFE_RDI_VER2_MAX];
-	struct cam_vfe_ver4_path_hw_info    lcr_hw_info;
-	struct cam_vfe_fe_ver1_hw_info      fe_hw_info;
+	struct cam_vfe_ver4_path_hw_info           *rdi_hw_info[
+		CAM_VFE_RDI_VER2_MAX];
 
-	struct cam_vfe_ver4_path_reg_data               *reg_data;
-	struct cam_vfe_top_ver4_wr_client_desc          *wr_client_desc;
-	struct cam_vfe_top_ver4_module_desc             *module_desc;
-	struct cam_vfe_top_camnoc_debug_data            *camnoc_debug_data;
-	uint32_t                                         num_reg;
-	uint32_t                                         num_mux;
+	struct cam_vfe_ver4_path_reg_data          *reg_data;
+	struct cam_vfe_top_ver4_wr_client_desc     *wr_client_desc;
+	struct cam_vfe_top_ver4_module_desc        *module_desc;
+	struct cam_vfe_top_camnoc_debug_data       *camnoc_debug_data;
+	uint32_t                                    num_reg;
+	uint32_t                                    num_mux;
 	uint32_t mux_type[CAM_VFE_TOP_MUX_MAX];
 };
 
@@ -136,34 +122,5 @@ int cam_vfe_top_ver4_init(struct cam_hw_soc_info     *soc_info,
 	struct cam_vfe_top                          **vfe_top);
 
 int cam_vfe_top_ver4_deinit(struct cam_vfe_top      **vfe_top);
-
-int cam_vfe_full_node_ver4_acquire_resource(
-	struct cam_isp_resource_node  *vfe_res,
-	void                          *acquire_param);
-
-int cam_vfe_full_node_ver4_init(
-	struct cam_hw_intf            *hw_intf,
-	struct cam_hw_soc_info        *soc_info,
-	void                          *camif_hw_info,
-	struct cam_isp_resource_node  *camif_node,
-	void                          *vfe_irq_controller);
-
-int cam_vfe_full_node_ver4_deinit(
-	struct cam_isp_resource_node  *vfe_node);
-
-int cam_vfe_lite_node_ver4_acquire_resource(
-	struct cam_isp_resource_node          *vfe_lite_res,
-	void                                  *acquire_param);
-
-int cam_vfe_lite_node_ver4_init(
-	struct cam_hw_intf            *hw_intf,
-	struct cam_hw_soc_info        *soc_info,
-	void                          *camif_lite_hw_info,
-	struct cam_isp_resource_node  *camif_lite_node,
-	void                          *vfe_irq_controller);
-
-int cam_vfe_lite_node_ver4_deinit(
-	struct cam_isp_resource_node  *vfe_node);
-
 
 #endif /* _CAM_VFE_TOP_VER4_H_ */
