@@ -5295,11 +5295,6 @@ static int cam_isp_blob_bw_update_v2(
 		}
 	}
 
-	if (split_idx == CAM_ISP_HW_SPLIT_MAX || split_idx == INT_MIN) {
-		CAM_ERR(CAM_ISP, "Invalide hw res");
-		return -EINVAL;
-	}
-
 	nrdi_l_bw_updated = false;
 	nrdi_r_bw_updated = false;
 	list_for_each_entry(hw_mgr_res, &ctx->res_list_sfe_src, list) {
