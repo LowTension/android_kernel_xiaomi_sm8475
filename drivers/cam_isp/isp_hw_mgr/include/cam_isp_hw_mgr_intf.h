@@ -45,6 +45,13 @@
  */
 #define CAM_ISP_CTX_CFG_MAX                     25
 
+/*
+ * Maximum configuration entry size including SFE & CSID - This is based on the
+ * worst case DUAL IFE/SFE use case plus some margin.
+ */
+#define CAM_ISP_SFE_CTX_CFG_MAX                 40
+
+
 /**
  *  enum cam_isp_hw_event_type - Collection of the ISP hardware events
  */

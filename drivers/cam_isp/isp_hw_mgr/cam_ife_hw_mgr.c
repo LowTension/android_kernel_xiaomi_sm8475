@@ -233,6 +233,35 @@ static int cam_ife_mgr_handle_reg_dump(struct cam_ife_hw_mgr_ctx *ctx,
 	return rc;
 }
 
+static inline int cam_ife_mgr_allocate_cdm_cmd(
+	bool is_sfe_en,
+	struct cam_cdm_bl_request **cdm_cmd)
+{
+	int rc = 0;
+	uint32_t cfg_max = CAM_ISP_CTX_CFG_MAX;
+
+	if (is_sfe_en)
+		cfg_max = CAM_ISP_SFE_CTX_CFG_MAX;
+
+	*cdm_cmd = kzalloc(((sizeof(struct cam_cdm_bl_request)) +
+		((cfg_max - 1) *
+		sizeof(struct cam_cdm_bl_cmd))), GFP_KERNEL);
+
+	if (!(*cdm_cmd)) {
+		CAM_ERR(CAM_ISP, "Failed to allocate cdm bl memory");
+		rc = -ENOMEM;
+	}
+
+	return rc;
+}
+
+static inline void cam_ife_mgr_free_cdm_cmd(
+	struct cam_cdm_bl_request **cdm_cmd)
+{
+	kfree(*cdm_cmd);
+	*cdm_cmd = NULL;
+}
+
 static int cam_ife_mgr_get_hw_caps(void *hw_mgr_priv,
 	void *hw_caps_args)
 {
@@ -4675,6 +4704,12 @@ static int cam_ife_mgr_acquire_hw(void *hw_mgr_priv, void *acquire_hw_args)
 		goto free_res;
 	}
 
+	rc = cam_ife_mgr_allocate_cdm_cmd(
+		(ife_ctx->ctx_type == CAM_IFE_CTX_TYPE_SFE ? true : false),
+		&ife_ctx->cdm_cmd);
+	if (rc)
+		goto free_res;
+
 	if (ife_ctx->is_dual)
 		memcpy(cdm_acquire.identifier, "dualife", sizeof("dualife"));
 	else
@@ -4699,7 +4734,7 @@ static int cam_ife_mgr_acquire_hw(void *hw_mgr_priv, void *acquire_hw_args)
 	rc = cam_cdm_acquire(&cdm_acquire);
 	if (rc) {
 		CAM_ERR(CAM_ISP, "Failed to acquire the CDM HW");
-		goto free_res;
+		goto free_cdm_cmd;
 	}
 
 	CAM_DBG(CAM_ISP,
@@ -4755,6 +4790,8 @@ static int cam_ife_mgr_acquire_hw(void *hw_mgr_priv, void *acquire_hw_args)
 
 	return 0;
 
+free_cdm_cmd:
+	cam_ife_mgr_free_cdm_cmd(&ife_ctx->cdm_cmd);
 free_res:
 	cam_ife_hw_mgr_release_hw_for_ctx(ife_ctx);
 free_mem:
@@ -4976,6 +5013,11 @@ static int cam_ife_mgr_acquire_dev(void *hw_mgr_priv, void *acquire_hw_args)
 		goto free_res;
 	}
 
+	rc = cam_ife_mgr_allocate_cdm_cmd(false,
+		&ife_ctx->cdm_cmd);
+	if (rc)
+		goto free_res;
+
 	cam_cpas_get_cpas_hw_version(&ife_ctx->hw_version);
 	ife_ctx->internal_cdm = false;
 
@@ -4999,7 +5041,7 @@ static int cam_ife_mgr_acquire_dev(void *hw_mgr_priv, void *acquire_hw_args)
 	rc = cam_cdm_acquire(&cdm_acquire);
 	if (rc) {
 		CAM_ERR(CAM_ISP, "Failed to acquire the CDM HW");
-		goto free_res;
+		goto free_cdm_cmd;
 	}
 
 	CAM_DBG(CAM_ISP, "Successfully acquired CDM ID:%d, CDM HW hdl=%x",
@@ -5022,6 +5064,9 @@ static int cam_ife_mgr_acquire_dev(void *hw_mgr_priv, void *acquire_hw_args)
 	cam_ife_hw_mgr_put_ctx(&ife_hw_mgr->used_ctx_list, &ife_ctx);
 
 	return 0;
+
+free_cdm_cmd:
+	cam_ife_mgr_free_cdm_cmd(&ife_ctx->cdm_cmd);
 free_res:
 	cam_ife_hw_mgr_release_hw_for_ctx(ife_ctx);
 	cam_cdm_release(ife_ctx->cdm_handle);
@@ -6491,6 +6536,7 @@ static int cam_ife_mgr_release_hw(void *hw_mgr_priv,
 		ctx->epoch_cnt[i] = 0;
 	}
 
+	cam_ife_mgr_free_cdm_cmd(&ctx->cdm_cmd);
 	CAM_INFO(CAM_ISP, "Release HW success ctx id: %u",
 		ctx->ctx_index);
 
@@ -11263,16 +11309,6 @@ int cam_ife_hw_mgr_init(struct cam_hw_mgr_intf *hw_mgr_intf, int *iommu_hdl)
 				&g_ife_hw_mgr.ctx_pool[i].free_res_list);
 		}
 
-		g_ife_hw_mgr.ctx_pool[i].cdm_cmd =
-			kzalloc(((sizeof(struct cam_cdm_bl_request)) +
-				((CAM_ISP_CTX_CFG_MAX - 1) *
-				 sizeof(struct cam_cdm_bl_cmd))), GFP_KERNEL);
-		if (!g_ife_hw_mgr.ctx_pool[i].cdm_cmd) {
-			rc = -ENOMEM;
-			CAM_ERR(CAM_ISP, "Allocation Failed for cdm command");
-			goto end;
-		}
-
 		g_ife_hw_mgr.ctx_pool[i].ctx_index = i;
 		g_ife_hw_mgr.ctx_pool[i].hw_mgr = &g_ife_hw_mgr;
 
@@ -11322,7 +11358,6 @@ end:
 		for (i = 0; i < CAM_IFE_CTX_MAX; i++) {
 			cam_tasklet_deinit(
 				&g_ife_hw_mgr.mgr_common.tasklet_pool[i]);
-			kfree(g_ife_hw_mgr.ctx_pool[i].cdm_cmd);
 			g_ife_hw_mgr.ctx_pool[i].cdm_cmd = NULL;
 			kfree(g_ife_hw_mgr.ctx_pool[i].res_list_ife_out);
 			g_ife_hw_mgr.ctx_pool[i].res_list_ife_out = NULL;
@@ -11349,7 +11384,6 @@ void cam_ife_hw_mgr_deinit(void)
 	for (i = 0; i < CAM_IFE_CTX_MAX; i++) {
 		cam_tasklet_deinit(
 			&g_ife_hw_mgr.mgr_common.tasklet_pool[i]);
-		kfree(g_ife_hw_mgr.ctx_pool[i].cdm_cmd);
 		g_ife_hw_mgr.ctx_pool[i].cdm_cmd = NULL;
 		kfree(g_ife_hw_mgr.ctx_pool[i].res_list_ife_out);
 		g_ife_hw_mgr.ctx_pool[i].res_list_ife_out = NULL;
