@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/slab.h>
@@ -70,6 +70,320 @@ struct cam_sfe_path_data {
 
 static int start_stop_cnt;
 
+struct cam_sfe_top_debug_info {
+	uint32_t  shift;
+	char     *clc_name;
+};
+
+static const struct cam_sfe_top_debug_info sfe_dbg_list[][8] = {
+	{
+		{
+			.shift = 0,
+			.clc_name = "test_bus_reserved"
+		},
+		{
+			.shift = 4,
+			.clc_name = "test_bus_reserved"
+		},
+		{
+			.shift = 8,
+			.clc_name = "test_bus_reserved"
+		},
+		{
+			.shift = 12,
+			.clc_name = "test_bus_reserved"
+		},
+		{
+			.shift = 16,
+			.clc_name = "test_bus_reserved"
+		},
+		{
+			.shift = 20,
+			.clc_name = "test_bus_reserved"
+		},
+		{
+			.shift = 24,
+			.clc_name = "test_bus_reserved"
+		},
+		{
+			.shift = 28,
+			.clc_name = "test_bus_reserved"
+		},
+	},
+	{
+		{
+			.shift = 0,
+			.clc_name = "zsl_throttle"
+		},
+		{
+			.shift = 4,
+			.clc_name = "crc_zsl"
+		},
+		{
+			.shift = 8,
+			.clc_name = "comp_zsl"
+		},
+		{
+			.shift = 12,
+			.clc_name = "crc_prev"
+		},
+		{
+			.shift = 16,
+			.clc_name = "hdrc_ch2"
+		},
+		{
+			.shift = 20,
+			.clc_name = "hdrc_ch1"
+		},
+		{
+			.shift = 24,
+			.clc_name = "hdrc_ch0"
+		},
+		{
+			.shift = 28,
+			.clc_name = "stats_bhist_ch0"
+		},
+	},
+	{
+		{
+			.shift = 0,
+			.clc_name = "stats_bg_ch0"
+		},
+		{
+			.shift = 4,
+			.clc_name = "lsc_ch0"
+		},
+		{
+			.shift = 8,
+			.clc_name = "crc_ch0"
+		},
+		{
+			.shift = 12,
+			.clc_name = "ccif_2x2_to_2x1"
+		},
+		{
+			.shift = 16,
+			.clc_name = "decomp"
+		},
+		{
+			.shift = 20,
+			.clc_name = "msb_align_ch0"
+		},
+		{
+			.shift = 24,
+			.clc_name = "bpc_pdpc"
+		},
+		{
+			.shift = 28,
+			.clc_name = "ch0_gain"
+		},
+	},
+	{
+		{
+			.shift = 0,
+			.clc_name = "bhist_ch1"
+		},
+		{
+			.shift = 4,
+			.clc_name = "stats_bg_ch1"
+		},
+		{
+			.shift = 8,
+			.clc_name = "lsc_ch1"
+		},
+		{
+			.shift = 12,
+			.clc_name = "crc_ch1"
+		},
+		{
+			.shift = 16,
+			.clc_name = "msb_align_ch1"
+		},
+		{
+			.shift = 20,
+			.clc_name = "ch1_gain"
+		},
+		{
+			.shift = 24,
+			.clc_name = "bhist_ch2"
+		},
+		{
+			.shift = 28,
+			.clc_name = "stats_bg_ch2"
+		},
+	},
+	{
+		{
+			.shift = 0,
+			.clc_name = "lsc_ch2"
+		},
+		{
+			.shift = 4,
+			.clc_name = "crc_ch2"
+		},
+		{
+			.shift = 8,
+			.clc_name = "msb_align_ch2"
+		},
+		{
+			.shift = 12,
+			.clc_name = "ch2_gain"
+		},
+		{
+			.shift = 16,
+			.clc_name = "lcr_throttle"
+		},
+		{
+			.shift = 20,
+			.clc_name = "lcr"
+		},
+		{
+			.shift = 24,
+			.clc_name = "demux_fetch2"
+		},
+		{
+			.shift = 28,
+			.clc_name = "demux_fetch1"
+		},
+	},
+	{
+		{
+			.shift = 0,
+			.clc_name = "demux_fetch0"
+		},
+		{
+			.shift = 4,
+			.clc_name = "csid_ccif"
+		},
+		{
+			.shift = 8,
+			.clc_name = "RDI4"
+		},
+		{
+			.shift = 12,
+			.clc_name = "RDI3"
+		},
+		{
+			.shift = 16,
+			.clc_name = "RDI2"
+		},
+		{
+			.shift = 20,
+			.clc_name = "RDI1"
+		},
+		{
+			.shift = 24,
+			.clc_name = "RDI0"
+		},
+		{
+			.shift = 28,
+			.clc_name = "bhist2_bus_wr"
+		},
+	},
+	{
+		{
+			.shift = 0,
+			.clc_name = "bg2_bus_wr"
+		},
+		{
+			.shift = 4,
+			.clc_name = "bhist1_bus_wr"
+		},
+		{
+			.shift = 8,
+			.clc_name = "bg1_bus_wr"
+		},
+		{
+			.shift = 12,
+			.clc_name = "bhist0_bus_wr"
+		},
+		{
+			.shift = 16,
+			.clc_name = "bg0_bus_wr"
+		},
+		{
+			.shift = 20,
+			.clc_name = "lcr_bus_wr"
+		},
+		{
+			.shift = 24,
+			.clc_name = "zsl_bus_wr"
+		},
+		{
+			.shift = 28,
+			.clc_name = "sfe_op_throttle"
+		},
+	},
+	{
+		{
+			.shift = 0,
+			.clc_name = "line_smooth"
+		},
+		{
+			.shift = 4,
+			.clc_name = "pp"
+		},
+		{
+			.shift = 8,
+			.clc_name = "bus_conv_ch2"
+		},
+		{
+			.shift = 12,
+			.clc_name = "bus_conv_ch1"
+		},
+		{
+			.shift = 16,
+			.clc_name = "bus_conv_ch0"
+		},
+		{
+			.shift = 20,
+			.clc_name = "fe_ch2"
+		},
+		{
+			.shift = 24,
+			.clc_name = "fe_ch1"
+		},
+		{
+			.shift = 28,
+			.clc_name = "fe_ch0"
+		},
+	},
+	{
+		{
+			.shift = 0,
+			.clc_name = "rdi4"
+		},
+		{
+			.shift = 4,
+			.clc_name = "rdi3"
+		},
+		{
+			.shift = 8,
+			.clc_name = "rdi2"
+		},
+		{
+			.shift = 12,
+			.clc_name = "rdi1"
+		},
+		{
+			.shift = 16,
+			.clc_name = "rdi0"
+		},
+		{
+			.shift = 20,
+			.clc_name = "pixel"
+		},
+		{
+			.shift = 24,
+			.clc_name = "reserved"
+		},
+		{
+			.shift = 28,
+			.clc_name = "reserved"
+		},
+	},
+};
+
 static const char *cam_sfe_top_res_id_to_string(
 	uint32_t res_id)
 {
@@ -91,47 +405,74 @@ static const char *cam_sfe_top_res_id_to_string(
 	}
 }
 
+static void cam_sfe_top_check_module_status(
+	uint32_t num_reg, uint32_t *reg_val,
+	const struct cam_sfe_top_debug_info status_list[][8])
+{
+	bool found = false;
+	uint32_t i, j, val = 0, len = 0;
+	uint8_t log_buf[1024];
+
+	if (!status_list)
+		return;
+
+	for (i = 0; i < num_reg; i++) {
+		/* Check for ideal values */
+		if ((reg_val[i] == 0) || (reg_val[i] == 0x55555555))
+			continue;
+
+		for (j = 0; j < 8; j++) {
+			val = reg_val[i] >> status_list[i][j].shift;
+			val &= 0xF;
+			if (val == 0 || val == 5)
+				continue;
+
+			len += scnprintf(log_buf + len, 1024 -
+				len, "\nCAM_INFO: %s [I:%u V:%u R:%u]",
+				status_list[i][j].clc_name,
+				((val >> 2) & 1), ((val >> 1) & 1),
+				(val & 1));
+			found = true;
+		}
+		if (found)
+			CAM_INFO_RATE_LIMIT(CAM_SFE, "Check config for Debug%u - %s", log_buf);
+		len = 0;
+		found = false;
+		memset(log_buf, 0, sizeof(uint8_t)*1024);
+	}
+}
+
 static void cam_sfe_top_print_debug_reg_info(
 	struct cam_sfe_top_priv *top_priv)
 {
 	void __iomem                    *mem_base;
 	struct cam_sfe_top_common_data  *common_data;
 	struct cam_hw_soc_info          *soc_info;
+	uint32_t                        *reg_val = NULL;
+	uint32_t num_reg = CAM_SFE_TOP_DBG_REG_MAX;
+	int i = 0, j;
 
 	common_data = &top_priv->common_data;
 	soc_info = common_data->soc_info;
 	mem_base = soc_info->reg_map[SFE_CORE_BASE_IDX].mem_base;
+	reg_val    = kcalloc(num_reg, sizeof(uint32_t), GFP_KERNEL);
+	if (!reg_val)
+		return;
 
-	CAM_INFO(CAM_SFE,
-		"Debug0: 0x%x Debug1: 0x%x Debug2: 0x%x Debug3: 0x%x",
-		cam_io_r_mb(mem_base +
-			common_data->common_reg->top_debug_0),
-		cam_io_r_mb(mem_base +
-			common_data->common_reg->top_debug_1),
-		cam_io_r_mb(mem_base +
-			common_data->common_reg->top_debug_2),
-		cam_io_r_mb(mem_base +
-			common_data->common_reg->top_debug_3));
-	CAM_INFO(CAM_SFE,
-		"Debug4: 0x%x Debug5: 0x%x Debug6: 0x%x Debug7: 0x%x",
-		cam_io_r_mb(mem_base +
-			common_data->common_reg->top_debug_4),
-		cam_io_r_mb(mem_base +
-			common_data->common_reg->top_debug_5),
-		cam_io_r_mb(mem_base +
-			common_data->common_reg->top_debug_6),
-		cam_io_r_mb(mem_base +
-			common_data->common_reg->top_debug_7));
-	CAM_INFO(CAM_SFE,
-		"Debug8: 0x%x Debug9: 0x%x Debug10: 0x%x Debug11: 0x%x",
-		cam_io_r_mb(mem_base +
-			common_data->common_reg->top_debug_8),
-		cam_io_r_mb(mem_base +
-			common_data->common_reg->top_debug_9),
-		cam_io_r_mb(mem_base +
-			common_data->common_reg->top_debug_10),
-		cam_io_r_mb(mem_base +
-			common_data->common_reg->top_debug_11));
+	while (i < num_reg) {
+		for (j = 0; j < 4 && i < num_reg; j++, i++) {
+			reg_val[i] = cam_io_r(mem_base +
+				common_data->common_reg->top_debug[i]);
+		}
+		CAM_INFO(CAM_SFE, "Debug%u: 0x%x Debug%u: 0x%x Debug%u: 0x%x Debug%u: 0x%x",
+			(i - 4), reg_val[i - 4], (i - 3), reg_val[i - 3],
+			(i - 2), reg_val[i - 2], (i - 1), reg_val[i - 1]);
+	}
+
+	cam_sfe_top_check_module_status(num_reg,
+		reg_val, sfe_dbg_list);
+
+	kfree(reg_val);
 }
 
 static struct cam_axi_vote *cam_sfe_top_delay_bw_reduction(

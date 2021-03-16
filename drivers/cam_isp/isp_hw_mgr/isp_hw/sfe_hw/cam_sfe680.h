@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CAM_SFE680_H_
@@ -176,19 +176,6 @@ static struct cam_sfe_top_common_reg_offset  sfe680_top_commong_reg  = {
 	.diag_sensor_status_1          = 0x0000003C,
 	.diag_sensor_frame_cnt_status0 = 0x00000040,
 	.diag_sensor_frame_cnt_status1 = 0x00000044,
-	.top_debug_0                   = 0x0000004C,
-	.top_debug_1                   = 0x00000050,
-	.top_debug_2                   = 0x00000054,
-	.top_debug_3                   = 0x00000058,
-	.top_debug_4                   = 0x0000005C,
-	.top_debug_5                   = 0x00000060,
-	.top_debug_6                   = 0x00000064,
-	.top_debug_7                   = 0x00000068,
-	.top_debug_8                   = 0x0000006C,
-	.top_debug_9                   = 0x00000070,
-	.top_debug_10                  = 0x00000074,
-	.top_debug_11                  = 0x00000078,
-	.top_debug_cfg                 = 0x0000007C,
 	.stats_ch2_throttle_cfg        = 0x000000B0,
 	.stats_ch1_throttle_cfg        = 0x000000B4,
 	.stats_ch0_throttle_cfg        = 0x000000B8,
@@ -196,6 +183,21 @@ static struct cam_sfe_top_common_reg_offset  sfe680_top_commong_reg  = {
 	.hdr_throttle_cfg              = 0x000000C0,
 	.sfe_op_throttle_cfg           = 0x000000C4,
 	.bus_overflow_status           = 0x00000868,
+	.top_debug_cfg                 = 0x0000007C,
+	.top_debug = {
+		0x0000004C,
+		0x00000050,
+		0x00000054,
+		0x00000058,
+		0x0000005C,
+		0x00000060,
+		0x00000064,
+		0x00000068,
+		0x0000006C,
+		0x00000070,
+		0x00000074,
+		0x00000078,
+	},
 };
 
 static struct cam_sfe_modules_common_reg_offset sfe680_modules_common_reg = {
