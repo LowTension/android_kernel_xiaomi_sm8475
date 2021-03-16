@@ -1859,7 +1859,7 @@ static void cam_sfe_bus_wr_print_violation_info(
 	struct cam_sfe_bus_wr_out_data         *rsrc_data = NULL;
 	struct cam_sfe_bus_wr_wm_resource_data *wm_data = NULL;
 
-	for (i = 0; i < bus_priv->num_client; i++) {
+	for (i = 0; i < bus_priv->num_out; i++) {
 		sfe_out = &bus_priv->sfe_out[i];
 		rsrc_data = (struct cam_sfe_bus_wr_out_data *)
 			sfe_out->res_priv;

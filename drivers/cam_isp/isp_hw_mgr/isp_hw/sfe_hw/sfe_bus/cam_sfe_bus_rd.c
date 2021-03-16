@@ -1306,60 +1306,6 @@ static int cam_sfe_bus_rd_update_rm(void *priv, void *cmd_args,
 	return 0;
 }
 
-static int cam_sfe_bus_rd_update_fs_cfg(void *priv, void *cmd_args,
-	uint32_t arg_size)
-{
-	struct cam_sfe_bus_rd_priv              *bus_priv;
-	struct cam_sfe_bus_rd_data              *sfe_bus_rd_data = NULL;
-	struct cam_sfe_bus_rd_rm_resource_data  *rm_data = NULL;
-	struct cam_sfe_fe_update_args           *fe_upd_args;
-	struct cam_fe_config                    *fe_cfg;
-	struct cam_sfe_bus_rd_common_data       *common_data;
-	int i = 0;
-
-	bus_priv = (struct cam_sfe_bus_rd_priv  *) priv;
-	fe_upd_args = (struct cam_sfe_fe_update_args *)cmd_args;
-
-	sfe_bus_rd_data = (struct cam_sfe_bus_rd_data *)
-		fe_upd_args->node_res->res_priv;
-
-	if (!sfe_bus_rd_data || !sfe_bus_rd_data->cdm_util_ops) {
-		CAM_ERR(CAM_SFE, "Failed! Invalid data");
-		return -EINVAL;
-	}
-
-	fe_cfg = &fe_upd_args->fe_config;
-
-	for (i = 0; i < sfe_bus_rd_data->num_rm; i++) {
-
-		rm_data = sfe_bus_rd_data->rm_res[i]->res_priv;
-		common_data = rm_data->common_data;
-
-		rm_data->format = fe_cfg->format;
-		rm_data->unpacker_cfg = fe_cfg->unpacker_cfg;
-		rm_data->latency_buf_allocation = fe_cfg->latency_buf_size;
-		rm_data->stride = fe_cfg->stride;
-		rm_data->hbi_count = fe_cfg->hbi_count;
-		rm_data->fs_mode = fe_cfg->fs_mode;
-		rm_data->min_vbi = fe_cfg->min_vbi;
-		sfe_bus_rd_data->fs_sync_enable =
-			fe_cfg->fs_sync_enable;
-
-		CAM_DBG(CAM_SFE,
-			"SFE:%d RM:%d format:0x%x unpacker_cfg:0x%x",
-			rm_data->format, rm_data->unpacker_cfg);
-		CAM_DBG(CAM_SFE,
-			"latency_buf_alloc:0x%x stride:0x%x",
-			rm_data->latency_buf_allocation, rm_data->stride);
-		CAM_DBG(CAM_SFE,
-			"fs_sync_en:%d hbi_cnt:0x%x fs_mode:0x%x min_vbi:0x%x",
-			sfe_bus_rd_data->fs_sync_enable,
-			rm_data->hbi_count, rm_data->fs_mode,
-			rm_data->min_vbi);
-	}
-	return 0;
-}
-
 static int cam_sfe_bus_init_hw(void *hw_priv,
 	void *init_hw_args, uint32_t arg_size)
 {
@@ -1409,7 +1355,8 @@ static int cam_sfe_bus_rd_process_cmd(
 		rc = cam_sfe_bus_rd_get_secure_mode(priv, cmd_args, arg_size);
 		break;
 	case CAM_ISP_HW_CMD_FE_UPDATE_BUS_RD:
-		rc = cam_sfe_bus_rd_update_fs_cfg(priv, cmd_args, arg_size);
+		/* Currently no need of blob cfg for SFE RD */
+		rc = 0;
 		break;
 	case CAM_ISP_HW_CMD_SET_SFE_DEBUG_CFG:
 		rc = cam_sfe_bus_rd_set_debug_cfg(priv, cmd_args);
