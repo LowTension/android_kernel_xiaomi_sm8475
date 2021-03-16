@@ -647,14 +647,13 @@ static int cam_ife_csid_path_reset(
 	val = cam_io_r_mb(soc_info->reg_map[0].mem_base +
 		path_reg->irq_mask_addr);
 	val |= 1 << csid_reg->cmn_reg->rst_done_shift_val;
+	irq_reg = cam_ife_csid_convert_res_to_irq_reg(res->res_id);
+	reinit_completion(&csid_hw->irq_complete[irq_reg]);
 
 	cam_io_w_mb(val, soc_info->reg_map[0].mem_base +
 		path_reg->irq_mask_addr);
 	cam_io_w_mb(csid_reg->cmn_reg->path_rst_stb_all,
 		soc_info->reg_map[0].mem_base + path_reg->rst_strobes_addr);
-
-	irq_reg = cam_ife_csid_convert_res_to_irq_reg(res->res_id);
-	reinit_completion(&csid_hw->irq_complete[irq_reg]);
 
 	rem_jiffies = cam_common_wait_for_completion_timeout(
 			&csid_hw->irq_complete[irq_reg],
