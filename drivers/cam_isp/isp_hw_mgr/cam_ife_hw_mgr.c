@@ -5885,6 +5885,8 @@ static int cam_ife_mgr_stop_hw(void *hw_mgr_priv, void *stop_hw_args)
 	mutex_unlock(&g_ife_hw_mgr.ctx_mutex);
 
 end:
+	ctx->dump_on_error = false;
+	ctx->dump_on_flush = false;
 	return rc;
 }
 
@@ -6480,6 +6482,8 @@ static int cam_ife_mgr_release_hw(void *hw_mgr_priv,
 	ctx->is_offline = false;
 	ctx->pf_mid_found = false;
 	ctx->last_cdm_done_req = 0;
+	ctx->dump_on_error = false;
+	ctx->dump_on_flush = false;
 	atomic_set(&ctx->overflow_pending, 0);
 	for (i = 0; i < CAM_IFE_HW_NUM_MAX; i++) {
 		ctx->sof_cnt[i] = 0;
@@ -9787,7 +9791,7 @@ static int cam_ife_mgr_cmd(void *hw_mgr_priv, void *cmd_args)
 
 		break;
 	case CAM_HW_MGR_CMD_REG_DUMP_ON_FLUSH:
-		if (ctx->last_dump_flush_req_id == ctx->applied_req_id)
+		if (ctx->dump_on_flush)
 			return 0;
 
 		rem_jiffies = cam_common_wait_for_completion_timeout(
@@ -9797,7 +9801,6 @@ static int cam_ife_mgr_cmd(void *hw_mgr_priv, void *cmd_args)
 				"config done completion timeout, Reg dump will be unreliable rc=%d ctx_index %d",
 				rc, ctx->ctx_index);
 
-		ctx->last_dump_flush_req_id = ctx->applied_req_id;
 		rc = cam_ife_mgr_handle_reg_dump(ctx, ctx->reg_dump_buf_desc,
 			ctx->num_reg_dump_buf,
 			CAM_ISP_PACKET_META_REG_DUMP_ON_FLUSH, NULL, false);
@@ -9808,12 +9811,12 @@ static int cam_ife_mgr_cmd(void *hw_mgr_priv, void *cmd_args)
 			return rc;
 		}
 
+		ctx->dump_on_flush = true;
 		break;
 	case CAM_HW_MGR_CMD_REG_DUMP_ON_ERROR:
-		if (ctx->last_dump_err_req_id == ctx->applied_req_id)
+		if (ctx->dump_on_error)
 			return 0;
 
-		ctx->last_dump_err_req_id = ctx->applied_req_id;
 		rc = cam_ife_mgr_handle_reg_dump(ctx, ctx->reg_dump_buf_desc,
 			ctx->num_reg_dump_buf,
 			CAM_ISP_PACKET_META_REG_DUMP_ON_ERROR, NULL, false);
@@ -9823,7 +9826,7 @@ static int cam_ife_mgr_cmd(void *hw_mgr_priv, void *cmd_args)
 				ctx->applied_req_id, rc);
 			return rc;
 		}
-
+		ctx->dump_on_error = true;
 		break;
 	case CAM_HW_MGR_CMD_DUMP_ACQ_INFO:
 		cam_ife_hw_mgr_dump_acq_data(ctx);
