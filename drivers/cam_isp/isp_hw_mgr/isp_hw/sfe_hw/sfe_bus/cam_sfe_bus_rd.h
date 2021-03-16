@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CAM_SFE_BUS_RD_H_
@@ -55,6 +55,7 @@ struct cam_sfe_bus_rd_reg_offset_bus_client {
  */
 struct cam_sfe_bus_rd_info {
 	enum cam_sfe_bus_rd_type  sfe_bus_rd_type;
+	uint32_t                  mid[CAM_SFE_BUS_MAX_MID_PER_PORT];
 	uint32_t                  max_width;
 	uint32_t                  max_height;
 };
