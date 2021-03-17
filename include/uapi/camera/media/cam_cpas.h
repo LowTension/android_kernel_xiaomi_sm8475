@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only WITH Linux-syscall-note */
 /*
- * Copyright (c) 2016-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
  */
 
 #ifndef __UAPI_CAM_CPAS_H__
@@ -62,6 +62,12 @@
 #define CAM_AXI_PATH_DATA_SFE_STATS     (CAM_AXI_PATH_DATA_SFE_START_OFFSET + 6)
 #define CAM_AXI_PATH_DATA_SFE_MAX_OFFSET \
 	(CAM_AXI_PATH_DATA_SFE_START_OFFSET + 31)
+
+#define CAM_AXI_PATH_DATA_CRE_START_OFFSET    (CAM_AXI_PATH_DATA_SFE_MAX_OFFSET + 1)
+#define CAM_AXI_PATH_DATA_CRE_RD_IN           (CAM_AXI_PATH_DATA_CRE_START_OFFSET + 0)
+#define CAM_AXI_PATH_DATA_CRE_WR_OUT          (CAM_AXI_PATH_DATA_CRE_START_OFFSET + 1)
+#define CAM_AXI_PATH_DATA_CRE_MAX_OFFSET \
+	(CAM_AXI_PATH_DATA_CRE_START_OFFSET + 31)
 
 #define CAM_AXI_PATH_DATA_ALL  256
 #define CAM_CPAS_FUSES_MAX     32

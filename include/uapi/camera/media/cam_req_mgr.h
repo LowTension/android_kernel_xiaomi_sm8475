@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only WITH Linux-syscall-note */
 /*
- * Copyright (c) 2016-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
  */
 
 #ifndef __UAPI_LINUX_CAM_REQ_MGR_H
@@ -32,6 +32,7 @@
 #define CAM_CUSTOM_DEVICE_TYPE    (CAM_DEVICE_TYPE_BASE + 14)
 #define CAM_OPE_DEVICE_TYPE       (CAM_DEVICE_TYPE_BASE + 15)
 #define CAM_TFE_DEVICE_TYPE       (CAM_DEVICE_TYPE_BASE + 16)
+#define CAM_CRE_DEVICE_TYPE       (CAM_DEVICE_TYPE_BASE + 17)
 
 /* cam_req_mgr hdl info */
 #define CAM_REQ_MGR_HDL_IDX_POS           8
