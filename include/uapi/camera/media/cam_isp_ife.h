@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only WITH Linux-syscall-note */
 /*
- * Copyright (c) 2016-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
  */
 
 #ifndef __UAPI_CAM_ISP_IFE_H__
@@ -35,7 +35,7 @@
 #define CAM_ISP_IFE_OUT_RES_RDI_RD               (CAM_ISP_IFE_OUT_RES_BASE + 23)
 #define CAM_ISP_IFE_OUT_RES_LCR                  (CAM_ISP_IFE_OUT_RES_BASE + 24)
 #define CAM_ISP_IFE_OUT_RES_SPARSE_PD            (CAM_ISP_IFE_OUT_RES_BASE + 25)
-#define CAM_ISP_IFE_OUT_RES_2PD_STATS            (CAM_ISP_IFE_OUT_RES_BASE + 26)
+#define CAM_ISP_IFE_OUT_RES_PREPROCESS_2PD       (CAM_ISP_IFE_OUT_RES_BASE + 26)
 #define CAM_ISP_IFE_OUT_RES_AWB_BFW              (CAM_ISP_IFE_OUT_RES_BASE + 27)
 #define CAM_ISP_IFE_OUT_RES_STATS_AEC_BE         (CAM_ISP_IFE_OUT_RES_BASE + 28)
 #define CAM_ISP_IFE_OUT_RES_LTM_STATS            (CAM_ISP_IFE_OUT_RES_BASE + 29)

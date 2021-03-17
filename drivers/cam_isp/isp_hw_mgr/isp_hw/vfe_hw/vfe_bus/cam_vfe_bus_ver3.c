@@ -668,8 +668,8 @@ static enum cam_vfe_bus_ver3_vfe_out_type
 	case CAM_ISP_IFE_OUT_RES_AWB_BFW:
 		vfe_out_type = CAM_VFE_BUS_VER3_VFE_OUT_AWB_BFW;
 		break;
-	case CAM_ISP_IFE_OUT_RES_2PD_STATS:
-		vfe_out_type = CAM_VFE_BUS_VER3_VFE_OUT_2PD_STATS;
+	case CAM_ISP_IFE_OUT_RES_PREPROCESS_2PD:
+		vfe_out_type = CAM_VFE_BUS_VER3_VFE_OUT_PREPROCESS_2PD;
 		break;
 	case CAM_ISP_IFE_OUT_RES_STATS_AEC_BE:
 		vfe_out_type = CAM_VFE_BUS_VER3_VFE_OUT_STATS_AEC_BE;
@@ -779,8 +779,8 @@ static int cam_vfe_bus_ver3_get_comp_vfe_out_res_id_list(
 	if (comp_mask & (1 << CAM_VFE_BUS_VER3_VFE_OUT_AWB_BFW))
 		out_list[count++] = CAM_ISP_IFE_OUT_RES_AWB_BFW;
 
-	if (comp_mask & (1 << CAM_VFE_BUS_VER3_VFE_OUT_2PD_STATS))
-		out_list[count++] = CAM_ISP_IFE_OUT_RES_2PD_STATS;
+	if (comp_mask & (1 << CAM_VFE_BUS_VER3_VFE_OUT_PREPROCESS_2PD))
+		out_list[count++] = CAM_ISP_IFE_OUT_RES_PREPROCESS_2PD;
 
 	if (comp_mask & (1 << CAM_VFE_BUS_VER3_VFE_OUT_STATS_AEC_BE))
 		out_list[count++] = CAM_ISP_IFE_OUT_RES_STATS_AEC_BE;
@@ -1289,7 +1289,7 @@ static int cam_vfe_bus_ver3_acquire_wm(
 		rsrc_data->en_cfg = 0x1;
 
 	} else if ((vfe_out_res_id >= CAM_VFE_BUS_VER3_VFE_OUT_AWB_BFW) &&
-		(vfe_out_res_id <= CAM_VFE_BUS_VER3_VFE_OUT_2PD_STATS)) {
+		(vfe_out_res_id <= CAM_VFE_BUS_VER3_VFE_OUT_PREPROCESS_2PD)) {
 		switch (rsrc_data->format) {
 		case CAM_FORMAT_PLAIN64:
 			rsrc_data->width = 0;

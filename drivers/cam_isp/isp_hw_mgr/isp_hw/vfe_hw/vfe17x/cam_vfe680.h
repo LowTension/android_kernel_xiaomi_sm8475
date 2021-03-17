@@ -1701,7 +1701,7 @@ static struct cam_vfe_bus_ver3_hw_info vfe680_bus_hw_info = {
 			},
 		},
 		{
-			.vfe_out_type  = CAM_VFE_BUS_VER3_VFE_OUT_2PD,
+			.vfe_out_type  = CAM_VFE_BUS_VER3_VFE_OUT_PREPROCESS_2PD,
 			.max_width     = 1920,
 			.max_height    = 1080,
 			.source_group  = CAM_VFE_BUS_VER3_SRC_GRP_1,
@@ -1731,7 +1731,7 @@ static struct cam_vfe_bus_ver3_hw_info vfe680_bus_hw_info = {
 			},
 		},
 		{
-			.vfe_out_type  = CAM_VFE_BUS_VER3_VFE_OUT_2PD_STATS,
+			.vfe_out_type  = CAM_VFE_BUS_VER3_VFE_OUT_2PD,
 			.max_width     = -1,
 			.max_height    = -1,
 			.source_group  = CAM_VFE_BUS_VER3_SRC_GRP_1,
