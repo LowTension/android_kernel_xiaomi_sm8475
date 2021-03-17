@@ -5422,7 +5422,7 @@ static bool cam_tfe_hw_mgr_is_ctx_affected(
 static int  cam_tfe_hw_mgr_find_affected_ctx(
 	struct cam_isp_hw_error_event_data    *error_event_data,
 	uint32_t                               curr_core_idx,
-	struct cam_tfe_hw_event_recovery_data     *recovery_data)
+	struct cam_tfe_hw_event_recovery_data *recovery_data)
 {
 	uint32_t affected_core[CAM_TFE_HW_NUM_MAX] = {0};
 	struct cam_tfe_hw_mgr_ctx   *tfe_hwr_mgr_ctx = NULL;
@@ -5473,7 +5473,8 @@ static int  cam_tfe_hw_mgr_find_affected_ctx(
 		 */
 		if (notify_err_cb) {
 			notify_err_cb(tfe_hwr_mgr_ctx->common.cb_priv,
-			CAM_ISP_HW_EVENT_ERROR, (void *)error_event_data);
+			CAM_ISP_HW_EVENT_ERROR,
+			(void *)error_event_data);
 		} else {
 			CAM_WARN(CAM_ISP, "Error call back is not set");
 			goto end;
@@ -5506,6 +5507,7 @@ static int cam_tfe_hw_mgr_handle_csid_event(
 			break;
 
 		error_event_data.error_type = event_info->err_type;
+		error_event_data.error_code = CAM_REQ_MGR_CSID_FATAL_ERROR;
 		cam_tfe_hw_mgr_find_affected_ctx(&error_event_data,
 			event_info->hw_idx,
 			&recovery_data);
@@ -5547,6 +5549,8 @@ static int cam_tfe_hw_mgr_handle_hw_err(
 		error_event_data.recovery_enabled = true;
 	else
 		error_event_data.recovery_enabled = false;
+
+	error_event_data.error_code = CAM_REQ_MGR_ISP_UNREPORTED_ERROR;
 
 	rc = cam_tfe_hw_mgr_find_affected_ctx(&error_event_data,
 		core_idx, &recovery_data);

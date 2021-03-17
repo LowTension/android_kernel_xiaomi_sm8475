@@ -352,6 +352,8 @@ static int __cam_req_mgr_notify_error_on_link(
 	msg.u.err_msg.request_id =
 		link->req.apply_data[pd].req_id;
 	msg.u.err_msg.link_hdl   = link->link_hdl;
+	msg.u.err_msg.resource_size = 0;
+	msg.u.err_msg.error_code = CAM_REQ_MGR_LINK_STALLED_ERROR;
 
 	CAM_DBG(CAM_CRM, "Failed for device: %s while applying request: %lld",
 		dev->dev_info.name, link->req.apply_data[pd].req_id);
@@ -2195,6 +2197,8 @@ static int __cam_req_mgr_process_sof_freeze(void *priv, void *data)
 	msg.u.err_msg.error_type = CAM_REQ_MGR_ERROR_TYPE_SOF_FREEZE;
 	msg.u.err_msg.request_id = 0;
 	msg.u.err_msg.link_hdl   = link->link_hdl;
+	msg.u.err_msg.error_code = CAM_REQ_MGR_ISP_UNREPORTED_ERROR;
+	msg.u.err_msg.resource_size = 0;
 
 	rc = cam_req_mgr_notify_message(&msg,
 		V4L_EVENT_CAM_REQ_MGR_ERROR, V4L_EVENT_CAM_REQ_MGR_EVENT);
