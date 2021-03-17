@@ -498,7 +498,7 @@ static struct cam_vfe_top_ver4_reg_offset_common vfe680_top_common_reg = {
 	},
 };
 
-static struct cam_vfe_ver4_path_reg_data vfe_common_reg_data = {
+static struct cam_vfe_ver4_path_reg_data vfe_pp_common_reg_data = {
 	.sof_irq_mask                    = 0x00000001,
 	.epoch0_irq_mask                 = 0x10000,
 	.epoch1_irq_mask                 = 0x20000,
@@ -515,18 +515,21 @@ static struct cam_vfe_ver4_path_reg_data vfe680_vfe_full_rdi_reg_data[3] = {
 		.eof_irq_mask                    = 0x200,
 		.error_irq_mask                  = 0x0,
 		.enable_diagnostic_hw            = 0x1,
+		.top_debug_cfg_en                = 3,
 	},
 	{
 		.sof_irq_mask                    = 0x400,
 		.eof_irq_mask                    = 0x800,
 		.error_irq_mask                  = 0x0,
 		.enable_diagnostic_hw            = 0x1,
+		.top_debug_cfg_en                = 3,
 	},
 	{
 		.sof_irq_mask                    = 0x1000,
 		.eof_irq_mask                    = 0x2000,
 		.error_irq_mask                  = 0x0,
 		.enable_diagnostic_hw            = 0x1,
+		.top_debug_cfg_en                = 3,
 	},
 };
 
@@ -535,13 +538,15 @@ static struct cam_vfe_ver4_path_reg_data vfe680_pdlib_reg_data = {
 	.eof_irq_mask                    = 0x200,
 	.error_irq_mask                  = 0x0,
 	.enable_diagnostic_hw            = 0x1,
+	.top_debug_cfg_en                = 3,
 };
 
 static struct cam_vfe_ver4_path_reg_data vfe680_lcr_reg_data = {
 	.sof_irq_mask                    = 0x100,
 	.eof_irq_mask                    = 0x200,
-	.error_irq_mask                 = 0x10000000,
+	.error_irq_mask                  = 0x10000000,
 	.enable_diagnostic_hw            = 0x1,
+	.top_debug_cfg_en                = 3,
 };
 
 struct cam_vfe_ver4_path_hw_info
@@ -564,7 +569,7 @@ static struct cam_vfe_top_ver4_hw_info vfe680_top_hw_info = {
 	.common_reg = &vfe680_top_common_reg,
 	.vfe_full_hw_info = {
 		.common_reg     = &vfe680_top_common_reg,
-		.reg_data       = &vfe_common_reg_data,
+		.reg_data       = &vfe_pp_common_reg_data,
 	},
 	.pdlib_hw_info = {
 		.common_reg     = &vfe680_top_common_reg,
