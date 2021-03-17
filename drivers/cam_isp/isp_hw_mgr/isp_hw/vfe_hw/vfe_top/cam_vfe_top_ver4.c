@@ -1201,47 +1201,13 @@ static int cam_vfe_resource_start(
 	if (rsrc_data->is_lite || !rsrc_data->is_pixel_path)
 		goto skip_core_cfg;
 
-	val = cam_io_r_mb(rsrc_data->mem_base +
-		rsrc_data->common_reg->core_cfg_0);
-
-	if ((rsrc_data->dsp_mode >= CAM_ISP_DSP_MODE_ONE_WAY) &&
-		(rsrc_data->dsp_mode <= CAM_ISP_DSP_MODE_ROUND)) {
-		/* DSP mode reg val is CAM_ISP_DSP_MODE - 1 */
-		val |= (((rsrc_data->dsp_mode - 1) & 0x1) <<
-			CAM_SHIFT_TOP_CORE_VER_4_CFG_DSP_MODE);
-		val |= (0x1 << CAM_SHIFT_TOP_CORE_VER_4_CFG_DSP_EN);
-	}
-
-	val |= (~rsrc_data->cam_common_cfg.vid_ds16_r2pd & 0x1) <<
-		CAM_SHIFT_TOP_CORE_VER_4_CFG_VID_DS16_R2PD;
-	val |= (~rsrc_data->cam_common_cfg.vid_ds4_r2pd & 0x1) <<
-		CAM_SHIFT_TOP_CORE_VER_4_CFG_VID_DS4_R2PD;
-	val |= (~rsrc_data->cam_common_cfg.disp_ds16_r2pd & 0x1) <<
-		CAM_SHIFT_TOP_CORE_VER_4_CFG_DISP_DS16_R2PD;
-	val |= (~rsrc_data->cam_common_cfg.disp_ds4_r2pd & 0x1) <<
-		CAM_SHIFT_TOP_CORE_VER_4_CFG_DISP_DS4_R2PD;
-	val |= (rsrc_data->cam_common_cfg.dsp_streaming_tap_point & 0x7) <<
-		CAM_SHIFT_TOP_CORE_VER_4_CFG_DSP_STREAMING;
-	val |= (rsrc_data->cam_common_cfg.ihist_src_sel & 0x1) <<
-		CAM_SHIFT_TOP_CORE_VER_4_CFG_STATS_IHIST;
-	val |= (rsrc_data->cam_common_cfg.input_pp_fmt & 0x3) <<
-		CAM_SHIFT_TOP_CORE_VER_4_CFG_PP_INPUT_FMT;
-	val |= (rsrc_data->cam_common_cfg.hdr_mux_sel_pp & 0x1) <<
-		CAM_SHIFT_TOP_CORE_VER_4_CFG_HDR_MUX_PP;
-
-	CAM_DBG(CAM_ISP, "VFE:%d TOP core_cfg: 0x%X",
-		vfe_res->hw_intf->hw_idx, val);
-
-	cam_io_w_mb(val, rsrc_data->mem_base +
-		rsrc_data->common_reg->core_cfg_0);
-
-	/* pixel fmt */
-	val = cam_io_r_mb(rsrc_data->mem_base +
-		rsrc_data->common_reg->core_cfg_1);
-
-	/* get pixel fmt from in_port, after uapi changes are finalized */
-	cam_io_w_mb(val, rsrc_data->mem_base +
-		rsrc_data->common_reg->core_cfg_1);
+	/* IFE top cfg programmed via CDM */
+	CAM_DBG(CAM_ISP, "VFE:%d TOP core_cfg0: 0x%x core_cfg1: 0x%x",
+		vfe_res->hw_intf->hw_idx,
+		cam_io_r_mb(rsrc_data->mem_base +
+			rsrc_data->common_reg->core_cfg_0),
+		cam_io_r_mb(rsrc_data->mem_base +
+			rsrc_data->common_reg->core_cfg_1));
 
 	val = ((rsrc_data->last_line + rsrc_data->vbi_value) -
 						rsrc_data->first_line) / 4;
