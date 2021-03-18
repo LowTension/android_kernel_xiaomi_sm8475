@@ -507,12 +507,12 @@ static int cam_ife_csid_ver2_rx_err_top_half(
 	struct cam_ife_csid_ver2_evt_payload            *evt_payload;
 	const struct cam_ife_csid_csi2_rx_reg_info      *csi2_reg;
 
+	csid_hw = th_payload->handler_priv;
 	if (!csid_hw) {
 		CAM_ERR_RATE_LIMIT(CAM_ISP, "No private returned");
 		return -ENODEV;
 	}
 
-	csid_hw = th_payload->handler_priv;
 	csid_reg = (struct cam_ife_csid_ver2_reg_info *)
 				csid_hw->core_info->csid_reg;
 	csi2_reg = csid_reg->csi2_reg;
