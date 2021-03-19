@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/slab.h>
@@ -1072,6 +1072,8 @@ int cam_sfe_top_start(
 	struct cam_isp_resource_node         *sfe_res;
 	struct cam_hw_info                   *hw_info = NULL;
 	struct cam_sfe_path_data             *path_data;
+	struct cam_hw_soc_info               *soc_info = NULL;
+	struct cam_sfe_soc_private           *soc_private = NULL;
 	uint32_t   error_mask[CAM_SFE_IRQ_REGISTERS_MAX];
 	uint32_t   sof_eof_mask[CAM_SFE_IRQ_REGISTERS_MAX];
 
@@ -1082,6 +1084,8 @@ int cam_sfe_top_start(
 
 	top_priv = (struct cam_sfe_top_priv *)priv;
 	sfe_res = (struct cam_isp_resource_node *) start_args;
+	soc_info = top_priv->common_data.soc_info;
+	soc_private = soc_info->soc_private;
 
 	hw_info = (struct cam_hw_info  *)sfe_res->hw_intf->hw_priv;
 	if (!hw_info) {
@@ -1100,6 +1104,14 @@ int cam_sfe_top_start(
 	rc = cam_sfe_top_set_hw_clk_rate(top_priv);
 	if (rc)
 		return rc;
+
+	rc = cam_sfe_top_set_axi_bw_vote(soc_private,
+		top_priv, true);
+	if (rc) {
+		CAM_ERR(CAM_SFE,
+			"set_axi_bw_vote failed, rc=%d", rc);
+		return rc;
+	}
 
 	/* core cfg updated via CDM */
 	CAM_DBG(CAM_SFE, "SFE HW [%u] core_cfg: 0x%x",
