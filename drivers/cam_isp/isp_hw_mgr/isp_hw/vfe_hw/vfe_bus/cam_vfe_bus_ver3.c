@@ -108,6 +108,7 @@ struct cam_vfe_bus_ver3_common_data {
 	bool                                        init_irq_subscribed;
 	cam_hw_mgr_event_cb_func                    event_cb;
 	int                        rup_irq_handle[CAM_VFE_BUS_VER3_SRC_GRP_MAX];
+	uint32_t                                    pack_align_shift;
 };
 
 struct cam_vfe_bus_ver3_wm_resource_data {
@@ -1164,7 +1165,8 @@ static int cam_vfe_bus_ver3_acquire_wm(
 		rsrc_data->stride = rsrc_data->width;
 		rsrc_data->en_cfg = 0x1;
 		/* LSB aligned */
-		rsrc_data->pack_fmt |= 0x10;
+		rsrc_data->pack_fmt |= (1 <<
+				ver3_bus_priv->common_data.pack_align_shift);
 
 	} else if ((vfe_out_res_id == CAM_VFE_BUS_VER3_VFE_OUT_FULL) ||
 		(vfe_out_res_id == CAM_VFE_BUS_VER3_VFE_OUT_FD) ||
@@ -1271,7 +1273,9 @@ static int cam_vfe_bus_ver3_acquire_wm(
 			rsrc_data->stride = ALIGNUP(rsrc_data->width * 2, 8);
 			rsrc_data->en_cfg = 0x1;
 			/* LSB aligned */
-			rsrc_data->pack_fmt |= 0x10;
+			rsrc_data->pack_fmt |= (1 <<
+				ver3_bus_priv->common_data.pack_align_shift);
+
 			break;
 		default:
 			CAM_ERR(CAM_ISP, "Invalid format %d out_type:%d",
@@ -3860,6 +3864,8 @@ int cam_vfe_bus_ver3_init(
 	bus_priv->common_data.comp_config_needed =
 		ver3_hw_info->comp_cfg_needed;
 	bus_priv->common_data.init_irq_subscribed = false;
+	bus_priv->common_data.pack_align_shift =
+		ver3_hw_info->pack_align_shift;
 
 	if (bus_priv->num_out >= CAM_VFE_BUS_VER3_VFE_OUT_MAX) {
 		CAM_ERR(CAM_ISP, "number of vfe out:%d more than max value:%d ",

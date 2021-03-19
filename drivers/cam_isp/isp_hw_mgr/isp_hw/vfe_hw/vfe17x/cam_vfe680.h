@@ -1776,6 +1776,7 @@ static struct cam_vfe_bus_ver3_hw_info vfe680_bus_hw_info = {
 	.comp_done_shift = 0,
 	.top_irq_shift   = 1,
 	.max_out_res = CAM_ISP_IFE_OUT_RES_BASE + 33,
+	.pack_align_shift = 5,
 };
 
 static struct cam_vfe_irq_hw_info vfe680_irq_hw_info = {
