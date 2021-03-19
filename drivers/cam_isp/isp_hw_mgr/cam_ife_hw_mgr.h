@@ -147,8 +147,8 @@ struct cam_sfe_scratch_buf_cfg {
  * @reg_dump_buf_desc:      cmd buffer descriptors for reg dump
  * @num_reg_dump_buf:       Count of descriptors in reg_dump_buf_desc
  * @applied_req_id:         Last request id to be applied
- * @last_dump_flush_req_id  Last req id for which reg dump on flush was called
- * @last_dump_err_req_id    Last req id for which reg dump on error was called
+ * @dump_on_flush           Set if reg dump triggered on flush
+ * @dump_on_error           Set if reg dump triggered on error
  * @init_done               indicate whether init hw is done
  * @is_fe_enabled           Indicate whether fetch engine\read path is enabled
  * @is_dual                 indicate whether context is in dual VFE mode
@@ -211,8 +211,8 @@ struct cam_ife_hw_mgr_ctx {
 						CAM_REG_DUMP_MAX_BUF_ENTRIES];
 	uint32_t                        num_reg_dump_buf;
 	uint64_t                        applied_req_id;
-	uint64_t                        last_dump_flush_req_id;
-	uint64_t                        last_dump_err_req_id;
+	bool                            dump_on_flush;
+	bool                            dump_on_error;
 	bool                            init_done;
 	bool                            is_fe_enabled;
 	bool                            is_dual;
