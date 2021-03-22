@@ -482,8 +482,7 @@ static int cam_ife_hw_mgr_notify_overflow(
 		sfe_res_id = CAM_ISP_HW_SFE_IN_RDI4;
 		break;
 	default:
-		CAM_ERR_RATE_LIMIT(CAM_ISP, "Invalid res_id %d", evt->res_id);
-		return -EINVAL;
+		break;
 	}
 
 	for (i = 0; i < hw_mgr_ctx->num_base; i++) {
@@ -501,9 +500,6 @@ static int cam_ife_hw_mgr_notify_overflow(
 		} else {
 			continue;
 		}
-
-		if (res_id < 0)
-			continue;
 
 		if (!hw_if) {
 			CAM_ERR_RATE_LIMIT(CAM_ISP, "hw_intf is null");
@@ -10459,6 +10455,7 @@ static int cam_ife_hw_mgr_handle_csid_error(
 		rc = cam_ife_hw_mgr_find_affected_ctx(&error_event_data,
 			event_info->hw_idx, &recovery_data);
 	}
+
 end:
 
 	if (rc || !recovery_data.no_of_context)

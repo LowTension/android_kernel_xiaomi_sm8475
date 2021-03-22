@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CAM_IFE_CSID_HW_VER2_H_
@@ -145,6 +145,7 @@ struct cam_ife_csid_ver2_camif_data {
  * struct cam_ife_csid_ver2_path_cfg: place holder for path parameters
  *
  * @camif_data:       CAMIF data
+ * @error_ts:         Error timestamp
  * @cid:              cid value for path
  * @in_format:        input format
  * @out_format:       output format
@@ -161,6 +162,9 @@ struct cam_ife_csid_ver2_camif_data {
  * @hor_ver_bin :     horizontal vertical binning enable/disable on path
  * @num_bytes_out:    Number of bytes out
  * @pix_pattern:      Pixel Pattern
+ * @irq_handle:       IRQ handle
+ * @err_irq_handle:   Error IRQ handle
+ * @irq_reg_idx:      IRQ Reg index
  * @sync_mode   :     Sync mode--> master/slave/none
  * @vfr_en   :        flag to indicate if variable frame rate is enabled
  * @frame_id_dec_en:  flag to indicate if frame id decoding is enabled
@@ -170,6 +174,7 @@ struct cam_ife_csid_ver2_camif_data {
  */
 struct cam_ife_csid_ver2_path_cfg {
 	struct cam_ife_csid_ver2_camif_data camif_data;
+	struct timespec64                   error_ts;
 	uint32_t                            cid;
 	uint32_t                            in_format;
 	uint32_t                            out_format;
@@ -187,6 +192,9 @@ struct cam_ife_csid_ver2_path_cfg {
 	uint32_t                            hor_ver_bin;
 	uint32_t                            num_bytes_out;
 	uint32_t                            pix_pattern;
+	uint32_t                            irq_handle;
+	uint32_t                            err_irq_handle;
+	uint32_t                            irq_reg_idx;
 	enum cam_isp_hw_sync_mode           sync_mode;
 	bool                                vfr_en;
 	bool                                frame_id_dec_en;
@@ -588,8 +596,6 @@ struct cam_ife_csid_ver2_reg_info {
  * @core_info:                csid core info
  * @token:                    Context private of ife hw manager
  * @event_cb:                 Event cb to ife hw manager
- * @irq_handle:               Array of irq handle for events
- * @err_irq_handle:           Array of irq handle for error events
  * @counters:                 counters used in csid hw
  * @log_buf:                  Log Buffer to dump info
  * @clk_rate:                 clk rate for csid hw
@@ -630,10 +636,6 @@ struct cam_ife_csid_ver2_hw {
 	struct cam_ife_csid_core_info         *core_info;
 	void                                  *token;
 	cam_hw_mgr_event_cb_func               event_cb;
-	int                                    irq_handle[
-						CAM_IFE_CSID_IRQ_REG_MAX];
-	int                                    err_irq_handle[
-						CAM_IFE_CSID_IRQ_REG_MAX];
 	uint8_t                                log_buf
 						[CAM_IFE_CSID_LOG_BUF_LEN];
 	uint64_t                               clk_rate;
