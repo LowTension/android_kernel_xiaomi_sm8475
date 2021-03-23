@@ -2187,12 +2187,68 @@ int cam_soc_util_regulator_enable(struct regulator *rgltr,
 	return rc;
 }
 
+int cam_soc_util_select_pinctrl_state(struct cam_hw_soc_info *soc_info,
+	int pctrl_idx, bool active)
+{
+	int rc = 0;
+
+	struct cam_soc_pinctrl_info *pctrl_info = &soc_info->pinctrl_info;
+
+	if (pctrl_idx >= CAM_SOC_MAX_PINCTRL_MAP) {
+		CAM_ERR(CAM_UTIL, "Invalid Map idx: %d max supported: %d",
+			pctrl_idx, CAM_SOC_MAX_PINCTRL_MAP);
+		return -EINVAL;
+	}
+
+	if (pctrl_info->pctrl_state[pctrl_idx].gpio_state_active &&
+		active &&
+		!pctrl_info->pctrl_state[pctrl_idx].is_active) {
+		rc = pinctrl_select_state(pctrl_info->pinctrl,
+			pctrl_info->pctrl_state[pctrl_idx].gpio_state_active);
+		if (rc)
+			CAM_ERR(CAM_UTIL,
+				"Pinctrl active state transition failed: rc: %d",
+				rc);
+		else {
+			pctrl_info->pctrl_state[pctrl_idx].is_active = true;
+			CAM_DBG(CAM_UTIL, "Pctrl_idx: %d is in active state",
+				pctrl_idx);
+		}
+	}
+
+	if (pctrl_info->pctrl_state[pctrl_idx].gpio_state_suspend &&
+		!active &&
+		pctrl_info->pctrl_state[pctrl_idx].is_active) {
+		rc = pinctrl_select_state(pctrl_info->pinctrl,
+			pctrl_info->pctrl_state[pctrl_idx].gpio_state_suspend);
+		if (rc)
+			CAM_ERR(CAM_UTIL,
+				"Pinctrl suspend state transition failed: rc: %d",
+				rc);
+		else {
+			pctrl_info->pctrl_state[pctrl_idx].is_active = false;
+			CAM_DBG(CAM_UTIL, "Pctrl_idx: %d is in suspend state",
+				pctrl_idx);
+		}
+	}
+
+	return rc;
+}
+
 static int cam_soc_util_request_pinctrl(
 	struct cam_hw_soc_info *soc_info)
 {
-
 	struct cam_soc_pinctrl_info *device_pctrl = &soc_info->pinctrl_info;
 	struct device *dev = soc_info->dev;
+	struct device_node *of_node = dev->of_node;
+	uint32_t i = 0;
+	int rc = 0;
+	const char *name;
+	uint32_t idx;
+	char pctrl_active[50];
+	char pctrl_suspend[50];
+	int32_t num_of_map_idx = 0;
+	int32_t num_of_string = 0;
 
 	device_pctrl->pinctrl = devm_pinctrl_get(dev);
 	if (IS_ERR_OR_NULL(device_pctrl->pinctrl)) {
@@ -2200,25 +2256,97 @@ static int cam_soc_util_request_pinctrl(
 		device_pctrl->pinctrl = NULL;
 		return 0;
 	}
-	device_pctrl->gpio_state_active =
-		pinctrl_lookup_state(device_pctrl->pinctrl,
-				CAM_SOC_PINCTRL_STATE_DEFAULT);
-	if (IS_ERR_OR_NULL(device_pctrl->gpio_state_active)) {
+
+	num_of_map_idx = of_property_count_u32_elems(
+		of_node, "pctrl-idx-mapping");
+	if (num_of_map_idx <= 0) {
 		CAM_ERR(CAM_UTIL,
-			"Failed to get the active state pinctrl handle");
-		device_pctrl->gpio_state_active = NULL;
+			"Reading pctrl-idx-mapping failed");
 		return -EINVAL;
 	}
-	device_pctrl->gpio_state_suspend
-		= pinctrl_lookup_state(device_pctrl->pinctrl,
-				CAM_SOC_PINCTRL_STATE_SLEEP);
-	if (IS_ERR_OR_NULL(device_pctrl->gpio_state_suspend)) {
-		CAM_ERR(CAM_UTIL,
-			"Failed to get the suspend state pinctrl handle");
-		device_pctrl->gpio_state_suspend = NULL;
+
+	num_of_string = of_property_count_strings(
+		of_node, "pctrl-map-names");
+	if (num_of_string <= 0) {
+		CAM_ERR(CAM_UTIL, "no pinctrl-mapping found for: %s",
+			soc_info->dev_name);
+		device_pctrl->pinctrl = NULL;
 		return -EINVAL;
 	}
+
+	if (num_of_map_idx != num_of_string) {
+		CAM_ERR(CAM_UTIL,
+			"Incorrect inputs mapping-idx count: %d mapping-names: %d",
+			num_of_map_idx, num_of_string);
+		device_pctrl->pinctrl = NULL;
+		return -EINVAL;
+	}
+
+	if (num_of_map_idx > CAM_SOC_MAX_PINCTRL_MAP) {
+		CAM_ERR(CAM_UTIL, "Invalid mapping %u max supported: %d",
+			num_of_map_idx, CAM_SOC_MAX_PINCTRL_MAP);
+		return -EINVAL;
+	}
+
+	for (i = 0; i < num_of_map_idx; i++) {
+		memset(pctrl_active, '\0', sizeof(pctrl_active));
+		memset(pctrl_suspend, '\0', sizeof(pctrl_suspend));
+		of_property_read_u32_index(of_node,
+			"pctrl-idx-mapping", i, &idx);
+
+		if (idx >= CAM_SOC_MAX_PINCTRL_MAP) {
+			CAM_ERR(CAM_UTIL, "Invalid Index: %d max supported: %d",
+				idx, CAM_SOC_MAX_PINCTRL_MAP);
+			return -EINVAL;
+		}
+
+		rc = of_property_read_string_index(
+			of_node, "pctrl-map-names", i, &name);
+		if (rc) {
+			CAM_ERR(CAM_UTIL,
+				"failed to read pinctrl-mapping at %d", i);
+			return rc;
+		}
+
+		snprintf(pctrl_active, sizeof(pctrl_active),
+			"%s%s",	name, "_active");
+		CAM_DBG(CAM_UTIL, "pctrl_active at index: %d name: %s",
+			i, pctrl_active);
+		snprintf(pctrl_suspend, sizeof(pctrl_suspend),
+			"%s%s", name, "_suspend");
+		CAM_DBG(CAM_UTIL, "pctrl_suspend at index: %d name: %s",
+			i, pctrl_suspend);
+
+		device_pctrl->pctrl_state[idx].gpio_state_active =
+			pinctrl_lookup_state(device_pctrl->pinctrl,
+			pctrl_active);
+		if (IS_ERR_OR_NULL(
+			device_pctrl->pctrl_state[idx].gpio_state_active)) {
+			CAM_ERR(CAM_UTIL,
+				"Failed to get the active state pinctrl handle");
+			device_pctrl->pctrl_state[idx].gpio_state_active =
+				NULL;
+			return -EINVAL;
+		}
+		device_pctrl->pctrl_state[idx].gpio_state_suspend =
+			pinctrl_lookup_state(device_pctrl->pinctrl,
+			pctrl_suspend);
+		if (IS_ERR_OR_NULL(
+			device_pctrl->pctrl_state[idx].gpio_state_suspend)) {
+			CAM_ERR(CAM_UTIL,
+				"Failed to get the active state pinctrl handle");
+			device_pctrl->pctrl_state[idx].gpio_state_suspend = NULL;
+			return -EINVAL;
+		}
+	}
+
 	return 0;
+}
+
+static void cam_soc_util_release_pinctrl(struct cam_hw_soc_info *soc_info)
+{
+	if (soc_info->pinctrl_info.pinctrl)
+		devm_pinctrl_put(soc_info->pinctrl_info.pinctrl);
 }
 
 static void cam_soc_util_regulator_disable_default(
@@ -2405,8 +2533,10 @@ int cam_soc_util_request_platform_resource(
 	}
 
 	rc = cam_soc_util_request_pinctrl(soc_info);
-	if (rc)
-		CAM_DBG(CAM_UTIL, "Failed in request pinctrl, rc=%d", rc);
+	if (rc) {
+		CAM_ERR(CAM_UTIL, "Failed in requesting Pinctrl, rc: %d", rc);
+		goto put_clk;
+	}
 
 	rc = cam_soc_util_request_gpio_table(soc_info, true);
 	if (rc) {
@@ -2513,9 +2643,7 @@ int cam_soc_util_release_platform_resource(struct cam_hw_soc_info *soc_info)
 			soc_info->irq_line->start, soc_info->irq_data);
 	}
 
-	if (soc_info->pinctrl_info.pinctrl)
-		devm_pinctrl_put(soc_info->pinctrl_info.pinctrl);
-
+	cam_soc_util_release_pinctrl(soc_info);
 
 	/* release for gpio */
 	cam_soc_util_request_gpio_table(soc_info, false);
@@ -2552,20 +2680,7 @@ int cam_soc_util_enable_platform_resource(struct cam_hw_soc_info *soc_info,
 			goto disable_clk;
 	}
 
-	if (soc_info->pinctrl_info.pinctrl &&
-		soc_info->pinctrl_info.gpio_state_active) {
-		rc = pinctrl_select_state(soc_info->pinctrl_info.pinctrl,
-			soc_info->pinctrl_info.gpio_state_active);
-
-		if (rc)
-			goto disable_irq;
-	}
-
 	return rc;
-
-disable_irq:
-	if (enable_irq)
-		cam_soc_util_irq_disable(soc_info);
 
 disable_clk:
 	if (enable_clocks)
@@ -2573,7 +2688,6 @@ disable_clk:
 
 disable_regulator:
 	cam_soc_util_regulator_disable_default(soc_info);
-
 
 	return rc;
 }
@@ -2593,11 +2707,6 @@ int cam_soc_util_disable_platform_resource(struct cam_hw_soc_info *soc_info,
 		cam_soc_util_clk_disable_default(soc_info);
 
 	cam_soc_util_regulator_disable_default(soc_info);
-
-	if (soc_info->pinctrl_info.pinctrl &&
-		soc_info->pinctrl_info.gpio_state_suspend)
-		rc = pinctrl_select_state(soc_info->pinctrl_info.pinctrl,
-			soc_info->pinctrl_info.gpio_state_suspend);
 
 	return rc;
 }

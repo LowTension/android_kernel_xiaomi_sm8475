@@ -28,6 +28,14 @@ static int cam_cci_init_master(struct cci_device *cci_dev,
 	cci_dev->master_active_slave[master]++;
 	if (!cci_dev->cci_master_info[master].is_initilized) {
 		/* Re-initialize the completion */
+		rc = cam_soc_util_select_pinctrl_state(soc_info, master, true);
+		if (rc) {
+			CAM_ERR(CAM_CCI,
+				"Pinctrl active state x'sition failed, rc: %d",
+				rc);
+			goto MASTER_INIT_ERR;
+		}
+
 		reinit_completion(
 		&cci_dev->cci_master_info[master].reset_complete);
 		reinit_completion(&cci_dev->cci_master_info[master].rd_done);
@@ -56,8 +64,7 @@ static int cam_cci_init_master(struct cci_device *cci_dev,
 				"Failed: reset complete timeout for master: %d",
 				master);
 			rc = -ETIMEDOUT;
-			cci_dev->master_active_slave[master]--;
-			return rc;
+			goto MASTER_INIT_ERR;
 		}
 
 		flush_workqueue(cci_dev->write_wq[master]);
@@ -79,6 +86,11 @@ static int cam_cci_init_master(struct cci_device *cci_dev,
 	}
 
 	return 0;
+
+MASTER_INIT_ERR:
+	cci_dev->master_active_slave[master]--;
+
+	return rc;
 }
 
 int cam_cci_init(struct v4l2_subdev *sd,
@@ -197,7 +209,7 @@ int cam_cci_init(struct v4l2_subdev *sd,
 	return 0;
 
 reset_complete_failed:
-	cam_soc_util_disable_platform_resource(soc_info, 1, 1);
+	cam_soc_util_disable_platform_resource(soc_info, true, true);
 platform_enable_failed:
 	cci_dev->ref_count--;
 	cam_cpas_stop(cci_dev->cpas_handle);
@@ -411,6 +423,10 @@ int cam_cci_soc_release(struct cci_device *cci_dev,
 	}
 
 	if (!(--cci_dev->master_active_slave[master])) {
+		if (cam_soc_util_select_pinctrl_state(soc_info, master, false))
+			CAM_WARN(CAM_CCI,
+				"Pinctrl suspend state x'sition failed");
+
 		cci_dev->cci_master_info[master].is_initilized = false;
 		CAM_DBG(CAM_CCI,
 			"All submodules are released for master: %d", master);
