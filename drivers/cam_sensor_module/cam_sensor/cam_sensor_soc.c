@@ -94,6 +94,35 @@ int32_t cam_sensor_get_sub_module_index(struct device_node *of_node,
 	return rc;
 }
 
+static int32_t cam_sensor_init_bus_params(struct cam_sensor_ctrl_t *s_ctrl)
+{
+	/* Validate input parameters */
+	if (!s_ctrl) {
+		CAM_ERR(CAM_SENSOR, "failed: invalid params s_ctrl %pK",
+			s_ctrl);
+		return -EINVAL;
+	}
+
+	CAM_DBG(CAM_SENSOR,
+		"master_type: %d", s_ctrl->io_master_info.master_type);
+	/* Initialize cci_client */
+	if (s_ctrl->io_master_info.master_type == CCI_MASTER) {
+		s_ctrl->io_master_info.cci_client = kzalloc(sizeof(
+			struct cam_sensor_cci_client), GFP_KERNEL);
+		if (!(s_ctrl->io_master_info.cci_client))
+			return -ENOMEM;
+	} else if (s_ctrl->io_master_info.master_type == I2C_MASTER) {
+		if (!(s_ctrl->io_master_info.client))
+			return -EINVAL;
+	} else {
+		CAM_ERR(CAM_SENSOR,
+			"Invalid master / Master type Not supported");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 static int32_t cam_sensor_driver_get_dt_data(struct cam_sensor_ctrl_t *s_ctrl)
 {
 	int32_t rc = 0;
@@ -166,6 +195,13 @@ static int32_t cam_sensor_driver_get_dt_data(struct cam_sensor_ctrl_t *s_ctrl)
 		goto FREE_SENSOR_DATA;
 	}
 
+	rc = cam_sensor_init_bus_params(s_ctrl);
+	if (rc < 0) {
+		CAM_ERR(CAM_SENSOR,
+			"Failed in Initialize Bus params, rc %d", rc);
+		goto FREE_SENSOR_DATA;
+	}
+
 	if (s_ctrl->io_master_info.master_type == CCI_MASTER) {
 		/* Get CCI master */
 		rc = of_property_read_u32(of_node, "cci-master",
@@ -183,6 +219,9 @@ static int32_t cam_sensor_driver_get_dt_data(struct cam_sensor_ctrl_t *s_ctrl)
 				&s_ctrl->cci_num) < 0)
 			/* Set default master 0 */
 			s_ctrl->cci_num = CCI_DEVICE_0;
+
+		s_ctrl->io_master_info.cci_client->cci_device
+			= s_ctrl->cci_num;
 
 		CAM_DBG(CAM_SENSOR, "cci-index %d", s_ctrl->cci_num);
 	}
@@ -219,39 +258,9 @@ static int32_t cam_sensor_driver_get_dt_data(struct cam_sensor_ctrl_t *s_ctrl)
 
 FREE_SENSOR_DATA:
 	kfree(sensordata);
+	s_ctrl->sensordata = NULL;
+
 	return rc;
-}
-
-int32_t msm_sensor_init_default_params(struct cam_sensor_ctrl_t *s_ctrl)
-{
-	/* Validate input parameters */
-	if (!s_ctrl) {
-		CAM_ERR(CAM_SENSOR, "failed: invalid params s_ctrl %pK",
-			s_ctrl);
-		return -EINVAL;
-	}
-
-	CAM_DBG(CAM_SENSOR,
-		"master_type: %d", s_ctrl->io_master_info.master_type);
-	/* Initialize cci_client */
-	if (s_ctrl->io_master_info.master_type == CCI_MASTER) {
-		s_ctrl->io_master_info.cci_client = kzalloc(sizeof(
-			struct cam_sensor_cci_client), GFP_KERNEL);
-		if (!(s_ctrl->io_master_info.cci_client))
-			return -ENOMEM;
-
-		s_ctrl->io_master_info.cci_client->cci_device
-			= s_ctrl->cci_num;
-	} else if (s_ctrl->io_master_info.master_type == I2C_MASTER) {
-		if (!(s_ctrl->io_master_info.client))
-			return -EINVAL;
-	} else {
-		CAM_ERR(CAM_SENSOR,
-			"Invalid master / Master type Not supported");
-		return -EINVAL;
-	}
-
-	return 0;
 }
 
 int32_t cam_sensor_parse_dt(struct cam_sensor_ctrl_t *s_ctrl)
@@ -294,19 +303,6 @@ int32_t cam_sensor_parse_dt(struct cam_sensor_ctrl_t *s_ctrl)
 		CAM_DBG(CAM_SENSOR, "get for regulator %s",
 			soc_info->rgltr_name[i]);
 	}
-
-	rc = msm_sensor_init_default_params(s_ctrl);
-	if (rc < 0) {
-		CAM_ERR(CAM_SENSOR,
-			"failed: msm_sensor_init_default_params rc %d", rc);
-		goto FREE_DT_DATA;
-	}
-
-	return rc;
-
-FREE_DT_DATA:
-	kfree(s_ctrl->sensordata);
-	s_ctrl->sensordata = NULL;
 
 	return rc;
 }

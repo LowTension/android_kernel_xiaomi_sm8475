@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CAM_SENSOR_CMN_HEADER_
@@ -13,6 +13,8 @@
 #include <linux/timer.h>
 #include <linux/delay.h>
 #include <linux/list.h>
+
+#include <dt-bindings/msm-camera.h>
 #include <media/cam_sensor.h>
 #include <media/cam_req_mgr.h>
 
@@ -133,9 +135,9 @@ enum cam_flash_device_type {
 };
 
 enum cci_i2c_master_t {
-	MASTER_0,
-	MASTER_1,
-	MASTER_MAX,
+	MASTER_0 = CCI_MASTER_0,
+	MASTER_1 = CCI_MASTER_1,
+	MASTER_MAX = CCI_MASTER_MAX,
 };
 
 enum cci_device_num {
