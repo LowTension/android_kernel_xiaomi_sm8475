@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CAM_ISP_HW_MGR_H_
@@ -25,7 +25,7 @@
  */
 struct cam_isp_hw_mgr_ctx {
 	void                           *tasklet_info;
-	cam_hw_event_cb_func            event_cb[CAM_ISP_HW_EVENT_MAX];
+	cam_hw_event_cb_func            event_cb;
 	void                           *cb_priv;
 };
 
