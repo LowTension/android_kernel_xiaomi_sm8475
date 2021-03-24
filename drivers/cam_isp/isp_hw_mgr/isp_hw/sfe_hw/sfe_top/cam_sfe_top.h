@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CAM_SFE_TOP_H_
@@ -19,6 +19,8 @@
 #define CAM_SHIFT_TOP_CORE_CFG_MODE_SEL        2
 #define CAM_SHIFT_TOP_CORE_CFG_OPS_MODE_CFG    1
 #define CAM_SHIFT_TOP_CORE_CFG_FS_MODE_CFG     0
+
+#define CAM_SFE_TOP_DBG_REG_MAX                12
 
 struct cam_sfe_top_module_desc {
 	uint32_t id;
@@ -48,19 +50,6 @@ struct cam_sfe_top_common_reg_offset {
 	uint32_t diag_sensor_status_1;
 	uint32_t diag_sensor_frame_cnt_status0;
 	uint32_t diag_sensor_frame_cnt_status1;
-	uint32_t top_debug_0;
-	uint32_t top_debug_1;
-	uint32_t top_debug_2;
-	uint32_t top_debug_3;
-	uint32_t top_debug_4;
-	uint32_t top_debug_5;
-	uint32_t top_debug_6;
-	uint32_t top_debug_7;
-	uint32_t top_debug_8;
-	uint32_t top_debug_9;
-	uint32_t top_debug_10;
-	uint32_t top_debug_11;
-	uint32_t top_debug_cfg;
 	uint32_t stats_ch2_throttle_cfg;
 	uint32_t stats_ch1_throttle_cfg;
 	uint32_t stats_ch0_throttle_cfg;
@@ -68,6 +57,8 @@ struct cam_sfe_top_common_reg_offset {
 	uint32_t hdr_throttle_cfg;
 	uint32_t sfe_op_throttle_cfg;
 	uint32_t bus_overflow_status;
+	uint32_t top_debug_cfg;
+	uint32_t top_debug[CAM_SFE_TOP_DBG_REG_MAX];
 };
 
 struct cam_sfe_modules_common_reg_offset {

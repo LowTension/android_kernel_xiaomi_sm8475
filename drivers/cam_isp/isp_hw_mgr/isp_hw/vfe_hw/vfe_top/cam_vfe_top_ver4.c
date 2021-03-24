@@ -90,6 +90,592 @@ struct cam_vfe_mux_ver4_data {
 	struct timespec64                     error_ts;
 };
 
+struct cam_vfe_top_debug_info {
+	uint32_t  shift;
+	char     *clc_name;
+};
+
+static const struct cam_vfe_top_debug_info vfe_dbg_list[][8] = {
+	{
+		{
+			.shift = 0,
+			.clc_name = "test_bus_reserved"
+		},
+		{
+			.shift = 4,
+			.clc_name = "test_bus_reserved"
+		},
+		{
+			.shift = 8,
+			.clc_name = "test_bus_reserved"
+		},
+		{
+			.shift = 12,
+			.clc_name = "test_bus_reserved"
+		},
+		{
+			.shift = 16,
+			.clc_name = "test_bus_reserved"
+		},
+		{
+			.shift = 20,
+			.clc_name = "test_bus_reserved"
+		},
+		{
+			.shift = 24,
+			.clc_name = "test_bus_reserved"
+		},
+		{
+			.shift = 28,
+			.clc_name = "test_bus_reserved"
+		},
+	},
+	{
+		{
+			.shift = 0,
+			.clc_name = "STATS_IHIST"
+		},
+		{
+			.shift = 4,
+			.clc_name = "STATS_RS"
+		},
+		{
+			.shift = 8,
+			.clc_name = "STATS_BAF"
+		},
+		{
+			.shift = 12,
+			.clc_name = "GTM_BHIST"
+		},
+		{
+			.shift = 16,
+			.clc_name = "TINTLESS_BG"
+		},
+		{
+			.shift = 20,
+			.clc_name = "STATS_BFW"
+		},
+		{
+			.shift = 24,
+			.clc_name = "STATS_BG"
+		},
+		{
+			.shift = 28,
+			.clc_name = "STATS_BHIST"
+		},
+	},
+	{
+		{
+			.shift = 0,
+			.clc_name = "STATS_BE"
+		},
+		{
+			.shift = 4,
+			.clc_name = "R2PD_DS16_C_VID"
+		},
+		{
+			.shift = 8,
+			.clc_name = "R2PD_DS16_Y_VID"
+		},
+		{
+			.shift = 12,
+			.clc_name = "crop_rnd_clamp_post_downscale_C_DS16_VID"
+		},
+		{
+			.shift = 16,
+			.clc_name = "4to1_C_DS16_VID"
+		},
+		{
+			.shift = 20,
+			.clc_name = "crop_rnd_clamp_post_downscale_Y_DS16_VID"
+		},
+		{
+			.shift = 24,
+			.clc_name = "4to1_Y_DS16_VID"
+		},
+		{
+			.shift = 28,
+			.clc_name = "crop_rnd_clamp_post_dsx_C_VID"
+		},
+	},
+	{
+		{
+			.shift = 0,
+			.clc_name = "R2PD_DS4_VID_C"
+		},
+		{
+			.shift = 4,
+			.clc_name = "R2PD_DS4_VID_Y"
+		},
+		{
+			.shift = 8,
+			.clc_name = "DSX_C"
+		},
+		{
+			.shift = 12,
+			.clc_name = "crop_rnd_clamp_post_dsx_Y_VID"
+		},
+		{
+			.shift = 16,
+			.clc_name = "DSX_Y"
+		},
+		{
+			.shift = 20,
+			.clc_name = "crop_rnd_clamp_post_downscale_mn_C_VID"
+		},
+		{
+			.shift = 24,
+			.clc_name = "downscale_mn_C_VID"
+		},
+		{
+			.shift = 28,
+			.clc_name = "crop_rnd_clamp_post_downscale_mn_Y_VID"
+		},
+	},
+	{
+		{
+			.shift = 0,
+			.clc_name = "MNDS_Y_VID"
+		},
+		{
+			.shift = 4,
+			.clc_name = "R2PD_DS16_C_DISP"
+		},
+		{
+			.shift = 8,
+			.clc_name = "R2PD_DS16_Y_DISP"
+		},
+		{
+			.shift = 12,
+			.clc_name = "crop_rnd_clamp_post_downscale_C_DS16_DISP"
+		},
+		{
+			.shift = 16,
+			.clc_name = "4to1_C_DS16_DISP"
+		},
+		{
+			.shift = 20,
+			.clc_name = "crop_rnd_clamp_post_downscale_Y_DS16_DISP"
+		},
+		{
+			.shift = 24,
+			.clc_name = "4to1_Y_DS16_DISP"
+		},
+		{
+			.shift = 28,
+			.clc_name = "R2PD_DS4_C_DISP"
+		},
+	},
+	{
+		{
+			.shift = 0,
+			.clc_name = "R2PD_DS4_Y_DISP"
+		},
+		{
+			.shift = 4,
+			.clc_name = "crop_rnd_clamp_post_downscale_C_DS4_DISP"
+		},
+		{
+			.shift = 8,
+			.clc_name = "4to1_C_DS4_DISP"
+		},
+		{
+			.shift = 12,
+			.clc_name = "crop_rnd_clamp_post_downscale_Y_DS4_DISP"
+		},
+		{
+			.shift = 16,
+			.clc_name = "4to1_Y_DS4_DISP"
+		},
+		{
+			.shift = 20,
+			.clc_name = "crop_rnd_clamp_post_downscale_mn_C_DISP"
+		},
+		{
+			.shift = 24,
+			.clc_name = "downscale_mn_C_DISP"
+		},
+		{
+			.shift = 28,
+			.clc_name = "crop_rnd_clamp_post_downscale_mn_Y_DISP"
+		},
+	},
+	{
+		{
+			.shift = 0,
+			.clc_name = "downscale_mn_Y_DISP"
+		},
+		{
+			.shift = 4,
+			.clc_name = "crop_rnd_clamp_post_downscale_mn_C_FD"
+		},
+		{
+			.shift = 8,
+			.clc_name = "downscale_mn_C_FD"
+		},
+		{
+			.shift = 12,
+			.clc_name = "crop_rnd_clamp_post_downscale_mn_Y_FD"
+		},
+		{
+			.shift = 16,
+			.clc_name = "downscale_mn_Y_FD"
+		},
+		{
+			.shift = 20,
+			.clc_name = "gtm_fd_out"
+		},
+		{
+			.shift = 24,
+			.clc_name = "uvg"
+		},
+		{
+			.shift = 28,
+			.clc_name = "color_xform"
+		},
+	},
+	{
+		{
+			.shift = 0,
+			.clc_name = "glut"
+		},
+		{
+			.shift = 4,
+			.clc_name = "gtm"
+		},
+		{
+			.shift = 8,
+			.clc_name = "color_correct"
+		},
+		{
+			.shift = 12,
+			.clc_name = "demosaic"
+		},
+		{
+			.shift = 16,
+			.clc_name = "hvx_tap2"
+		},
+		{
+			.shift = 20,
+			.clc_name = "lcac"
+		},
+		{
+			.shift = 24,
+			.clc_name = "bayer_ltm"
+		},
+		{
+			.shift = 28,
+			.clc_name = "bayer_gtm"
+		},
+	},
+	{
+		{
+			.shift = 0,
+			.clc_name = "bls"
+		},
+		{
+			.shift = 4,
+			.clc_name = "bpc_abf"
+		},
+		{
+			.shift = 8,
+			.clc_name = "gic"
+		},
+		{
+			.shift = 12,
+			.clc_name = "wb_gain"
+		},
+		{
+			.shift = 16,
+			.clc_name = "lsc"
+		},
+		{
+			.shift = 20,
+			.clc_name = "compdecomp_hxv_rx"
+		},
+		{
+			.shift = 24,
+			.clc_name = "compdecomp_hxv_tx"
+		},
+		{
+			.shift = 28,
+			.clc_name = "hvx_tap1"
+		},
+	},
+	{
+		{
+			.shift = 0,
+			.clc_name = "decompand"
+		},
+		{
+			.shift = 4,
+			.clc_name = "reserved"
+		},
+		{
+			.shift = 8,
+			.clc_name = "bincorrect"
+		},
+		{
+			.shift = 12,
+			.clc_name = "bpc_pdpc"
+		},
+		{
+			.shift = 16,
+			.clc_name = "channel_gain"
+		},
+		{
+			.shift = 20,
+			.clc_name = "bayer_argb_ccif_converter"
+		},
+		{
+			.shift = 24,
+			.clc_name = "crop_rnd_clamp_pre_argb_packer"
+		},
+		{
+			.shift = 28,
+			.clc_name = "chroma_up_uv"
+		},
+	},
+	{
+		{
+			.shift = 0,
+			.clc_name = "chroma_up_y"
+		},
+		{
+			.shift = 4,
+			.clc_name = "demux"
+		},
+		{
+			.shift = 8,
+			.clc_name = "hxv_tap0"
+		},
+		{
+			.shift = 12,
+			.clc_name = "preprocess"
+		},
+		{
+			.shift = 16,
+			.clc_name = "sparse_pd_ext"
+		},
+		{
+			.shift = 20,
+			.clc_name = "lcr"
+		},
+		{
+			.shift = 24,
+			.clc_name = "bayer_ltm_bus_wr"
+		},
+		{
+			.shift = 28,
+			.clc_name = "RDI2"
+		},
+	},
+	{
+		{
+			.shift = 0,
+			.clc_name = "RDI1"
+		},
+		{
+			.shift = 4,
+			.clc_name = "RDI0"
+		},
+		{
+			.shift = 8,
+			.clc_name = "lcr_bus_wr"
+		},
+		{
+			.shift = 12,
+			.clc_name = "pdaf_sad_bus_wr"
+		},
+		{
+			.shift = 16,
+			.clc_name = "pd_data_bus_wr"
+		},
+		{
+			.shift = 20,
+			.clc_name = "sparse_pd_bus_wr"
+		},
+		{
+			.shift = 24,
+			.clc_name = "ihist_bus_wr"
+		},
+		{
+			.shift = 28,
+			.clc_name = "flicker_rs_bus_wr"
+		},
+	},
+	{
+		{
+			.shift = 0,
+			.clc_name = "gtm_bhist_bus_wr"
+		},
+		{
+			.shift = 4,
+			.clc_name = "baf_bus_wr"
+		},
+		{
+			.shift = 8,
+			.clc_name = "bfw_bus_wr"
+		},
+		{
+			.shift = 12,
+			.clc_name = "bg_bus_wr"
+		},
+		{
+			.shift = 16,
+			.clc_name = "tintless_bg_bus_wr"
+		},
+		{
+			.shift = 20,
+			.clc_name = "bhist_bus_wr"
+		},
+		{
+			.shift = 24,
+			.clc_name = "be_bus_wr"
+		},
+		{
+			.shift = 28,
+			.clc_name = "pixel_raw_bus_wr"
+		},
+	},
+	{
+		{
+			.shift = 0,
+			.clc_name = "fd_c_bus_wr"
+		},
+		{
+			.shift = 4,
+			.clc_name = "fd_y_bus_wr"
+		},
+		{
+			.shift = 8,
+			.clc_name = "disp_ds16_bus_wr"
+		},
+		{
+			.shift = 12,
+			.clc_name = "disp_ds4_bus_wr"
+		},
+		{
+			.shift = 16,
+			.clc_name = "disp_c_bus_wr"
+		},
+		{
+			.shift = 20,
+			.clc_name = "disp_y_bus_wr"
+		},
+		{
+			.shift = 24,
+			.clc_name = "vid_ds16_bus_Wr"
+		},
+		{
+			.shift = 28,
+			.clc_name = "vid_ds4_bus_Wr"
+		},
+	},
+	{
+		{
+			.shift = 0,
+			.clc_name = "vid_c_bus_wr"
+		},
+		{
+			.shift = 4,
+			.clc_name = "vid_y_bus_wr"
+		},
+		{
+			.shift = 8,
+			.clc_name = "CLC_PDAF"
+		},
+		{
+			.shift = 12,
+			.clc_name = "PIX_PP"
+		},
+		{
+			.shift = 16,
+			.clc_name = "reserved"
+		},
+		{
+			.shift = 20,
+			.clc_name = "reserved"
+		},
+		{
+			.shift = 24,
+			.clc_name = "reserved"
+		},
+		{
+			.shift = 28,
+			.clc_name = "reserved"
+		},
+	},
+	{
+		{
+			.shift = 0,
+			.clc_name = "r2pd_reserved"
+		},
+		{
+			.shift = 4,
+			.clc_name = "r2pd_reserved"
+		},
+		{
+			.shift = 8,
+			.clc_name = "r2pd_reserved"
+		},
+		{
+			.shift = 12,
+			.clc_name = "r2pd_reserved"
+		},
+		{
+			.shift = 16,
+			.clc_name = "r2pd_reserved"
+		},
+		{
+			.shift = 20,
+			.clc_name = "r2pd_reserved"
+		},
+		{
+			.shift = 24,
+			.clc_name = "r2pd_reserved"
+		},
+		{
+			.shift = 28,
+			.clc_name = "r2pd_reserved"
+		},
+	},
+	{
+		{
+			.shift = 0,
+			.clc_name = "r2pd_reserved"
+		},
+		{
+			.shift = 4,
+			.clc_name = "r2pd_reserved"
+		},
+		{
+			.shift = 8,
+			.clc_name = "r2pd_reserved"
+		},
+		{
+			.shift = 12,
+			.clc_name = "r2pd_reserved"
+		},
+		{
+			.shift = 16,
+			.clc_name = "r2pd_reserved"
+		},
+		{
+			.shift = 20,
+			.clc_name = "r2pd_reserved"
+		},
+		{
+			.shift = 24,
+			.clc_name = "r2pd_reserved"
+		},
+		{
+			.shift = 28,
+			.clc_name = "r2pd_reserved"
+		},
+	},
+};
+
 static int cam_vfe_top_ver4_mux_get_base(struct cam_vfe_top_ver4_priv *top_priv,
 	void *cmd_args, uint32_t arg_size)
 {
@@ -250,6 +836,42 @@ static int cam_vfe_top_ver4_clock_update(
 	return rc;
 }
 
+static void cam_vfe_top_ver4_check_module_status(
+	uint32_t num_reg, uint32_t *reg_val,
+	const struct cam_vfe_top_debug_info status_list[][8])
+{
+	bool found = false;
+	uint32_t i, j, val = 0, len = 0;
+	uint8_t log_buf[1024];
+
+	if (!status_list)
+		return;
+
+	for (i = 0; i < num_reg; i++) {
+		/* Check for ideal values */
+		if ((reg_val[i] == 0) || (reg_val[i] == 0x55555555))
+			continue;
+
+		for (j = 0; j < 8; j++) {
+			val = reg_val[i] >> status_list[i][j].shift;
+			val &= 0xF;
+			if (val == 0 || val == 5)
+				continue;
+
+			len += scnprintf(log_buf + len, 1024 -
+				len, "\nCAM_INFO: %s [I:%u V:%u R:%u]",
+				status_list[i][j].clc_name, ((val >> 2) & 1),
+				((val >> 1) & 1), (val & 1));
+			found = true;
+		}
+		if (found)
+			CAM_INFO_RATE_LIMIT(CAM_ISP, "Check config for Debug%u - %s", i, log_buf);
+		len = 0;
+		found = false;
+		memset(log_buf, 0, sizeof(uint8_t)*1024);
+	}
+}
+
 static void cam_vfe_top_ver4_print_debug_reg_status(
 	struct cam_vfe_top_ver4_priv *top_priv)
 {
@@ -258,14 +880,21 @@ static void cam_vfe_top_ver4_print_debug_reg_status(
 	uint32_t                                    num_reg =  0;
 	uint32_t                                    i = 0, j, len = 0;
 	uint8_t                                    *log_buf;
+	uint32_t                                   *reg_val = NULL;
 	struct cam_hw_soc_info                     *soc_info;
+	struct cam_vfe_soc_private                 *soc_priv;
 	void __iomem                               *base;
 
 	soc_info   =  top_priv->common_data.soc_info;
+	soc_priv   =  soc_info->soc_private;
 	common_reg =  top_priv->common_data.common_reg;
 	num_reg    =  common_reg->num_top_debug_reg;
 	base       =  soc_info->reg_map[VFE_CORE_BASE_IDX].mem_base;
 	log_buf    =  top_priv->log_buf;
+	reg_val    = kcalloc(num_reg, sizeof(uint32_t), GFP_KERNEL);
+
+	if (!reg_val)
+		return;
 
 	while (i < num_reg) {
 		len += scnprintf(log_buf + len, CAM_VFE_LEN_LOG_BUF - len,
@@ -274,6 +903,7 @@ static void cam_vfe_top_ver4_print_debug_reg_status(
 		for(j = 0; j < 4 && i < num_reg; j++, i++) {
 			val = cam_io_r(base +
 				common_reg->top_debug[i]);
+			reg_val[i] = val;
 			len += scnprintf(log_buf + len, CAM_VFE_LEN_LOG_BUF -
 				len, "\nstatus %2d : 0x%08x", i, val);
 		}
@@ -282,6 +912,8 @@ static void cam_vfe_top_ver4_print_debug_reg_status(
 		memset(log_buf, 0, sizeof(uint8_t)*CAM_VFE_LEN_LOG_BUF);
 	}
 
+	cam_vfe_top_ver4_check_module_status(num_reg, reg_val,
+		((soc_priv->is_ife_lite) ? NULL : vfe_dbg_list));
 	CAM_ERR(CAM_ISP, "VFE[%u] Bus overflow status 0x%x",
 		soc_info->index,
 		cam_io_r(base + common_reg->bus_overflow_status));
@@ -289,6 +921,8 @@ static void cam_vfe_top_ver4_print_debug_reg_status(
 	CAM_ERR(CAM_ISP, "VFE[%u] Bus  Violation status 0x%x",
 		soc_info->index,
 		cam_io_r(base + common_reg->bus_violation_status));
+
+	kfree(reg_val);
 }
 
 int cam_vfe_top_ver4_dump_timestamps(
