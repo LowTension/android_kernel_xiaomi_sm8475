@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CAM_SENSOR_UTIL_H_
@@ -18,6 +18,7 @@
 #include "cam_soc_util.h"
 #include "cam_debug_util.h"
 #include "cam_sensor_io.h"
+#include "cam_csiphy_core.h"
 
 #define INVALID_VREG 100
 #define RES_MGR_GPIO_NEED_HOLD   1
@@ -81,4 +82,11 @@ int cam_sensor_bob_pwm_mode_switch(struct cam_hw_soc_info *soc_info,
 	int bob_reg_idx, bool flag);
 
 bool cam_sensor_util_check_gpio_is_shared(struct cam_hw_soc_info *soc_info);
+
+static inline int cam_sensor_util_aon_ops(bool get_access, uint32_t phy_idx)
+{
+	CAM_DBG(CAM_SENSOR, "Updating Main/Aon operation");
+	return cam_csiphy_util_update_aon_ops(get_access, phy_idx);
+}
+
 #endif /* _CAM_SENSOR_UTIL_H_ */

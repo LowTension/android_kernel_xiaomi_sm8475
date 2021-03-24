@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2019, 2021 The Linux Foundation. All rights reserved.
  */
 
 #include <linux/of.h>
@@ -201,6 +201,18 @@ static int32_t cam_sensor_driver_get_dt_data(struct cam_sensor_ctrl_t *s_ctrl)
 		&sensordata->pos_yaw) < 0) {
 		CAM_DBG(CAM_SENSOR, "Invalid sensor position");
 		sensordata->pos_yaw = 360;
+	}
+
+	if (!of_property_read_bool(of_node, "aon-user")) {
+		CAM_DBG(CAM_SENSOR,
+			"SENSOR cell_idx: %d not use for AON usecase",
+			s_ctrl->soc_info.index);
+		s_ctrl->is_aon_user = false;
+	} else {
+		CAM_DBG(CAM_SENSOR,
+			"SENSOR cell_idx: %d is user for AON usecase",
+			s_ctrl->soc_info.index);
+		s_ctrl->is_aon_user = true;
 	}
 
 	return rc;

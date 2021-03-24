@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2017-2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2019, 2021 The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CAM_SENSOR_DEV_H_
@@ -86,33 +86,37 @@ struct sensor_intf_params {
  * @last_flush_req: Last request to flush
  * @pipeline_delay: Sensor pipeline delay
  * @sensor_name: Sensor name
+ * @is_aon_user: To determine whether sensor is AON user or not
  */
 struct cam_sensor_ctrl_t {
-	char device_name[CAM_CTX_DEV_NAME_MAX_LENGTH];
-	struct platform_device *pdev;
-	struct cam_hw_soc_info soc_info;
-	struct mutex cam_sensor_mutex;
-	struct cam_sensor_board_info *sensordata;
-	enum cci_i2c_master_t cci_i2c_master;
-	enum cci_device_num cci_num;
-	struct camera_io_master io_master_info;
-	enum cam_sensor_state_t sensor_state;
-	uint8_t is_probe_succeed;
-	uint32_t id;
-	struct device_node *of_node;
-	struct cam_subdev v4l2_dev_str;
-	uint8_t sensor_probe_addr_type;
-	uint8_t sensor_probe_data_type;
-	struct i2c_data_settings i2c_data;
-	struct  cam_sensor_query_cap sensor_info;
-	struct sensor_intf_params bridge_intf;
-	uint32_t streamon_count;
-	uint32_t streamoff_count;
-	int bob_reg_index;
-	bool bob_pwm_switch;
-	uint32_t last_flush_req;
-	uint16_t pipeline_delay;
-	char     sensor_name[CAM_SENSOR_NAME_MAX_SIZE];
+	char                           device_name[
+		CAM_CTX_DEV_NAME_MAX_LENGTH];
+	struct platform_device        *pdev;
+	struct cam_hw_soc_info         soc_info;
+	struct mutex                   cam_sensor_mutex;
+	struct cam_sensor_board_info  *sensordata;
+	enum cci_i2c_master_t          cci_i2c_master;
+	enum cci_device_num            cci_num;
+	struct camera_io_master        io_master_info;
+	enum cam_sensor_state_t        sensor_state;
+	uint8_t                        is_probe_succeed;
+	uint32_t                       id;
+	struct device_node            *of_node;
+	struct cam_subdev              v4l2_dev_str;
+	uint8_t                        sensor_probe_addr_type;
+	uint8_t                        sensor_probe_data_type;
+	struct i2c_data_settings       i2c_data;
+	struct  cam_sensor_query_cap   sensor_info;
+	struct sensor_intf_params      bridge_intf;
+	uint32_t                       streamon_count;
+	uint32_t                       streamoff_count;
+	int                            bob_reg_index;
+	bool                           bob_pwm_switch;
+	uint32_t                       last_flush_req;
+	uint16_t                       pipeline_delay;
+	char                           sensor_name[
+		CAM_SENSOR_NAME_MAX_SIZE];
+	bool                           is_aon_user;
 };
 
 /**

@@ -64,6 +64,10 @@
 #define DPHY_LANE_3    BIT(6)
 #define DPHY_CLK_LN    BIT(7)
 
+#define CAM_CSIPHY_CPAS_AON_SEL_ADDR    0x001E0
+#define CAM_CSIPHY_CPAS_MAIN_CAM_SEL    BIT(0)
+#define CAM_CSIPHY_CPAS_MCLK_SEL        BIT(8)
+
 enum cam_csiphy_state {
 	CAM_CSIPHY_INIT,
 	CAM_CSIPHY_ACQUIRE,
