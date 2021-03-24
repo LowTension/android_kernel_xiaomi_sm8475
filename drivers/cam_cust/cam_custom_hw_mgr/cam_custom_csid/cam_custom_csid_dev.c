@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/slab.h>
@@ -20,8 +20,6 @@
 
 static struct cam_hw_intf *cam_custom_csid_hw_list[CAM_IFE_CSID_HW_NUM_MAX] = {
 	0, 0, 0, 0};
-
-static char csid_dev_name[16];
 
 static struct cam_ife_csid_core_info cam_custom_csid480_hw_info = {
 	.csid_reg = &cam_custom_csid_480_reg_offset,
@@ -64,17 +62,13 @@ static int cam_custom_csid_component_bind(struct device *dev,
 		goto free_hw_info;
 	}
 
-	memset(csid_dev_name, 0, sizeof(csid_dev_name));
-	snprintf(csid_dev_name, sizeof(csid_dev_name),
-		"csid-custom%1u", csid_dev_idx);
-
 	csid_hw_intf->hw_idx = csid_dev_idx;
 	csid_hw_intf->hw_type = CAM_ISP_HW_TYPE_IFE_CSID;
 	csid_hw_intf->hw_priv = csid_hw_info;
 
 	csid_hw_info->soc_info.pdev = pdev;
 	csid_hw_info->soc_info.dev = &pdev->dev;
-	csid_hw_info->soc_info.dev_name = csid_dev_name;
+	csid_hw_info->soc_info.dev_name = pdev->name;
 	csid_hw_info->soc_info.index = csid_dev_idx;
 
 	csid_core_info = (struct cam_ife_csid_core_info  *)match_dev->data;

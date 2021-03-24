@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  */
 
 
@@ -15,7 +15,6 @@
 #include "cam_debug_util.h"
 
 static  struct cam_isp_hw_intf_data cam_vfe_hw_list[CAM_VFE_HW_NUM_MAX];
-static char vfe_dev_name[8];
 
 static int cam_vfe_component_bind(struct device *dev,
 	struct device *master_dev, void *data)
@@ -45,13 +44,9 @@ static int cam_vfe_component_bind(struct device *dev,
 		goto free_vfe_hw_intf;
 	}
 
-	memset(vfe_dev_name, 0, sizeof(vfe_dev_name));
-	snprintf(vfe_dev_name, sizeof(vfe_dev_name),
-		"vfe%1u", vfe_hw_intf->hw_idx);
-
 	vfe_hw->soc_info.pdev = pdev;
 	vfe_hw->soc_info.dev = &pdev->dev;
-	vfe_hw->soc_info.dev_name = vfe_dev_name;
+	vfe_hw->soc_info.dev_name = pdev->name;
 	vfe_hw_intf->hw_priv = vfe_hw;
 	vfe_hw_intf->hw_ops.get_hw_caps = cam_vfe_get_hw_caps;
 	vfe_hw_intf->hw_ops.init = cam_vfe_init_hw;

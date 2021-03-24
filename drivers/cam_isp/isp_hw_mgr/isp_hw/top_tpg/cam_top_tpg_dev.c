@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/slab.h>
@@ -14,8 +14,6 @@
 
 static struct cam_hw_intf *cam_top_tpg_hw_list[CAM_TOP_TPG_HW_NUM_MAX] = {
 	0, 0};
-
-static char tpg_dev_name[8];
 
 static int cam_top_tpg_component_bind(struct device *dev,
 	struct device *master_dev, void *data)
@@ -60,10 +58,6 @@ static int cam_top_tpg_component_bind(struct device *dev,
 		goto free_dev;
 	}
 
-	memset(tpg_dev_name, 0, sizeof(tpg_dev_name));
-	snprintf(tpg_dev_name, sizeof(tpg_dev_name),
-		"tpg%1u", tpg_dev_idx);
-
 	tpg_hw_intf->hw_idx = tpg_dev_idx;
 	tpg_hw_intf->hw_type = CAM_ISP_HW_TYPE_TPG;
 	tpg_hw_intf->hw_priv = hw_info;
@@ -71,7 +65,7 @@ static int cam_top_tpg_component_bind(struct device *dev,
 	hw_info->core_info = tpg_hw;
 	hw_info->soc_info.pdev = pdev;
 	hw_info->soc_info.dev = &pdev->dev;
-	hw_info->soc_info.dev_name = tpg_dev_name;
+	hw_info->soc_info.dev_name = pdev->name;
 	hw_info->soc_info.index = tpg_dev_idx;
 
 	tpg_hw_info = (struct cam_top_tpg_hw_info  *)match_dev->data;

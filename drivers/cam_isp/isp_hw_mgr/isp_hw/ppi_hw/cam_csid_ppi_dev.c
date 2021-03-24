@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/slab.h>
@@ -16,7 +16,6 @@
 
 static struct cam_hw_intf *cam_csid_ppi_hw_list[CAM_CSID_PPI_HW_MAX] = {
 	NULL, NULL, NULL, NULL};
-static char ppi_dev_name[8];
 
 static int cam_ppi_component_bind(struct device *dev,
 	struct device *master_dev, void *data)
@@ -60,9 +59,6 @@ static int cam_ppi_component_bind(struct device *dev,
 		goto free_dev;
 	}
 
-	memset(ppi_dev_name, 0, sizeof(ppi_dev_name));
-	snprintf(ppi_dev_name, sizeof(ppi_dev_name), "ppi%1u", ppi_dev_idx);
-
 	ppi_hw_intf->hw_idx  = ppi_dev_idx;
 	ppi_hw_intf->hw_priv = ppi_hw_info;
 
@@ -76,7 +72,7 @@ static int cam_ppi_component_bind(struct device *dev,
 	ppi_hw_info->core_info         = ppi_dev;
 	ppi_hw_info->soc_info.pdev     = pdev;
 	ppi_hw_info->soc_info.dev      = &pdev->dev;
-	ppi_hw_info->soc_info.dev_name = ppi_dev_name;
+	ppi_hw_info->soc_info.dev_name = pdev->name;
 	ppi_hw_info->soc_info.index    = ppi_dev_idx;
 
 	ppi_hw_data = (struct cam_csid_ppi_hw_info  *)match_dev->data;
