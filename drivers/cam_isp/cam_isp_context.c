@@ -445,7 +445,7 @@ static int __cam_isp_ctx_enqueue_init_request(
 	if (req_isp_old->hw_update_data.packet_opcode_type ==
 		CAM_ISP_PACKET_INIT_DEV) {
 		if ((req_isp_old->num_cfg + req_isp_new->num_cfg) >=
-			CAM_ISP_CTX_CFG_MAX) {
+			ctx->max_hw_update_entries) {
 			CAM_WARN(CAM_ISP,
 				"Can not merge INIT pkt num_cfgs = %d",
 				(req_isp_old->num_cfg +
@@ -4317,6 +4317,7 @@ static void __cam_isp_ctx_free_mem_hw_entries(struct cam_context *ctx)
 	ctx->hw_update_entry = NULL;
 	ctx->max_out_map_entries = 0;
 	ctx->max_in_map_entries = 0;
+	ctx->max_hw_update_entries = 0;
 }
 
 static int __cam_isp_ctx_release_hw_in_top_state(struct cam_context *ctx,
@@ -4660,6 +4661,7 @@ static int __cam_isp_ctx_allocate_mem_hw_entries(
 {
 	int rc = 0;
 	uint32_t max_res = 0;
+	uint32_t max_hw_upd_entries = CAM_ISP_CTX_CFG_MAX;
 	struct cam_ctx_request          *req;
 	struct cam_ctx_request          *temp_req;
 	struct cam_isp_ctx_req          *req_isp;
@@ -4669,15 +4671,19 @@ static int __cam_isp_ctx_allocate_mem_hw_entries(
 		max_res = CAM_ISP_CTX_RES_MAX;
 	else {
 		max_res = param->op_params.param_list[0];
-		if (param->op_flags & CAM_IFE_CTX_SFE_EN)
+		if (param->op_flags & CAM_IFE_CTX_SFE_EN) {
 			max_res += param->op_params.param_list[1];
+			max_hw_upd_entries = CAM_ISP_SFE_CTX_CFG_MAX;
+		}
 	}
 
-	ctx->max_in_map_entries = max_res;
-	ctx->max_out_map_entries = max_res;
+	ctx->max_in_map_entries    = max_res;
+	ctx->max_out_map_entries   = max_res;
+	ctx->max_hw_update_entries = max_hw_upd_entries;
 
-	CAM_DBG(CAM_ISP, "Allocate max: 0x%x is_sfe_en: %d",
-		max_res, (param->op_flags & CAM_IFE_CTX_SFE_EN));
+	CAM_DBG(CAM_ISP,
+		"Allocate max_entries: 0x%x max_res: 0x%x is_sfe_en: %d",
+		max_hw_upd_entries, max_res, (param->op_flags & CAM_IFE_CTX_SFE_EN));
 
 	num_entries = ctx->max_hw_update_entries * CAM_ISP_CTX_REQ_MAX;
 	ctx->hw_update_entry = kcalloc(num_entries,
@@ -6201,8 +6207,6 @@ int cam_isp_context_init(struct cam_isp_context *ctx,
 	/* link camera context with isp context */
 	ctx_base->state_machine = cam_isp_ctx_top_state_machine;
 	ctx_base->ctx_priv = ctx;
-
-	ctx_base->max_hw_update_entries = CAM_ISP_CTX_CFG_MAX;
 
 	/* initializing current state for error logging */
 	for (i = 0; i < CAM_ISP_CTX_STATE_MONITOR_MAX_ENTRIES; i++) {
