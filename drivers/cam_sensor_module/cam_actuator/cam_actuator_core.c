@@ -297,7 +297,7 @@ int32_t cam_actuator_apply_request(struct cam_req_mgr_apply_request *apply)
 	}
 	request_id = apply->request_id % MAX_PER_FRAME_ARRAY;
 
-	trace_cam_apply_req("Actuator", apply->request_id);
+	trace_cam_apply_req("Actuator", a_ctrl->soc_info.index, apply->request_id, apply->link_hdl);
 
 	CAM_DBG(CAM_ACTUATOR, "Request Id: %lld", apply->request_id);
 	mutex_lock(&(a_ctrl->actuator_mutex));
