@@ -5073,6 +5073,12 @@ static const char *cam_isp_util_usage_data_to_string(
 		return "RIGHT_PX";
 	case CAM_ISP_USAGE_RDI:
 		return "RDI";
+	case CAM_ISP_USAGE_SFE_LEFT:
+		return "SFE_LEFT_PX";
+	case CAM_ISP_USAGE_SFE_RIGHT:
+		return "SFE_RIGHT_PX";
+	case CAM_ISP_USAGE_SFE_RDI:
+		return "SFE_RDI";
 	default:
 		return "USAGE_INVALID";
 	}
@@ -5082,23 +5088,63 @@ static int cam_isp_classify_vote_info(
 	struct cam_isp_hw_mgr_res            *hw_mgr_res,
 	struct cam_isp_bw_config_v2          *bw_config,
 	struct cam_axi_vote                  *isp_vote,
+	uint32_t                              hw_type,
 	uint32_t                              split_idx,
 	bool                                 *nrdi_l_bw_updated,
 	bool                                 *nrdi_r_bw_updated)
 {
 	int                                   rc = 0, i, j = 0;
 
-	if ((hw_mgr_res->res_id == CAM_ISP_HW_VFE_IN_CAMIF)
-		|| (hw_mgr_res->res_id == CAM_ISP_HW_VFE_IN_RD) ||
-		(hw_mgr_res->res_id == CAM_ISP_HW_VFE_IN_PDLIB) ||
-		(hw_mgr_res->res_id == CAM_ISP_HW_VFE_IN_LCR)) {
-		if (split_idx == CAM_ISP_HW_SPLIT_LEFT) {
-			if (*nrdi_l_bw_updated)
-				return rc;
+	if (hw_type == CAM_ISP_HW_TYPE_VFE) {
+		if ((hw_mgr_res->res_id == CAM_ISP_HW_VFE_IN_CAMIF)
+			|| (hw_mgr_res->res_id == CAM_ISP_HW_VFE_IN_RD) ||
+			(hw_mgr_res->res_id == CAM_ISP_HW_VFE_IN_PDLIB) ||
+			(hw_mgr_res->res_id == CAM_ISP_HW_VFE_IN_LCR)) {
+			if (split_idx == CAM_ISP_HW_SPLIT_LEFT) {
+				if (*nrdi_l_bw_updated)
+					return rc;
 
+				for (i = 0; i < bw_config->num_paths; i++) {
+					if (bw_config->axi_path[i].usage_data ==
+						CAM_ISP_USAGE_LEFT_PX) {
+						memcpy(&isp_vote->axi_path[j],
+							&bw_config->axi_path[i],
+							sizeof(struct
+							cam_axi_per_path_bw_vote));
+						j++;
+					}
+				}
+				isp_vote->num_paths = j;
+
+				*nrdi_l_bw_updated = true;
+			} else {
+				if (*nrdi_r_bw_updated)
+					return rc;
+
+				for (i = 0; i < bw_config->num_paths; i++) {
+					if (bw_config->axi_path[i].usage_data ==
+						CAM_ISP_USAGE_RIGHT_PX) {
+						memcpy(&isp_vote->axi_path[j],
+							&bw_config->axi_path[i],
+							sizeof(struct
+							cam_axi_per_path_bw_vote));
+						j++;
+					}
+				}
+				isp_vote->num_paths = j;
+
+				*nrdi_r_bw_updated = true;
+			}
+		} else if ((hw_mgr_res->res_id >= CAM_ISP_HW_VFE_IN_RDI0)
+			&& (hw_mgr_res->res_id <=
+			CAM_ISP_HW_VFE_IN_RDI3)) {
 			for (i = 0; i < bw_config->num_paths; i++) {
-				if (bw_config->axi_path[i].usage_data ==
-					CAM_ISP_USAGE_LEFT_PX) {
+				if ((bw_config->axi_path[i].usage_data ==
+					CAM_ISP_USAGE_RDI) &&
+					((bw_config->axi_path[i].path_data_type -
+					CAM_AXI_PATH_DATA_IFE_RDI0) ==
+					(hw_mgr_res->res_id -
+					CAM_ISP_HW_VFE_IN_RDI0))) {
 					memcpy(&isp_vote->axi_path[j],
 						&bw_config->axi_path[i],
 						sizeof(struct
@@ -5108,108 +5154,77 @@ static int cam_isp_classify_vote_info(
 			}
 			isp_vote->num_paths = j;
 
-			*nrdi_l_bw_updated = true;
 		} else {
-			if (*nrdi_r_bw_updated)
+			if (hw_mgr_res->hw_res[split_idx]) {
+				CAM_ERR(CAM_ISP, "Invalid res_id %u, split_idx: %u",
+					hw_mgr_res->res_id, split_idx);
+				rc = -EINVAL;
 				return rc;
-
-			for (i = 0; i < bw_config->num_paths; i++) {
-				if (bw_config->axi_path[i].usage_data ==
-					CAM_ISP_USAGE_RIGHT_PX) {
-					memcpy(&isp_vote->axi_path[j],
-						&bw_config->axi_path[i],
-						sizeof(struct
-						cam_axi_per_path_bw_vote));
-					j++;
-				}
-			}
-			isp_vote->num_paths = j;
-
-			*nrdi_r_bw_updated = true;
-		}
-	} else if ((hw_mgr_res->res_id >= CAM_ISP_HW_VFE_IN_RDI0)
-		&& (hw_mgr_res->res_id <=
-		CAM_ISP_HW_VFE_IN_RDI3)) {
-		for (i = 0; i < bw_config->num_paths; i++) {
-			if ((bw_config->axi_path[i].usage_data ==
-				CAM_ISP_USAGE_RDI) &&
-				((bw_config->axi_path[i].path_data_type -
-				CAM_AXI_PATH_DATA_IFE_RDI0) ==
-				(hw_mgr_res->res_id -
-				CAM_ISP_HW_VFE_IN_RDI0))) {
-				memcpy(&isp_vote->axi_path[j],
-					&bw_config->axi_path[i],
-					sizeof(struct
-					cam_axi_per_path_bw_vote));
-				j++;
 			}
 		}
-		isp_vote->num_paths = j;
-
-	} else if ((hw_mgr_res->res_id == CAM_ISP_HW_SFE_IN_PIX)
-		|| (hw_mgr_res->res_id == CAM_ISP_HW_SFE_IN_RD0) ||
-		(hw_mgr_res->res_id == CAM_ISP_HW_SFE_IN_RD1) ||
-		(hw_mgr_res->res_id == CAM_ISP_HW_SFE_IN_RD2)) {
-		if (split_idx == CAM_ISP_HW_SPLIT_LEFT) {
-			if (*nrdi_l_bw_updated)
-				return rc;
-
-			for (i = 0; i < bw_config->num_paths; i++) {
-				if (bw_config->axi_path[i].usage_data ==
-					CAM_ISP_USAGE_LEFT_PX) {
-					memcpy(&isp_vote->axi_path[j],
-						&bw_config->axi_path[i],
-						sizeof(struct
-						cam_axi_per_path_bw_vote));
-					j++;
-				}
-			}
-			isp_vote->num_paths = j;
-
-			*nrdi_l_bw_updated = true;
-		} else {
-			if (*nrdi_r_bw_updated)
-				return rc;
-
-			for (i = 0; i < bw_config->num_paths; i++) {
-				if (bw_config->axi_path[i].usage_data ==
-					CAM_ISP_USAGE_RIGHT_PX) {
-					memcpy(&isp_vote->axi_path[j],
-						&bw_config->axi_path[i],
-						sizeof(struct
-						cam_axi_per_path_bw_vote));
-					j++;
-				}
-			}
-			isp_vote->num_paths = j;
-
-			*nrdi_r_bw_updated = true;
-		}
-	} else if ((hw_mgr_res->res_id >= CAM_ISP_HW_SFE_IN_RDI0)
-		&& (hw_mgr_res->res_id <=
-		CAM_ISP_HW_SFE_IN_RDI4)) {
-		for (i = 0; i < bw_config->num_paths; i++) {
-			if ((bw_config->axi_path[i].usage_data ==
-				CAM_ISP_USAGE_RDI) &&
-				((bw_config->axi_path[i].path_data_type -
-				CAM_AXI_PATH_DATA_IFE_RDI0) ==
-				(hw_mgr_res->res_id -
-				CAM_ISP_HW_VFE_IN_RDI0))) {
-				memcpy(&isp_vote->axi_path[j],
-					&bw_config->axi_path[i],
-					sizeof(struct
-					cam_axi_per_path_bw_vote));
-				j++;
-			}
-		}
-		isp_vote->num_paths = j;
-
 	} else {
-		if (hw_mgr_res->hw_res[split_idx]) {
-			CAM_ERR(CAM_ISP, "Invalid res_id %u, split_idx: %u",
-				hw_mgr_res->res_id, split_idx);
-			rc = -EINVAL;
-			return rc;
+		if (hw_mgr_res->res_id == CAM_ISP_HW_SFE_IN_PIX) {
+			if (split_idx == CAM_ISP_HW_SPLIT_LEFT) {
+				if (*nrdi_l_bw_updated)
+					return rc;
+
+				for (i = 0; i < bw_config->num_paths; i++) {
+					if (bw_config->axi_path[i].usage_data ==
+						CAM_ISP_USAGE_SFE_LEFT) {
+						memcpy(&isp_vote->axi_path[j],
+							&bw_config->axi_path[i],
+							sizeof(struct
+							cam_axi_per_path_bw_vote));
+						j++;
+					}
+				}
+				isp_vote->num_paths = j;
+
+				*nrdi_l_bw_updated = true;
+			} else {
+				if (*nrdi_r_bw_updated)
+					return rc;
+
+				for (i = 0; i < bw_config->num_paths; i++) {
+					if (bw_config->axi_path[i].usage_data ==
+						CAM_ISP_USAGE_SFE_RIGHT) {
+						memcpy(&isp_vote->axi_path[j],
+							&bw_config->axi_path[i],
+							sizeof(struct
+							cam_axi_per_path_bw_vote));
+						j++;
+					}
+				}
+				isp_vote->num_paths = j;
+
+				*nrdi_r_bw_updated = true;
+			}
+		} else if ((hw_mgr_res->res_id >= CAM_ISP_HW_SFE_IN_RDI0)
+			&& (hw_mgr_res->res_id <=
+			CAM_ISP_HW_SFE_IN_RDI4)) {
+			for (i = 0; i < bw_config->num_paths; i++) {
+				if ((bw_config->axi_path[i].usage_data ==
+					CAM_ISP_USAGE_SFE_RDI) &&
+					((bw_config->axi_path[i].path_data_type -
+					CAM_AXI_PATH_DATA_SFE_RDI0) ==
+					(hw_mgr_res->res_id -
+					CAM_ISP_HW_SFE_IN_RDI0))) {
+					memcpy(&isp_vote->axi_path[j],
+						&bw_config->axi_path[i],
+						sizeof(struct
+						cam_axi_per_path_bw_vote));
+					j++;
+				}
+			}
+			isp_vote->num_paths = j;
+
+		} else {
+			if (hw_mgr_res->hw_res[split_idx]) {
+				CAM_ERR(CAM_ISP, "Invalid res_id %u, split_idx: %u",
+					hw_mgr_res->res_id, split_idx);
+				rc = -EINVAL;
+				return rc;
+			}
 		}
 	}
 
@@ -5267,8 +5282,8 @@ static int cam_isp_blob_bw_update_v2(
 			memset(&bw_upd_args.isp_vote, 0,
 				sizeof(struct cam_axi_vote));
 			rc = cam_isp_classify_vote_info(hw_mgr_res, bw_config,
-				&bw_upd_args.isp_vote, split_idx,
-				&nrdi_l_bw_updated, &nrdi_r_bw_updated);
+				&bw_upd_args.isp_vote, CAM_ISP_HW_TYPE_VFE,
+				split_idx, &nrdi_l_bw_updated, &nrdi_r_bw_updated);
 			if (rc)
 				return rc;
 
@@ -5306,12 +5321,12 @@ static int cam_isp_blob_bw_update_v2(
 			memset(&sfe_bw_update_args.sfe_vote, 0,
 				sizeof(struct cam_axi_vote));
 			rc = cam_isp_classify_vote_info(hw_mgr_res, bw_config,
-				&sfe_bw_update_args.sfe_vote, split_idx,
-				&nrdi_l_bw_updated, &nrdi_r_bw_updated);
+				&sfe_bw_update_args.sfe_vote, CAM_ISP_HW_TYPE_SFE,
+				split_idx, &nrdi_l_bw_updated, &nrdi_r_bw_updated);
 			if (rc)
 				return rc;
 
-			if (!bw_upd_args.isp_vote.num_paths)
+			if (!sfe_bw_update_args.sfe_vote.num_paths)
 				continue;
 
 			hw_intf = hw_mgr_res->hw_res[split_idx]->hw_intf;

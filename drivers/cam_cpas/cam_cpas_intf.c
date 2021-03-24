@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/of.h>
@@ -102,15 +102,15 @@ const char *cam_cpas_axi_util_path_type_to_string(
 	case CAM_AXI_PATH_DATA_SFE_NRDI:
 		return "SFE_NRDI";
 	case CAM_AXI_PATH_DATA_SFE_RDI0:
-		return "IFE_RDI0";
+		return "SFE_RDI0";
 	case CAM_AXI_PATH_DATA_SFE_RDI1:
-		return "IFE_RDI1";
+		return "SFE_RDI1";
 	case CAM_AXI_PATH_DATA_SFE_RDI2:
-		return "IFE_RDI2";
+		return "SFE_RDI2";
 	case CAM_AXI_PATH_DATA_SFE_RDI3:
-		return "IFE_RDI3";
+		return "SFE_RDI3";
 	case CAM_AXI_PATH_DATA_SFE_RDI4:
-		return "IFE_RDI4";
+		return "SFE_RDI4";
 	case CAM_AXI_PATH_DATA_SFE_STATS:
 		return "SFE_STATS";
 
