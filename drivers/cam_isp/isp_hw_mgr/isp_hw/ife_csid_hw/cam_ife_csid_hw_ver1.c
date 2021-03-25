@@ -8,6 +8,7 @@
 
 #include <media/cam_isp.h>
 #include <media/cam_defs.h>
+#include <media/cam_req_mgr.h>
 
 #include <dt-bindings/msm-camera.h>
 
@@ -21,6 +22,7 @@
 #include "cam_isp_hw_mgr_intf.h"
 #include "cam_tasklet_util.h"
 #include "cam_common_util.h"
+#include "cam_subdev.h"
 
 #define IFE_CSID_TIMEOUT                               1000
 
@@ -4061,9 +4063,12 @@ static int cam_ife_csid_ver1_rx_bottom_half_handler(
 		CAM_ERR_RATE_LIMIT(CAM_ISP, "CSID[%u] %s",
 			csid_hw->hw_intf->hw_idx, log_buf);
 
-	if (csid_hw->flags.fatal_err_detected)
+	if (csid_hw->flags.fatal_err_detected) {
 		event_type |= CAM_ISP_HW_ERROR_CSID_FATAL;
-
+		cam_subdev_notify_message(CAM_CSIPHY_DEVICE_TYPE,
+				CAM_SUBDEV_MESSAGE_IRQ_ERR,
+				(csid_hw->rx_cfg.phy_sel));
+	}
 	if (event_type)
 		cam_ife_csid_ver1_handle_event_err(csid_hw,
 			evt_payload, event_type);
