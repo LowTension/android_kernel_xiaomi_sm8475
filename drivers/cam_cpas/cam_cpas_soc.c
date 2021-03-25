@@ -186,13 +186,13 @@ static int cam_cpas_parse_node_tree(struct cam_cpas *cpas_core,
 	struct device_node *curr_node;
 	struct device_node *parent_node;
 	struct device_node *mnoc_node;
-	int mnoc_idx = 0, camnoc_idx = 0;
+	int mnoc_idx = 0, camnoc_idx = 0, level_idx = 0;
 	uint32_t path_idx;
 	bool camnoc_max_needed = false;
 	struct cam_cpas_tree_node *curr_node_ptr = NULL;
 	struct cam_cpas_client *curr_client = NULL;
 	const char *client_name = NULL;
-	uint32_t client_idx = 0, cell_idx = 0, level_idx = 0;
+	uint32_t client_idx = 0, cell_idx = 0;
 	int rc = 0, count = 0, i;
 
 	camera_bus_node = of_get_child_by_name(of_node, "camera-bus-nodes");
@@ -218,6 +218,13 @@ static int cam_cpas_parse_node_tree(struct cam_cpas *cpas_core,
 		soc_private->level_node[level_idx] = level_node;
 		camnoc_max_needed = of_property_read_bool(level_node,
 			"camnoc-max-needed");
+	}
+
+	for (level_idx = (CAM_CPAS_MAX_TREE_LEVELS - 1); level_idx >= 0;
+		level_idx--) {
+		level_node = soc_private->level_node[level_idx];
+		if (!level_node)
+			continue;
 
 		for_each_available_child_of_node(level_node, curr_node) {
 			curr_node_ptr =

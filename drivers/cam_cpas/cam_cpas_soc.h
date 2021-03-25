@@ -53,7 +53,7 @@ struct cam_cpas_vdd_ahb_mapping {
  */
 struct cam_cpas_tree_node {
 	uint32_t cell_idx;
-	uint32_t level_idx;
+	int level_idx;
 	int axi_port_idx;
 	int camnoc_axi_port_idx;
 	const char *node_name;
