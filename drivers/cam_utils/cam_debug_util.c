@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2020, The Linux Foundataion. All rights reserved.
+ * Copyright (c) 2017-2021, The Linux Foundataion. All rights reserved.
  */
 
 #include <linux/io.h>
@@ -16,6 +16,9 @@ module_param(debug_mdl, uint, 0644);
 /* 0x0 - only logs, 0x1 - only trace, 0x2 - logs + trace */
 static uint debug_type;
 module_param(debug_type, uint, 0644);
+
+static uint debug_priority;
+module_param(debug_priority, uint, 0644);
 
 struct camera_debug_settings cam_debug;
 
@@ -254,15 +257,16 @@ const char *cam_get_tag_name(unsigned int tag_id)
 	return name;
 }
 
-void cam_debug_log(unsigned int module_id, const char *func, const int line,
-	const char *fmt, ...)
+void cam_debug_log(unsigned int module_id, unsigned int priority,
+	const char *func, const int line, const char *fmt, ...)
 {
-	char str_buffer[STR_BUFFER_MAX_LENGTH];
 	va_list args;
 
 	va_start(args, fmt);
 
-	if (debug_mdl & module_id) {
+	if ((debug_mdl & module_id) && (priority >= debug_priority)) {
+		char str_buffer[STR_BUFFER_MAX_LENGTH];
+
 		vsnprintf(str_buffer, STR_BUFFER_MAX_LENGTH, fmt, args);
 
 		if ((debug_type == 0) || (debug_type == 2)) {
