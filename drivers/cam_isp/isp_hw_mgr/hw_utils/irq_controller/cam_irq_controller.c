@@ -582,6 +582,7 @@ static void cam_irq_controller_th_processing(
 	struct list_head               *th_list_head)
 {
 	struct cam_irq_evt_handler     *evt_handler = NULL;
+	struct cam_irq_evt_handler     *evt_handler_tmp = NULL;
 	struct cam_irq_th_payload      *th_payload = &controller->th_payload;
 	bool                            is_irq_match;
 	int                             rc = -EINVAL;
@@ -594,7 +595,7 @@ static void cam_irq_controller_th_processing(
 	if (list_empty(th_list_head))
 		return;
 
-	list_for_each_entry(evt_handler, th_list_head, th_list_node) {
+	list_for_each_entry_safe(evt_handler, evt_handler_tmp, th_list_head, th_list_node) {
 		is_irq_match = cam_irq_controller_match_bit_mask(controller,
 			evt_handler);
 
