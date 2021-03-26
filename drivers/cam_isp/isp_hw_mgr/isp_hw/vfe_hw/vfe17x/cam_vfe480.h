@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
  */
 
 
@@ -1437,6 +1437,7 @@ static struct cam_vfe_bus_ver3_hw_info vfe480_bus_hw_info = {
 	.max_out_res = CAM_ISP_IFE_OUT_RES_BASE + 25,
 	.supported_irq =  CAM_VFE_HW_IRQ_CAP_BUF_DONE | CAM_VFE_HW_IRQ_CAP_RUP,
 	.comp_cfg_needed = true,
+	.pack_align_shift = 4,
 };
 
 static struct cam_irq_register_set vfe480_bus_rd_irq_reg[1] = {
