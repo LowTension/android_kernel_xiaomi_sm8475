@@ -1819,7 +1819,7 @@ static int cam_ife_hw_mgr_acquire_res_ife_out_pixel(
 					/*TBD */
 					vfe_acquire.vfe_out.is_master     = 1;
 					vfe_acquire.vfe_out.dual_slave_core =
-						ife_ctx->slave_hw_idx;
+						ife_ctx->right_hw_idx;
 				} else {
 					vfe_acquire.vfe_out.is_master   = 0;
 					vfe_acquire.vfe_out.dual_slave_core =
@@ -1830,7 +1830,7 @@ static int cam_ife_hw_mgr_acquire_res_ife_out_pixel(
 					CAM_ISP_HW_SPLIT_RIGHT;
 				vfe_acquire.vfe_out.is_master       = 0;
 				vfe_acquire.vfe_out.dual_slave_core =
-					ife_ctx->master_hw_idx;
+					ife_ctx->left_hw_idx;
 			}
 			rc = hw_intf->hw_ops.reserve(hw_intf->hw_priv,
 				&vfe_acquire,
@@ -2796,7 +2796,7 @@ static int cam_ife_hw_mgr_acquire_ife_src_for_sfe(
 		vfe_acquire.vfe_in.sync_mode =
 			CAM_ISP_HW_SYNC_MASTER;
 		vfe_acquire.vfe_in.dual_hw_idx =
-			ife_ctx->slave_hw_idx;
+			ife_ctx->right_hw_idx;
 	} else
 		vfe_acquire.vfe_in.sync_mode =
 			CAM_ISP_HW_SYNC_NONE;
@@ -2810,6 +2810,9 @@ static int cam_ife_hw_mgr_acquire_ife_src_for_sfe(
 	ife_src_res->is_dual_isp = (uint32_t)ife_ctx->flags.is_dual;
 	for (i =  0; i < CAM_IFE_HW_NUM_MAX; i++) {
 		if (!ife_hw_mgr->ife_devices[i])
+			continue;
+
+		if (i != ife_ctx->left_hw_idx)
 			continue;
 
 		hw_intf = ife_hw_mgr->ife_devices[i]->hw_intf;
@@ -2847,12 +2850,15 @@ static int cam_ife_hw_mgr_acquire_ife_src_for_sfe(
 		vfe_acquire.vfe_in.sync_mode =
 			CAM_ISP_HW_SYNC_SLAVE;
 		vfe_acquire.vfe_in.dual_hw_idx =
-			ife_ctx->master_hw_idx;
+			ife_ctx->left_hw_idx;
 		for (i = 0; i < CAM_IFE_HW_NUM_MAX; i++) {
 			if (!ife_hw_mgr->ife_devices[i])
 				continue;
 
 			if (i == ife_src_res->hw_res[0]->hw_intf->hw_idx)
+				continue;
+
+			if (i != ife_ctx->right_hw_idx)
 				continue;
 
 			hw_intf = ife_hw_mgr->ife_devices[i]->hw_intf;
@@ -2995,7 +3001,7 @@ static int cam_ife_hw_mgr_acquire_res_ife_src(
 			if (i == CAM_ISP_HW_SPLIT_LEFT &&
 				ife_src_res->is_dual_isp) {
 				vfe_acquire.vfe_in.dual_hw_idx =
-					ife_ctx->slave_hw_idx;
+					ife_ctx->right_hw_idx;
 			}
 
 			/* fill in more acquire information as needed */
@@ -3005,7 +3011,7 @@ static int cam_ife_hw_mgr_acquire_res_ife_src(
 				vfe_acquire.vfe_in.sync_mode =
 				CAM_ISP_HW_SYNC_SLAVE;
 				vfe_acquire.vfe_in.dual_hw_idx =
-					ife_ctx->master_hw_idx;
+					ife_ctx->left_hw_idx;
 			}
 
 			rc = hw_intf->hw_ops.reserve(hw_intf->hw_priv,
@@ -3069,9 +3075,7 @@ static int cam_ife_hw_mgr_acquire_csid_hw(
 		return -EINVAL;
 	}
 
-	/* Start from lower_idx for SFE */
-	if (ife_ctx->flags.is_fe_enabled || ife_ctx->flags.dsp_enabled ||
-		(ife_ctx->ctx_type == CAM_IFE_CTX_TYPE_SFE))
+	if (ife_ctx->flags.is_fe_enabled || ife_ctx->flags.dsp_enabled)
 		is_start_lower_idx =  true;
 
 	ife_hw_mgr = ife_ctx->hw_mgr;
@@ -3313,11 +3317,11 @@ static int cam_ife_hw_mgr_acquire_res_ife_csid_pxl(
 		hw_intf = csid_res->hw_res[i]->hw_intf;
 
 		if (i == CAM_ISP_HW_SPLIT_LEFT) {
-			ife_ctx->master_hw_idx = hw_intf->hw_idx;
+			ife_ctx->left_hw_idx = hw_intf->hw_idx;
 			ife_ctx->buf_done_controller =
 				csid_acquire.buf_done_controller;
 		} else {
-			ife_ctx->slave_hw_idx = hw_intf->hw_idx;
+			ife_ctx->right_hw_idx = hw_intf->hw_idx;
 		}
 
 		ife_ctx->flags.need_csid_top_cfg = csid_acquire.need_top_cfg;
@@ -3344,13 +3348,13 @@ static int cam_ife_hw_mgr_acquire_res_ife_csid_pxl(
 				dual_sync_args.sync_mode =
 					CAM_ISP_HW_SYNC_MASTER;
 				dual_sync_args.dual_core_id =
-					ife_ctx->slave_hw_idx;
+					ife_ctx->right_hw_idx;
 
 			} else if (i == CAM_ISP_HW_SPLIT_RIGHT) {
 				dual_sync_args.sync_mode =
 					CAM_ISP_HW_SYNC_SLAVE;
 				dual_sync_args.dual_core_id =
-					ife_ctx->master_hw_idx;
+					ife_ctx->left_hw_idx;
 			}
 
 			rc = hw_intf->hw_ops.process_cmd(
@@ -3483,17 +3487,20 @@ static int cam_ife_hw_mgr_acquire_res_ife_csid_rdi(
 			goto put_res;
 		}
 
-		if ((ife_ctx->flags.is_rdi_only_context) ||
-		((ife_ctx->ctx_type == CAM_IFE_CTX_TYPE_SFE) &&
-		(ife_ctx->flags.is_fe_enabled)))
-			ife_ctx->buf_done_controller =
-				csid_acquire.buf_done_controller;
 		ife_ctx->flags.need_csid_top_cfg = csid_acquire.need_top_cfg;
 		csid_res->res_type = CAM_ISP_RESOURCE_PIX_PATH;
 		csid_res->res_id = csid_acquire.res_id;
 		csid_res->is_dual_isp = 0;
 		csid_res->hw_res[0] = csid_acquire.node_res;
 		csid_res->hw_res[1] = NULL;
+		if ((ife_ctx->flags.is_rdi_only_context) ||
+			(ife_ctx->flags.is_sfe_fs) ||
+			(ife_ctx->flags.is_sfe_shdr)) {
+			ife_ctx->buf_done_controller =
+				csid_acquire.buf_done_controller;
+			ife_ctx->left_hw_idx =
+				csid_res->hw_res[0]->hw_intf->hw_idx;
+		}
 		cam_ife_hw_mgr_put_res(&ife_ctx->res_list_ife_csid, &csid_res);
 	}
 
@@ -4848,7 +4855,7 @@ static int cam_ife_mgr_acquire_hw(void *hw_mgr_priv, void *acquire_hw_args)
 		memcpy(cdm_acquire.identifier, "ife", sizeof("ife"));
 
 	if (ife_ctx->flags.is_dual)
-		cdm_acquire.cell_index = ife_ctx->master_hw_idx;
+		cdm_acquire.cell_index = ife_ctx->left_hw_idx;
 	else
 		cdm_acquire.cell_index = ife_ctx->base[0].idx;
 	cdm_acquire.handle = 0;
@@ -6662,6 +6669,8 @@ static int cam_ife_mgr_release_hw(void *hw_mgr_priv,
 	ctx->ctx_config = 0;
 	ctx->num_reg_dump_buf = 0;
 	ctx->last_cdm_done_req = 0;
+	ctx->left_hw_idx = 0;
+	ctx->right_hw_idx = 0;
 
 	memset(&ctx->flags, 0, sizeof(struct cam_ife_hw_mgr_ctx_flags));
 	atomic_set(&ctx->overflow_pending, 0);
@@ -10542,7 +10551,7 @@ static int cam_ife_hw_mgr_handle_csid_rup(
 	case CAM_IFE_PIX_PATH_RES_IPP:
 		if ((ife_hw_mgr_ctx->flags.is_dual) &&
 			(event_info->hw_idx !=
-			ife_hw_mgr_ctx->master_hw_idx))
+			ife_hw_mgr_ctx->left_hw_idx))
 			break;
 
 		if (atomic_read(&ife_hw_mgr_ctx->overflow_pending))
@@ -10763,7 +10772,7 @@ static int cam_ife_hw_mgr_handle_hw_rup(
 	case CAM_ISP_HW_VFE_IN_CAMIF:
 		if ((ife_hw_mgr_ctx->flags.is_dual) &&
 			(event_info->hw_idx !=
-			ife_hw_mgr_ctx->master_hw_idx))
+			ife_hw_mgr_ctx->left_hw_idx))
 			break;
 
 		if (atomic_read(&ife_hw_mgr_ctx->overflow_pending))
