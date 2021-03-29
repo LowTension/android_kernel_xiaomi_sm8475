@@ -205,8 +205,13 @@ struct data_rate_settings_t {
 };
 
 struct bist_reg_settings_t {
+	uint32_t expected_status_val;
 	ssize_t num_data_settings;
+	ssize_t num_status_reg;
+	ssize_t num_status_err_check_reg;
 	struct csiphy_reg_t *bist_arry;
+	struct csiphy_reg_t *bist_status_arr;
+	struct csiphy_reg_t *bist_status_err_check_arr;
 };
 
 /**

@@ -495,9 +495,37 @@ struct csiphy_reg_t bist_arr_2_1_0[] = {
 	{0x0A40, 0x85, 0x00, CSIPHY_3PH_REGS},
 };
 
+struct csiphy_reg_t bist_status_arr_2_1_0[] = {
+	/* STATUS1 for the BIST checker output for 3phase */
+	{0x0344, 0x00, 0x00, CSIPHY_3PH_REGS},
+	{0x0744, 0x00, 0x00, CSIPHY_3PH_REGS},
+	{0x0B44, 0x00, 0x00, CSIPHY_3PH_REGS},
+	/* STATUS0 for BIST checker output for 2phase */
+	{0x00C0, 0x00, 0x00, CSIPHY_2PH_REGS},
+	{0x04C0, 0x00, 0x00, CSIPHY_2PH_REGS},
+	{0x08C0, 0x00, 0x00, CSIPHY_2PH_REGS},
+	{0x0CC0, 0x00, 0x00, CSIPHY_2PH_REGS},
+};
+
+struct csiphy_reg_t bist_status_err_check_arr_2_1_0[] = {
+	/* STATUS2_3 for the BIST word error detection */
+	{0x0348, 0x00, 0x00, CSIPHY_3PH_REGS},
+	{0x0748, 0x00, 0x00, CSIPHY_3PH_REGS},
+	{0x0B48, 0x00, 0x00, CSIPHY_3PH_REGS},
+	{0x034C, 0x00, 0x00, CSIPHY_3PH_REGS},
+	{0x074C, 0x00, 0x00, CSIPHY_3PH_REGS},
+	{0x0B4C, 0x00, 0x00, CSIPHY_3PH_REGS},
+	/* STATUS */
+};
+
 struct bist_reg_settings_t bist_setting_2_1_0 = {
+	.expected_status_val = 0xB,
 	.num_data_settings = ARRAY_SIZE(bist_arr_2_1_0),
 	.bist_arry = bist_arr_2_1_0,
+	.num_status_reg = ARRAY_SIZE(bist_status_arr_2_1_0),
+	.bist_status_arr = bist_status_arr_2_1_0,
+	.num_status_err_check_reg = ARRAY_SIZE(bist_status_err_check_arr_2_1_0),
+	.bist_status_err_check_arr = bist_status_err_check_arr_2_1_0,
 };
 
 #endif /* _CAM_CSIPHY_2_1_0_HWREG_H_ */

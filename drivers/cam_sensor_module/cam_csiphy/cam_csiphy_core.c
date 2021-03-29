@@ -1316,6 +1316,170 @@ int cam_csiphy_util_update_aon_ops(
 	return rc;
 }
 
+static int __cam_csiphy_read_2phase_bist_debug_status(
+	struct csiphy_device *csiphy_dev)
+{
+	int i = 0;
+	int bist_status_arr_size =
+		csiphy_dev->ctrl_reg->csiphy_bist_reg->num_status_err_check_reg;
+	struct csiphy_reg_t *csiphy_common_reg = NULL;
+	void __iomem *csiphybase = NULL;
+
+	for (i = 0; i < bist_status_arr_size; i++) {
+		csiphy_common_reg = &csiphy_dev->ctrl_reg->csiphy_bist_reg
+			->bist_status_err_check_arr[i];
+		switch (csiphy_common_reg->csiphy_param_type) {
+		case CSIPHY_2PH_REGS:
+			CAM_INFO(CAM_CSIPHY, "OFFSET: 0x%x value: 0x%x",
+				csiphybase + csiphy_common_reg->reg_addr,
+				cam_io_r(csiphybase + csiphy_common_reg->reg_addr));
+		break;
+		}
+	}
+
+	return 0;
+}
+
+static int __cam_csiphy_poll_2phase_pattern_status(
+	struct csiphy_device *csiphy_dev)
+{
+	int i = 0;
+	int bist_status_arr_size =
+		csiphy_dev->ctrl_reg->csiphy_bist_reg->num_status_reg;
+	struct csiphy_reg_t *csiphy_common_reg = NULL;
+	void __iomem *csiphybase = NULL;
+	uint32_t status = 0x00;
+
+	csiphybase = csiphy_dev->soc_info.reg_map[0].mem_base;
+
+	do {
+		usleep_range(2000, 2010);
+		for (i = 0; i < bist_status_arr_size; i++) {
+			csiphy_common_reg = &csiphy_dev->ctrl_reg->csiphy_bist_reg->bist_arry[i];
+			switch (csiphy_common_reg->csiphy_param_type) {
+			case CSIPHY_2PH_REGS:
+				status |= cam_io_r(csiphybase + csiphy_common_reg->reg_addr);
+			break;
+			}
+
+			if (status != 0) {
+				CAM_INFO(CAM_CSIPHY, "Pattern Test is completed");
+				break;
+			}
+		}
+	} while (!status);
+
+	/* This loop is to read every lane status value
+	 * in case if loop breaks with only last lane.
+	 */
+	for (i = 0; i < bist_status_arr_size; i++) {
+		csiphy_common_reg = &csiphy_dev->ctrl_reg->csiphy_bist_reg->bist_arry[i];
+		switch (csiphy_common_reg->csiphy_param_type) {
+		case CSIPHY_2PH_REGS:
+			status |= cam_io_r(csiphybase + csiphy_common_reg->reg_addr);
+		break;
+		}
+	}
+
+	if (status == csiphy_dev->ctrl_reg->csiphy_bist_reg->expected_status_val) {
+		CAM_INFO(CAM_CSIPHY, "Pattern is received correctly");
+		return 0;
+	} else {
+		__cam_csiphy_read_2phase_bist_debug_status(csiphy_dev);
+	}
+
+	return 0;
+}
+
+static int __cam_csiphy_read_3phase_bist_debug_status(
+	struct csiphy_device *csiphy_dev)
+{
+	int i = 0;
+	int bist_status_arr_size =
+		csiphy_dev->ctrl_reg->csiphy_bist_reg->num_status_err_check_reg;
+	struct csiphy_reg_t *csiphy_common_reg = NULL;
+	void __iomem *csiphybase = NULL;
+
+	for (i = 0; i < bist_status_arr_size; i++) {
+		csiphy_common_reg = &csiphy_dev->ctrl_reg->csiphy_bist_reg
+			->bist_status_err_check_arr[i];
+		switch (csiphy_common_reg->csiphy_param_type) {
+		case CSIPHY_3PH_REGS:
+				CAM_INFO(CAM_CSIPHY, "OFFSET: 0x%x value: 0x%x",
+					csiphybase + csiphy_common_reg->reg_addr,
+					cam_io_r(csiphybase + csiphy_common_reg->reg_addr));
+		break;
+		}
+	}
+
+	return 0;
+}
+
+static int __cam_csiphy_poll_3phase_pattern_status(
+	struct csiphy_device *csiphy_dev)
+{
+	int i = 0;
+	int bist_status_arr_size =
+		csiphy_dev->ctrl_reg->csiphy_bist_reg->num_status_reg;
+	struct csiphy_reg_t *csiphy_common_reg = NULL;
+	void __iomem *csiphybase = NULL;
+	uint32_t status1 = 0x00;
+
+	csiphybase = csiphy_dev->soc_info.reg_map[0].mem_base;
+
+	do {
+		usleep_range(2000, 2010);
+		for (i = 0; i < bist_status_arr_size; i++) {
+			csiphy_common_reg = &csiphy_dev->ctrl_reg->csiphy_bist_reg->bist_status_arr[i];
+			switch (csiphy_common_reg->csiphy_param_type) {
+			case CSIPHY_3PH_REGS:
+				status1 |= cam_io_r(csiphybase + csiphy_common_reg->reg_addr);
+			break;
+			}
+			if (status1 != 0) {
+				CAM_INFO(CAM_CSIPHY, "Pattern Test is completed");
+				break;
+			}
+		}
+	} while (!status1);
+
+	/* This loop is to read every lane status value
+	 * in case if loop breaks with only last lane.
+	 */
+	for (i = 0; i < bist_status_arr_size; i++) {
+		csiphy_common_reg = &csiphy_dev->ctrl_reg->csiphy_bist_reg->bist_status_arr[i];
+		switch (csiphy_common_reg->csiphy_param_type) {
+		case CSIPHY_3PH_REGS:
+			status1 |= cam_io_r(csiphybase + csiphy_common_reg->reg_addr);
+		break;
+		}
+	}
+
+	if (status1 == csiphy_dev->ctrl_reg->csiphy_bist_reg->expected_status_val) {
+		CAM_INFO(CAM_CSIPHY, "Pattern is received correctly");
+		return 0;
+	} else {
+		__cam_csiphy_read_3phase_bist_debug_status(csiphy_dev);
+	}
+
+	return 0;
+}
+
+static int __cam_csiphy_poll_preamble_status(
+	struct csiphy_device *csiphy_dev, int offset)
+{
+	bool is_3phase = false;
+
+	is_3phase = csiphy_dev->csiphy_info[offset].csiphy_3phase;
+
+	if (is_3phase)
+		__cam_csiphy_poll_3phase_pattern_status(csiphy_dev);
+	else
+		__cam_csiphy_poll_2phase_pattern_status(csiphy_dev);
+
+	return 0;
+}
+
 int32_t cam_csiphy_core_cfg(void *phy_dev,
 			void *arg)
 {
@@ -1784,6 +1948,9 @@ int32_t cam_csiphy_core_cfg(void *phy_dev,
 			csiphy_dev->start_dev_count);
 		csiphy_dev->csiphy_state = CAM_CSIPHY_START;
 
+		if (csiphy_dev->preamble_enable) {
+			__cam_csiphy_poll_preamble_status(csiphy_dev, offset);
+		}
 		CAM_INFO(CAM_CSIPHY,
 			"CAM_START_PHYDEV: CSIPHY_IDX: %d, Device_slot: %d, cp_mode: %d, Datarate: %llu, Settletime: %llu",
 			csiphy_dev->soc_info.index, offset,
