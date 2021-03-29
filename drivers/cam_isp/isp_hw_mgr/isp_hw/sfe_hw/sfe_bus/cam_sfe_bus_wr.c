@@ -1898,7 +1898,7 @@ static int cam_sfe_bus_wr_irq_bottom_half(
 	status = evt_payload->irq_reg_val[CAM_SFE_IRQ_BUS_REG_STATUS0];
 
 	CAM_ERR(CAM_SFE,
-		"SFE:%d status 0x%x Image Size violation status 0x%x CCIF violation status 0x%x",
+		"SFE:%d status0 0x%x Image Size violation status 0x%x CCIF violation status 0x%x",
 		bus_priv->common_data.core_index, status,
 		evt_payload->image_size_violation_status,
 		evt_payload->ccif_violation_status);

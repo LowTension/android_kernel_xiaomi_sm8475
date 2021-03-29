@@ -435,7 +435,8 @@ static void cam_sfe_top_check_module_status(
 			found = true;
 		}
 		if (found)
-			CAM_INFO_RATE_LIMIT(CAM_SFE, "Check config for Debug%u - %s", log_buf);
+			CAM_INFO_RATE_LIMIT(CAM_SFE, "Check config for Debug%u - %s",
+				i, log_buf);
 		len = 0;
 		found = false;
 		memset(log_buf, 0, sizeof(uint8_t)*1024);
