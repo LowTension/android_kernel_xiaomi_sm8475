@@ -1144,7 +1144,7 @@ static struct cam_camnoc_specific
 		.port_type = CAM_CAMNOC_ICP,
 		.enable = true,
 		.flag_out_set0_low = {
-			.enable = true,
+			.enable = false,
 			.access_type = CAM_REG_TYPE_WRITE,
 			.masked_value = 0,
 			.offset = 0x2288,
