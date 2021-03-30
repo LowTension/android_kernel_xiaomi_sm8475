@@ -337,42 +337,37 @@ static void cam_tfe_log_error_irq_status(
 		top_priv->eof_ts.tv_sec,
 		top_priv->eof_ts.tv_nsec/1000);
 
-	val_0 = cam_io_r(mem_base  +
-		top_priv->common_data.common_reg->debug_0);
-	val_1 = cam_io_r(mem_base  +
-		top_priv->common_data.common_reg->debug_1);
-	val_2 = cam_io_r(mem_base  +
-		top_priv->common_data.common_reg->debug_2);
-	val_3 = cam_io_r(mem_base  +
-		top_priv->common_data.common_reg->debug_3);
-
 	CAM_INFO(CAM_ISP, "TOP IRQ[0]:0x%x IRQ[1]:0x%x IRQ[2]:0x%x",
 		evt_payload->irq_reg_val[0], evt_payload->irq_reg_val[1],
 		evt_payload->irq_reg_val[2]);
 
-	CAM_INFO(CAM_ISP, "Top debug [0]:0x%x [1]:0x%x [2]:0x%x [3]:0x%x",
-		val_0, val_1, val_2, val_3);
+	for (i = 0; i < top_priv->common_data.common_reg->num_debug_reg; i++) {
+		val_0 = cam_io_r(mem_base  +
+			top_priv->common_data.common_reg->debug_reg[i]);
+		CAM_INFO(CAM_ISP, "Top debug [i]:0x%x", i, val_0);
+	}
 
 	cam_cpas_reg_read(soc_private->cpas_handle,
 		CAM_CPAS_REG_CAMNOC, 0x20, true, &val_0);
 	CAM_INFO(CAM_ISP, "tfe_niu_MaxWr_Low offset 0x20 val 0x%x",
 		val_0);
+	for (i = 0; i < top_priv->common_data.common_reg->num_perf_cfg; i++) {
+		val_0 = cam_io_r(mem_base  +
+			top_priv->common_data.common_reg->perf_cfg[i].perf_pixel_count);
 
-	val_0 = cam_io_r(mem_base  +
-		top_priv->common_data.common_reg->perf_pixel_count);
+		val_1 = cam_io_r(mem_base  +
+			top_priv->common_data.common_reg->perf_cfg[i].perf_line_count);
 
-	val_1 = cam_io_r(mem_base  +
-		top_priv->common_data.common_reg->perf_line_count);
+		val_2 = cam_io_r(mem_base  +
+			top_priv->common_data.common_reg->perf_cfg[i].perf_stall_count);
 
-	val_2 = cam_io_r(mem_base  +
-		top_priv->common_data.common_reg->perf_stall_count);
+		val_3 = cam_io_r(mem_base  +
+			top_priv->common_data.common_reg->perf_cfg[i].perf_always_count);
 
-	val_3 = cam_io_r(mem_base  +
-		top_priv->common_data.common_reg->perf_always_count);
-
-	CAM_INFO(CAM_ISP,
-		"Top perf cnt pix:0x%x line:0x%x stall:0x%x always:0x%x",
-		val_0, val_1, val_2, val_3);
+		CAM_INFO(CAM_ISP,
+			"Top perf cnt [%d] pix:0x%x line:0x%x stall:0x%x always:0x%x",
+			i, val_0, val_1, val_2, val_3);
+	}
 
 	clc_hw_status = hw_info->clc_hw_status_info;
 	for (i = 0; i < hw_info->num_clc; i++) {
@@ -1973,6 +1968,8 @@ static int cam_tfe_camif_resource_start(
 	uint32_t                             epoch1_irq_mask;
 	uint32_t                             computed_epoch_line_cfg;
 	uint32_t                             camera_hw_version = 0;
+	struct cam_hw_intf                  *tfe_device;
+	bool                                 pdaf_rdi2_mux_en = false;
 
 	if (!camif_res || !core_info) {
 		CAM_ERR(CAM_ISP, "Error Invalid input arguments");
@@ -2007,7 +2004,14 @@ static int cam_tfe_camif_resource_start(
 			rsrc_data->reg_data->dual_tfe_sync_sel_shift);
 	}
 
-	if (!rsrc_data->camif_pd_enable)
+	tfe_device = rsrc_data->hw_intf;
+
+	tfe_device->hw_ops.process_cmd(tfe_device->hw_priv,
+		CAM_ISP_HW_CMD_IS_PDAF_RDI2_MUX_EN,
+		&pdaf_rdi2_mux_en,
+		sizeof(pdaf_rdi2_mux_en));
+
+	if (pdaf_rdi2_mux_en && !rsrc_data->camif_pd_enable)
 		val |= (1 << rsrc_data->reg_data->camif_pd_rdi2_src_sel_shift);
 
 	/* enables the Delay Line CLC in the pixel pipeline */
@@ -2086,7 +2090,8 @@ static int cam_tfe_camif_resource_start(
 		(1 << rsrc_data->reg_data->perf_window_start_shift) |
 		(2 << rsrc_data->reg_data->perf_window_end_shift);
 	cam_io_w_mb(val,
-		rsrc_data->mem_base + rsrc_data->common_reg->perf_cnt_cfg);
+		rsrc_data->mem_base +
+		rsrc_data->common_reg->perf_cfg[0].perf_cnt_cfg);
 	CAM_DBG(CAM_ISP, "TFE:%d perf_cfg val:%d", core_info->core_index,
 		val);
 
@@ -2893,6 +2898,7 @@ int cam_tfe_process_cmd(void *hw_priv, uint32_t cmd_type,
 	case CAM_ISP_HW_CMD_IS_CONSUMED_ADDR_SUPPORT:
 	case CAM_ISP_HW_CMD_GET_RES_FOR_MID:
 	case CAM_ISP_HW_CMD_DUMP_BUS_INFO:
+	case CAM_ISP_HW_CMD_IS_PDAF_RDI2_MUX_EN:
 		rc = core_info->tfe_bus->hw_ops.process_cmd(
 			core_info->tfe_bus->bus_priv, cmd_type, cmd_args,
 			arg_size);

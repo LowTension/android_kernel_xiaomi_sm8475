@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/ratelimit.h>
@@ -74,6 +74,7 @@ struct cam_tfe_bus_common_data {
 	bool                                        support_consumed_addr;
 	cam_hw_mgr_event_cb_func                    event_cb;
 	bool                        rup_irq_enable[CAM_TFE_BUS_RUP_GRP_MAX];
+	bool                                        pdaf_rdi2_mux_en;
 };
 
 struct cam_tfe_bus_wm_resource_data {
@@ -152,6 +153,7 @@ struct cam_tfe_bus_priv {
 	struct cam_tfe_bus_common_data      common_data;
 	uint32_t                            num_client;
 	uint32_t                            num_out;
+	uint32_t                            num_comp_grp;
 	uint32_t                            top_bus_wr_irq_shift;
 
 	struct cam_isp_resource_node  bus_client[CAM_TFE_BUS_MAX_CLIENTS];
@@ -175,6 +177,9 @@ static bool cam_tfe_bus_can_be_secure(uint32_t out_id)
 	case CAM_TFE_BUS_TFE_OUT_RDI0:
 	case CAM_TFE_BUS_TFE_OUT_RDI1:
 	case CAM_TFE_BUS_TFE_OUT_RDI2:
+	case CAM_TFE_BUS_TFE_OUT_DS4:
+	case CAM_TFE_BUS_TFE_OUT_DS16:
+	case CAM_TFE_BUS_TFE_OUT_AI:
 		return true;
 
 	case CAM_TFE_BUS_TFE_OUT_STATS_HDR_BE:
@@ -182,6 +187,7 @@ static bool cam_tfe_bus_can_be_secure(uint32_t out_id)
 	case CAM_TFE_BUS_TFE_OUT_STATS_TL_BG:
 	case CAM_TFE_BUS_TFE_OUT_STATS_BF:
 	case CAM_TFE_BUS_TFE_OUT_STATS_AWB_BG:
+	case CAM_TFE_BUS_TFE_OUT_STATS_RS:
 	default:
 		return false;
 	}
@@ -213,6 +219,14 @@ static enum cam_tfe_bus_tfe_out_id
 		return CAM_TFE_BUS_TFE_OUT_STATS_BF;
 	case CAM_ISP_TFE_OUT_RES_STATS_AWB_BG:
 		return CAM_TFE_BUS_TFE_OUT_STATS_AWB_BG;
+	case CAM_ISP_TFE_OUT_RES_STATS_RS:
+		return CAM_TFE_BUS_TFE_OUT_STATS_RS;
+	case CAM_ISP_TFE_OUT_RES_DS4:
+		return CAM_TFE_BUS_TFE_OUT_DS4;
+	case CAM_ISP_TFE_OUT_RES_DS16:
+		return CAM_TFE_BUS_TFE_OUT_DS16;
+	case CAM_ISP_TFE_OUT_RES_AI:
+		return CAM_TFE_BUS_TFE_OUT_AI;
 	default:
 		return CAM_TFE_BUS_TFE_OUT_MAX;
 	}
@@ -283,6 +297,32 @@ static int cam_tfe_bus_get_num_wm(
 			break;
 		}
 		break;
+	case CAM_TFE_BUS_TFE_OUT_DS4:
+		switch (format) {
+		case CAM_FORMAT_PD10:
+			return 1;
+		default:
+			break;
+		}
+		break;
+	case CAM_TFE_BUS_TFE_OUT_DS16:
+		switch (format) {
+		case CAM_FORMAT_PD10:
+			return 1;
+		default:
+			break;
+		}
+		break;
+	case CAM_TFE_BUS_TFE_OUT_AI:
+		switch (format) {
+		case CAM_FORMAT_NV12:
+		case CAM_FORMAT_TP10:
+		case CAM_FORMAT_PD10:
+			return 2;
+		default:
+			break;
+		}
+		break;
 	case CAM_TFE_BUS_TFE_OUT_STATS_HDR_BE:
 	case CAM_TFE_BUS_TFE_OUT_STATS_HDR_BHIST:
 	case CAM_TFE_BUS_TFE_OUT_STATS_TL_BG:
@@ -290,6 +330,14 @@ static int cam_tfe_bus_get_num_wm(
 	case CAM_TFE_BUS_TFE_OUT_STATS_AWB_BG:
 		switch (format) {
 		case CAM_FORMAT_PLAIN64:
+			return 1;
+		default:
+			break;
+		}
+		break;
+	case CAM_TFE_BUS_TFE_OUT_STATS_RS:
+		switch (format) {
+		case CAM_FORMAT_PLAIN32:
 			return 1;
 		default:
 			break;
@@ -307,7 +355,8 @@ static int cam_tfe_bus_get_num_wm(
 
 static int cam_tfe_bus_get_wm_idx(
 	enum cam_tfe_bus_tfe_out_id tfe_out_res_id,
-	enum cam_tfe_bus_plane_type plane)
+	enum cam_tfe_bus_plane_type plane,
+	bool pdaf_rdi2_mux_en)
 {
 	int wm_idx = -1;
 
@@ -342,7 +391,10 @@ static int cam_tfe_bus_get_wm_idx(
 	case CAM_TFE_BUS_TFE_OUT_PDAF:
 		switch (plane) {
 		case PLANE_Y:
-			wm_idx = 9;
+			if (pdaf_rdi2_mux_en)
+				wm_idx = 9;
+			else
+				wm_idx = 10;
 			break;
 		default:
 			break;
@@ -412,7 +464,44 @@ static int cam_tfe_bus_get_wm_idx(
 			break;
 		}
 		break;
-
+	case CAM_TFE_BUS_TFE_OUT_STATS_RS:
+		switch (plane) {
+		case PLANE_Y:
+			wm_idx = 15;
+			break;
+		default:
+			break;
+		}
+		break;
+	case CAM_TFE_BUS_TFE_OUT_DS4:
+		switch (plane) {
+		case PLANE_Y:
+			wm_idx = 11;
+			break;
+		default:
+			break;
+		}
+		break;
+	case CAM_TFE_BUS_TFE_OUT_DS16:
+		switch (plane) {
+		case PLANE_Y:
+			wm_idx = 12;
+			break;
+		default:
+			break;
+		}
+		break;
+	case CAM_TFE_BUS_TFE_OUT_AI:
+		switch (plane) {
+		case PLANE_Y:
+			wm_idx = 13;
+			break;
+		case PLANE_C:
+			wm_idx = 14;
+		default:
+			break;
+		}
+		break;
 	default:
 		break;
 	}
@@ -608,7 +697,8 @@ static int cam_tfe_bus_acquire_wm(
 
 	*wm_res = NULL;
 	/* No need to allocate for BUS TFE OUT to WM is fixed. */
-	wm_idx = cam_tfe_bus_get_wm_idx(tfe_out_res_id, plane);
+	wm_idx = cam_tfe_bus_get_wm_idx(tfe_out_res_id, plane,
+		bus_priv->common_data.pdaf_rdi2_mux_en);
 	if (wm_idx < 0 || wm_idx >= bus_priv->num_client) {
 		CAM_ERR(CAM_ISP, "Unsupported TFE out %d plane %d",
 			tfe_out_res_id, plane);
@@ -1696,7 +1786,7 @@ static int cam_tfe_bus_bufdone_bottom_half(
 
 	common_data = &bus_priv->common_data;
 
-	for (i = 0; i < CAM_TFE_BUS_COMP_GRP_MAX; i++) {
+	for (i = 0; i < bus_priv->num_comp_grp; i++) {
 		if (!(evt_payload->bus_irq_val[0] &
 			bus_priv->comp_buf_done_mask))
 			break;
@@ -1773,7 +1863,7 @@ static void cam_tfe_bus_error_bottom_half(
 		CAM_INFO(CAM_ISP, "IMAGE_SIZE_VIOLATION val :0x%x",
 			evt_payload->image_size_violation_status);
 
-		for (i = 0; i < CAM_TFE_BUS_MAX_CLIENTS; i++) {
+		for (i = 0; i < bus_priv->num_client; i++) {
 			if (!(evt_payload->image_size_violation_status >> i))
 				break;
 
@@ -1801,7 +1891,7 @@ static void cam_tfe_bus_error_bottom_half(
 	}
 
 	if (overflow_status) {
-		for (i = 0; i < CAM_TFE_BUS_MAX_CLIENTS; i++) {
+		for (i = 0; i < bus_priv->num_client; i++) {
 
 			if (!(evt_payload->overflow_status >> i))
 				break;
@@ -2199,7 +2289,7 @@ static int cam_tfe_bus_dump_bus_info(
 			wm_data->stride);
 	}
 
-	for (i = 0; i < CAM_TFE_BUS_MAX_CLIENTS; i++) {
+	for (i = 0; i < bus_priv->num_client; i++) {
 		wm_data = bus_priv->bus_client[i].res_priv;
 		/* disable WM */
 			cam_io_w_mb(0, common_data->mem_base +
@@ -2271,6 +2361,7 @@ static int cam_tfe_bus_process_cmd(void *priv,
 	int rc = -EINVAL;
 	uint32_t i, val;
 	bool *support_consumed_addr;
+	bool *pdaf_rdi2_mux_en;
 
 	if (!priv || !cmd_args) {
 		CAM_ERR_RATE_LIMIT(CAM_ISP, "Invalid input arguments");
@@ -2313,6 +2404,11 @@ static int cam_tfe_bus_process_cmd(void *priv,
 		break;
 	case CAM_ISP_HW_CMD_DUMP_BUS_INFO:
 		rc = cam_tfe_bus_dump_bus_info(priv, cmd_args, arg_size);
+		break;
+	case CAM_ISP_HW_CMD_IS_PDAF_RDI2_MUX_EN:
+		bus_priv = (struct cam_tfe_bus_priv  *) priv;
+		pdaf_rdi2_mux_en = (bool *)cmd_args;
+		*pdaf_rdi2_mux_en = bus_priv->common_data.pdaf_rdi2_mux_en;
 		break;
 	default:
 		CAM_ERR_RATE_LIMIT(CAM_ISP, "Invalid camif process command:%d",
@@ -2361,6 +2457,7 @@ int cam_tfe_bus_init(
 
 	bus_priv->num_client                   = hw_info->num_client;
 	bus_priv->num_out                      = hw_info->num_out;
+	bus_priv->num_comp_grp                 = hw_info->num_comp_grp;
 	bus_priv->top_bus_wr_irq_shift         = hw_info->top_bus_wr_irq_shift;
 	bus_priv->common_data.comp_done_shift  = hw_info->comp_done_shift;
 
@@ -2376,6 +2473,7 @@ int cam_tfe_bus_init(
 	bus_priv->comp_rup_done_mask      = hw_info->comp_rup_done_mask;
 	bus_priv->common_data.support_consumed_addr =
 		hw_info->support_consumed_addr;
+	bus_priv->common_data.pdaf_rdi2_mux_en = hw_info->pdaf_rdi2_mux_en;
 
 	for (i = 0; i < CAM_TFE_BUS_IRQ_REGISTERS_MAX; i++)
 		bus_priv->bus_irq_error_mask[i] =
@@ -2404,7 +2502,7 @@ int cam_tfe_bus_init(
 		}
 	}
 
-	for (i = 0; i < CAM_TFE_BUS_COMP_GRP_MAX; i++) {
+	for (i = 0; i < bus_priv->num_comp_grp; i++) {
 		rc = cam_tfe_bus_init_comp_grp(i, soc_info,
 			bus_priv, bus_hw_info,
 			&bus_priv->comp_grp[i]);
@@ -2446,7 +2544,7 @@ deinit_tfe_out:
 
 deinit_comp_grp:
 	if (i < 0)
-		i = CAM_TFE_BUS_COMP_GRP_MAX;
+		i = bus_priv->num_comp_grp;
 	for (--i; i >= 0; i--)
 		cam_tfe_bus_deinit_comp_grp(&bus_priv->comp_grp[i]);
 
@@ -2493,7 +2591,7 @@ int cam_tfe_bus_deinit(
 				"Deinit WM failed rc=%d", rc);
 	}
 
-	for (i = 0; i < CAM_TFE_BUS_COMP_GRP_MAX; i++) {
+	for (i = 0; i < bus_priv->num_comp_grp; i++) {
 		rc = cam_tfe_bus_deinit_comp_grp(&bus_priv->comp_grp[i]);
 		if (rc < 0)
 			CAM_ERR(CAM_ISP,

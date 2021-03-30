@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
  */
 
 
@@ -11,38 +11,46 @@
 
 
 static struct cam_tfe_top_reg_offset_common  tfe530_top_commong_reg  = {
-	.hw_version                   = 0x00001000,
-	.hw_capability                = 0x00001004,
-	.lens_feature                 = 0x00001008,
-	.stats_feature                = 0x0000100C,
-	.zoom_feature                 = 0x00001010,
-	.global_reset_cmd             = 0x00001014,
-	.core_cgc_ctrl                = 0x00001018,
-	.ahb_cgc_ctrl                 = 0x0000101C,
-	.core_cfg_0                   = 0x00001024,
-	.core_cfg_1                   = 0x00001028,
-	.reg_update_cmd               = 0x0000102C,
-	.diag_config                  = 0x00001060,
-	.diag_sensor_status_0         = 0x00001064,
-	.diag_sensor_status_1         = 0x00001068,
-	.diag_sensor_frame_cnt_status = 0x0000106C,
-	.violation_status             = 0x00001070,
-	.stats_throttle_cnt_cfg_0     = 0x00001074,
-	.stats_throttle_cnt_cfg_1     = 0x00001078,
-	.debug_0                      = 0x000010A0,
-	.debug_1                      = 0x000010A4,
-	.debug_2                      = 0x000010A8,
-	.debug_3                      = 0x000010AC,
-	.debug_cfg                    = 0x000010DC,
-	.perf_cnt_cfg                 = 0x000010E0,
-	.perf_pixel_count             = 0x000010E4,
-	.perf_line_count              = 0x000010E8,
-	.perf_stall_count             = 0x000010EC,
-	.perf_always_count            = 0x000010F0,
-	.perf_count_status            = 0x000010F4,
-	.diag_min_hbi_error_shift     = 15,
-	.diag_neq_hbi_shift           = 14,
-	.diag_sensor_hbi_mask         = 0x3FFF,
+	.hw_version                             = 0x00001000,
+	.hw_capability                          = 0x00001004,
+	.lens_feature                           = 0x00001008,
+	.stats_feature                          = 0x0000100C,
+	.zoom_feature                           = 0x00001010,
+	.global_reset_cmd                       = 0x00001014,
+	.core_cgc_ctrl                          = 0x00001018,
+	.ahb_cgc_ctrl                           = 0x0000101C,
+	.core_cfg_0                             = 0x00001024,
+	.core_cfg_1                             = 0x00001028,
+	.reg_update_cmd                         = 0x0000102C,
+	.diag_config                            = 0x00001060,
+	.diag_sensor_status_0                   = 0x00001064,
+	.diag_sensor_status_1                   = 0x00001068,
+	.diag_sensor_frame_cnt_status           = 0x0000106C,
+	.violation_status                       = 0x00001070,
+	.stats_throttle_cnt_cfg_0               = 0x00001074,
+	.stats_throttle_cnt_cfg_1               = 0x00001078,
+	.num_debug_reg                          = 4,
+	.debug_reg = {
+		0x000010A0,
+		0x000010A4,
+		0x000010A8,
+		0x000010AC,
+	},
+	.debug_cfg                              = 0x000010DC,
+	.num_perf_cfg                           = 1,
+	.perf_cfg = {
+		{
+			.perf_cnt_cfg           = 0x000010E0,
+			.perf_pixel_count       = 0x000010E4,
+			.perf_line_count        = 0x000010E8,
+			.perf_stall_count       = 0x000010EC,
+			.perf_always_count      = 0x000010F0,
+			.perf_count_status      = 0x000010F4,
+		},
+	},
+	.diag_min_hbi_error_shift               = 15,
+	.diag_neq_hbi_shift                     = 14,
+	.diag_sensor_hbi_mask                   = 0x3FFF,
 };
 
 static struct cam_tfe_camif_reg  tfe530_camif_reg = {
@@ -459,7 +467,7 @@ static struct cam_tfe_bus_hw_info  tfe530_bus_hw_info = {
 		.violation_shift  = 30,
 		.image_size_violation = 31,
 	},
-	.num_client = CAM_TFE_BUS_MAX_CLIENTS,
+	.num_client = 10,
 	.bus_client_reg = {
 		/* BUS Client 0 BAYER */
 		{
@@ -742,7 +750,7 @@ static struct cam_tfe_bus_hw_info  tfe530_bus_hw_info = {
 			.client_name           = "RDI2/PADF",
 		},
 	},
-	.num_out  = CAM_TFE_BUS_TFE_OUT_MAX,
+	.num_out  = 11,
 	.tfe_out_hw_info = {
 		{
 			.tfe_out_id       = CAM_TFE_BUS_TFE_OUT_RDI0,
@@ -833,6 +841,7 @@ static struct cam_tfe_bus_hw_info  tfe530_bus_hw_info = {
 			.mid              = 22,
 		},
 	},
+	.num_comp_grp             = 8,
 	.comp_done_shift          = 8,
 	.top_bus_wr_irq_shift     = 1,
 	.comp_buf_done_mask = 0xFF00,
@@ -842,6 +851,7 @@ static struct cam_tfe_bus_hw_info  tfe530_bus_hw_info = {
 		0x00000000,
 	},
 	.support_consumed_addr = true,
+	.pdaf_rdi2_mux_en = true,
 };
 
 struct cam_tfe_hw_info cam_tfe530 = {
