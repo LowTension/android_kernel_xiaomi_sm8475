@@ -11,6 +11,7 @@
 
 #define CAM_SFE_BUS_WR_MAX_CLIENTS     13
 #define CAM_SFE_BUS_WR_MAX_SUB_GRPS    6
+#define CAM_SFE_BUS_CONS_ERR_MAX       21
 
 enum cam_sfe_bus_wr_src_grp {
 	CAM_SFE_BUS_WR_SRC_GRP_0,
@@ -51,6 +52,16 @@ enum cam_sfe_bus_sfe_out_type {
 	CAM_SFE_BUS_SFE_OUT_BE_2,
 	CAM_SFE_BUS_SFE_OUT_BHIST_2,
 	CAM_SFE_BUS_SFE_OUT_MAX,
+};
+
+/*
+ * struct cam_sfe_constraint_error_info:
+ *
+ * @Brief:        Constraint error info
+ */
+struct cam_sfe_constraint_error_info {
+	uint32_t  bitmask;
+	char     *error_description;
 };
 
 /*
@@ -119,6 +130,7 @@ struct cam_sfe_bus_sfe_out_hw_info {
 	uint32_t                            mid[CAM_SFE_BUS_MAX_MID_PER_PORT];
 	uint32_t                            num_wm;
 	uint32_t                            wm_idx;
+	uint8_t                            *name;
 };
 
 /*
@@ -130,6 +142,7 @@ struct cam_sfe_bus_sfe_out_hw_info {
  * @num_client:       Total number of write clients
  * @bus_client_reg:   Bus client register info
  * @sfe_out_hw_info:  SFE output capability
+ * @constraint_error_list: Static list of all constraint errors
  * @num_comp_grp:     Number of composite groups
  * @comp_done_shift:  Mask shift for comp done mask
  * @line_done_cfg:    Line done cfg for wr/rd sync
@@ -143,6 +156,8 @@ struct cam_sfe_bus_wr_hw_info {
 	uint32_t num_out;
 	struct cam_sfe_bus_sfe_out_hw_info
 		sfe_out_hw_info[CAM_SFE_BUS_SFE_OUT_MAX];
+	struct cam_sfe_constraint_error_info
+		constraint_error_list[CAM_SFE_BUS_CONS_ERR_MAX];
 	uint32_t num_comp_grp;
 	uint32_t comp_done_shift;
 	uint32_t line_done_cfg;
