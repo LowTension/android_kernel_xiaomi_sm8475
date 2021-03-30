@@ -541,14 +541,6 @@ static struct cam_vfe_ver4_path_reg_data vfe680_pdlib_reg_data = {
 	.top_debug_cfg_en                = 3,
 };
 
-static struct cam_vfe_ver4_path_reg_data vfe680_lcr_reg_data = {
-	.sof_irq_mask                    = 0x100,
-	.eof_irq_mask                    = 0x200,
-	.error_irq_mask                  = 0x10000000,
-	.enable_diagnostic_hw            = 0x1,
-	.top_debug_cfg_en                = 3,
-};
-
 struct cam_vfe_ver4_path_hw_info
 	vfe680_rdi_hw_info_arr[CAM_VFE_RDI_VER2_MAX] = {
 	{
@@ -578,21 +570,16 @@ static struct cam_vfe_top_ver4_hw_info vfe680_top_hw_info = {
 	.rdi_hw_info[0] = &vfe680_rdi_hw_info_arr[0],
 	.rdi_hw_info[1] = &vfe680_rdi_hw_info_arr[1],
 	.rdi_hw_info[2] = &vfe680_rdi_hw_info_arr[2],
-	.lcr_hw_info = {
-		.common_reg     = &vfe680_top_common_reg,
-		.reg_data       = &vfe680_lcr_reg_data,
-	},
 	.wr_client_desc         = vfe680_wr_client_desc,
 	.module_desc            = vfe680_pp_mod_desc,
 	.camnoc_debug_data      = &vfe680_camnoc_debug_data,
-	.num_mux = 6,
+	.num_mux = 5,
 	.mux_type = {
 		CAM_VFE_CAMIF_VER_4_0,
 		CAM_VFE_RDI_VER_1_0,
 		CAM_VFE_RDI_VER_1_0,
 		CAM_VFE_RDI_VER_1_0,
 		CAM_VFE_PDLIB_VER_1_0,
-		CAM_VFE_LCR_VER_1_0,
 	},
 };
 
@@ -1493,7 +1480,7 @@ static struct cam_vfe_bus_ver3_hw_info vfe680_bus_hw_info = {
 			.ubwc_regs                = NULL,
 		},
 	},
-	.num_out = 27,
+	.num_out = 25,
 	.vfe_out_hw_info = {
 		{
 			.vfe_out_type  = CAM_VFE_BUS_VER3_VFE_OUT_RDI0,
@@ -1585,27 +1572,6 @@ static struct cam_vfe_bus_ver3_hw_info vfe680_bus_hw_info = {
 			.num_wm        = 1,
 			.wm_idx        = {
 				20,
-			},
-		},
-		{
-			.vfe_out_type  = CAM_VFE_BUS_VER3_VFE_OUT_STATS_HDR_BE,
-			.max_width     = -1,
-			.max_height    = -1,
-			.source_group  = CAM_VFE_BUS_VER3_SRC_GRP_0,
-			.num_wm        = 1,
-			.wm_idx        = {
-				11,
-			},
-		},
-		{
-			.vfe_out_type  =
-				CAM_VFE_BUS_VER3_VFE_OUT_STATS_HDR_BHIST,
-			.max_width     = 1920,
-			.max_height    = 1080,
-			.source_group  = CAM_VFE_BUS_VER3_SRC_GRP_0,
-			.num_wm        = 1,
-			.wm_idx        = {
-				12,
 			},
 		},
 		{
@@ -1791,9 +1757,6 @@ static struct cam_vfe_hw_info cam_vfe680_hw_info = {
 
 	.bus_version                   = CAM_VFE_BUS_VER_3_0,
 	.bus_hw_info                   = &vfe680_bus_hw_info,
-
-	.bus_rd_version                = CAM_VFE_BUS_RD_VER_1_0,
-	.bus_rd_hw_info                = &vfe480_bus_rd_hw_info,
 
 	.top_version                   = CAM_VFE_TOP_VER_4_0,
 	.top_hw_info                   = &vfe680_top_hw_info,
