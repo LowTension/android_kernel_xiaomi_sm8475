@@ -177,7 +177,7 @@ struct cam_req_mgr_traverse {
 	struct cam_req_mgr_apply          *apply_data;
 	struct cam_req_mgr_req_queue      *in_q;
 	bool                               validate_only;
-	int32_t                            open_req_cnt;
+	uint32_t                           open_req_cnt;
 };
 
 /**
@@ -338,6 +338,7 @@ struct cam_req_mgr_connected_device {
  * @link_hdl             : Link identifier
  * @num_devs             : num of connected devices to this link
  * @max_delay            : Max of pipeline delay of all connected devs
+ * @min_delay            : Min of pipeline delay of all connected devs
  * @workq                : Pointer to handle workq related jobs
  * @pd_mask              : each set bit indicates the device with pd equal to
  *                          bit position is available.
@@ -389,6 +390,7 @@ struct cam_req_mgr_core_link {
 	int32_t                              link_hdl;
 	int32_t                              num_devs;
 	enum cam_pipeline_delay              max_delay;
+	enum cam_pipeline_delay              min_delay;
 	struct cam_req_mgr_core_workq       *workq;
 	int32_t                              pd_mask;
 	struct cam_req_mgr_connected_device *l_dev;
@@ -403,7 +405,7 @@ struct cam_req_mgr_core_link {
 			*sync_link[MAXIMUM_LINKS_PER_SESSION - 1];
 	int32_t                              num_sync_links;
 	bool                                 sync_link_sof_skip;
-	int32_t                              open_req_cnt;
+	uint32_t                             open_req_cnt;
 	uint32_t                             last_flush_id;
 	atomic_t                             is_used;
 	bool                                 is_master;

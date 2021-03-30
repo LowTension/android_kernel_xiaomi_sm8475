@@ -29,6 +29,7 @@ void cam_req_mgr_core_link_reset(struct cam_req_mgr_core_link *link)
 	link->link_hdl = 0;
 	link->num_devs = 0;
 	link->max_delay = CAM_PIPELINE_DELAY_0;
+	link->min_delay = CAM_PIPELINE_DELAY_MAX;
 	link->workq = NULL;
 	link->pd_mask = 0;
 	link->l_dev = NULL;
@@ -227,12 +228,12 @@ static void __cam_req_mgr_find_dev_name(
 				continue;
 			if (link->wq_congestion)
 				CAM_INFO_RATE_LIMIT(CAM_CRM,
-					"WQ congestion, Skip Frame: req: %lld not ready on link: 0x%x for pd: %d dev: %s open_req count: %d",
+					"WQ congestion, Skip Frame: req: %lld not ready on link: 0x%x for pd: %d dev: %s open_req count: %u",
 					req_id, link->link_hdl, pd,
 					dev->dev_info.name, link->open_req_cnt);
 			else
 				CAM_INFO(CAM_CRM,
-					"Skip Frame: req: %lld not ready on link: 0x%x for pd: %d dev: %s open_req count: %d",
+					"Skip Frame: req: %lld not ready on link: 0x%x for pd: %d dev: %s open_req count: %u",
 					req_id, link->link_hdl, pd,
 					dev->dev_info.name, link->open_req_cnt);
 		}
@@ -795,6 +796,7 @@ static int __cam_req_mgr_send_req(struct cam_req_mgr_core_link *link,
 	struct cam_req_mgr_connected_device **failed_dev)
 {
 	int                                  rc = 0, pd, i, idx;
+	bool                                 req_applied_to_min_pd = false;
 	struct cam_req_mgr_connected_device *dev = NULL;
 	struct cam_req_mgr_apply_request     apply_req;
 	struct cam_req_mgr_link_evt_data     evt_data;
@@ -996,6 +998,10 @@ static int __cam_req_mgr_send_req(struct cam_req_mgr_core_link *link,
 					break;
 				}
 			}
+
+			if (pd == link->min_delay)
+				req_applied_to_min_pd = true;
+
 			trace_cam_req_mgr_apply_request(link, &apply_req, dev);
 		}
 	}
@@ -1018,6 +1024,12 @@ static int __cam_req_mgr_send_req(struct cam_req_mgr_core_link *link,
 		memcpy(link->req.prev_apply_data, link->req.apply_data,
 			CAM_PIPELINE_DELAY_MAX *
 			sizeof(struct cam_req_mgr_apply));
+		if (req_applied_to_min_pd) {
+			link->open_req_cnt--;
+			CAM_DBG(CAM_REQ,
+				"Open_reqs: %u after successfully applying req:%d",
+				link->open_req_cnt, apply_req.request_id);
+		}
 	}
 
 	return rc;
@@ -1176,7 +1188,7 @@ static int __cam_req_mgr_check_sync_for_mslave(
 	sync_rd_idx = sync_link->req.in_q->rd_idx;
 
 	CAM_DBG(CAM_CRM,
-		"link_hdl %x req %lld frame_skip_flag %d open_req_cnt:%d initial_sync_req [%lld,%lld] is_master:%d",
+		"link_hdl %x req %lld frame_skip_flag %d open_req_cnt:%u initial_sync_req [%lld,%lld] is_master:%d",
 		link->link_hdl, req_id, link->sync_link_sof_skip,
 		link->open_req_cnt, link->initial_sync_req,
 		sync_link->initial_sync_req, link->is_master);
@@ -1942,7 +1954,6 @@ static int __cam_req_mgr_process_req(struct cam_req_mgr_core_link *link,
 				&idx, reset_step + 1,
 				in_q->num_slots);
 			__cam_req_mgr_reset_req_slot(link, idx);
-			link->open_req_cnt--;
 		}
 	}
 end:
@@ -2340,7 +2351,8 @@ static void __cam_req_mgr_destroy_link_info(struct cam_req_mgr_core_link *link)
 
 	link->pd_mask = 0;
 	link->num_devs = 0;
-	link->max_delay = 0;
+	link->max_delay = CAM_PIPELINE_DELAY_0;
+	link->min_delay = CAM_PIPELINE_DELAY_MAX;
 }
 
 /**
@@ -2390,6 +2402,7 @@ static struct cam_req_mgr_core_link *__cam_req_mgr_reserve_link(
 	mutex_lock(&link->lock);
 	link->num_devs = 0;
 	link->max_delay = 0;
+	link->min_delay = CAM_PIPELINE_DELAY_MAX;
 	memset(in_q->slot, 0,
 		sizeof(struct cam_req_mgr_slot) * MAX_REQ_SLOTS);
 	link->req.in_q = in_q;
@@ -2657,6 +2670,9 @@ int cam_req_mgr_process_sched_req(void *priv, void *data)
 	}
 
 	link->open_req_cnt++;
+	CAM_DBG(CAM_REQ, "Open_req_cnt: %u after scheduling req: %d",
+		link->open_req_cnt,
+		sched_req->req_id);
 	__cam_req_mgr_inc_idx(&in_q->wr_idx, 1, in_q->num_slots);
 
 	if (slot->sync_mode == CAM_REQ_MGR_SYNC_MODE_SYNC) {
@@ -3697,8 +3713,10 @@ static int __cam_req_mgr_setup_link_info(struct cam_req_mgr_core_link *link,
 		/* Communicate with dev to establish the link */
 		dev->ops->link_setup(&link_data);
 
-		if (link->max_delay < dev->dev_info.p_delay)
+		if (dev->dev_info.p_delay > link->max_delay)
 			link->max_delay = dev->dev_info.p_delay;
+		if (dev->dev_info.p_delay < link->min_delay)
+			link->min_delay = dev->dev_info.p_delay;
 	}
 	link->num_devs = num_devices;
 
