@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CAM_SFE_BUS_H_
@@ -10,6 +10,7 @@
 
 #define CAM_SFE_BUS_WR_VER_1_0          0x1000
 #define CAM_SFE_BUS_RD_VER_1_0          0x1000
+#define CAM_SFE_BUS_MAX_MID_PER_PORT    4
 
 #define CAM_SFE_ADD_REG_VAL_PAIR(buf_array, index, offset, val)    \
 	do {                                               \

@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
  */
 
 
@@ -116,6 +116,7 @@ struct cam_sfe_bus_sfe_out_hw_info {
 	uint32_t                            max_width;
 	uint32_t                            max_height;
 	uint32_t                            source_group;
+	uint32_t                            mid[CAM_SFE_BUS_MAX_MID_PER_PORT];
 	uint32_t                            num_wm;
 	uint32_t                            wm_idx;
 };
