@@ -36,8 +36,7 @@ enum cam_ife_ctx_master_type {
 /* IFE_HW_MGR ctx config */
 #define CAM_IFE_CTX_CFG_FRAME_HEADER_TS   BIT(0)
 #define CAM_IFE_CTX_CFG_SW_SYNC_ON        BIT(1)
-#define CAM_IFE_CTX_CFG_SFE_FS_MODE       BIT(2)
-#define CAM_IFE_CTX_CFG_DYNAMIC_SWITCH_ON BIT(3)
+#define CAM_IFE_CTX_CFG_DYNAMIC_SWITCH_ON BIT(2)
 
 /**
  * struct cam_ife_hw_mgr_debug - contain the debug information
@@ -102,6 +101,47 @@ struct cam_sfe_scratch_buf_cfg {
 };
 
 /**
+ * struct cam_ife_hw_mgr_ctx_flags - IFE HW mgr ctx flags
+ *
+ * @ctx_in_use:          flag to tell whether context is active
+ * @init_done:           indicate whether init hw is done
+ * @is_fe_enabled:       indicate whether fetch engine\read path is enabled
+ * @is_dual:             indicate whether context is in dual VFE mode
+ * @is_tpg:              indicate whether context is using PHY TPG
+ * @is_offline:          indicate whether context is for offline IFE
+ * @dsp_enabled:         indicate whether dsp is enabled in this context
+ * @internal_cdm:        indicate whether context uses internal CDM
+ * @pf_mid_found:        in page fault, mid found for this ctx.
+ * @need_csid_top_cfg:   Flag to indicate if CSID top cfg is needed.
+ * @is_rdi_only_context: flag to specify the context has only rdi resource
+ * @is_lite_context:     flag to specify the context has only uses lite
+ *                       resources
+ * @is_sfe_shdr:         indicate if stream is for SFE sHDR
+ * @is_sfe_fs:           indicate if stream is for inline SFE FS
+ * @dump_on_flush        Set if reg dump triggered on flush
+ * @dump_on_error        Set if reg dump triggered on error
+ *
+ */
+struct cam_ife_hw_mgr_ctx_flags {
+	bool   ctx_in_use;
+	bool   init_done;
+	bool   is_fe_enabled;
+	bool   is_dual;
+	bool   is_tpg;
+	bool   is_offline;
+	bool   dsp_enabled;
+	bool   internal_cdm;
+	bool   pf_mid_found;
+	bool   need_csid_top_cfg;
+	bool   is_rdi_only_context;
+	bool   is_lite_context;
+	bool   is_sfe_shdr;
+	bool   is_sfe_fs;
+	bool   dump_on_flush;
+	bool   dump_on_error;
+};
+
+/**
  * struct cam_ife_hw_mgr_ctx - IFE HW manager Context object
  *
  * @list:                   used by the ctx list.
@@ -110,7 +150,6 @@ struct cam_sfe_scratch_buf_cfg {
  * @master_hw_idx:          hw index for master core
  * @slave_hw_idx:           hw index for slave core
  * @hw_mgr:                 IFE hw mgr which owns this context
- * @ctx_in_use:             flag to tell whether context is active
  * @res_list_tpg:           TPG resource list
  * @res_list_ife_in:        Starting resource(TPG,PHY0, PHY1...) Can only be
  *                          one.
@@ -140,30 +179,17 @@ struct cam_sfe_scratch_buf_cfg {
  * @cdm_done                flag to indicate cdm has finished writing shadow
  *                          registers
  * @last_cdm_done_req:      Last cdm done request
- * @is_rdi_only_context     flag to specify the context has only rdi resource
- * @is_lite_context         flag to specify the context has only uses lite
- *                          resources
  * @config_done_complete    indicator for configuration complete
  * @reg_dump_buf_desc:      cmd buffer descriptors for reg dump
  * @num_reg_dump_buf:       Count of descriptors in reg_dump_buf_desc
  * @applied_req_id:         Last request id to be applied
- * @dump_on_flush           Set if reg dump triggered on flush
- * @dump_on_error           Set if reg dump triggered on error
- * @init_done               indicate whether init hw is done
- * @is_fe_enabled           Indicate whether fetch engine\read path is enabled
- * @is_dual                 indicate whether context is in dual VFE mode
  * @ctx_type                Type of IFE ctx [CUSTOM/SFE etc.]
- * @custom_config           ife ctx config if custom is enabled [bit field]
+ * @ctx_config              ife ctx config  [bit field]
  * @ts                      captured timestamp when the ctx is acquired
- * @is_tpg                  indicate whether context is using PHY TPG
- * @is_offline              Indicate whether context is for offline IFE
- * @dsp_enabled             Indicate whether dsp is enabled in this context
  * @hw_enabled              Array to indicate active HW
- * @internal_cdm            Indicate whether context uses internal CDM
- * @pf_mid_found            in page fault, mid found for this ctx.
  * @buf_done_controller     Buf done controller.
- * @need_csid_top_cfg       Flag to indicate if CSID top cfg is  needed.
  * @scratch_config          Scratch buffer config if any for this ctx
+ * @flags                   Flags pertainting to this ctx
  *
  */
 struct cam_ife_hw_mgr_ctx {
@@ -174,7 +200,6 @@ struct cam_ife_hw_mgr_ctx {
 	uint32_t                        master_hw_idx;
 	uint32_t                        slave_hw_idx;
 	struct cam_ife_hw_mgr          *hw_mgr;
-	uint32_t                        ctx_in_use;
 
 	struct cam_isp_hw_mgr_res       res_list_ife_in;
 	struct cam_isp_hw_mgr_res       res_list_tpg;
@@ -203,30 +228,18 @@ struct cam_ife_hw_mgr_ctx {
 	atomic_t                        overflow_pending;
 	atomic_t                        cdm_done;
 	uint64_t                        last_cdm_done_req;
-	uint32_t                        is_rdi_only_context;
-	uint32_t                        is_lite_context;
 	struct completion               config_done_complete;
 	uint32_t                        hw_version;
 	struct cam_cmd_buf_desc         reg_dump_buf_desc[
 						CAM_REG_DUMP_MAX_BUF_ENTRIES];
 	uint32_t                        num_reg_dump_buf;
 	uint64_t                        applied_req_id;
-	bool                            dump_on_flush;
-	bool                            dump_on_error;
-	bool                            init_done;
-	bool                            is_fe_enabled;
-	bool                            is_dual;
 	enum cam_ife_ctx_master_type    ctx_type;
 	uint32_t                        ctx_config;
 	struct timespec64               ts;
-	bool                            is_tpg;
-	bool                            is_offline;
-	bool                            dsp_enabled;
-	bool                            internal_cdm;
-	bool                            pf_mid_found;
-	bool                            need_csid_top_cfg;
 	void                           *buf_done_controller;
 	struct cam_sfe_scratch_buf_cfg  scratch_config;
+	struct cam_ife_hw_mgr_ctx_flags flags;
 };
 
 /**

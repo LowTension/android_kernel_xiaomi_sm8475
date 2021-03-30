@@ -1608,6 +1608,7 @@ static int cam_sfe_bus_handle_sfe_out_done_bottom_half(
 
 		evt_info.res_type = sfe_out->res_type;
 		evt_info.hw_idx   = sfe_out->hw_intf->hw_idx;
+		evt_info.hw_type  = CAM_ISP_HW_TYPE_SFE;
 
 		rc = cam_sfe_bus_get_comp_sfe_out_res_id_list(
 			comp_mask, out_list, &num_out);
