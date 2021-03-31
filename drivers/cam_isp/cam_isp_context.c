@@ -2385,6 +2385,7 @@ static int __cam_isp_ctx_handle_error(struct cam_isp_context *ctx_isp,
 	struct cam_hw_fence_map_entry   *fence_map_out = NULL;
 	struct cam_req_mgr_message       req_msg;
 	uint32_t                         evt_param;
+	struct cam_req_mgr_timer_notify  timer;
 
 	struct cam_context *ctx = ctx_isp->base;
 	struct cam_isp_hw_error_event_data  *error_event_data =
@@ -2393,6 +2394,15 @@ static int __cam_isp_ctx_handle_error(struct cam_isp_context *ctx_isp,
 	uint32_t error_type = error_event_data->error_type;
 
 	CAM_DBG(CAM_ISP, "Enter error_type = %d", error_type);
+
+	if (ctx->ctx_crm_intf && ctx->ctx_crm_intf->notify_timer) {
+		timer.link_hdl = ctx->link_hdl;
+		timer.dev_hdl = ctx->dev_hdl;
+		timer.state = false;
+		ctx->ctx_crm_intf->notify_timer(&timer);
+		CAM_DBG(CAM_ISP, "Notify CRM to pause timer for ctx %u",
+				ctx->ctx_id);
+	}
 
 	if ((error_type == CAM_ISP_HW_ERROR_OVERFLOW) ||
 		(error_type == CAM_ISP_HW_ERROR_BUSIF_OVERFLOW) ||
