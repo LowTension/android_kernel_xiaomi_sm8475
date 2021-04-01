@@ -8,6 +8,12 @@
 
 #include "../cam_csiphy_dev.h"
 
+struct cam_csiphy_aon_sel_params_t aon_cam_select_params = {
+	.aon_cam_sel_offset = 0x01E0,
+	.cam_sel_mask = BIT(0),
+	.mclk_sel_mask = BIT(8),
+};
+
 struct csiphy_reg_parms_t csiphy_v2_1_0 = {
 	.mipi_csiphy_interrupt_status0_addr = 0x10B0,
 	.mipi_csiphy_interrupt_clear0_addr = 0x1058,
@@ -19,6 +25,7 @@ struct csiphy_reg_parms_t csiphy_v2_1_0 = {
 	.csiphy_2ph_clock_lane = 0x1,
 	.csiphy_2ph_combo_ck_ln = 0x10,
 	.csiphy_interrupt_status_size = 11,
+	.aon_sel_params = &aon_cam_select_params,
 };
 
 struct csiphy_reg_t csiphy_common_reg_2_1_0[] = {
