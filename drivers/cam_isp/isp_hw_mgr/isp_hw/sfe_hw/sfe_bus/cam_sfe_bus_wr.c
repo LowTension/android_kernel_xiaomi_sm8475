@@ -556,6 +556,17 @@ static int cam_sfe_bus_acquire_wm(
 	} else if (sfe_out_res_id == CAM_SFE_BUS_SFE_OUT_RAW_DUMP) {
 		rsrc_data->stride = rsrc_data->width;
 		rsrc_data->en_cfg = 0x1;
+		switch (rsrc_data->format) {
+		case CAM_FORMAT_PLAIN16_10:
+		case CAM_FORMAT_PLAIN16_12:
+		case CAM_FORMAT_PLAIN16_14:
+		case CAM_FORMAT_PLAIN16_16:
+			/* LSB aligned */
+			rsrc_data->pack_fmt |= 0x20;
+			break;
+		default:
+			break;
+		}
 	} else if ((sfe_out_res_id >= CAM_SFE_BUS_SFE_OUT_BE_0) &&
 		(sfe_out_res_id <= CAM_SFE_BUS_SFE_OUT_BHIST_2)) {
 		rsrc_data->width = 0;
