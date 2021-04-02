@@ -10,8 +10,8 @@
 
 #include "cam_debug_util.h"
 
-static uint debug_mdl;
-module_param(debug_mdl, uint, 0644);
+static unsigned long long debug_mdl;
+module_param(debug_mdl, ullong, 0644);
 
 /* 0x0 - only logs, 0x1 - only trace, 0x2 - logs + trace */
 static uint debug_type;
@@ -123,7 +123,7 @@ error:
 	return -EPERM;
 }
 
-const char *cam_get_module_name(unsigned int module_id)
+const char *cam_get_module_name(unsigned long long module_id)
 {
 	const char *name = NULL;
 
@@ -224,6 +224,9 @@ const char *cam_get_module_name(unsigned int module_id)
 	case CAM_CRE:
 		name = "CAM-CRE";
 		break;
+	case CAM_PRESIL_CORE:
+		name = "CAM-CORE-PRESIL";
+		break;
 	default:
 		name = "CAM";
 		break;
@@ -261,7 +264,7 @@ const char *cam_get_tag_name(unsigned int tag_id)
 }
 
 static inline void __cam_print_to_buffer(char *buf, const size_t buf_size, size_t *len,
-	unsigned int tag, unsigned int module_id, const char *func, const int line,
+	unsigned int tag, unsigned long long module_id, const char *func, const int line,
 	const bool is_final_print, const char *fmt, va_list args)
 {
 	size_t buf_len = *len;
@@ -278,7 +281,7 @@ static inline void __cam_print_to_buffer(char *buf, const size_t buf_size, size_
 }
 
 void cam_print_to_buffer(char *buf, const size_t buf_size, size_t *len, unsigned int tag,
-	unsigned int module_id, const char *fmt, ...)
+	unsigned long long module_id, const char *fmt, ...)
 {
 	va_list args;
 
@@ -287,7 +290,7 @@ void cam_print_to_buffer(char *buf, const size_t buf_size, size_t *len, unsigned
 	va_end(args);
 }
 
-void cam_debug_log(unsigned int module_id, unsigned int priority,
+void cam_debug_log(unsigned long long module_id, unsigned int priority,
 	const char *func, const int line, const char *fmt, ...)
 {
 	if ((debug_mdl & module_id) && (priority >= debug_priority)) {
@@ -308,7 +311,7 @@ void cam_debug_log(unsigned int module_id, unsigned int priority,
 	}
 }
 
-void cam_debug_trace(unsigned int tag, unsigned int module_id,
+void cam_debug_trace(unsigned int tag, unsigned long long module_id,
 	const char *func, const int line, const char *fmt, ...)
 {
 	if ((tag == CAM_TYPE_TRACE) || (debug_type == 1) || (debug_type == 2)) {
