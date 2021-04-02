@@ -19,6 +19,7 @@
 #define CAM_CDM_WAIT_COMP_EVENT_BIT           0x2
 
 struct cam_vfe_top_ver3_common_data {
+	struct cam_vfe_top_ver3_hw_info            *hw_info;
 	struct cam_hw_soc_info                     *soc_info;
 	struct cam_hw_intf                         *hw_intf;
 	struct cam_vfe_top_ver3_reg_offset_common  *common_reg;
@@ -31,6 +32,22 @@ struct cam_vfe_top_ver3_priv {
 						CAM_VFE_TOP_MUX_MAX];
 	struct cam_vfe_top_priv_common      top_common;
 };
+
+static int cam_vfe_top_ver3_get_path_port_map(struct cam_vfe_top_ver3_priv *top_priv,
+	void *cmd_args, uint32_t arg_size)
+{
+	struct cam_isp_hw_path_port_map *arg = cmd_args;
+	struct cam_vfe_top_ver3_hw_info *hw_info = top_priv->common_data.hw_info;
+	int i;
+
+	for (i = 0; i < hw_info->num_path_port_map; i++) {
+		arg->entry[i][0] = hw_info->path_port_map[i][0];
+		arg->entry[i][1] = hw_info->path_port_map[i][1];
+	}
+	arg->num_entries = hw_info->num_path_port_map;
+
+	return 0;
+}
 
 static int cam_vfe_top_ver3_mux_get_base(struct cam_vfe_top_ver3_priv *top_priv,
 	void *cmd_args, uint32_t arg_size)
@@ -792,6 +809,10 @@ int cam_vfe_top_ver3_process_cmd(void *device_priv, uint32_t cmd_type,
 		rc = cam_vfe_top_ver3_blanking_update(cmd_type,
 			cmd_args, arg_size);
 		break;
+	case CAM_ISP_HW_CMD_GET_PATH_PORT_MAP:
+		rc = cam_vfe_top_ver3_get_path_port_map(top_priv, cmd_args,
+			arg_size);
+		break;
 	default:
 		rc = -EINVAL;
 		CAM_ERR(CAM_ISP, "Error, Invalid cmd:%d", cmd_type);
@@ -838,6 +859,7 @@ int cam_vfe_top_ver3_init(
 	}
 
 	top_priv->top_common.num_mux = ver3_hw_info->num_mux;
+	top_priv->common_data.hw_info = top_hw_info;
 
 	for (i = 0, j = 0; i < top_priv->top_common.num_mux &&
 		j < CAM_VFE_RDI_VER2_MAX; i++) {

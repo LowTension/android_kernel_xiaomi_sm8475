@@ -987,6 +987,20 @@ static const char *cam_ife_hw_mgr_get_res_state(
 	}
 }
 
+static inline bool cam_ife_hw_mgr_check_path_port_compat(
+	uint32_t in_type, uint32_t out_type)
+{
+	int i;
+	const struct cam_isp_hw_path_port_map *map = &g_ife_hw_mgr.path_port_map;
+
+	for (i = 0; i < map->num_entries; i++) {
+		if (map->entry[i][1] == out_type)
+			return (map->entry[i][0] == in_type);
+	}
+
+	return (in_type == CAM_ISP_HW_VFE_IN_CAMIF);
+}
+
 static void cam_ife_hw_mgr_dump_all_ctx(void)
 {
 	uint32_t i;
@@ -1684,8 +1698,7 @@ err:
 static int cam_ife_hw_mgr_acquire_res_ife_out_pixel(
 	struct cam_ife_hw_mgr_ctx           *ife_ctx,
 	struct cam_isp_hw_mgr_res           *ife_src_res,
-	struct cam_isp_in_port_generic_info *in_port,
-	bool                                 acquire_lcr)
+	struct cam_isp_in_port_generic_info *in_port)
 {
 	int rc = -1;
 	uint32_t  i, j, k;
@@ -1706,16 +1719,8 @@ static int cam_ife_hw_mgr_acquire_res_ife_out_pixel(
 		if (cam_ife_hw_mgr_is_rdi_res(out_port->res_type))
 			continue;
 
-		if ((acquire_lcr &&
-			out_port->res_type != CAM_ISP_IFE_OUT_RES_LCR) ||
-			(!acquire_lcr &&
-			out_port->res_type == CAM_ISP_IFE_OUT_RES_LCR))
-			continue;
-
-		if ((out_port->res_type == CAM_ISP_IFE_OUT_RES_2PD &&
-			ife_src_res->res_id != CAM_ISP_HW_VFE_IN_PDLIB) ||
-			(ife_src_res->res_id == CAM_ISP_HW_VFE_IN_PDLIB &&
-			out_port->res_type != CAM_ISP_IFE_OUT_RES_2PD))
+		if (!cam_ife_hw_mgr_check_path_port_compat(ife_src_res->res_id,
+			out_port->res_type))
 			continue;
 
 		CAM_DBG(CAM_ISP, "res_type 0x%x", out_port->res_type);
@@ -2033,12 +2038,9 @@ static int cam_ife_hw_mgr_acquire_res_ife_out(
 		case CAM_ISP_HW_VFE_IN_CAMIF:
 		case CAM_ISP_HW_VFE_IN_PDLIB:
 		case CAM_ISP_HW_VFE_IN_RD:
-			rc = cam_ife_hw_mgr_acquire_res_ife_out_pixel(ife_ctx,
-				ife_src_res, in_port, false);
-			break;
 		case CAM_ISP_HW_VFE_IN_LCR:
 			rc = cam_ife_hw_mgr_acquire_res_ife_out_pixel(ife_ctx,
-				ife_src_res, in_port, true);
+				ife_src_res, in_port);
 			break;
 		case CAM_ISP_HW_VFE_IN_RDI0:
 		case CAM_ISP_HW_VFE_IN_RDI1:
@@ -3679,9 +3681,11 @@ static int cam_ife_hw_mgr_preprocess_port(
 		}
 		else if (cam_ife_hw_mgr_is_sfe_rdi_res(out_port->res_type))
 			in_port->rdi_count++;
-		else if (out_port->res_type == CAM_ISP_IFE_OUT_RES_2PD)
+		else if (cam_ife_hw_mgr_check_path_port_compat(CAM_ISP_HW_VFE_IN_PDLIB,
+				out_port->res_type))
 			in_port->ppp_count++;
-		else if (out_port->res_type == CAM_ISP_IFE_OUT_RES_LCR)
+		else if (cam_ife_hw_mgr_check_path_port_compat(CAM_ISP_HW_VFE_IN_LCR,
+				out_port->res_type))
 			in_port->lcr_count++;
 		else {
 			CAM_DBG(CAM_ISP, "out_res_type %d",
@@ -11195,9 +11199,11 @@ int cam_ife_hw_mgr_init(struct cam_hw_mgr_intf *hw_mgr_intf, int *iommu_hdl)
 	struct cam_ife_hw_mgr_ctx *ctx_pool;
 	struct cam_isp_hw_mgr_res *res_list_ife_out;
 	struct cam_isp_hw_bus_cap isp_bus_cap = {0};
+	struct cam_isp_hw_path_port_map path_port_map;
 	struct cam_isp_hw_mgr_res *res_list_sfe_out;
 
 	memset(&g_ife_hw_mgr, 0, sizeof(g_ife_hw_mgr));
+	memset(&path_port_map, 0, sizeof(path_port_map));
 
 	mutex_init(&g_ife_hw_mgr.ctx_mutex);
 	spin_lock_init(&g_ife_hw_mgr.ctx_lock);
@@ -11226,6 +11232,14 @@ int cam_ife_hw_mgr_init(struct cam_hw_mgr_intf *hw_mgr_intf, int *iommu_hdl)
 					sizeof(struct cam_isp_hw_bus_cap));
 				CAM_DBG(CAM_ISP, "max VFE out resources: 0x%x",
 					isp_bus_cap.max_out_res_type);
+
+				ife_device->hw_ops.process_cmd(
+					vfe_hw,
+					CAM_ISP_HW_CMD_GET_PATH_PORT_MAP,
+					&path_port_map,
+					sizeof(struct cam_isp_hw_path_port_map));
+				CAM_DBG(CAM_ISP, "received %d path-port mappings",
+					path_port_map.num_entries);
 			}
 
 			j++;
@@ -11254,6 +11268,12 @@ int cam_ife_hw_mgr_init(struct cam_hw_mgr_intf *hw_mgr_intf, int *iommu_hdl)
 	max_ife_out_res =
 		g_ife_hw_mgr.isp_bus_caps.max_vfe_out_res_type & 0xFF;
 	memset(&isp_bus_cap, 0x0, sizeof(struct cam_isp_hw_bus_cap));
+
+	for (i = 0; i < path_port_map.num_entries; i++) {
+		g_ife_hw_mgr.path_port_map.entry[i][0] = path_port_map.entry[i][0];
+		g_ife_hw_mgr.path_port_map.entry[i][1] = path_port_map.entry[i][1];
+	}
+	g_ife_hw_mgr.path_port_map.num_entries = path_port_map.num_entries;
 
 	/* fill csid hw intf information */
 	for (i = 0, j = 0; i < CAM_IFE_CSID_HW_NUM_MAX; i++) {

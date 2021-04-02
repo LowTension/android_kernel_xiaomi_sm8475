@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
  */
 
 
@@ -102,6 +102,11 @@ static struct cam_vfe_top_ver3_hw_info vfe580_top_hw_info = {
 		CAM_VFE_RDI_VER_1_0,
 		CAM_VFE_PDLIB_VER_1_0,
 		CAM_VFE_LCR_VER_1_0,
+	},
+	.num_path_port_map = 2,
+	.path_port_map = {
+		{CAM_ISP_HW_VFE_IN_LCR, CAM_ISP_IFE_OUT_RES_LCR},
+		{CAM_ISP_HW_VFE_IN_PDLIB, CAM_ISP_IFE_OUT_RES_2PD},
 	},
 };
 

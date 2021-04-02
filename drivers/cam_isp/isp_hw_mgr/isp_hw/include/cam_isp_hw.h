@@ -18,6 +18,8 @@
 #define CAM_ISP_HW_DUMP_TAG_MAX_LEN 32
 /* Max isp hw pid values number */
 #define CAM_ISP_HW_MAX_PID_VAL      4
+/* Maximum number of output ports that map to an architecture specific input path */
+#define CAM_ISP_HW_PATH_PORT_MAP_MAX    3
 
 /*
  * MAX len of ISP Resource Name
@@ -153,6 +155,7 @@ enum cam_isp_hw_cmd_type {
 	CAM_ISP_HW_CMD_BUF_UPDATE_RM,
 	CAM_ISP_HW_NOTIFY_OVERFLOW,
 	CAM_ISP_HW_CMD_IS_PDAF_RDI2_MUX_EN,
+	CAM_ISP_HW_CMD_GET_PATH_PORT_MAP,
 	CAM_ISP_HW_CMD_MAX,
 };
 
@@ -417,6 +420,21 @@ struct cam_isp_hw_intf_data {
 struct cam_isp_hw_bus_cap {
 	bool                    support_consumed_addr;
 	uint32_t                max_out_res_type;
+};
+
+/**
+ * struct cam_isp_hw_path_port_map:
+ *
+ * @Brief:         ISP hw bus capabilities
+ *
+ * @num_entries:  Number of entries
+ * @entry:        Each row is an entry with the following structure:
+ *                col #1: VFE IN path type
+ *                col #2: ISP OUT resource type
+ */
+struct cam_isp_hw_path_port_map {
+	uint32_t                num_entries;
+	uint32_t                entry[CAM_ISP_HW_PATH_PORT_MAP_MAX][2];
 };
 
 #endif /* _CAM_ISP_HW_H_ */

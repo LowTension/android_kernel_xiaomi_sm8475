@@ -277,6 +277,7 @@ struct cam_isp_bus_hw_caps {
  * @csid_rup_en            Reg update at CSID side
  * @csid_global_reset_en   CSID global reset enable
  * @isp_bus_caps           Capability of underlying SFE/IFE bus HW
+ * @path_port_map          Mapping of outport to IFE mux
  */
 struct cam_ife_hw_mgr {
 	struct cam_isp_hw_mgr          mgr_common;
@@ -302,6 +303,7 @@ struct cam_ife_hw_mgr {
 	bool                           csid_rup_en;
 	bool                           csid_global_reset_en;
 	struct cam_isp_bus_hw_caps     isp_bus_caps;
+	struct cam_isp_hw_path_port_map   path_port_map;
 };
 
 /**
