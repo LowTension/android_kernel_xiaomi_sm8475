@@ -40,6 +40,7 @@
 #define CAM_OPE        (1 << 28)
 #define CAM_IO_ACCESS  (1 << 29)
 #define CAM_SFE        (1 << 30)
+#define CAM_CRE        (1 << 31)
 
 /* Log level types */
 #define CAM_TYPE_TRACE      (1 << 0)

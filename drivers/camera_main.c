@@ -39,6 +39,9 @@
 #include "jpeg_enc_core.h"
 #include "cam_jpeg_dev.h"
 
+#include "cre_core.h"
+#include "cam_cre_dev.h"
+
 #include "cam_fd_hw_intf.h"
 #include "cam_fd_dev.h"
 
@@ -131,6 +134,11 @@ static const struct camera_submodule_component camera_ope[] = {
 #endif
 };
 
+static const struct camera_submodule_component camera_cre[] = {
+#ifdef CONFIG_SPECTRA_CRE
+	{&cam_cre_init_module, &cam_cre_exit_module},
+#endif
+};
 static const struct camera_submodule_component camera_jpeg[] = {
 #ifdef CONFIG_SPECTRA_JPEG
 	{&cam_jpeg_enc_init_module, &cam_jpeg_enc_exit_module},
@@ -206,6 +214,11 @@ static const struct camera_submodule submodule_table[] = {
 		.name = "Camera LRME",
 		.num_component = ARRAY_SIZE(camera_lrme),
 		.component = camera_lrme,
+	},
+	{
+		.name = "Camera CRE",
+		.num_component = ARRAY_SIZE(camera_cre),
+		.component = camera_cre,
 	},
 	{
 		.name = "Camera CUSTOM",
