@@ -460,6 +460,37 @@ static int cam_ife_csid_ver2_path_top_half(
 	return 0;
 }
 
+static int cam_ife_csid_ver2_stop_csi2_in_err(
+	struct cam_ife_csid_ver2_hw  *csid_hw)
+{
+	const struct cam_ife_csid_ver2_reg_info *csid_reg;
+	struct cam_hw_soc_info                  *soc_info;
+
+	soc_info = &csid_hw->hw_info->soc_info;
+	csid_reg = (struct cam_ife_csid_ver2_reg_info *)
+			csid_hw->core_info->csid_reg;
+	CAM_DBG(CAM_ISP, "CSID:%d Stop csi2 rx",
+		csid_hw->hw_intf->hw_idx);
+
+	/* Reset the Rx CFG registers */
+	cam_io_w_mb(0, soc_info->reg_map[0].mem_base +
+		csid_reg->csi2_reg->cfg0_addr);
+	cam_io_w_mb(0, soc_info->reg_map[0].mem_base +
+		csid_reg->csi2_reg->cfg1_addr);
+
+	if (csid_hw->irq_handle[CAM_IFE_CSID_IRQ_REG_RX])
+		cam_irq_controller_disable_irq(
+			csid_hw->csid_irq_controller,
+			csid_hw->irq_handle[CAM_IFE_CSID_IRQ_REG_RX]);
+
+	if (csid_hw->err_irq_handle[CAM_IFE_CSID_IRQ_REG_RX])
+		cam_irq_controller_disable_irq(
+			csid_hw->csid_irq_controller,
+			csid_hw->err_irq_handle[CAM_IFE_CSID_IRQ_REG_RX]);
+
+	return 0;
+}
+
 static int cam_ife_csid_ver2_disable_csi2(
 	struct cam_ife_csid_ver2_hw  *csid_hw)
 {
@@ -559,7 +590,8 @@ static int cam_ife_csid_ver2_rx_err_top_half(
 
 	if (status & csi2_reg->fatal_err_mask) {
 		csid_hw->flags.fatal_err_detected = true;
-		cam_ife_csid_ver2_disable_csi2(csid_hw);
+		cam_ife_csid_ver2_stop_csi2_in_err(csid_hw);
+		goto end;
 	}
 
 	if (status & csi2_reg->part_fatal_err_mask) {
@@ -582,10 +614,10 @@ static int cam_ife_csid_ver2_rx_err_top_half(
 		if (csid_hw->counters.error_irq_count >
 			CAM_IFE_CSID_MAX_ERR_COUNT) {
 			csid_hw->flags.fatal_err_detected = true;
-			cam_ife_csid_ver2_disable_csi2(csid_hw);
+			cam_ife_csid_ver2_stop_csi2_in_err(csid_hw);
 		}
 	}
-
+end:
 	th_payload->evt_payload_priv = evt_payload;
 
 	return 0;
@@ -757,9 +789,6 @@ static int cam_ife_csid_ver2_rx_err_bottom_half(
 	irq_status = payload->irq_reg_val[CAM_IFE_CSID_IRQ_REG_RX] &
 			csi2_reg->fatal_err_mask;
 
-	CAM_INFO(CAM_ISP, "IRQ_Status: 0x%x",
-		payload->irq_reg_val[CAM_IFE_CSID_IRQ_REG_RX]);
-
 	if (irq_status) {
 		len += scnprintf(log_buf, CAM_IFE_CSID_LOG_BUF_LEN - len,
 			"Fatal Errors:\n");
@@ -863,8 +892,10 @@ static int cam_ife_csid_ver2_rx_err_bottom_half(
 	}
 
 	if (len)
-		CAM_ERR_RATE_LIMIT(CAM_ISP, "CSID[%u] %s",
-			csid_hw->hw_intf->hw_idx, log_buf);
+		CAM_ERR_RATE_LIMIT(CAM_ISP, "CSID[%u] Rx Status 0x%x %s",
+			csid_hw->hw_intf->hw_idx,
+			payload->irq_reg_val[CAM_IFE_CSID_IRQ_REG_RX],
+			log_buf);
 
 	if (fatal_err_detected)
 		cam_subdev_notify_message(CAM_CSIPHY_DEVICE_TYPE,
@@ -3217,7 +3248,6 @@ static int cam_ife_csid_ver2_enable_hw(
 	csid_reg = (struct cam_ife_csid_ver2_reg_info *)
 			csid_hw->core_info->csid_reg;
 	soc_info = &csid_hw->hw_info->soc_info;
-	cam_ife_csid_ver2_enable_csi2(csid_hw);
 	mem_base = soc_info->reg_map[CAM_IFE_CSID_CLC_MEM_BASE_ID].mem_base;
 
 	/* Clear IRQs */
@@ -3465,6 +3495,7 @@ int cam_ife_csid_ver2_start(void *hw_priv, void *start_args,
 
 	mutex_lock(&csid_hw->hw_info->hw_mutex);
 	rc = cam_ife_csid_ver2_enable_hw(csid_hw);
+	cam_ife_csid_ver2_enable_csi2(csid_hw);
 
 	switch (res->res_id) {
 	case  CAM_IFE_PIX_PATH_RES_IPP:
@@ -3534,6 +3565,7 @@ int cam_ife_csid_ver2_stop(void *hw_priv,
 			res->res_type, res->res_id);
 	}
 	mutex_unlock(&csid_hw->hw_info->hw_mutex);
+	cam_ife_csid_ver2_disable_csi2(csid_hw);
 
 	reset.reset_type = CAM_IFE_CSID_RESET_PATH;
 	cam_ife_csid_ver2_reset(hw_priv, &reset,
