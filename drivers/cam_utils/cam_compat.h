@@ -35,6 +35,12 @@
 
 #endif
 
+#if KERNEL_VERSION(5, 10, 0) <= LINUX_VERSION_CODE
+
+#include <linux/qcom-dma-mapping.h>
+
+#endif
+
 struct cam_fw_alloc_info {
 	struct device *fw_dev;
 	void          *fw_kva;
