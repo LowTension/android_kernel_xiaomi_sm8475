@@ -147,8 +147,8 @@ struct cam_ife_hw_mgr_ctx_flags {
  * @list:                   used by the ctx list.
  * @common:                 common acquired context data
  * @ctx_index:              acquired context id.
- * @master_hw_idx:          hw index for master core
- * @slave_hw_idx:           hw index for slave core
+ * @left_hw_idx:            hw index for master core [left]
+ * @right_hw_idx:           hw index for slave core [right]
  * @hw_mgr:                 IFE hw mgr which owns this context
  * @res_list_tpg:           TPG resource list
  * @res_list_ife_in:        Starting resource(TPG,PHY0, PHY1...) Can only be
@@ -197,8 +197,8 @@ struct cam_ife_hw_mgr_ctx {
 	struct cam_isp_hw_mgr_ctx       common;
 
 	uint32_t                        ctx_index;
-	uint32_t                        master_hw_idx;
-	uint32_t                        slave_hw_idx;
+	uint32_t                        left_hw_idx;
+	uint32_t                        right_hw_idx;
 	struct cam_ife_hw_mgr          *hw_mgr;
 
 	struct cam_isp_hw_mgr_res       res_list_ife_in;
