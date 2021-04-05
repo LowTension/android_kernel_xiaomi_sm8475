@@ -709,7 +709,7 @@ int cam_isp_add_io_buffers(
 	uint32_t                            i, j, num_out_buf, num_in_buf;
 	uint32_t                            res_id_out, res_id_in, plane_id;
 	uint32_t                            io_cfg_used_bytes, num_ent;
-	uint32_t                           *image_buf_addr;
+	dma_addr_t                         *image_buf_addr;
 	uint32_t                           *image_buf_offset;
 	uint64_t                            iova_addr;
 	size_t                              size;
@@ -996,10 +996,8 @@ int cam_isp_add_io_buffers(
 				return rc;
 			}
 
-			image_buf_addr =
-				out_map_entries->image_buf_addr;
-			image_buf_offset =
-				wm_update.image_buf_offset;
+			image_buf_addr = out_map_entries->image_buf_addr;
+			image_buf_offset = wm_update.image_buf_offset;
 			if (j == CAM_ISP_HW_SPLIT_LEFT) {
 				for (plane_id = 0;
 					plane_id < CAM_PACKET_MAX_PLANES;

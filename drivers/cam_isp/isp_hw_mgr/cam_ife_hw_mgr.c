@@ -8833,6 +8833,7 @@ static int cam_ife_mgr_util_insert_frame_header(
 		return rc;
 	}
 
+	/* CDM buffer is within 32-bit address space */
 	frame_header_iova = (uint32_t)iova_addr;
 	frame_header_iova += kmd_buf->offset;
 
@@ -10068,20 +10069,14 @@ static void cam_ife_mgr_print_io_bufs(struct cam_ife_hw_mgr  *hw_mgr,
 					io_cfg[i].mem_handle[j]);
 				continue;
 			}
-			if ((iova_addr & 0xFFFFFFFF) != iova_addr) {
-				CAM_ERR(CAM_ISP, "Invalid mapped address");
-				continue;
-			}
 
 			CAM_INFO(CAM_ISP,
-				"pln %d w %d h %d s %u size 0x%x addr 0x%x end_addr 0x%x offset %x memh %x",
+				"pln %d w %d h %d s %u size %zu addr 0x%llx end_addr 0x%llx offset %x memh %x",
 				j, io_cfg[i].planes[j].width,
 				io_cfg[i].planes[j].height,
 				io_cfg[i].planes[j].plane_stride,
-				(unsigned int)src_buf_size,
-				(unsigned int)iova_addr,
-				(unsigned int)iova_addr +
-				(unsigned int)src_buf_size,
+				src_buf_size, iova_addr,
+				iova_addr + src_buf_size,
 				io_cfg[i].offsets[j],
 				io_cfg[i].mem_handle[j]);
 		}
@@ -11513,44 +11508,25 @@ static int cam_ife_hw_mgr_handle_hw_eof(
 }
 
 static int cam_ife_hw_mgr_check_rdi_scratch_buf_done(
-	struct cam_ife_hw_mgr_ctx *hw_mgr_ctx, uint32_t res_id,
-	uint32_t last_consumed_addr)
+	const uint32_t ctx_index, struct cam_sfe_scratch_buf_cfg *scratch_cfg,
+	uint32_t res_id, uint32_t last_consumed_addr)
 {
 	int rc = 0;
-	struct cam_sfe_scratch_buf_info   *buf_info;
+	struct cam_sfe_scratch_buf_info *buf_info;
 
-	if (!hw_mgr_ctx->sfe_info.scratch_config->config_done) {
-		CAM_DBG(CAM_ISP, "No scratch config for ctx: %u",
-			hw_mgr_ctx->ctx_index);
+	if (!scratch_cfg->config_done) {
+		CAM_DBG(CAM_ISP, "No scratch config for ctx: %u", ctx_index);
 		return 0;
 	}
 
 	switch (res_id) {
 	case CAM_ISP_SFE_OUT_RES_RDI_0:
-		buf_info = &hw_mgr_ctx->sfe_info.scratch_config->buf_info[
-				res_id - CAM_ISP_SFE_OUT_RES_RDI_0];
-		if ((uint32_t)buf_info->io_addr ==
-			last_consumed_addr) {
-			CAM_DBG(CAM_ISP, "SFE RDI0 buf done for scratch - skip ctx notify");
-			rc = -EAGAIN;
-		}
-
-		break;
 	case CAM_ISP_SFE_OUT_RES_RDI_1:
-		buf_info = &hw_mgr_ctx->sfe_info.scratch_config->buf_info[
-				res_id - CAM_ISP_SFE_OUT_RES_RDI_0];
-		if ((uint32_t)buf_info->io_addr ==
-			last_consumed_addr) {
-			CAM_DBG(CAM_ISP, "SFE RDI1 buf done for scratch - skip ctx notify");
-			rc = -EAGAIN;
-		}
-		break;
 	case CAM_ISP_SFE_OUT_RES_RDI_2:
-		buf_info = &hw_mgr_ctx->sfe_info.scratch_config->buf_info[
-				res_id - CAM_ISP_SFE_OUT_RES_RDI_0];
-		if ((uint32_t)buf_info->io_addr ==
-			last_consumed_addr) {
-			CAM_DBG(CAM_ISP, "SFE RDI2 buf done for scratch - skip ctx notify");
+		buf_info = &scratch_cfg->buf_info[res_id - CAM_ISP_SFE_OUT_RES_BASE];
+		if (buf_info->io_addr == last_consumed_addr) {
+			CAM_DBG(CAM_ISP, "SFE RDI%u buf done for scratch - skip ctx notify",
+				(res_id - CAM_ISP_SFE_OUT_RES_BASE));
 			rc = -EAGAIN;
 		}
 		break;
@@ -11580,8 +11556,9 @@ static int cam_ife_hw_mgr_handle_hw_buf_done(
 
 	if (cam_ife_hw_mgr_is_sfe_rdi_for_fetch(event_info->res_id)) {
 		rc = cam_ife_hw_mgr_check_rdi_scratch_buf_done(
-			ife_hw_mgr_ctx, event_info->res_id,
-			event_info->reg_val);
+			ife_hw_mgr_ctx->ctx_index,
+			ife_hw_mgr_ctx->sfe_info.scratch_config,
+			event_info->res_id, event_info->reg_val);
 		if (rc)
 			goto end;
 	}

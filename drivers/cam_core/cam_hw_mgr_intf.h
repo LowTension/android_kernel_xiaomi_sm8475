@@ -82,7 +82,7 @@ struct cam_hw_update_entry {
 struct cam_hw_fence_map_entry {
 	uint32_t           resource_handle;
 	int32_t            sync_id;
-	int32_t            image_buf_addr[CAM_PACKET_MAX_PLANES];
+	dma_addr_t         image_buf_addr[CAM_PACKET_MAX_PLANES];
 };
 
 /**

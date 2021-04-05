@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/types.h>
@@ -281,9 +281,8 @@ int cam_packet_util_process_patches(struct cam_packet *packet,
 	struct cam_patch_desc *patch_desc = NULL;
 	dma_addr_t iova_addr;
 	uintptr_t  cpu_addr = 0;
-	uint32_t   temp;
+	dma_addr_t   temp;
 	uint32_t  *dst_cpu_addr;
-	uint32_t  *src_buf_iova_addr;
 	size_t     dst_buf_len;
 	size_t     src_buf_size;
 	int        i  = 0;
@@ -323,7 +322,6 @@ int cam_packet_util_process_patches(struct cam_packet *packet,
 			return -EINVAL;
 		}
 
-		src_buf_iova_addr = (uint32_t *)iova_addr;
 		temp = iova_addr;
 
 		rc = cam_mem_get_cpu_buf(patch_desc[i].dst_buf_hdl,
@@ -353,9 +351,8 @@ int cam_packet_util_process_patches(struct cam_packet *packet,
 		*dst_cpu_addr = temp;
 
 		CAM_DBG(CAM_UTIL,
-			"patch is done for dst %pK with src %pK value %llx",
-			dst_cpu_addr, src_buf_iova_addr,
-			*((uint64_t *)dst_cpu_addr));
+			"patch is done for dst %pk with src 0x%llx value 0x%llx",
+			dst_cpu_addr, iova_addr, *((uint64_t *)dst_cpu_addr));
 	}
 
 	return rc;

@@ -301,7 +301,7 @@ int cam_mem_get_io_buf(int32_t buf_handle, int32_t mmu_handle,
 	}
 
 	CAM_DBG(CAM_MEM,
-		"handle:0x%x fd:%d iova_ptr:%pK len_ptr:%llu",
+		"handle:0x%x fd:%d iova_ptr:0x%llx len_ptr:%llu",
 		mmu_handle, tbl.bufq[idx].fd, iova_ptr, *len_ptr);
 handle_mismatch:
 	mutex_unlock(&tbl.bufq[idx].q_lock);
@@ -830,53 +830,31 @@ static int cam_mem_util_map_hw_va(uint32_t flags,
 		"map_hw_va : fd = %d,  flags = 0x%x, dir=%d, num_hdls=%d",
 		fd, flags, dir, num_hdls);
 
-	if (flags & CAM_MEM_FLAG_PROTECTED_MODE) {
-		for (i = 0; i < num_hdls; i++) {
-			rc = cam_smmu_map_stage2_iova(mmu_hdls[i],
-				fd,
-				dir,
-				hw_vaddr,
-				len);
-
-			if (rc < 0) {
-				CAM_ERR(CAM_MEM,
-					"Failed to securely map to smmu, i=%d, fd=%d, dir=%d, mmu_hdl=%d, rc=%d",
+	for (i = 0; i < num_hdls; i++) {
+		if (flags & CAM_MEM_FLAG_PROTECTED_MODE)
+			rc = cam_smmu_map_stage2_iova(mmu_hdls[i], fd, dir, hw_vaddr, len);
+		else
+			rc = cam_smmu_map_user_iova(mmu_hdls[i], fd, dis_delayed_unmap, dir,
+				hw_vaddr, len, region, is_internal);
+		if (rc) {
+			CAM_ERR(CAM_MEM,
+					"Failed %s map to smmu, i=%d, fd=%d, dir=%d, mmu_hdl=%d, rc=%d",
+					(flags & CAM_MEM_FLAG_PROTECTED_MODE) ? "" : "secured",
 					i, fd, dir, mmu_hdls[i], rc);
-				goto multi_map_fail;
-			}
-		}
-	} else {
-		for (i = 0; i < num_hdls; i++) {
-			rc = cam_smmu_map_user_iova(mmu_hdls[i],
-				fd,
-				dis_delayed_unmap,
-				dir,
-				(dma_addr_t *)hw_vaddr,
-				len,
-				region,
-				is_internal);
-
-			if (rc < 0) {
-				CAM_ERR(CAM_MEM,
-					"Failed to map to smmu, i=%d, fd=%d, dir=%d, mmu_hdl=%d, region=%d, rc=%d",
-					i, fd, dir, mmu_hdls[i], region, rc);
-				goto multi_map_fail;
-			}
+			goto multi_map_fail;
 		}
 	}
 
 	return rc;
 multi_map_fail:
-	if (flags & CAM_MEM_FLAG_PROTECTED_MODE)
-		for (--i; i >= 0; i--)
+	for (--i; i>= 0; i--) {
+		if (flags & CAM_MEM_FLAG_PROTECTED_MODE)
 			cam_smmu_unmap_stage2_iova(mmu_hdls[i], fd);
-	else
-		for (--i; i >= 0; i--)
-			cam_smmu_unmap_user_iova(mmu_hdls[i],
-				fd,
-				CAM_SMMU_REGION_IO);
-	return rc;
+		else
+			cam_smmu_unmap_user_iova(mmu_hdls[i], fd, CAM_SMMU_REGION_IO);
+	}
 
+	return rc;
 }
 
 int cam_mem_mgr_alloc_and_map(struct cam_mem_mgr_alloc_cmd *cmd)

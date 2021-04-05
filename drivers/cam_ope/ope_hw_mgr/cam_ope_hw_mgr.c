@@ -4221,14 +4221,14 @@ iodump:
 				rc = -EINVAL;
 				continue;
 			}
+
 			CAM_INFO(CAM_OPE,
-				"pln %u w %u h %u stride %u slice %u size %d addr 0x%x offset 0x%x memh %x",
+				"pln %u w %u h %u stride %u slice %u size %zu addr 0x%llx offset 0x%x memh %x",
 				j, io_cfg[i].planes[j].width,
 				io_cfg[i].planes[j].height,
 				io_cfg[i].planes[j].plane_stride,
 				io_cfg[i].planes[j].slice_height,
-				(int32_t)src_buf_size,
-				(unsigned int)iova_addr,
+				src_buf_size, iova_addr,
 				io_cfg[i].offsets[j],
 				io_cfg[i].mem_handle[j]);
 
@@ -4236,7 +4236,7 @@ iodump:
 				for (stripe_num = 0; stripe_num < io_buf->num_stripes[j];
 						stripe_num++) {
 					CAM_INFO(CAM_OPE,
-						"pln_num %d stripe_num %d width %d height %d stride %d io vaddr 0x%x",
+						"pln_num %d stripe_num %d width %d height %d stride %d iovaddr 0x%llx",
 						j, stripe_num, io_buf->s_io[j][stripe_num].width,
 						io_buf->s_io[j][stripe_num].height,
 						io_buf->s_io[j][stripe_num].stride,
