@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/of.h>
@@ -179,6 +179,7 @@ static uint32_t *cam_ope_bus_wr_update(struct ope_hw *ope_hw_info,
 	uint32_t temp = 0;
 	uint32_t wm_port_id;
 	uint32_t header_size;
+	uint32_t *next_buff_addr = NULL;
 	struct cam_hw_prepare_update_args *prepare_args;
 	struct cam_ope_ctx *ctx_data;
 	struct cam_ope_request *ope_request;
@@ -328,10 +329,12 @@ static uint32_t *cam_ope_bus_wr_update(struct ope_hw *ope_hw_info,
 			io_port_cdm->s_cdm_info[l][idx].addr = kmd_buf;
 			io_port_cdm->num_s_cmd_bufs[l]++;
 
-			kmd_buf = cdm_ops->cdm_write_regrandom(
+			next_buff_addr = cdm_ops->cdm_write_regrandom(
 				kmd_buf, count/2, temp_reg);
-			prepare->kmd_buf_offset += ((count + header_size) *
-				sizeof(temp));
+			if (next_buff_addr > kmd_buf)
+				prepare->kmd_buf_offset +=
+					((count + header_size) * sizeof(temp));
+			kmd_buf = next_buff_addr;
 
 			CAM_DBG(CAM_OPE, "b:%d io:%d p:%d s:%d",
 				batch_idx, io_idx, k, l);
@@ -366,6 +369,7 @@ static uint32_t *cam_ope_bus_wm_disable(struct ope_hw *ope_hw_info,
 	uint32_t temp = 0;
 	uint32_t wm_port_id;
 	uint32_t header_size;
+	uint32_t *next_buff_addr = NULL;
 	struct cam_ope_ctx *ctx_data;
 	struct ope_bus_wr_ctx *bus_wr_ctx;
 	struct cam_ope_bus_wr_reg *wr_reg;
@@ -426,10 +430,13 @@ static uint32_t *cam_ope_bus_wm_disable(struct ope_hw *ope_hw_info,
 			io_port_cdm->s_cdm_info[l][idx].addr = kmd_buf;
 			io_port_cdm->num_s_cmd_bufs[l]++;
 
-			kmd_buf = cdm_ops->cdm_write_regrandom(
+			next_buff_addr = cdm_ops->cdm_write_regrandom(
 				kmd_buf, count/2, temp_reg);
-			prepare->kmd_buf_offset += ((count + header_size) *
-				sizeof(temp));
+
+			if (next_buff_addr > kmd_buf)
+				prepare->kmd_buf_offset +=
+					((count + header_size) * sizeof(temp));
+			kmd_buf = next_buff_addr;
 
 			CAM_DBG(CAM_OPE, "WR cmd bufs = %d",
 				io_port_cdm->num_s_cmd_bufs[l]);

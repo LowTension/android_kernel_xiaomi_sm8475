@@ -1987,8 +1987,10 @@ static int cam_sfe_bus_wr_update_wm(void *priv, void *cmd_args,
 	struct cam_isp_hw_get_cmd_update       *update_buf;
 	struct cam_buf_io_cfg                  *io_cfg = NULL;
 	struct cam_sfe_bus_wr_out_data         *sfe_out_data = NULL;
+	struct cam_cdm_utils_ops               *cdm_util_ops;
 	struct cam_sfe_bus_wr_wm_resource_data *wm_data = NULL;
 	uint32_t *reg_val_pair;
+	uint32_t num_regval_pairs = 0;
 	uint32_t  i, j, k, size = 0;
 	uint32_t  frame_inc = 0, val;
 	uint32_t loop_size = 0, stride = 0, slice_h = 0;
@@ -1999,7 +2001,9 @@ static int cam_sfe_bus_wr_update_wm(void *priv, void *cmd_args,
 	sfe_out_data = (struct cam_sfe_bus_wr_out_data *)
 		update_buf->res->res_priv;
 
-	if (!sfe_out_data || !sfe_out_data->cdm_util_ops) {
+	cdm_util_ops = sfe_out_data->cdm_util_ops;
+
+	if (!sfe_out_data || !cdm_util_ops) {
 		CAM_ERR(CAM_SFE, "Failed! Invalid data");
 		return -EINVAL;
 	}
@@ -2110,21 +2114,32 @@ static int cam_sfe_bus_wr_update_wm(void *priv, void *cmd_args,
 			wm_data->init_cfg_done = true;
 	}
 
-	size = sfe_out_data->cdm_util_ops->cdm_required_size_reg_random(j/2);
+	num_regval_pairs = j / 2;
 
-	/* cdm util returns dwords, need to convert to bytes */
-	if ((size * 4) > update_buf->cmd.size) {
-		CAM_ERR(CAM_SFE,
-			"Failed! Buf size:%d insufficient, expected size:%d",
-			update_buf->cmd.size, size);
-		return -ENOMEM;
+	if (num_regval_pairs) {
+		size = cdm_util_ops->cdm_required_size_reg_random(
+			num_regval_pairs);
+
+		/* cdm util returns dwords, need to convert to bytes */
+		if ((size * 4) > update_buf->cmd.size) {
+			CAM_ERR(CAM_SFE,
+				"Failed! Buf size:%d insufficient, expected size:%d",
+				update_buf->cmd.size, size);
+			return -ENOMEM;
+		}
+
+		cdm_util_ops->cdm_write_regrandom(
+			update_buf->cmd.cmd_buf_addr, num_regval_pairs,
+			reg_val_pair);
+
+		/* cdm util returns dwords, need to convert to bytes */
+		update_buf->cmd.used_bytes = size * 4;
+	} else {
+		CAM_DBG(CAM_SFE,
+			"No reg val pairs. num_wms: %u",
+			sfe_out_data->num_wm);
+		update_buf->cmd.used_bytes = 0;
 	}
-
-	sfe_out_data->cdm_util_ops->cdm_write_regrandom(
-		update_buf->cmd.cmd_buf_addr, j/2, reg_val_pair);
-
-	/* cdm util returns dwords, need to convert to bytes */
-	update_buf->cmd.used_bytes = size * 4;
 
 	return 0;
 }
@@ -2252,7 +2267,9 @@ static int cam_sfe_bus_wr_update_hfr(void *priv, void *cmd_args,
 	struct cam_sfe_bus_wr_out_data         *sfe_out_data = NULL;
 	struct cam_sfe_bus_wr_wm_resource_data *wm_data = NULL;
 	struct cam_isp_port_hfr_config         *hfr_cfg = NULL;
+	struct cam_cdm_utils_ops               *cdm_util_ops;
 	uint32_t *reg_val_pair;
+	uint32_t num_regval_pairs = 0;
 	uint32_t  i, j, size = 0;
 
 	bus_priv = (struct cam_sfe_bus_wr_priv  *) priv;
@@ -2261,7 +2278,8 @@ static int cam_sfe_bus_wr_update_hfr(void *priv, void *cmd_args,
 	sfe_out_data = (struct cam_sfe_bus_wr_out_data *)
 		update_hfr->res->res_priv;
 
-	if (!sfe_out_data || !sfe_out_data->cdm_util_ops) {
+	cdm_util_ops = sfe_out_data->cdm_util_ops;
+	if (!sfe_out_data || !cdm_util_ops) {
 		CAM_ERR(CAM_SFE, "Failed! Invalid data");
 		return -EINVAL;
 	}
@@ -2326,21 +2344,32 @@ static int cam_sfe_bus_wr_update_hfr(void *priv, void *cmd_args,
 			wm_data->hfr_cfg_done = true;
 	}
 
-	size = sfe_out_data->cdm_util_ops->cdm_required_size_reg_random(j/2);
+	num_regval_pairs = j / 2;
 
-	/* cdm util returns dwords, need to convert to bytes */
-	if ((size * 4) > update_hfr->cmd.size) {
-		CAM_ERR(CAM_SFE,
-			"Failed! Buf size:%d insufficient, expected size:%d",
-			update_hfr->cmd.size, size);
-		return -ENOMEM;
+	if (num_regval_pairs) {
+		size = cdm_util_ops->cdm_required_size_reg_random(
+			num_regval_pairs);
+
+		/* cdm util returns dwords, need to convert to bytes */
+		if ((size * 4) > update_hfr->cmd.size) {
+			CAM_ERR(CAM_SFE,
+				"Failed! Buf size:%d insufficient, expected size:%d",
+				update_hfr->cmd.size, size);
+			return -ENOMEM;
+		}
+
+		cdm_util_ops->cdm_write_regrandom(
+			update_hfr->cmd.cmd_buf_addr, num_regval_pairs,
+			reg_val_pair);
+
+		/* cdm util returns dwords, need to convert to bytes */
+		update_hfr->cmd.used_bytes = size * 4;
+	} else {
+		CAM_DBG(CAM_SFE,
+			"No reg val pairs. num_wms: %u",
+			sfe_out_data->num_wm);
+		update_hfr->cmd.used_bytes = 0;
 	}
-
-	sfe_out_data->cdm_util_ops->cdm_write_regrandom(
-		update_hfr->cmd.cmd_buf_addr, j/2, reg_val_pair);
-
-	/* cdm util returns dwords, need to convert to bytes */
-	update_hfr->cmd.used_bytes = size * 4;
 
 	return 0;
 }

@@ -296,6 +296,7 @@ static int cam_lrme_hw_util_process_config_hw(struct cam_hw_info *lrme_hw,
 	struct cam_lrme_hw_info *hw_info =
 		((struct cam_lrme_core *)lrme_hw->core_info)->hw_info;
 	uint32_t num_cmd = 0;
+	uint32_t num_regval_pairs = 0;
 	uint32_t size;
 	uint32_t mem_base, available_size = config_args->size;
 	uint32_t output_res_mask = 0, input_res_mask = 0;
@@ -409,22 +410,28 @@ static int cam_lrme_hw_util_process_config_hw(struct cam_hw_info *lrme_hw,
 	cmd_buf_addr += size;
 	available_size -= (size * 4);
 
-	size = hw_cdm_info->cdm_ops->cdm_required_size_reg_random(
-		num_cmd / 2);
+	num_regval_pairs = num_cmd / 2;
 
-	if ((size * 4) > available_size) {
-		CAM_ERR(CAM_LRME, "buf size:%d is not sufficient, expected: %d",
-			available_size, size);
-		return -ENOMEM;
+	if (num_regval_pairs) {
+		size = hw_cdm_info->cdm_ops->cdm_required_size_reg_random(
+			num_regval_pairs);
+
+		if ((size * 4) > available_size) {
+			CAM_ERR(CAM_LRME, "buf size:%d is not sufficient, expected: %d",
+				available_size, size);
+			return -ENOMEM;
+		}
+
+		hw_cdm_info->cdm_ops->cdm_write_regrandom(cmd_buf_addr,
+			num_regval_pairs, reg_val_pair);
+		cmd_buf_addr += size;
+		available_size -= (size * 4);
+
+	} else {
+		CAM_DBG(CAM_LRME, "No reg val pairs");
 	}
 
-	hw_cdm_info->cdm_ops->cdm_write_regrandom(cmd_buf_addr, num_cmd / 2,
-		reg_val_pair);
-	cmd_buf_addr += size;
-	available_size -= (size * 4);
-
-	config_args->config_buf_size =
-		config_args->size - available_size;
+	config_args->config_buf_size = config_args->size - available_size;
 
 	return 0;
 }

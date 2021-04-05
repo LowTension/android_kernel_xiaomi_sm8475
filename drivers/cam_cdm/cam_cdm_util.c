@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/types.h>
@@ -196,8 +196,13 @@ uint32_t cdm_required_size_dmi(void)
 	return cdm_get_cmd_header_size(CAM_CDM_CMD_DMI);
 }
 
-uint32_t cdm_required_size_reg_continuous(uint32_t  numVals)
+uint32_t cdm_required_size_reg_continuous(uint32_t numVals)
 {
+	if (!numVals) {
+		CAM_WARN(CAM_CDM, "numVals cant be 0");
+		return 0;
+	}
+
 	return cdm_get_cmd_header_size(CAM_CDM_CMD_REG_CONT) + numVals;
 }
 
@@ -299,6 +304,11 @@ uint32_t *cdm_write_regrandom(uint32_t *pCmdBuffer, uint32_t numRegVals,
 	uint32_t *dst, *src;
 	struct cdm_regrandom_cmd *pHeader =
 		(struct cdm_regrandom_cmd *)pCmdBuffer;
+
+	if (!numRegVals) {
+		CAM_ERR(CAM_CDM, "Number of reg-val pairs can not be 0");
+		return pCmdBuffer;
+	}
 
 	pHeader->count = numRegVals;
 	pHeader->cmd = CAM_CDM_CMD_REG_RANDOM;
