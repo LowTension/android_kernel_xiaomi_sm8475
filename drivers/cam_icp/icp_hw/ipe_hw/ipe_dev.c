@@ -22,15 +22,26 @@
 static struct cam_ipe_device_hw_info cam_ipe_hw_info[] = {
 	{
 		.hw_idx = 0,
-		.pwr_ctrl = 0x4c,
-		.pwr_status = 0x48,
-		.reserved = 0,
+		.pwr_ctrl = 0x40,
+		.pwr_status = 0x3C,
+		.top_rst_cmd = 0x1008,
+		.top_irq_status = 0x100C,
+		.cdm_rst_cmd = 0x10,
+		.cdm_irq_status = 0x44,
+		.cdm_rst_val = 0xF,
 	},
+};
+
+static struct cam_ipe_device_hw_info cam_ipe680_hw_info[] = {
 	{
-		.hw_idx = 1,
-		.pwr_ctrl = 0x54,
-		.pwr_status = 0x50,
-		.reserved = 0,
+		.hw_idx = 0,
+		.pwr_ctrl = 0x40,
+		.pwr_status = 0x3C,
+		.top_rst_cmd = 0x1008,
+		.top_irq_status = 0x100C,
+		.cdm_rst_cmd = 0x10,
+		.cdm_irq_status = 0x44,
+		.cdm_rst_val = 0x7F,
 	},
 };
 
@@ -132,7 +143,7 @@ static int cam_ipe_component_bind(struct device *dev,
 		rc = -EINVAL;
 		return rc;
 	}
-	hw_info = &cam_ipe_hw_info[ipe_dev_intf->hw_idx];
+	hw_info = (struct cam_ipe_device_hw_info *)match_dev->data;
 	core_info->ipe_hw_info = hw_info;
 
 	rc = cam_ipe_init_soc_resources(&ipe_dev->soc_info, cam_ipe_irq,
@@ -213,6 +224,10 @@ static const struct of_device_id cam_ipe_dt_match[] = {
 	{
 		.compatible = "qcom,cam-ipe",
 		.data = &cam_ipe_hw_info,
+	},
+	{
+		.compatible = "qcom,cam-ipe680",
+		.data = &cam_ipe680_hw_info,
 	},
 	{}
 };

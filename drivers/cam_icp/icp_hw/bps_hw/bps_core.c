@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/of.h>
@@ -275,6 +275,7 @@ static int cam_bps_cmd_reset(struct cam_hw_soc_info *soc_info,
 	int pwr_ctrl, pwr_status, rc = 0;
 	bool reset_bps_cdm_fail = false;
 	bool reset_bps_top_fail = false;
+	struct cam_bps_device_hw_info *hw_info = NULL;
 
 	CAM_DBG(CAM_ICP, "CAM_ICP_BPS_CMD_RESET");
 
@@ -284,12 +285,14 @@ static int cam_bps_cmd_reset(struct cam_hw_soc_info *soc_info,
 		return -EINVAL;
 	}
 
+	hw_info = core_info->bps_hw_info;
+
 	/* Reset BPS CDM core*/
-	cam_io_w_mb((uint32_t)0xF,
-		soc_info->reg_map[0].mem_base + BPS_CDM_RST_CMD);
+	cam_io_w_mb(hw_info->cdm_rst_val,
+		soc_info->reg_map[0].mem_base + hw_info->cdm_rst_cmd);
 	while (retry_cnt < HFI_MAX_POLL_TRY) {
 		readw_poll_timeout((soc_info->reg_map[0].mem_base +
-			BPS_CDM_IRQ_STATUS),
+			hw_info->cdm_irq_status),
 			status, ((status & BPS_RST_DONE_IRQ_STATUS_BIT) == 0x1),
 			100, 10000);
 
@@ -300,7 +303,7 @@ static int cam_bps_cmd_reset(struct cam_hw_soc_info *soc_info,
 		retry_cnt++;
 	}
 	status = cam_io_r_mb(soc_info->reg_map[0].mem_base +
-		BPS_CDM_IRQ_STATUS);
+		hw_info->cdm_irq_status);
 	if ((status & BPS_RST_DONE_IRQ_STATUS_BIT) != 0x1) {
 		CAM_ERR(CAM_ICP, "BPS CDM rst failed status 0x%x", status);
 		reset_bps_cdm_fail = true;
@@ -309,10 +312,10 @@ static int cam_bps_cmd_reset(struct cam_hw_soc_info *soc_info,
 	/* Reset BPS core*/
 	status = 0;
 	cam_io_w_mb((uint32_t)0x3,
-		soc_info->reg_map[0].mem_base + BPS_TOP_RST_CMD);
+		soc_info->reg_map[0].mem_base + hw_info->top_rst_cmd);
 	while (retry_cnt < HFI_MAX_POLL_TRY) {
 		readw_poll_timeout((soc_info->reg_map[0].mem_base +
-			BPS_TOP_IRQ_STATUS),
+			hw_info->top_irq_status),
 			status, ((status & BPS_RST_DONE_IRQ_STATUS_BIT) == 0x1),
 			100, 10000);
 
@@ -323,13 +326,12 @@ static int cam_bps_cmd_reset(struct cam_hw_soc_info *soc_info,
 		retry_cnt++;
 	}
 	status = cam_io_r_mb(soc_info->reg_map[0].mem_base +
-		BPS_TOP_IRQ_STATUS);
+		hw_info->top_irq_status);
 	if ((status & BPS_RST_DONE_IRQ_STATUS_BIT) != 0x1) {
 		CAM_ERR(CAM_ICP, "BPS top rst failed status 0x%x", status);
 		reset_bps_top_fail = true;
 	}
 
-	cam_bps_get_gdsc_control(soc_info);
 	cam_cpas_reg_read(core_info->cpas_handle,
 		CAM_CPAS_REG_CPASTOP, core_info->bps_hw_info->pwr_ctrl,
 		true, &pwr_ctrl);
