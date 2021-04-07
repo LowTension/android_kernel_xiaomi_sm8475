@@ -1246,7 +1246,7 @@ static struct cam_vfe_bus_ver3_hw_info vfe680_bus_hw_info = {
 			.comp_group              = CAM_VFE_BUS_VER3_COMP_GRP_10,
 			.ubwc_regs                = NULL,
 		},
-		/* BUS Client 20 CAMIF PD - PDAF */
+		/* BUS Client 20 SPARSE PD */
 		{
 			.cfg                      = 0x00002200,
 			.image_addr               = 0x00002204,
@@ -1604,9 +1604,9 @@ static struct cam_vfe_bus_ver3_hw_info vfe680_bus_hw_info = {
 			},
 		},
 		{
-			.vfe_out_type  = CAM_VFE_BUS_VER3_VFE_OUT_PDAF,
-			.max_width     = -1,
-			.max_height    = -1,
+			.vfe_out_type  = CAM_VFE_BUS_VER3_VFE_OUT_SPARSE_PD,
+			.max_width     = 1920,
+			.max_height    = 1080,
 			.source_group  = CAM_VFE_BUS_VER3_SRC_GRP_0,
 			.mid[0]        = 4,
 			.num_wm        = 1,
