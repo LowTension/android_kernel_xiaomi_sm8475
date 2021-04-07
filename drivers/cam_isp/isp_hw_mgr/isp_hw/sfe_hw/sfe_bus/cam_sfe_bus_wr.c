@@ -522,9 +522,6 @@ static int cam_sfe_bus_acquire_wm(
 		return -EALREADY;
 	}
 
-	wm_res->res_state = CAM_ISP_RESOURCE_STATE_RESERVED;
-	wm_res->tasklet_info = tasklet;
-
 	rsrc_data = wm_res->res_priv;
 	wm_idx = rsrc_data->index;
 	rsrc_data->format = out_port_info->format;
@@ -610,6 +607,9 @@ static int cam_sfe_bus_acquire_wm(
 		strlcpy(wm_mode, "index-based", sizeof(wm_mode));
 		break;
 	}
+
+	wm_res->res_state = CAM_ISP_RESOURCE_STATE_RESERVED;
+	wm_res->tasklet_info = tasklet;
 
 	CAM_DBG(CAM_SFE,
 		"SFE:%d WM:%d processed width:%d height:%d format:0x%X pack_fmt 0x%x %s",
@@ -1179,7 +1179,7 @@ static int cam_sfe_bus_acquire_sfe_out(void *priv, void *acquire_args,
 			"Failed to acquire comp_grp SFE:%d out_type:%d rc:%d",
 			rsrc_data->common_data->core_index,
 			sfe_out_res_id, rc);
-		return rc;
+		goto release_wm;
 	}
 
 	rsrc_data->is_dual = out_acquire_args->is_dual;
@@ -1198,8 +1198,6 @@ release_wm:
 	for (i--; i >= 0; i--)
 		cam_sfe_bus_release_wm(bus_priv,
 			&rsrc_data->wm_res[i]);
-
-	cam_sfe_bus_release_comp_grp(bus_priv, rsrc_data->comp_grp);
 
 	return rc;
 }

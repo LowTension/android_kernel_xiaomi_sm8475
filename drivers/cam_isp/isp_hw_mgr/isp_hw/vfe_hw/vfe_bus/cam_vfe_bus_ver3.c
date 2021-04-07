@@ -944,8 +944,6 @@ static int cam_vfe_bus_ver3_acquire_wm(
 			wm_idx, wm_res->res_state);
 		return -EALREADY;
 	}
-	wm_res->res_state = CAM_ISP_RESOURCE_STATE_RESERVED;
-	wm_res->tasklet_info = tasklet;
 
 	rsrc_data = wm_res->res_priv;
 	wm_idx = rsrc_data->index;
@@ -1246,6 +1244,9 @@ static int cam_vfe_bus_ver3_acquire_wm(
 		strlcpy(wm_mode, "index-based", sizeof(wm_mode));
 		break;
 	}
+
+	wm_res->res_state = CAM_ISP_RESOURCE_STATE_RESERVED;
+	wm_res->tasklet_info = tasklet;
 
 	CAM_DBG(CAM_ISP,
 		"VFE:%d WM:%d %s processed width:%d height:%d stride:%d format:0x%X en_ubwc:%d %s",
@@ -1975,7 +1976,7 @@ static int cam_vfe_bus_ver3_acquire_vfe_out(void *bus_priv, void *acquire_args,
 			"Failed to acquire comp_grp VFE:%d out_typp:%d rc:%d",
 			rsrc_data->common_data->core_index,
 			vfe_out_res_id, rc);
-		return rc;
+		goto release_wm;
 	}
 
 	rsrc_data->is_dual = out_acquire_args->is_dual;
@@ -1991,8 +1992,6 @@ release_wm:
 	for (i--; i >= 0; i--)
 		cam_vfe_bus_ver3_release_wm(ver3_bus_priv,
 			&rsrc_data->wm_res[i]);
-
-	cam_vfe_bus_ver3_release_comp_grp(ver3_bus_priv, rsrc_data->comp_grp);
 
 	return rc;
 }
