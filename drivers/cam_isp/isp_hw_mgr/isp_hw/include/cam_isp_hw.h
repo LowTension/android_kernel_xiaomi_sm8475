@@ -20,6 +20,11 @@
 #define CAM_ISP_HW_MAX_PID_VAL      4
 
 /*
+ * MAX len of ISP Resource Name
+ */
+#define CAM_ISP_RES_NAME_LEN      16
+
+/*
  * struct cam_isp_timestamp:
  *
  * @mono_time:          Monotonic boot time
@@ -177,6 +182,7 @@ enum cam_isp_hw_cmd_type {
  *                                specific to the resource
  * @top_half_handler:             Top Half handler function
  * @bottom_half_handler:          Bottom Half handler function
+ * @res_name:                     Name of resource
  */
 struct cam_isp_resource_node {
 	enum cam_isp_resource_type     res_type;
@@ -200,6 +206,7 @@ struct cam_isp_resource_node {
 		uint32_t cmd_type, void *cmd_args, uint32_t arg_size);
 	CAM_IRQ_HANDLER_TOP_HALF       top_half_handler;
 	CAM_IRQ_HANDLER_BOTTOM_HALF    bottom_half_handler;
+	uint8_t                        res_name[CAM_ISP_RES_NAME_LEN];
 };
 
 /*

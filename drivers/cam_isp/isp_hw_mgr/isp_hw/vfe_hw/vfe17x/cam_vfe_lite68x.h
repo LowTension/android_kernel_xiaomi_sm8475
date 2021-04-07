@@ -446,6 +446,9 @@ static struct cam_vfe_bus_ver3_hw_info vfe680x_bus_hw_info = {
 			.wm_idx        = {
 				0,
 			},
+			.name          = {
+				"LITE_0",
+			},
 		},
 		{
 			.vfe_out_type  = CAM_VFE_BUS_VER3_VFE_OUT_RDI1,
@@ -455,6 +458,9 @@ static struct cam_vfe_bus_ver3_hw_info vfe680x_bus_hw_info = {
 			.num_wm        = 1,
 			.wm_idx        = {
 				1,
+			},
+			.name          = {
+				"LITE_1",
 			},
 		},
 		{
@@ -466,6 +472,9 @@ static struct cam_vfe_bus_ver3_hw_info vfe680x_bus_hw_info = {
 			.wm_idx        = {
 				2,
 			},
+			.name          = {
+				"LITE_2",
+			},
 		},
 		{
 			.vfe_out_type  = CAM_VFE_BUS_VER3_VFE_OUT_RDI3,
@@ -475,6 +484,9 @@ static struct cam_vfe_bus_ver3_hw_info vfe680x_bus_hw_info = {
 			.num_wm        = 1,
 			.wm_idx        = {
 				3,
+			},
+			.name          = {
+				"LITE_3",
 			},
 		},
 		{
@@ -487,6 +499,9 @@ static struct cam_vfe_bus_ver3_hw_info vfe680x_bus_hw_info = {
 			.wm_idx        = {
 				4,
 			},
+			.name          = {
+				"PREPROCESS_RAW",
+			},
 		},
 		{
 			.vfe_out_type  = CAM_VFE_BUS_VER3_VFE_OUT_STATS_BG,
@@ -496,6 +511,9 @@ static struct cam_vfe_bus_ver3_hw_info vfe680x_bus_hw_info = {
 			.num_wm        = 1,
 			.wm_idx        = {
 				5,
+			},
+			.name          = {
+				"STATS_BG",
 			},
 		},
 	},

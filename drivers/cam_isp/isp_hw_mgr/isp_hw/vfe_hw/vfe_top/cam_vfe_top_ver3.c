@@ -565,6 +565,10 @@ int cam_vfe_top_ver3_reserve(void *device_priv,
 				&top_priv->top_common.mux_rsrc[i];
 
 			rc = 0;
+			CAM_DBG(CAM_ISP, "VFE[%u] Res [id:%d name:%s] reserved",
+				top_priv->common_data.hw_intf->hw_idx,
+				acquire_args->res_id,
+				top_priv->top_common.mux_rsrc[i].res_name);
 			break;
 		}
 	}
@@ -587,7 +591,8 @@ int cam_vfe_top_ver3_release(void *device_priv,
 	top_priv = (struct cam_vfe_top_ver3_priv   *)device_priv;
 	mux_res = (struct cam_isp_resource_node *)release_args;
 
-	CAM_DBG(CAM_ISP, "Resource in state %d", mux_res->res_state);
+	CAM_DBG(CAM_ISP, "%s Resource in state %d", mux_res->res_name,
+		mux_res->res_state);
 	if (mux_res->res_state < CAM_ISP_RESOURCE_STATE_RESERVED) {
 		CAM_ERR(CAM_ISP, "Error, Resource in Invalid res_state :%d",
 			mux_res->res_state);
@@ -851,6 +856,8 @@ int cam_vfe_top_ver3_init(
 				&ver3_hw_info->camif_hw_info,
 				&top_priv->top_common.mux_rsrc[i],
 				vfe_irq_controller);
+			scnprintf(top_priv->top_common.mux_rsrc[i].res_name,
+				CAM_ISP_RES_NAME_LEN, "CAMIF");
 			if (rc)
 				goto deinit_resources;
 		} else if (ver3_hw_info->mux_type[i] ==
@@ -863,6 +870,8 @@ int cam_vfe_top_ver3_init(
 				&ver3_hw_info->pdlib_hw_info,
 				&top_priv->top_common.mux_rsrc[i],
 				vfe_irq_controller);
+			scnprintf(top_priv->top_common.mux_rsrc[i].res_name,
+				CAM_ISP_RES_NAME_LEN, "PDLIB");
 			if (rc)
 				goto deinit_resources;
 		} else if (ver3_hw_info->mux_type[i] ==
@@ -874,6 +883,8 @@ int cam_vfe_top_ver3_init(
 			rc = cam_vfe_fe_ver1_init(hw_intf, soc_info,
 				&ver3_hw_info->fe_hw_info,
 				&top_priv->top_common.mux_rsrc[i]);
+			scnprintf(top_priv->top_common.mux_rsrc[i].res_name,
+				CAM_ISP_RES_NAME_LEN, "IN_RD");
 			if (rc)
 				goto deinit_resources;
 		} else if (ver3_hw_info->mux_type[i] ==
@@ -881,6 +892,9 @@ int cam_vfe_top_ver3_init(
 			/* set the RDI resource id */
 			top_priv->top_common.mux_rsrc[i].res_id =
 				CAM_ISP_HW_VFE_IN_RDI0 + j;
+
+			scnprintf(top_priv->top_common.mux_rsrc[i].res_name,
+				CAM_ISP_RES_NAME_LEN, "RDI_%d", j);
 
 			rc = cam_vfe_camif_lite_ver3_init(hw_intf, soc_info,
 				ver3_hw_info->rdi_hw_info[j++],
@@ -898,6 +912,8 @@ int cam_vfe_top_ver3_init(
 				&ver3_hw_info->lcr_hw_info,
 				&top_priv->top_common.mux_rsrc[i],
 				vfe_irq_controller);
+			scnprintf(top_priv->top_common.mux_rsrc[i].res_name,
+				CAM_ISP_RES_NAME_LEN, "LCR");
 			if (rc)
 				goto deinit_resources;
 		} else {

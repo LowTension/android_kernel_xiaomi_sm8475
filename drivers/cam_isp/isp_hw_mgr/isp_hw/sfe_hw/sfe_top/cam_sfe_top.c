@@ -384,27 +384,6 @@ static const struct cam_sfe_top_debug_info sfe_dbg_list[][8] = {
 	},
 };
 
-static const char *cam_sfe_top_res_id_to_string(
-	uint32_t res_id)
-{
-	switch (res_id) {
-	case CAM_ISP_HW_SFE_IN_PIX:
-		return "PP";
-	case CAM_ISP_HW_SFE_IN_RDI0:
-		return "RDI0";
-	case CAM_ISP_HW_SFE_IN_RDI1:
-		return "RDI1";
-	case CAM_ISP_HW_SFE_IN_RDI2:
-		return "RDI2";
-	case CAM_ISP_HW_SFE_IN_RDI3:
-		return "RDI3";
-	case CAM_ISP_HW_SFE_IN_RDI4:
-		return "RDI4";
-	default:
-		return "";
-	}
-}
-
 static void cam_sfe_top_check_module_status(
 	uint32_t num_reg, uint32_t *reg_val,
 	const struct cam_sfe_top_debug_info status_list[][8])
@@ -1366,7 +1345,7 @@ static int cam_sfe_top_handle_irq_bottom_half(
 		if (irq_status[0] & path_data->path_reg_data->sof_irq_mask) {
 			CAM_DBG(CAM_SFE, "SFE:%d Received %s SOF",
 				evt_info.hw_idx,
-				cam_sfe_top_res_id_to_string(res->res_id));
+				res->res_name);
 			offset0 = path_data->common_reg->diag_sensor_status_0;
 			offset1 = path_data->common_reg->diag_sensor_status_1;
 			/* check for any debug info at SOF */
@@ -1394,7 +1373,7 @@ static int cam_sfe_top_handle_irq_bottom_half(
 			path_data->path_reg_data->eof_irq_mask) {
 			CAM_DBG(CAM_SFE, "SFE:%d Received %s EOF",
 				evt_info.hw_idx,
-				cam_sfe_top_res_id_to_string(res->res_id));
+				res->res_name);
 		}
 		ret = CAM_SFE_IRQ_STATUS_SUCCESS;
 	}
@@ -1708,6 +1687,8 @@ int cam_sfe_top_init(
 				sfe_top_hw_info->modules_hw_info;
 			path_data->hw_intf = hw_intf;
 			path_data->soc_info = soc_info;
+			scnprintf(top_priv->in_rsrc[i].res_name,
+				CAM_ISP_RES_NAME_LEN, "PIX");
 		} else if (sfe_top_hw_info->input_type[i] ==
 			CAM_SFE_RDI_VER_1_0) {
 			top_priv->in_rsrc[i].res_id =
@@ -1722,6 +1703,9 @@ int cam_sfe_top_init(
 					(CAM_ISP_HW_SFE_IN_RDI0 + j));
 				goto deinit_resources;
 			}
+
+			scnprintf(top_priv->in_rsrc[i].res_name,
+				CAM_ISP_RES_NAME_LEN, "RDI%d", j);
 
 			top_priv->in_rsrc[i].res_priv = path_data;
 

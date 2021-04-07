@@ -1169,7 +1169,10 @@ static struct cam_vfe_bus_ver3_hw_info vfe480_bus_hw_info = {
 			.num_wm        = 1,
 			.wm_idx        = {
 				23,
-			}
+			},
+			.name          = {
+				"RDI_0",
+			},
 		},
 		{
 			.vfe_out_type  = CAM_VFE_BUS_VER3_VFE_OUT_RDI1,
@@ -1180,7 +1183,10 @@ static struct cam_vfe_bus_ver3_hw_info vfe480_bus_hw_info = {
 			.num_wm        = 1,
 			.wm_idx        = {
 				24,
-			}
+			},
+			.name          = {
+				"RDI_1",
+			},
 		},
 		{
 			.vfe_out_type  = CAM_VFE_BUS_VER3_VFE_OUT_RDI2,
@@ -1191,7 +1197,10 @@ static struct cam_vfe_bus_ver3_hw_info vfe480_bus_hw_info = {
 			.num_wm        = 1,
 			.wm_idx        = {
 				25,
-			}
+			},
+			.name          = {
+				"RDI_2",
+			},
 		},
 		{
 			.vfe_out_type  = CAM_VFE_BUS_VER3_VFE_OUT_FULL,
@@ -1206,7 +1215,11 @@ static struct cam_vfe_bus_ver3_hw_info vfe480_bus_hw_info = {
 			.wm_idx        = {
 				0,
 				1,
-			}
+			},
+			.name          = {
+				"FULL_Y",
+				"FULL_C",
+			},
 		},
 		{
 			.vfe_out_type  = CAM_VFE_BUS_VER3_VFE_OUT_DS4,
@@ -1217,7 +1230,10 @@ static struct cam_vfe_bus_ver3_hw_info vfe480_bus_hw_info = {
 			.num_wm        = 1,
 			.wm_idx        = {
 				2,
-			}
+			},
+			.name          = {
+				"DS_4",
+			},
 		},
 		{
 			.vfe_out_type  = CAM_VFE_BUS_VER3_VFE_OUT_DS16,
@@ -1228,7 +1244,10 @@ static struct cam_vfe_bus_ver3_hw_info vfe480_bus_hw_info = {
 			.num_wm        = 1,
 			.wm_idx        = {
 				3,
-			}
+			},
+			.name          = {
+				"DS_16",
+			},
 		},
 		{
 			.vfe_out_type  = CAM_VFE_BUS_VER3_VFE_OUT_RAW_DUMP,
@@ -1240,7 +1259,10 @@ static struct cam_vfe_bus_ver3_hw_info vfe480_bus_hw_info = {
 			.num_wm        = 1,
 			.wm_idx        = {
 				10,
-			}
+			},
+			.name          = {
+				"PIXEL_RAW",
+			},
 		},
 		{
 			.vfe_out_type  = CAM_VFE_BUS_VER3_VFE_OUT_FD,
@@ -1254,7 +1276,11 @@ static struct cam_vfe_bus_ver3_hw_info vfe480_bus_hw_info = {
 			.wm_idx        = {
 				8,
 				9,
-			}
+			},
+			.name          = {
+				"FD_Y",
+				"FD_C",
+			},
 		},
 		{
 			.vfe_out_type  = CAM_VFE_BUS_VER3_VFE_OUT_PDAF,
@@ -1266,7 +1292,10 @@ static struct cam_vfe_bus_ver3_hw_info vfe480_bus_hw_info = {
 			.num_wm        = 1,
 			.wm_idx        = {
 				11,
-			}
+			},
+			.name          = {
+				"PDAF",
+			},
 		},
 		{
 			.vfe_out_type  = CAM_VFE_BUS_VER3_VFE_OUT_STATS_HDR_BE,
@@ -1277,7 +1306,10 @@ static struct cam_vfe_bus_ver3_hw_info vfe480_bus_hw_info = {
 			.num_wm        = 1,
 			.wm_idx        = {
 				12,
-			}
+			},
+			.name          = {
+				"STATS_HDR_BE",
+			},
 		},
 		{
 			.vfe_out_type  =
@@ -1289,7 +1321,11 @@ static struct cam_vfe_bus_ver3_hw_info vfe480_bus_hw_info = {
 			.num_wm        = 1,
 			.wm_idx        = {
 				13,
-			}
+			},
+			.name          = {
+				"STATS_HDR_BHIST",
+			},
+
 		},
 		{
 			.vfe_out_type  =
@@ -1301,7 +1337,10 @@ static struct cam_vfe_bus_ver3_hw_info vfe480_bus_hw_info = {
 			.num_wm        = 1,
 			.wm_idx        = {
 				14,
-			}
+			},
+			.name          = {
+				"STATS_TL_BG",
+			},
 		},
 		{
 			.vfe_out_type  = CAM_VFE_BUS_VER3_VFE_OUT_STATS_BF,
@@ -1312,7 +1351,10 @@ static struct cam_vfe_bus_ver3_hw_info vfe480_bus_hw_info = {
 			.num_wm        = 1,
 			.wm_idx        = {
 				20,
-			}
+			},
+			.name          = {
+				"STATS_BF",
+			},
 		},
 		{
 			.vfe_out_type  = CAM_VFE_BUS_VER3_VFE_OUT_STATS_AWB_BG,
@@ -1323,7 +1365,10 @@ static struct cam_vfe_bus_ver3_hw_info vfe480_bus_hw_info = {
 			.num_wm        = 1,
 			.wm_idx        = {
 				15,
-			}
+			},
+			.name          = {
+				"STATS_AWB_BGB",
+			},
 		},
 		{
 			.vfe_out_type  = CAM_VFE_BUS_VER3_VFE_OUT_STATS_BHIST,
@@ -1334,7 +1379,10 @@ static struct cam_vfe_bus_ver3_hw_info vfe480_bus_hw_info = {
 			.num_wm        = 1,
 			.wm_idx        = {
 				16,
-			}
+			},
+			.name          = {
+				"STATS_BHIST",
+			},
 		},
 		{
 			.vfe_out_type  = CAM_VFE_BUS_VER3_VFE_OUT_STATS_RS,
@@ -1345,7 +1393,10 @@ static struct cam_vfe_bus_ver3_hw_info vfe480_bus_hw_info = {
 			.num_wm        = 1,
 			.wm_idx        = {
 				17,
-			}
+			},
+			.name          = {
+				"STATS_RS",
+			},
 		},
 		{
 			.vfe_out_type  = CAM_VFE_BUS_VER3_VFE_OUT_STATS_CS,
@@ -1356,7 +1407,10 @@ static struct cam_vfe_bus_ver3_hw_info vfe480_bus_hw_info = {
 			.num_wm        = 1,
 			.wm_idx        = {
 				18,
-			}
+			},
+			.name          = {
+				"STATS_CS",
+			},
 		},
 		{
 			.vfe_out_type  = CAM_VFE_BUS_VER3_VFE_OUT_STATS_IHIST,
@@ -1367,7 +1421,10 @@ static struct cam_vfe_bus_ver3_hw_info vfe480_bus_hw_info = {
 			.num_wm        = 1,
 			.wm_idx        = {
 				19,
-			}
+			},
+			.name          = {
+				"IHIST",
+			},
 		},
 		{
 			.vfe_out_type  = CAM_VFE_BUS_VER3_VFE_OUT_FULL_DISP,
@@ -1382,7 +1439,11 @@ static struct cam_vfe_bus_ver3_hw_info vfe480_bus_hw_info = {
 			.wm_idx        = {
 				4,
 				5,
-			}
+			},
+			.name          = {
+				"FULL_DISP_Y",
+				"FULL_DISP_C",
+			},
 		},
 		{
 			.vfe_out_type  = CAM_VFE_BUS_VER3_VFE_OUT_DS4_DISP,
@@ -1393,7 +1454,10 @@ static struct cam_vfe_bus_ver3_hw_info vfe480_bus_hw_info = {
 			.num_wm        = 1,
 			.wm_idx        = {
 				6,
-			}
+			},
+			.name          = {
+				"DISP_DS_4",
+			},
 		},
 		{
 			.vfe_out_type  = CAM_VFE_BUS_VER3_VFE_OUT_DS16_DISP,
@@ -1404,7 +1468,10 @@ static struct cam_vfe_bus_ver3_hw_info vfe480_bus_hw_info = {
 			.num_wm        = 1,
 			.wm_idx        = {
 				7,
-			}
+			},
+			.name          = {
+				"DISP_DS_16",
+			},
 		},
 		{
 			.vfe_out_type  = CAM_VFE_BUS_VER3_VFE_OUT_2PD,
@@ -1416,7 +1483,10 @@ static struct cam_vfe_bus_ver3_hw_info vfe480_bus_hw_info = {
 			.num_wm        = 1,
 			.wm_idx        = {
 				21,
-			}
+			},
+			.name          = {
+				"2PD",
+			},
 		},
 		{
 			.vfe_out_type  = CAM_VFE_BUS_VER3_VFE_OUT_LCR,
@@ -1427,7 +1497,10 @@ static struct cam_vfe_bus_ver3_hw_info vfe480_bus_hw_info = {
 			.num_wm        = 1,
 			.wm_idx        = {
 				22,
-			}
+			},
+			.name          = {
+				"LCR",
+			},
 		},
 	},
 	.num_comp_grp    = 14,

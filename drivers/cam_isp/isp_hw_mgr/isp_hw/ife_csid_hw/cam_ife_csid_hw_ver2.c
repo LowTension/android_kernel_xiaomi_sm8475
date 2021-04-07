@@ -1070,7 +1070,6 @@ static int cam_ife_csid_ver2_ipp_bottom_half(
 	uint32_t                                   expected_frame = 0;
 	uint32_t                                   actual_frame = 0;
 	void    __iomem                           *base;
-	char                                       tag[15];
 	int                                        irq_idx;
 	struct cam_isp_resource_node               *res;
 
@@ -1093,9 +1092,8 @@ static int cam_ife_csid_ver2_ipp_bottom_half(
 			csid_reg->cmn_reg->num_rdis);
 	irq_status_ipp = payload->irq_reg_val[irq_idx];
 
-	snprintf(tag, sizeof(tag), "CSID:%d IPP", csid_hw->hw_intf->hw_idx);
-
-	CAM_DBG(CAM_ISP, "%s status:0x%x", tag, irq_status_ipp);
+	CAM_DBG(CAM_ISP, "CSID[%u] IPP status:0x%x", csid_hw->hw_intf->hw_idx,
+		irq_status_ipp);
 
 	evt_info.hw_idx   = csid_hw->hw_intf->hw_idx;
 	evt_info.res_id   = CAM_IFE_PIX_PATH_RES_IPP;
@@ -1210,6 +1208,9 @@ static int cam_ife_csid_ver2_ppp_bottom_half(
 
 	err_mask = csid_reg->ppp_reg->fatal_err_mask |
 			csid_reg->ppp_reg->non_fatal_err_mask;
+
+	CAM_DBG(CAM_ISP, "CSID[%u] PPP status:0x%x", csid_hw->hw_intf->hw_idx,
+		irq_status_ppp);
 
 	cam_ife_csid_ver2_parse_path_irq_status(
 		csid_hw, CAM_IFE_CSID_IRQ_REG_PPP,
@@ -1990,8 +1991,8 @@ int cam_ife_csid_ver2_reserve(void *hw_priv,
 
 	reserve->need_top_cfg = csid_reg->need_top_cfg;
 
-	CAM_DBG(CAM_ISP, "CSID %d Res_id %d state %d cid %d",
-		csid_hw->hw_intf->hw_idx, reserve->res_id,
+	CAM_DBG(CAM_ISP, "CSID[%u] Resource[id: %d name:%s] state %d cid %d",
+		csid_hw->hw_intf->hw_idx, reserve->res_id, res->res_name,
 		res->res_state, cid);
 
 	return rc;
@@ -2050,8 +2051,9 @@ int cam_ife_csid_ver2_release(void *hw_priv,
 		goto end;
 	}
 
-	CAM_DBG(CAM_ISP, "CSID:%d res type :%d Resource id:%d",
-		csid_hw->hw_intf->hw_idx, res->res_type, res->res_id);
+	CAM_DBG(CAM_ISP, "CSID:%d res type :%d Resource [id:%d name:%s]",
+		csid_hw->hw_intf->hw_idx, res->res_type,
+		res->res_id, res->res_name);
 
 	path_cfg = (struct cam_ife_csid_ver2_path_cfg *)res->res_priv;
 
@@ -2621,7 +2623,8 @@ static int cam_ife_csid_ver2_start_rdi_path(
 	val = cam_io_r_mb(mem_base + csid_reg->cmn_reg->rup_aup_cmd_addr);
 	val |= path_reg->rup_aup_mask;
 	cam_io_w_mb(val, mem_base + csid_reg->cmn_reg->rup_aup_cmd_addr);
-	CAM_DBG(CAM_ISP, "CSID[%d] rup_cmd_addr %x val %x",
+	CAM_DBG(CAM_ISP, "CSID[%d] Res: %s rup_cmd_addr %x val %x",
+		csid_hw->hw_intf->hw_idx, res->res_name,
 		csid_reg->cmn_reg->rup_aup_cmd_addr, val);
 
 	return rc;
@@ -3560,9 +3563,10 @@ int cam_ife_csid_ver2_stop(void *hw_priv,
 		res = csid_stop->node_res[i];
 		rc = cam_ife_csid_ver2_disable_path(csid_hw, res);
 		res->res_state = CAM_ISP_RESOURCE_STATE_INIT_HW;
-		CAM_DBG(CAM_ISP, "CSID:%d res_type %d res_id %d",
+		CAM_DBG(CAM_ISP, "CSID:%d res_type %d Resource[id:%d name:%s]",
 			csid_hw->hw_intf->hw_idx,
-			res->res_type, res->res_id);
+			res->res_type, res->res_id,
+			res->res_name);
 	}
 	mutex_unlock(&csid_hw->hw_info->hw_mutex);
 	cam_ife_csid_ver2_disable_csi2(csid_hw);
@@ -3806,9 +3810,10 @@ static int cam_ife_csid_ver2_reg_update(
 
 	return rc;
 err:
-	CAM_ERR(CAM_ISP, "CSID[%d] wrong res_id %d",
+	CAM_ERR(CAM_ISP, "CSID[%d] wrong Resource[id:%d name:%s]",
 		csid_hw->hw_intf->hw_idx,
-		rup_args->res[i]->res_id);
+		rup_args->res[i]->res_id,
+		rup_args->res[i]->res_name);
 	return rc;
 }
 
@@ -3951,8 +3956,8 @@ static int cam_ife_csid_ver2_get_time_stamp(
 			csid_hw->timestamp.prev_boot_ts + time_delta;
 	}
 
-	CAM_DBG(CAM_ISP, "timestamp:%lld",
-		timestamp_args->boot_timestamp);
+	CAM_DBG(CAM_ISP, "Resource[id:%d name:%s timestamp:%lld]",
+		res->res_id, res->res_name, timestamp_args->boot_timestamp);
 	csid_hw->timestamp.prev_sof_ts = timestamp_args->time_stamp_val;
 	csid_hw->timestamp.prev_boot_ts = timestamp_args->boot_timestamp;
 
@@ -4015,8 +4020,8 @@ static int cam_ife_csid_ver2_print_hbi_vbi(
 		return -EINVAL;
 	}
 
-	CAM_INFO_RATE_LIMIT(CAM_ISP, "CSID: %d res: %d hbi %u vbi %u",
-		res->res_id, hbi, vbi);
+	CAM_INFO_RATE_LIMIT(CAM_ISP, "CSID[%u] Resource[id:%d name:%s hbi %u vbi %u]",
+		res->res_id, res->res_name, hbi, vbi);
 
 	return 0;
 }
@@ -4053,7 +4058,9 @@ static int cam_ife_csid_ver2_set_csid_clock(
 		(struct cam_ife_csid_clock_update_args *)cmd_args;
 
 	csid_hw->clk_rate = clk_update->clk_rate;
-	CAM_INFO(CAM_ISP, "CSID clock rate %llu", csid_hw->clk_rate);
+	CAM_INFO(CAM_ISP, "CSID[%u] clock rate %llu",
+		csid_hw->hw_intf->hw_idx,
+		csid_hw->clk_rate);
 
 	return 0;
 }
@@ -4119,7 +4126,6 @@ static int cam_ife_csid_ver2_process_cmd(void *hw_priv,
 		rc = cam_ife_csid_ver2_set_csid_clock(csid_hw, cmd_args);
 		break;
 	case CAM_ISP_HW_CMD_DUMP_HW:
-		//rc = cam_ife_csid_ver2_dump_hw(csid_hw, cmd_args);
 		break;
 	case CAM_IFE_CSID_TOP_CONFIG:
 		rc = cam_ife_csid_ver2_top_cfg(csid_hw, cmd_args);
@@ -4235,14 +4241,16 @@ static int cam_ife_csid_ver2_hw_init_path_res(
 	int rc = 0;
 	int i;
 	struct cam_ife_csid_ver2_reg_info *csid_reg;
+	struct cam_isp_resource_node *res;
 
 	csid_reg = (struct cam_ife_csid_ver2_reg_info *)
 			csid_hw->core_info->csid_reg;
 
 	/* Initialize the IPP resources */
 	if (csid_reg->cmn_reg->num_pix) {
+		res = &csid_hw->path_res[CAM_IFE_PIX_PATH_RES_IPP];
 		rc = cam_ife_ver2_hw_alloc_res(
-			&csid_hw->path_res[CAM_IFE_PIX_PATH_RES_IPP],
+			res,
 			CAM_ISP_RESOURCE_PIX_PATH,
 			csid_hw->hw_intf,
 			CAM_IFE_PIX_PATH_RES_IPP);
@@ -4251,12 +4259,15 @@ static int cam_ife_csid_ver2_hw_init_path_res(
 				csid_hw->hw_intf->hw_idx);
 			goto free_res;
 		}
+		scnprintf(csid_hw->path_res[CAM_IFE_PIX_PATH_RES_IPP].res_name,
+			CAM_ISP_RES_NAME_LEN, "IPP");
 	}
 
 	/* Initialize PPP resource */
 	if (csid_reg->cmn_reg->num_ppp) {
+		res = &csid_hw->path_res[CAM_IFE_PIX_PATH_RES_PPP];
 		rc = cam_ife_ver2_hw_alloc_res(
-			&csid_hw->path_res[CAM_IFE_PIX_PATH_RES_PPP],
+			res,
 			CAM_ISP_RESOURCE_PIX_PATH,
 			csid_hw->hw_intf,
 			CAM_IFE_PIX_PATH_RES_PPP);
@@ -4265,13 +4276,16 @@ static int cam_ife_csid_ver2_hw_init_path_res(
 				csid_hw->hw_intf->hw_idx);
 			goto free_res;
 		}
+		scnprintf(csid_hw->path_res[CAM_IFE_PIX_PATH_RES_PPP].res_name,
+			CAM_ISP_RES_NAME_LEN, "PPP");
 	}
 
 	/* Initialize the RDI resource */
 	for (i = 0; i < csid_reg->cmn_reg->num_rdis; i++) {
 		/* res type is from RDI 0 to RDI3 */
+		res = &csid_hw->path_res[CAM_IFE_PIX_PATH_RES_RDI_0 + i];
 		rc = cam_ife_ver2_hw_alloc_res(
-			&csid_hw->path_res[CAM_IFE_PIX_PATH_RES_RDI_0 + i],
+			res,
 			CAM_ISP_RESOURCE_PIX_PATH,
 			csid_hw->hw_intf,
 			CAM_IFE_PIX_PATH_RES_RDI_0 + i);
@@ -4280,13 +4294,15 @@ static int cam_ife_csid_ver2_hw_init_path_res(
 				csid_hw->hw_intf->hw_idx, i);
 			goto free_res;
 		}
+		scnprintf(res->res_name, CAM_ISP_RES_NAME_LEN, "RDI_%d", i);
 	}
 
 	/* Initialize the UDI resource */
 	for (i = 0; i < csid_reg->cmn_reg->num_udis; i++) {
 		/* res type is from UDI0 to UDI3 */
+		res = &csid_hw->path_res[CAM_IFE_PIX_PATH_RES_UDI_0 + i];
 		rc = cam_ife_ver2_hw_alloc_res(
-			&csid_hw->path_res[CAM_IFE_PIX_PATH_RES_UDI_0 + i],
+			res,
 			CAM_ISP_RESOURCE_PIX_PATH,
 			csid_hw->hw_intf,
 			CAM_IFE_PIX_PATH_RES_UDI_0 + i);
@@ -4295,6 +4311,7 @@ static int cam_ife_csid_ver2_hw_init_path_res(
 				csid_hw->hw_intf->hw_idx, i);
 			goto free_res;
 		}
+		scnprintf(res->res_name, CAM_ISP_RES_NAME_LEN, "UDI_%d", i);
 	}
 
 	return rc;
