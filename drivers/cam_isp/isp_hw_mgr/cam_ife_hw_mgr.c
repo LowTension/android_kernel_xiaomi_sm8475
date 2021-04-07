@@ -3334,6 +3334,7 @@ static enum cam_ife_pix_path_res_id
 		break;
 	case CAM_ISP_SFE_OUT_RES_RDI_4:
 		path_id = CAM_IFE_PIX_PATH_RES_RDI_4;
+		break;
 	default:
 		path_id = CAM_IFE_PIX_PATH_RES_MAX;
 		CAM_DBG(CAM_ISP, "maximum rdi output type exceeded");
