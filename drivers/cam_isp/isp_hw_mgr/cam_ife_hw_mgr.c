@@ -52,7 +52,7 @@ static uint32_t blob_type_hw_cmd_map[CAM_ISP_GENERIC_BLOB_TYPE_MAX] = {
 };
 
 static struct cam_ife_hw_mgr g_ife_hw_mgr;
-
+static uint32_t g_num_ife, g_num_ife_lite;
 static uint32_t max_ife_out_res;
 
 static int cam_ife_hw_mgr_event_handler(
@@ -2064,87 +2064,44 @@ err:
 	return rc;
 }
 
-static int cam_convert_hw_idx_to_ife_hw_num(int hw_idx)
+static inline void cam_ife_mgr_count_ife(void)
 {
-	uint32_t hw_version, rc = 0;
+	int i;
 
-	rc = cam_cpas_get_cpas_hw_version(&hw_version);
-	if (!rc) {
-		switch (hw_version) {
-		case CAM_CPAS_TITAN_170_V100:
-		case CAM_CPAS_TITAN_170_V110:
-		case CAM_CPAS_TITAN_170_V120:
-		case CAM_CPAS_TITAN_175_V100:
-		case CAM_CPAS_TITAN_175_V101:
-		case CAM_CPAS_TITAN_175_V120:
-		case CAM_CPAS_TITAN_175_V130:
-		case CAM_CPAS_TITAN_480_V100:
-			if (hw_idx == 0)
-				return CAM_ISP_IFE0_HW;
-			else if (hw_idx == 1)
-				return CAM_ISP_IFE1_HW;
-			else if (hw_idx == 2)
-				return CAM_ISP_IFE0_LITE_HW;
-			else if (hw_idx == 3)
-				return CAM_ISP_IFE1_LITE_HW;
-			else if (hw_idx == 4)
-				return CAM_ISP_IFE2_LITE_HW;
-			else if (hw_idx == 5)
-				return CAM_ISP_IFE3_LITE_HW;
-			else if (hw_idx == 6)
-				return CAM_ISP_IFE4_LITE_HW;
-			break;
-		case CAM_CPAS_TITAN_680_V100:
-			if (hw_idx == 0)
-				return CAM_ISP_IFE0_HW;
-			else if (hw_idx == 1)
-				return CAM_ISP_IFE1_HW;
-			else if (hw_idx == 2)
-				return CAM_ISP_IFE2_HW;
-			else if (hw_idx == 3)
-				return CAM_ISP_IFE0_LITE_HW;
-			else if (hw_idx == 4)
-				return CAM_ISP_IFE1_LITE_HW;
-			else if (hw_idx == 5)
-				return CAM_ISP_IFE2_LITE_HW;
-			else if (hw_idx == 6)
-				return CAM_ISP_IFE3_LITE_HW;
-			else if (hw_idx == 7)
-				return CAM_ISP_IFE4_LITE_HW;
-			break;
-		case CAM_CPAS_TITAN_580_V100:
-		case CAM_CPAS_TITAN_570_V200:
-		case CAM_CPAS_TITAN_165_V100:
-			if (hw_idx == 0)
-				return CAM_ISP_IFE0_HW;
-			else if (hw_idx == 1)
-				return CAM_ISP_IFE1_HW;
-			else if (hw_idx == 2)
-				return CAM_ISP_IFE2_HW;
-			else if (hw_idx == 3)
-				return CAM_ISP_IFE0_LITE_HW;
-			else if (hw_idx == 4)
-				return CAM_ISP_IFE1_LITE_HW;
-			break;
-		case CAM_CPAS_TITAN_170_V200:
-			if (hw_idx == 0)
-				return CAM_ISP_IFE0_HW;
-			else if (hw_idx == 1)
-				return CAM_ISP_IFE1_HW;
-			else if (hw_idx == 2)
-				return CAM_ISP_IFE2_HW;
-			else if (hw_idx == 3)
-				return CAM_ISP_IFE0_LITE_HW;
-			break;
-		default:
-			CAM_ERR(CAM_ISP, "Invalid hw_version: 0x%X",
-				hw_version);
-			rc = -EINVAL;
-			break;
+	g_num_ife = 0;
+	g_num_ife_lite = 0;
+
+	for (i = 0; i < CAM_IFE_HW_NUM_MAX; i++) {
+		if (g_ife_hw_mgr.ife_devices[i]) {
+			if (g_ife_hw_mgr.ife_dev_caps[i].is_lite)
+				g_num_ife_lite++;
+			else
+				g_num_ife++;
 		}
 	}
+	CAM_DBG(CAM_ISP, "counted %d IFE and %d IFE lite", g_num_ife, g_num_ife_lite);
+}
 
-	return rc;
+static int cam_convert_hw_idx_to_ife_hw_num(int hw_idx)
+{
+	if (hw_idx < g_num_ife) {
+		switch (hw_idx) {
+		case 0: return CAM_ISP_IFE0_HW;
+		case 1: return CAM_ISP_IFE1_HW;
+		case 2: return CAM_ISP_IFE2_HW;
+		}
+	} else if (hw_idx < g_num_ife_lite) {
+		switch (hw_idx - g_num_ife) {
+		case 0: return CAM_ISP_IFE0_LITE_HW;
+		case 1: return CAM_ISP_IFE1_LITE_HW;
+		case 2: return CAM_ISP_IFE2_LITE_HW;
+		case 3: return CAM_ISP_IFE3_LITE_HW;
+		case 4: return CAM_ISP_IFE4_LITE_HW;
+		}
+	} else {
+		CAM_ERR(CAM_ISP, "hw idx %d out-of-bounds", hw_idx);
+	}
+	return 0;
 }
 
 static int cam_convert_rdi_out_res_id_to_src(int res_id)
@@ -11450,6 +11407,8 @@ int cam_ife_hw_mgr_init(struct cam_hw_mgr_intf *hw_mgr_intf, int *iommu_hdl)
 		*iommu_hdl = g_ife_hw_mgr.mgr_common.img_iommu_hdl;
 
 	cam_ife_hw_mgr_debug_register();
+	cam_ife_mgr_count_ife();
+
 	CAM_DBG(CAM_ISP, "Exit");
 
 	return 0;
