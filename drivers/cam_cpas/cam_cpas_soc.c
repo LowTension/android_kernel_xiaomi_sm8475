@@ -66,11 +66,12 @@ void cam_cpas_util_debug_parse_data(
 
 		curr_node = soc_private->tree_node[i];
 		CAM_INFO(CAM_CPAS,
-			"NODE cell_idx: %d, level: %d, name: %s, axi_port_idx: %d, merge_type: %d, parent_name: %s",
+			"NODE cell_idx: %d, level: %d, name: %s, axi_port_idx: %d, merge_type: %d, parent_name: %s camnoc_max_needed: %d",
 			curr_node->cell_idx, curr_node->level_idx,
 			curr_node->node_name, curr_node->axi_port_idx,
 			curr_node->merge_type, curr_node->parent_node ?
-			curr_node->parent_node->node_name : "no parent");
+			curr_node->parent_node->node_name : "no parent",
+			curr_node->camnoc_max_needed);
 
 		if (curr_node->level_idx)
 			continue;
@@ -216,8 +217,6 @@ static int cam_cpas_parse_node_tree(struct cam_cpas *cpas_core,
 		}
 
 		soc_private->level_node[level_idx] = level_node;
-		camnoc_max_needed = of_property_read_bool(level_node,
-			"camnoc-max-needed");
 	}
 
 	for (level_idx = (CAM_CPAS_MAX_TREE_LEVELS - 1); level_idx >= 0;
@@ -226,6 +225,8 @@ static int cam_cpas_parse_node_tree(struct cam_cpas *cpas_core,
 		if (!level_node)
 			continue;
 
+		camnoc_max_needed = of_property_read_bool(level_node,
+			"camnoc-max-needed");
 		for_each_available_child_of_node(level_node, curr_node) {
 			curr_node_ptr =
 				kzalloc(sizeof(struct cam_cpas_tree_node),
@@ -275,8 +276,12 @@ static int cam_cpas_parse_node_tree(struct cam_cpas *cpas_core,
 			mnoc_node = of_get_child_by_name(curr_node,
 				"qcom,axi-port-mnoc");
 			if (mnoc_node) {
-				if (mnoc_idx >= CAM_CPAS_MAX_AXI_PORTS)
+				if (mnoc_idx >= CAM_CPAS_MAX_AXI_PORTS) {
+					CAM_ERR(CAM_CPAS,
+						"Invalid mnoc index: %d",
+						mnoc_idx);
 					return -EINVAL;
+				}
 
 				cpas_core->axi_port[mnoc_idx].axi_port_node
 					= mnoc_node;
