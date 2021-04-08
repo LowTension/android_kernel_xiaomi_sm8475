@@ -394,6 +394,9 @@ struct cam_req_mgr_connected_device {
  * @frame_id             : current frame id
  * @sync_frame_id        : current frame id of sync link
  * @bubble_skip          : req to skip on bubble
+ * @num_isp_dev          : number of isp dev in a link
+ * @retry_threshold      : number of times to retry apply on increased threshold
+ * @fps                  : current frame rate
  */
 struct cam_req_mgr_core_link {
 	int32_t                              link_hdl;
@@ -439,6 +442,9 @@ struct cam_req_mgr_core_link {
 	uint64_t                             sync_frame_id;
 	int32_t                              bubble_skip;
 	bool                                 skip_sync_apply;
+	uint32_t                             num_isp_dev;
+	uint32_t                             retry_threshold;
+	uint32_t                             fps;
 };
 
 /**

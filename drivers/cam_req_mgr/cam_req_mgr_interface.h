@@ -12,6 +12,7 @@
 #include "cam_req_mgr_util.h"
 
 struct cam_req_mgr_trigger_notify;
+struct cam_req_mgr_notify_rup;
 struct cam_req_mgr_error_notify;
 struct cam_req_mgr_add_request;
 struct cam_req_mgr_timer_notify;
@@ -23,19 +24,21 @@ struct cam_req_mgr_flush_request;
 struct cam_req_mgr_link_evt_data;
 struct cam_req_mgr_dump_info;
 struct cam_req_mgr_request_change_state;
+struct cam_req_mgr_signal_info;
 
 /* Request Manager -- camera device driver interface */
 /**
  * @brief: camera kernel drivers to cam req mgr communication
  *
  * @cam_req_mgr_notify_trigger: for device which generates trigger to inform CRM
+ * @cam_req_mgr_notify_rup    : for device which generates reg update trigger to inform CRM
  * @cam_req_mgr_notify_err    : device use this to inform about different errors
  * @cam_req_mgr_add_req       : to info CRM about new rqeuest received from
  *                              userspace
  * @cam_req_mgr_notify_timer  : start the timer
  */
-typedef int (*cam_req_mgr_notify_trigger)(
-	struct cam_req_mgr_trigger_notify *);
+typedef int (*cam_req_mgr_notify_trigger)(struct cam_req_mgr_trigger_notify *);
+typedef int (*cam_req_mgr_notify_rup)(struct cam_req_mgr_notify_rup *);
 typedef bool (*cam_req_mgr_notify_err)(struct cam_req_mgr_error_notify *);
 typedef int (*cam_req_mgr_add_req)(struct cam_req_mgr_add_request *);
 typedef int (*cam_req_mgr_notify_timer)(struct cam_req_mgr_timer_notify *);
@@ -62,8 +65,8 @@ typedef int (*cam_req_mgr_notify_frame_skip)(
 typedef int (*cam_req_mgr_flush_req)(struct cam_req_mgr_flush_request *);
 typedef int (*cam_req_mgr_process_evt)(struct cam_req_mgr_link_evt_data *);
 typedef int (*cam_req_mgr_dump_req)(struct cam_req_mgr_dump_info *);
-typedef int (*cam_req_mgr_change_state)(
-	struct cam_req_mgr_request_change_state *);
+typedef int (*cam_req_mgr_change_state)(struct cam_req_mgr_request_change_state *);
+typedef int (*cam_req_mgr_signal_buf_done)(struct cam_req_mgr_signal_info *);
 
 /**
  * @brief          : cam_req_mgr_crm_cb - func table
@@ -73,6 +76,7 @@ typedef int (*cam_req_mgr_change_state)(
  * @add_req        : payload to inform which device and what request is received
  * @notify_timer   : payload for timer start event
  * @notify_stop    : payload to inform stop event
+ * @notify_rup     : payload to inform reg update ack
  */
 struct cam_req_mgr_crm_cb {
 	cam_req_mgr_notify_trigger  notify_trigger;
@@ -80,6 +84,7 @@ struct cam_req_mgr_crm_cb {
 	cam_req_mgr_add_req         add_req;
 	cam_req_mgr_notify_timer    notify_timer;
 	cam_req_mgr_notify_stop     notify_stop;
+	cam_req_mgr_notify_rup      notify_rup;
 };
 
 /**
@@ -103,6 +108,7 @@ struct cam_req_mgr_kmd_ops {
 	cam_req_mgr_process_evt      process_evt;
 	cam_req_mgr_dump_req         dump_req;
 	cam_req_mgr_change_state     change_state;
+	cam_req_mgr_signal_buf_done  signal_buf_done;
 };
 
 /**
@@ -216,6 +222,17 @@ enum cam_req_mgr_link_evt_type {
 };
 
 /**
+ * enum cam_req_mgr_buf_done_state
+ * @INIT_BUF_DONE             : Initial buf done state of a request
+ * @SIGNAL_SYNC_BUF_DONE      : Ready to signal buf done of a request if in sync mode
+ * @SIGNAL_NON_SYNC_BUF_DONE  : Ready to signal buf done of a request if in non sync mode
+ */
+enum cam_req_mgr_buf_done_state {
+	INIT_BUF_DONE,
+	SIGNAL_SYNC_BUF_DONE,
+};
+
+/**
  * struct cam_req_mgr_trigger_notify
  * @link_hdl : link identifier
  * @dev_hdl  : device handle which has sent this req id
@@ -226,6 +243,7 @@ enum cam_req_mgr_link_evt_type {
  * @sof_boottime : Captured boot time stamp value at sof hw event
  * @req_id   : req id which returned buf_done
  * @trigger_id: ID to differentiate between the trigger devices
+ * @fps      : Current fps value
  */
 struct cam_req_mgr_trigger_notify {
 	int32_t  link_hdl;
@@ -236,6 +254,19 @@ struct cam_req_mgr_trigger_notify {
 	uint64_t sof_boottime;
 	uint64_t req_id;
 	int32_t  trigger_id;
+	uint32_t fps;
+};
+
+/**
+ * struct cam_req_mgr_notify_rup
+ * @link_hdl  : link identifier
+ * @req_id    : req id which returned reg update ack
+ * @state     : buf done ready state of the request
+ */
+struct cam_req_mgr_notify_rup {
+	int32_t  link_hdl;
+	uint64_t req_id;
+	int32_t  state;
 };
 
 /**
@@ -353,6 +384,7 @@ struct cam_req_mgr_core_dev_link_setup {
  * @report_if_bubble : report to crm if failure in applying
  * @trigger_point    : the trigger point of this apply
  * @re_apply         : to skip re_apply for buf_done request
+ * @is_sync_mode     : if request need to be apply in sync with other link
  *
  */
 struct cam_req_mgr_apply_request {
@@ -362,6 +394,7 @@ struct cam_req_mgr_apply_request {
 	int32_t    report_if_bubble;
 	uint32_t   trigger_point;
 	bool       re_apply;
+	bool       is_sync_mode;
 };
 
 /**
@@ -454,6 +487,21 @@ struct cam_req_mgr_request_change_state {
 	int32_t    link_hdl;
 	int32_t    dev_hdl;
 	uint64_t   req_id;
+};
+
+/**
+ * struct cam_req_mgr_signal_info
+ * @link_hdl    : link identifier
+ * @dev_hdl     : device handle or identifier
+ * req_id       : request id to be set for buf done ready
+ * state        : Buf done ready state of a request
+ *
+ */
+struct cam_req_mgr_signal_info {
+	int32_t    link_hdl;
+	int32_t    dev_hdl;
+	uint64_t   req_id;
+	int32_t    state;
 };
 
 #endif
