@@ -580,6 +580,11 @@ static struct cam_vfe_top_ver4_hw_info vfe680_top_hw_info = {
 		CAM_VFE_RDI_VER_1_0,
 		CAM_VFE_PDLIB_VER_1_0,
 	},
+	.num_path_port_map = 2,
+	.path_port_map = {
+		{CAM_ISP_HW_VFE_IN_PDLIB, CAM_ISP_IFE_OUT_RES_2PD},
+		{CAM_ISP_HW_VFE_IN_PDLIB, CAM_ISP_IFE_OUT_RES_PREPROCESS_2PD}
+	}
 };
 
 static struct cam_irq_register_set vfe680_bus_irq_reg[2] = {

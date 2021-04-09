@@ -314,6 +314,11 @@ static struct cam_vfe_top_ver3_hw_info vfe480_top_hw_info = {
 		CAM_VFE_PDLIB_VER_1_0,
 		CAM_VFE_LCR_VER_1_0,
 	},
+	.num_path_port_map = 2,
+	.path_port_map = {
+		{CAM_ISP_HW_VFE_IN_LCR, CAM_ISP_IFE_OUT_RES_LCR},
+		{CAM_ISP_HW_VFE_IN_PDLIB, CAM_ISP_IFE_OUT_RES_2PD},
+	},
 };
 
 static struct cam_irq_register_set vfe480_bus_irq_reg[2] = {

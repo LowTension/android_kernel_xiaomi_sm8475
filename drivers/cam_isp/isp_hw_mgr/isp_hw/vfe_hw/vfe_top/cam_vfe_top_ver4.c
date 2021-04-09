@@ -671,6 +671,22 @@ static const struct cam_vfe_top_debug_info vfe_dbg_list[][8] = {
 	},
 };
 
+static int cam_vfe_top_ver4_get_path_port_map(struct cam_vfe_top_ver4_priv *top_priv,
+	void *cmd_args, uint32_t arg_size)
+{
+	struct cam_isp_hw_path_port_map *arg = cmd_args;
+	struct cam_vfe_top_ver4_hw_info *hw_info = top_priv->common_data.hw_info;
+	int i;
+
+	for (i = 0; i < hw_info->num_path_port_map; i++) {
+		arg->entry[i][0] = hw_info->path_port_map[i][0];
+		arg->entry[i][1] = hw_info->path_port_map[i][1];
+	}
+	arg->num_entries = hw_info->num_path_port_map;
+
+	return 0;
+}
+
 static int cam_vfe_top_ver4_mux_get_base(struct cam_vfe_top_ver4_priv *top_priv,
 	void *cmd_args, uint32_t arg_size)
 {
@@ -1490,6 +1506,10 @@ int cam_vfe_top_ver4_process_cmd(void *device_priv, uint32_t cmd_type,
 		break;
 	case CAM_ISP_HW_CMD_CORE_CONFIG:
 		rc = cam_vfe_core_config_control(top_priv, cmd_args, arg_size);
+		break;
+	case CAM_ISP_HW_CMD_GET_PATH_PORT_MAP:
+		rc = cam_vfe_top_ver4_get_path_port_map(top_priv, cmd_args,
+			arg_size);
 		break;
 	default:
 		rc = -EINVAL;

@@ -99,7 +99,9 @@ struct cam_vfe_top_ver4_hw_info {
 	struct cam_vfe_top_camnoc_debug_data       *camnoc_debug_data;
 	uint32_t                                    num_reg;
 	uint32_t                                    num_mux;
+	uint32_t                                    num_path_port_map;
 	uint32_t mux_type[CAM_VFE_TOP_MUX_MAX];
+	uint32_t path_port_map[CAM_ISP_HW_PATH_PORT_MAP_MAX][2];
 };
 
 struct cam_vfe_ver4_path_reg_data {

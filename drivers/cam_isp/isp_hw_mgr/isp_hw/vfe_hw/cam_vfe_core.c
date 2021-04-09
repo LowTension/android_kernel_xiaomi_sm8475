@@ -513,6 +513,8 @@ int cam_vfe_process_cmd(void *hw_priv, uint32_t cmd_type,
 	case CAM_ISP_HW_CMD_CAMIF_DATA:
 	case CAM_ISP_HW_NOTIFY_OVERFLOW:
 	case CAM_ISP_HW_CMD_BLANKING_UPDATE:
+	case CAM_ISP_HW_CMD_FE_UPDATE_IN_RD:
+	case CAM_ISP_HW_CMD_GET_PATH_PORT_MAP:
 		rc = core_info->vfe_top->hw_ops.process_cmd(
 			core_info->vfe_top->top_priv, cmd_type, cmd_args,
 			arg_size);
@@ -535,23 +537,11 @@ int cam_vfe_process_cmd(void *hw_priv, uint32_t cmd_type,
 		break;
 	case CAM_ISP_HW_CMD_GET_HFR_UPDATE_RM:
 	case CAM_ISP_HW_CMD_GET_BUF_UPDATE_RM:
+	case CAM_ISP_HW_CMD_FE_UPDATE_BUS_RD:
 		if (core_info->vfe_rd_bus)
 			rc = core_info->vfe_rd_bus->hw_ops.process_cmd(
 				core_info->vfe_rd_bus->bus_priv, cmd_type,
 				cmd_args, arg_size);
-		break;
-
-	case CAM_ISP_HW_CMD_FE_UPDATE_IN_RD:
-		rc = core_info->vfe_top->hw_ops.process_cmd(
-			core_info->vfe_top->top_priv, cmd_type, cmd_args,
-			arg_size);
-		break;
-	case CAM_ISP_HW_CMD_FE_UPDATE_BUS_RD:
-		if (core_info->vfe_rd_bus) {
-			rc = core_info->vfe_rd_bus->hw_ops.process_cmd(
-				core_info->vfe_rd_bus->bus_priv, cmd_type,
-				cmd_args, arg_size);
-		}
 		break;
 	case CAM_ISP_HW_CMD_QUERY_REGSPACE_DATA:
 		*((struct cam_hw_soc_info **)cmd_args) = soc_info;
