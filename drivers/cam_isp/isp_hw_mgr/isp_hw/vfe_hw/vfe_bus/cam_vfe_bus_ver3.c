@@ -2240,20 +2240,15 @@ static int cam_vfe_bus_ver3_handle_vfe_out_done_top_half(uint32_t evt_id,
 	rsrc_data = vfe_out->res_priv;
 	resource_data = rsrc_data->comp_grp->res_priv;
 
-	CAM_DBG(CAM_ISP, "VFE:%d Bus IRQ status_0: 0x%X status_1: 0x%X",
-		rsrc_data->common_data->core_index,
-		th_payload->evt_status_arr[0],
-		th_payload->evt_status_arr[1]);
-
 	rc  = cam_vfe_bus_ver3_get_evt_payload(rsrc_data->common_data,
 		&evt_payload);
 
 	if (rc) {
-		CAM_INFO_RATE_LIMIT(CAM_ISP,
-			"VFE:%d Bus IRQ status_0: 0x%X status_1: 0x%X",
-			rsrc_data->common_data->core_index,
-			th_payload->evt_status_arr[0],
-			th_payload->evt_status_arr[1]);
+		for (i = 0; i < th_payload->num_registers; i++)
+			CAM_INFO_RATE_LIMIT(CAM_ISP,
+				"VFE:%d Bus IRQ status_%d: 0x%X",
+				rsrc_data->common_data->core_index, i,
+				th_payload->evt_status_arr[i]);
 		return rc;
 	}
 
@@ -2262,8 +2257,12 @@ static int cam_vfe_bus_ver3_handle_vfe_out_done_top_half(uint32_t evt_id,
 	evt_payload->core_index = rsrc_data->common_data->core_index;
 	evt_payload->evt_id = evt_id;
 
-	for (i = 0; i < th_payload->num_registers; i++)
+	for (i = 0; i < th_payload->num_registers; i++) {
 		evt_payload->irq_reg_val[i] = th_payload->evt_status_arr[i];
+		CAM_DBG(CAM_ISP, "VFE:%d Bus IRQ status_%d: 0x%X",
+			rsrc_data->common_data->core_index, i,
+			th_payload->evt_status_arr[i]);
+	}
 
 	th_payload->evt_payload_priv = evt_payload;
 
