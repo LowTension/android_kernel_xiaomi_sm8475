@@ -218,134 +218,6 @@ struct cam_vfe_bus_ver3_priv {
 	uint32_t                            max_out_res;
 };
 
-static const struct cam_vfe_bus_error_info vfe_error_list[] = {
-	{
-		.bitmask = 0x0000001,
-		.vfe_output = CAM_VFE_BUS_VER3_VFE_OUT_FULL,
-		.error_description = "VID Y 1:1"
-	},
-	{
-		.bitmask = 0x0000002,
-		.vfe_output = CAM_VFE_BUS_VER3_VFE_OUT_FULL,
-		.error_description = "VID C 1:1"
-	},
-	{
-		.bitmask = 0x0000004,
-		.vfe_output = CAM_VFE_BUS_VER3_VFE_OUT_DS4,
-		.error_description = "VID YC 4:1"
-	},
-	{
-		.bitmask = 0x0000008,
-		.vfe_output = CAM_VFE_BUS_VER3_VFE_OUT_DS16,
-		.error_description = "VID YC 16:1"
-	},
-	{
-		.bitmask = 0x0000010,
-		.vfe_output = CAM_VFE_BUS_VER3_VFE_OUT_FULL_DISP,
-		.error_description = "DISP Y 1:1"
-	},
-	{
-		.bitmask = 0x0000020,
-		.vfe_output = CAM_VFE_BUS_VER3_VFE_OUT_FULL_DISP,
-		.error_description = "DISP C 1:1"
-	},
-	{
-		.bitmask = 0x0000040,
-		.vfe_output = CAM_VFE_BUS_VER3_VFE_OUT_DS4_DISP,
-		.error_description = "DISP YC 4:1"
-	},
-	{
-		.bitmask = 0x0000080,
-		.vfe_output = CAM_VFE_BUS_VER3_VFE_OUT_DS16_DISP,
-		.error_description = "DISP YC 16:1"
-	},
-	{
-		.bitmask = 0x0000100,
-		.vfe_output = CAM_VFE_BUS_VER3_VFE_OUT_FD,
-		.error_description = "FD Y"
-	},
-	{
-		.bitmask = 0x0000200,
-		.vfe_output = CAM_VFE_BUS_VER3_VFE_OUT_FD,
-		.error_description = "FD C"
-	},
-	{
-		.bitmask = 0x0000400,
-		.vfe_output = CAM_VFE_BUS_VER3_VFE_OUT_RAW_DUMP,
-		.error_description = "PIXEL RAW DUMP"
-	},
-	{
-		.bitmask = 0x0001000,
-		.vfe_output = CAM_VFE_BUS_VER3_VFE_OUT_STATS_HDR_BE,
-		.error_description = "STATS HDR BE"
-	},
-	{
-		.bitmask = 0x0002000,
-		.vfe_output = CAM_VFE_BUS_VER3_VFE_OUT_STATS_HDR_BHIST,
-		.error_description = "STATS HDR BHIST"
-	},
-	{
-		.bitmask = 0x0004000,
-		.vfe_output = CAM_VFE_BUS_VER3_VFE_OUT_STATS_TL_BG,
-		.error_description = "STATS TINTLESS BG"
-	},
-	{
-		.bitmask = 0x0008000,
-		.vfe_output = CAM_VFE_BUS_VER3_VFE_OUT_STATS_AWB_BG,
-		.error_description = "STATS AWB BG"
-	},
-	{
-		.bitmask = 0x0010000,
-		.vfe_output = CAM_VFE_BUS_VER3_VFE_OUT_STATS_BHIST,
-		.error_description = "STATS BHIST"
-	},
-	{
-		.bitmask = 0x0020000,
-		.vfe_output = CAM_VFE_BUS_VER3_VFE_OUT_STATS_RS,
-		.error_description = "STATS RS"
-	},
-	{
-		.bitmask = 0x0040000,
-		.vfe_output = CAM_VFE_BUS_VER3_VFE_OUT_STATS_CS,
-		.error_description = "STATS CS"
-	},
-	{
-		.bitmask = 0x0080000,
-		.vfe_output = CAM_VFE_BUS_VER3_VFE_OUT_STATS_IHIST,
-		.error_description = "STATS IHIST"
-	},
-	{
-		.bitmask = 0x0100000,
-		.vfe_output = CAM_VFE_BUS_VER3_VFE_OUT_STATS_BF,
-		.error_description = "STATS BAF"
-	},
-	{
-		.bitmask = 0x0200000,
-		.vfe_output = CAM_VFE_BUS_VER3_VFE_OUT_2PD,
-		.error_description = "PD"
-	},
-	{
-		.bitmask = 0x0400000,
-		.vfe_output = CAM_VFE_BUS_VER3_VFE_OUT_LCR,
-		.error_description = "LCR"
-	},
-	{
-		.bitmask = 0x0800000,
-		.vfe_output = CAM_VFE_BUS_VER3_VFE_OUT_RDI0,
-		.error_description = "Full RDI 0"
-	},
-	{
-		.bitmask = 0x1000000,
-		.vfe_output = CAM_VFE_BUS_VER3_VFE_OUT_RDI1,
-		.error_description = "Full RDI 1"
-	},
-	{
-		.bitmask = 0x2000000,
-		.vfe_output = CAM_VFE_BUS_VER3_VFE_OUT_RDI2,
-		.error_description = "Full RDI 2"
-	},
-};
-
 static const struct cam_vfe_bus_error_info vfe_constraint_error_list[] = {
 	{
 		.bitmask = 0x000001,
@@ -452,39 +324,6 @@ static const struct cam_vfe_bus_error_info vfe_constraint_error_list[] = {
 		.vfe_output = CAM_VFE_BUS_VER3_VFE_OUT_MAX,
 		.error_description = "Meta Stride unalign"
 	},
-};
-
-static const struct cam_vfe_bus_error_info vfe_lite_error_list[] = {
-	{
-		.bitmask = 0x01,
-		.vfe_output = CAM_VFE_BUS_VER3_VFE_OUT_RDI0,
-		.error_description = "Lite RDI 0"
-	},
-	{
-		.bitmask = 0x02,
-		.vfe_output = CAM_VFE_BUS_VER3_VFE_OUT_RDI1,
-		.error_description = "Lite RDI 1"
-	},
-	{
-		.bitmask = 0x04,
-		.vfe_output = CAM_VFE_BUS_VER3_VFE_OUT_RDI2,
-		.error_description = "Lite RDI 2"
-	},
-	{
-		.bitmask = 0x08,
-		.vfe_output = CAM_VFE_BUS_VER3_VFE_OUT_RDI3,
-		.error_description = "Lite RDI 3"
-	},
-	{
-		.bitmask = 0x10,
-		.vfe_output = CAM_VFE_BUS_VER3_VFE_OUT_PREPROCESS_RAW,
-		.error_description = "Lite Pixel Path Preprocess Raw"
-	},
-	{
-		.bitmask = 0x20,
-		.vfe_output = CAM_VFE_BUS_VER3_VFE_OUT_STATS_BG,
-		.error_description = "Lite Pixel Path Stats"
-	}
 };
 
 static void cam_vfe_bus_ver3_unsubscribe_init_irq(
@@ -2658,6 +2497,41 @@ static int cam_vfe_bus_ver3_deinit_vfe_out_resource(
 	return 0;
 }
 
+static void cam_vfe_bus_ver3_print_wm_info(
+	struct cam_vfe_bus_ver3_wm_resource_data  *wm_data,
+	struct cam_vfe_bus_ver3_common_data  *common_data,
+	uint8_t *wm_name)
+{
+	uint32_t addr_status0, addr_status1, addr_status2, addr_status3;
+
+	addr_status0 = cam_io_r_mb(common_data->mem_base +
+		wm_data->hw_regs->addr_status_0);
+	addr_status1 = cam_io_r_mb(common_data->mem_base +
+		wm_data->hw_regs->addr_status_1);
+	addr_status2 = cam_io_r_mb(common_data->mem_base +
+		wm_data->hw_regs->addr_status_2);
+	addr_status3 = cam_io_r_mb(common_data->mem_base +
+		wm_data->hw_regs->addr_status_3);
+
+	CAM_INFO(CAM_ISP,
+		"VFE:%d WM:%d wm_name:%s width:%u height:%u stride:%u x_init:%u en_cfg:%u acquired width:%u height:%u",
+		wm_data->common_data->core_index, wm_data->index, wm_name,
+		wm_data->width,
+		wm_data->height,
+		wm_data->stride, wm_data->h_init,
+		wm_data->en_cfg,
+		wm_data->acquired_width,
+		wm_data->acquired_height);
+	CAM_INFO(CAM_ISP,
+		"hw:%d WM:%d last consumed address:0x%x last frame addr:0x%x fifo cnt:0x%x current client address:0x%x",
+		common_data->hw_intf->hw_idx,
+		wm_data->index,
+		addr_status0,
+		addr_status1,
+		addr_status2,
+		addr_status3);
+}
+
 static int cam_vfe_bus_ver3_print_dimensions(
 	uint32_t                                   res_id,
 	struct cam_vfe_bus_ver3_priv              *bus_priv)
@@ -2667,7 +2541,7 @@ static int cam_vfe_bus_ver3_print_dimensions(
 	struct cam_vfe_bus_ver3_wm_resource_data  *wm_data   = NULL;
 	struct cam_vfe_bus_ver3_common_data  *common_data = NULL;
 	int                                        i;
-	uint32_t addr_status0, addr_status1, addr_status2, addr_status3;
+	uint8_t                                *wm_name = NULL;
 	enum cam_vfe_bus_ver3_vfe_out_type  vfe_out_res_id =
 		CAM_VFE_BUS_VER3_VFE_OUT_MAX;
 	uint32_t  outmap_index = CAM_VFE_BUS_VER3_VFE_OUT_MAX;
@@ -2700,33 +2574,9 @@ static int cam_vfe_bus_ver3_print_dimensions(
 
 	for (i = 0; i < rsrc_data->num_wm; i++) {
 		wm_data = rsrc_data->wm_res[i].res_priv;
+		wm_name = rsrc_data->wm_res[i].res_name;
 		common_data = rsrc_data->common_data;
-		addr_status0 = cam_io_r_mb(common_data->mem_base +
-			wm_data->hw_regs->addr_status_0);
-		addr_status1 = cam_io_r_mb(common_data->mem_base +
-			wm_data->hw_regs->addr_status_1);
-		addr_status2 = cam_io_r_mb(common_data->mem_base +
-			wm_data->hw_regs->addr_status_2);
-		addr_status3 = cam_io_r_mb(common_data->mem_base +
-			wm_data->hw_regs->addr_status_3);
-
-		CAM_INFO(CAM_ISP,
-			"VFE:%d WM:%d width:%u height:%u stride:%u x_init:%u en_cfg:%u acquired width:%u height:%u",
-			wm_data->common_data->core_index, wm_data->index,
-			wm_data->width,
-			wm_data->height,
-			wm_data->stride, wm_data->h_init,
-			wm_data->en_cfg,
-			wm_data->acquired_width,
-			wm_data->acquired_height);
-		CAM_INFO(CAM_ISP,
-			"hw:%d WM:%d last consumed address:0x%x last frame addr:0x%x fifo cnt:0x%x current client address:0x%x",
-			common_data->hw_intf->hw_idx,
-			wm_data->index,
-			addr_status0,
-			addr_status1,
-			addr_status2,
-			addr_status3);
+		cam_vfe_bus_ver3_print_wm_info(wm_data, common_data, wm_name);
 	}
 	return 0;
 }
@@ -2800,22 +2650,39 @@ static int cam_vfe_bus_ver3_err_irq_top_half(uint32_t evt_id,
 
 static void cam_vfe_print_violations(
 	char *error_type,
-	const struct cam_vfe_bus_error_info *error_list,
-	uint32_t num_errors,
 	uint32_t status,
 	struct cam_vfe_bus_ver3_priv *bus_priv)
 {
-	int i;
+	int i, j;
+	struct cam_isp_resource_node       *rsrc_node = NULL;
+	struct cam_vfe_bus_ver3_vfe_out_data      *rsrc_data = NULL;
+	struct cam_vfe_bus_ver3_wm_resource_data  *wm_data   = NULL;
+	struct cam_vfe_bus_ver3_common_data  *common_data = NULL;
+	uint8_t                                *wm_name = NULL;
 
-	for (i = 0; i < num_errors; i++) {
-		if (status & error_list[i].bitmask) {
-			CAM_INFO(CAM_ISP, "%s: %s violation",
-				error_list[i].error_description,
-				error_type);
-			if (bus_priv != NULL)
-				cam_vfe_bus_ver3_print_dimensions(
-					error_list[i].vfe_output,
-					bus_priv);
+	if (!bus_priv) {
+		CAM_ERR(CAM_ISP, "Invalid bus private data");
+		return;
+	}
+
+	for (i = 0; i < bus_priv->num_out; i++) {
+		rsrc_node = &bus_priv->vfe_out[i];
+		rsrc_data = rsrc_node->res_priv;
+		if (!rsrc_data) {
+			CAM_ERR(CAM_ISP, "VFE out data is null, res_id: %d", i);
+			return;
+		}
+
+		for (j = 0; j < rsrc_data->num_wm; j++) {
+			wm_data = rsrc_data->wm_res[j].res_priv;
+			common_data = rsrc_data->common_data;
+			wm_name = rsrc_data->wm_res[j].res_name;
+
+			if (status & (1 << wm_data->index)) {
+				CAM_INFO(CAM_ISP, "%s Violation", error_type);
+				cam_vfe_bus_ver3_print_wm_info(wm_data,
+					common_data, wm_name);
+			}
 		}
 	}
 }
@@ -2827,8 +2694,6 @@ static int cam_vfe_bus_ver3_err_irq_bottom_half(
 	struct cam_vfe_bus_ver3_priv *bus_priv = handler_priv;
 	struct cam_vfe_bus_ver3_common_data *common_data;
 	struct cam_isp_hw_event_info evt_info;
-	const struct cam_vfe_bus_error_info *error_list = NULL;
-	uint32_t error_list_size = 0;
 	uint32_t status = 0, image_size_violation = 0, ccif_violation = 0;
 
 	if (!handler_priv || !evt_payload_priv)
@@ -2849,25 +2714,19 @@ static int cam_vfe_bus_ver3_err_irq_bottom_half(
 		evt_payload->image_size_violation_status,
 		evt_payload->ccif_violation_status);
 
-	error_list = common_data->is_lite ?
-		vfe_lite_error_list : vfe_error_list;
-	error_list_size = common_data->is_lite ?
-		ARRAY_SIZE(vfe_lite_error_list) : ARRAY_SIZE(vfe_error_list);
-
 	if (image_size_violation) {
 		status = evt_payload->image_size_violation_status;
 		if (!status)
 			cam_vfe_bus_ver3_get_constraint_errors(bus_priv);
 		else {
-			cam_vfe_print_violations("Image Size", error_list,
-				error_list_size, status, bus_priv);
+			cam_vfe_print_violations("Image Size", status,
+				bus_priv);
 		}
 	}
 
 	if (ccif_violation) {
 		status = evt_payload->ccif_violation_status;
-		cam_vfe_print_violations("CCIF", error_list,
-			error_list_size, status, NULL);
+		cam_vfe_print_violations("CCIF", status, NULL);
 	}
 
 	cam_vfe_bus_ver3_put_evt_payload(common_data, &evt_payload);
