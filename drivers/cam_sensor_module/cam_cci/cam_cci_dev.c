@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  */
 
 #include "cam_cci_dev.h"
@@ -548,6 +548,7 @@ static void cam_cci_component_unbind(struct device *dev,
 
 	cam_cpas_unregister_client(cci_dev->cpas_handle);
 	debugfs_remove_recursive(debugfs_root);
+	debugfs_root = NULL;
 	cam_cci_soc_remove(pdev, cci_dev);
 	rc = cam_unregister_subdev(&(cci_dev->v4l2_dev_str));
 	if (rc < 0)
