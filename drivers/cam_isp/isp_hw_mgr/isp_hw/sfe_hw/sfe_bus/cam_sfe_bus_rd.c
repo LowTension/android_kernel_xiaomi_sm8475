@@ -935,6 +935,10 @@ static int cam_sfe_bus_start_bus_rd(
 	for (i = 0; i < rsrc_data->num_rm; i++)
 		rc = cam_sfe_bus_start_rm(rsrc_data->rm_res[i]);
 
+	/* Remove after driver stabilizes */
+	common_data->sfe_debug_cfg |=
+		SFE_DEBUG_ENABLE_RD_DONE_IRQ;
+
 	if (common_data->sfe_debug_cfg &
 		SFE_DEBUG_ENABLE_RD_DONE_IRQ) {
 
@@ -1326,11 +1330,11 @@ static int cam_sfe_bus_rd_set_debug_cfg(
 	struct cam_sfe_debug_cfg_params *debug_cfg;
 
 	debug_cfg = (struct cam_sfe_debug_cfg_params *)cmd_args;
-	bus_priv->common_data.sfe_debug_cfg =
-		debug_cfg->sfe_debug_cfg;
 
+	bus_priv->common_data.sfe_debug_cfg = debug_cfg->sfe_debug_cfg;
 	return 0;
 }
+
 
 static int cam_sfe_bus_rd_process_cmd(
 	void *priv, uint32_t cmd_type,
@@ -1464,10 +1468,8 @@ int cam_sfe_bus_rd_init(
 	sfe_bus_local->hw_ops.process_cmd  = cam_sfe_bus_rd_process_cmd;
 
 	*sfe_bus = sfe_bus_local;
+	bus_priv->common_data.sfe_debug_cfg = 0;
 
-	/* Remove after driver stabilizes */
-	bus_priv->common_data.sfe_debug_cfg |=
-		SFE_DEBUG_ENABLE_RD_DONE_IRQ;
 	return rc;
 
 deinit_sfe_bus_rd:

@@ -91,6 +91,8 @@ struct cam_sfe_bus_wr_common_data {
 	uint32_t                                    line_done_cfg;
 	bool                                        err_irq_subscribe;
 	cam_hw_mgr_event_cb_func                    event_cb;
+
+	uint32_t                                    sfe_debug_cfg;
 };
 
 struct cam_sfe_wr_scratch_buf_info {
@@ -2483,6 +2485,19 @@ static int __cam_sfe_bus_wr_process_cmd(
 		cmd_args, arg_size);
 }
 
+static int cam_sfe_bus_wr_set_debug_cfg(
+	void *priv, void *cmd_args)
+{
+	struct cam_sfe_bus_wr_priv *bus_priv =
+		(struct cam_sfe_bus_wr_priv  *) priv;
+	struct cam_sfe_debug_cfg_params *debug_cfg;
+
+	debug_cfg = (struct cam_sfe_debug_cfg_params *)cmd_args;
+
+	bus_priv->common_data.sfe_debug_cfg = debug_cfg->sfe_debug_cfg;
+	return 0;
+}
+
 static int cam_sfe_bus_wr_process_cmd(
 	struct cam_isp_resource_node *priv,
 	uint32_t cmd_type, void *cmd_args,
@@ -2540,6 +2555,9 @@ static int cam_sfe_bus_wr_process_cmd(
 		sfe_bus_cap->max_out_res_type = bus_priv->num_out;
 		rc = 0;
 	}
+		break;
+	case CAM_ISP_HW_CMD_SET_SFE_DEBUG_CFG:
+		rc = cam_sfe_bus_wr_set_debug_cfg(priv, cmd_args);
 		break;
 	default:
 		CAM_ERR_RATE_LIMIT(CAM_SFE, "Invalid HW command type:%d",
@@ -2633,7 +2651,7 @@ int cam_sfe_bus_wr_init(
 		false);
 	if (rc) {
 		CAM_ERR(CAM_SFE, "Init bus_irq_controller failed");
-		goto free_bus_priv;
+		goto free_sfe_out;
 	}
 
 	INIT_LIST_HEAD(&bus_priv->free_comp_grp);
@@ -2696,6 +2714,8 @@ deinit_comp_grp:
 		i = bus_priv->num_comp_grp;
 	for (--i; i >= 0; i--)
 		cam_sfe_bus_deinit_comp_grp(&bus_priv->comp_grp[i]);
+
+free_sfe_out:
 	kfree(bus_priv->sfe_out);
 
 free_comp_grp:

@@ -6265,6 +6265,21 @@ static int cam_ife_mgr_start_hw(void *hw_mgr_priv, void *start_hw_args)
 		}
 	}
 
+	/* set current SFE debug information to SFE HW */
+	for (i = 0; i < CAM_SFE_HW_NUM_MAX; i++) {
+		struct cam_sfe_debug_cfg_params debug_cfg;
+
+		debug_cfg.sfe_debug_cfg = g_ife_hw_mgr.debug_cfg.sfe_debug;
+		debug_cfg.sfe_sensor_sel = g_ife_hw_mgr.debug_cfg.sfe_sensor_diag_cfg;
+		if (g_ife_hw_mgr.sfe_devices[i]) {
+			rc = g_ife_hw_mgr.sfe_devices[i]->hw_ops.process_cmd(
+				g_ife_hw_mgr.sfe_devices[i]->hw_priv,
+				CAM_ISP_HW_CMD_SET_SFE_DEBUG_CFG,
+				&debug_cfg,
+				sizeof(debug_cfg));
+		}
+	}
+
 	if (ctx->flags.need_csid_top_cfg) {
 		list_for_each_entry(hw_mgr_res, &ctx->res_list_ife_csid,
 				list) {
@@ -11143,6 +11158,47 @@ DEFINE_SIMPLE_ATTRIBUTE(cam_ife_camif_debug,
 	cam_ife_get_camif_debug,
 	cam_ife_set_camif_debug, "%16llu");
 
+static int cam_ife_set_sfe_debug(void *data, u64 val)
+{
+	g_ife_hw_mgr.debug_cfg.sfe_debug = (uint32_t)val;
+	CAM_DBG(CAM_ISP, "Set SFE Debug value :%u",
+		g_ife_hw_mgr.debug_cfg.sfe_debug);
+	return 0;
+}
+
+static int cam_ife_get_sfe_debug(void *data, u64 *val)
+{
+	*val = (uint64_t)g_ife_hw_mgr.debug_cfg.sfe_debug;
+	CAM_DBG(CAM_ISP, "Get SFE Debug value :%u",
+		g_ife_hw_mgr.debug_cfg.sfe_debug);
+
+	return 0;
+}
+
+DEFINE_DEBUGFS_ATTRIBUTE(cam_ife_sfe_debug,
+	cam_ife_get_sfe_debug,
+	cam_ife_set_sfe_debug, "%16llu");
+
+static int cam_ife_set_sfe_sensor_diag_debug(void *data, u64 val)
+{
+	g_ife_hw_mgr.debug_cfg.sfe_sensor_diag_cfg = (uint32_t)val;
+	CAM_DBG(CAM_ISP, "Set SFE Sensor diag value :%u",
+		g_ife_hw_mgr.debug_cfg.sfe_sensor_diag_cfg);
+	return 0;
+}
+
+static int cam_ife_get_sfe_sensor_diag_debug(void *data, u64 *val)
+{
+	*val = (uint64_t)g_ife_hw_mgr.debug_cfg.sfe_sensor_diag_cfg;
+	CAM_DBG(CAM_ISP, "Get SFE Sensor diag value :%u",
+		g_ife_hw_mgr.debug_cfg.sfe_sensor_diag_cfg);
+	return 0;
+}
+
+DEFINE_DEBUGFS_ATTRIBUTE(cam_ife_sfe_sensor_diag_debug,
+	cam_ife_get_sfe_sensor_diag_debug,
+	cam_ife_set_sfe_sensor_diag_debug, "%16llu");
+
 static int cam_ife_hw_mgr_debug_register(void)
 {
 	int rc = 0;
@@ -11175,6 +11231,10 @@ static int cam_ife_hw_mgr_debug_register(void)
 	dbgfileptr = debugfs_create_bool("disable_ubwc_comp", 0644,
 		g_ife_hw_mgr.debug_cfg.dentry,
 		&g_ife_hw_mgr.debug_cfg.disable_ubwc_comp);
+	dbgfileptr = debugfs_create_file("sfe_debug", 0644,
+		g_ife_hw_mgr.debug_cfg.dentry, NULL, &cam_ife_sfe_debug);
+	dbgfileptr = debugfs_create_file("sfe_sensor_diag_sel", 0644,
+		g_ife_hw_mgr.debug_cfg.dentry, NULL, &cam_ife_sfe_sensor_diag_debug);
 
 	if (IS_ERR(dbgfileptr)) {
 		if (PTR_ERR(dbgfileptr) == -ENODEV)
