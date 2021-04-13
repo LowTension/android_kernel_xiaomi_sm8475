@@ -106,6 +106,7 @@ struct cam_vfe_bus_ver3_common_data {
 	bool                                        support_consumed_addr;
 	bool                                        disable_ubwc_comp;
 	bool                                        init_irq_subscribed;
+	bool                                        disable_mmu_prefetch;
 	cam_hw_mgr_event_cb_func                    event_cb;
 	int                        rup_irq_handle[CAM_VFE_BUS_VER3_SRC_GRP_MAX];
 	uint32_t                                    pack_align_shift;
@@ -1341,6 +1342,18 @@ static int cam_vfe_bus_ver3_start_wm(struct cam_isp_resource_node *wm_res)
 				rsrc_data->index, val);
 		}
 		cam_io_w_mb(val, common_data->mem_base + ubwc_regs->mode_cfg);
+	}
+
+	/* Validate for debugfs and mmu reg info for targets that don't list it */
+	if (!(common_data->disable_mmu_prefetch) &&
+		(rsrc_data->hw_regs->mmu_prefetch_cfg)) {
+		cam_io_w_mb(1, common_data->mem_base +
+			rsrc_data->hw_regs->mmu_prefetch_cfg);
+		cam_io_w_mb(0xFFFFFFFF, common_data->mem_base +
+			rsrc_data->hw_regs->mmu_prefetch_max_offset);
+		CAM_DBG(CAM_SFE, "VFE: %d WM: %d MMU prefetch enabled",
+			rsrc_data->common_data->core_index,
+			rsrc_data->index);
 	}
 
 	/* Enable WM */
@@ -3678,6 +3691,14 @@ static int cam_vfe_bus_ver3_process_cmd(
 		vfe_bus_cap->support_consumed_addr =
 			bus_priv->common_data.support_consumed_addr;
 		break;
+	case CAM_ISP_HW_CMD_IFE_BUS_DEBUG_CFG:
+		bus_priv = (struct cam_vfe_bus_ver3_priv  *) priv;
+		bus_priv->common_data.disable_mmu_prefetch =
+			(*((bool *)cmd_args));
+		CAM_DBG(CAM_ISP, "IFE bus WR prefetch %s",
+			bus_priv->common_data.disable_mmu_prefetch ?
+			"disabled" : "enabled");
+		break;
 	default:
 		CAM_ERR_RATE_LIMIT(CAM_ISP, "Invalid camif process command:%d",
 			cmd_type);
@@ -3759,6 +3780,7 @@ int cam_vfe_bus_ver3_init(
 	bus_priv->common_data.comp_config_needed =
 		ver3_hw_info->comp_cfg_needed;
 	bus_priv->common_data.init_irq_subscribed = false;
+	bus_priv->common_data.disable_mmu_prefetch = false;
 	bus_priv->common_data.pack_align_shift =
 		ver3_hw_info->pack_align_shift;
 

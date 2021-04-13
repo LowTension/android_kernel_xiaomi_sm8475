@@ -103,6 +103,8 @@ struct cam_sfe_bus_reg_offset_bus_client {
 	uint32_t debug_status_cfg;
 	uint32_t debug_status_0;
 	uint32_t debug_status_1;
+	uint32_t mmu_prefetch_cfg;
+	uint32_t mmu_prefetch_max_offset;
 	uint32_t comp_group;
 };
 

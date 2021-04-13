@@ -420,6 +420,8 @@ static struct cam_sfe_bus_wr_hw_info sfe680_bus_wr_hw_info = {
 			.debug_status_cfg         = 0x00000A80,
 			.debug_status_0           = 0x00000A84,
 			.debug_status_1           = 0x00000A88,
+			.mmu_prefetch_cfg         = 0x00000A60,
+			.mmu_prefetch_max_offset  = 0x00000A64,
 			.comp_group               = CAM_SFE_BUS_WR_COMP_GRP_0,
 		},
 		/* BUS Client 1 LCR */
@@ -447,6 +449,8 @@ static struct cam_sfe_bus_wr_hw_info sfe680_bus_wr_hw_info = {
 			.debug_status_cfg         = 0x00000B80,
 			.debug_status_0           = 0x00000B84,
 			.debug_status_1           = 0x00000B88,
+			.mmu_prefetch_cfg         = 0x00000B60,
+			.mmu_prefetch_max_offset  = 0x00000B64,
 			.comp_group               = CAM_SFE_BUS_WR_COMP_GRP_1,
 		},
 		/* BUS Client 2 STATS_BE_0 */
@@ -474,6 +478,8 @@ static struct cam_sfe_bus_wr_hw_info sfe680_bus_wr_hw_info = {
 			.debug_status_cfg         = 0x00000C80,
 			.debug_status_0           = 0x00000C84,
 			.debug_status_1           = 0x00000C88,
+			.mmu_prefetch_cfg         = 0x00000C60,
+			.mmu_prefetch_max_offset  = 0x00000C64,
 			.comp_group               = CAM_SFE_BUS_WR_COMP_GRP_2,
 		},
 		/* BUS Client 3 STATS_BHIST_0 */
@@ -501,6 +507,8 @@ static struct cam_sfe_bus_wr_hw_info sfe680_bus_wr_hw_info = {
 			.debug_status_cfg         = 0x00000D80,
 			.debug_status_0           = 0x00000D84,
 			.debug_status_1           = 0x00000D88,
+			.mmu_prefetch_cfg         = 0x00000D60,
+			.mmu_prefetch_max_offset  = 0x00000D64,
 			.comp_group               = CAM_SFE_BUS_WR_COMP_GRP_2,
 		},
 		/* BUS Client 4 STATS_BE_1 */
@@ -528,6 +536,8 @@ static struct cam_sfe_bus_wr_hw_info sfe680_bus_wr_hw_info = {
 			.debug_status_cfg         = 0x00000E80,
 			.debug_status_0           = 0x00000E84,
 			.debug_status_1           = 0x00000E88,
+			.mmu_prefetch_cfg         = 0x00000E60,
+			.mmu_prefetch_max_offset  = 0x00000E64,
 			.comp_group               = CAM_SFE_BUS_WR_COMP_GRP_3,
 		},
 		/* BUS Client 5 STATS_BHIST_1 */
@@ -555,6 +565,8 @@ static struct cam_sfe_bus_wr_hw_info sfe680_bus_wr_hw_info = {
 			.debug_status_cfg         = 0x00000F80,
 			.debug_status_0           = 0x00000F84,
 			.debug_status_1           = 0x00000F88,
+			.mmu_prefetch_cfg         = 0x00000F60,
+			.mmu_prefetch_max_offset  = 0x00000F64,
 			.comp_group               = CAM_SFE_BUS_WR_COMP_GRP_3,
 		},
 		/* BUS Client 6 STATS_BE_2 */
@@ -582,6 +594,8 @@ static struct cam_sfe_bus_wr_hw_info sfe680_bus_wr_hw_info = {
 			.debug_status_cfg         = 0x00001080,
 			.debug_status_0           = 0x00001084,
 			.debug_status_1           = 0x00001088,
+			.mmu_prefetch_cfg         = 0x00001060,
+			.mmu_prefetch_max_offset  = 0x00001064,
 			.comp_group               = CAM_SFE_BUS_WR_COMP_GRP_4,
 		},
 		/* BUS Client 7 STATS_BHIST_2 */
@@ -609,6 +623,8 @@ static struct cam_sfe_bus_wr_hw_info sfe680_bus_wr_hw_info = {
 			.debug_status_cfg         = 0x00001180,
 			.debug_status_0           = 0x00001184,
 			.debug_status_1           = 0x00001188,
+			.mmu_prefetch_cfg         = 0x00001160,
+			.mmu_prefetch_max_offset  = 0x00001164,
 			.comp_group               = CAM_SFE_BUS_WR_COMP_GRP_4,
 		},
 		/* BUS Client 8 RDI0 */
@@ -636,6 +652,8 @@ static struct cam_sfe_bus_wr_hw_info sfe680_bus_wr_hw_info = {
 			.debug_status_cfg         = 0x00001280,
 			.debug_status_0           = 0x00001284,
 			.debug_status_1           = 0x00001288,
+			.mmu_prefetch_cfg         = 0x00001260,
+			.mmu_prefetch_max_offset  = 0x00001264,
 			.comp_group               = CAM_SFE_BUS_WR_COMP_GRP_5,
 		},
 		/* BUS Client 9 RDI1 */
@@ -663,6 +681,8 @@ static struct cam_sfe_bus_wr_hw_info sfe680_bus_wr_hw_info = {
 			.debug_status_cfg         = 0x00001380,
 			.debug_status_0           = 0x00001384,
 			.debug_status_1           = 0x00001388,
+			.mmu_prefetch_cfg         = 0x00001360,
+			.mmu_prefetch_max_offset  = 0x00001364,
 			.comp_group               = CAM_SFE_BUS_WR_COMP_GRP_6,
 		},
 		/* BUS Client 10 RDI2 */
@@ -690,6 +710,8 @@ static struct cam_sfe_bus_wr_hw_info sfe680_bus_wr_hw_info = {
 			.debug_status_cfg         = 0x00001480,
 			.debug_status_0           = 0x00001484,
 			.debug_status_1           = 0x00001488,
+			.mmu_prefetch_cfg         = 0x00001460,
+			.mmu_prefetch_max_offset  = 0x00001464,
 			.comp_group               = CAM_SFE_BUS_WR_COMP_GRP_7,
 		},
 		/* BUS Client 11 RDI3 */
@@ -717,6 +739,8 @@ static struct cam_sfe_bus_wr_hw_info sfe680_bus_wr_hw_info = {
 			.debug_status_cfg         = 0x00001580,
 			.debug_status_0           = 0x00001584,
 			.debug_status_1           = 0x00001588,
+			.mmu_prefetch_cfg         = 0x00001560,
+			.mmu_prefetch_max_offset  = 0x00001564,
 			.comp_group               = CAM_SFE_BUS_WR_COMP_GRP_8,
 		},
 		/* BUS Client 12 RDI4 */
@@ -744,6 +768,8 @@ static struct cam_sfe_bus_wr_hw_info sfe680_bus_wr_hw_info = {
 			.debug_status_cfg         = 0x00001680,
 			.debug_status_0           = 0x00001684,
 			.debug_status_1           = 0x00001688,
+			.mmu_prefetch_cfg         = 0x00001660,
+			.mmu_prefetch_max_offset  = 0x00001664,
 			.comp_group               = CAM_SFE_BUS_WR_COMP_GRP_9,
 		},
 	},
