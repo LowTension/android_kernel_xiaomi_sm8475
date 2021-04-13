@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CAM_SFE_HW_INTF_H_
@@ -13,6 +13,12 @@
 #define SFE_CORE_BASE_IDX           0
 #define SFE_RT_CDM_BASE_IDX         1
 #define CAM_SFE_HW_NUM_MAX          2
+
+enum cam_sfe_core_id {
+	CAM_SFE_CORE_0,
+	CAM_SFE_CORE_1,
+	CAM_SFE_CORE_MAX,
+};
 
 enum cam_isp_hw_sfe_in {
 	CAM_ISP_HW_SFE_IN_PIX,
@@ -56,14 +62,38 @@ enum cam_sfe_bus_rd_irq_regs {
 };
 
 /*
- * struct cam_sfe_debug_cfg_params:
+ * struct cam_sfe_generic_debug_config:
  *
  * @sfe_debug_cfg : SFE debug cfg value
  * @sfe_sensor_sel: SFE sensor sel for diag data
  */
-struct cam_sfe_debug_cfg_params {
+struct cam_sfe_generic_debug_config {
 	uint32_t sfe_debug_cfg;
 	uint32_t sfe_sensor_sel;
+};
+
+/*
+ * struct cam_sfe_sys_cache_debug_config:
+ *
+ * @sfe_cache_dbg:  SFE cache debug cfg
+ */
+
+struct cam_sfe_sys_cache_debug_config {
+	uint32_t sfe_cache_dbg;
+};
+
+
+/*
+ * struct cam_sfe_debug_cfg_params:
+ *
+ * @cache_config: If the config is for cache
+ */
+struct cam_sfe_debug_cfg_params {
+	bool cache_config;
+	union {
+		struct cam_sfe_generic_debug_config   dbg_cfg;
+		struct cam_sfe_sys_cache_debug_config cache_cfg;
+	} u;
 };
 
 /*
@@ -120,6 +150,23 @@ struct cam_sfe_clock_update_args {
 struct cam_sfe_core_config_args {
 	struct cam_isp_resource_node      *node_res;
 	struct cam_isp_sfe_core_config     core_config;
+};
+
+/**
+ * struct cam_isp_sfe_bus_sys_cache_config:
+ *
+ * @Brief:         Based on exp order rxved from userland
+ *                 configure sys cache for SFE WMs & RMs
+ *
+ * @res:           SFE WM/RM Resource node
+ * @use_cache:     If set cache configured
+ * @type:          Dictates which slice ID to be used
+ *
+ */
+struct cam_isp_sfe_bus_sys_cache_config {
+	struct cam_isp_resource_node        *res;
+	bool                                 use_cache;
+	int                                  scid;
 };
 
 /*

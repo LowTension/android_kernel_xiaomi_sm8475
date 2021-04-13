@@ -927,8 +927,10 @@ static int cam_sfe_set_top_debug(
 	struct cam_sfe_debug_cfg_params *debug_cfg;
 
 	debug_cfg = (struct cam_sfe_debug_cfg_params *)cmd_args;
-	top_priv->sfe_debug_cfg = debug_cfg->sfe_debug_cfg;
-	top_priv->sensor_sel_diag_cfg = debug_cfg->sfe_sensor_sel;
+	if (!debug_cfg->cache_config) {
+		top_priv->sfe_debug_cfg = debug_cfg->u.dbg_cfg.sfe_debug_cfg;
+		top_priv->sensor_sel_diag_cfg = debug_cfg->u.dbg_cfg.sfe_sensor_sel;
+	}
 
 	return 0;
 }

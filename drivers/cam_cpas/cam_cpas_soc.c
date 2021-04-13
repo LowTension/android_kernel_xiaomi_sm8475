@@ -637,6 +637,105 @@ end:
 	return 0;
 }
 
+static inline enum cam_sys_cache_config_types cam_cpas_find_type_from_string(
+	const char *cache_name)
+{
+	if (strcmp(cache_name, "small-1") == 0)
+		return CAM_LLCC_SMALL_1;
+	else if (strcmp(cache_name, "small-2") == 0)
+		return CAM_LLCC_SMALL_2;
+	else
+		return CAM_LLCC_MAX;
+}
+
+static int cam_cpas_parse_sys_cache_uids(
+	struct device_node          *of_node,
+	struct cam_cpas_private_soc *soc_private)
+{
+	enum cam_sys_cache_config_types type = CAM_LLCC_MAX;
+	int num_caches, i, rc;
+	uint32_t scid;
+
+	soc_private->llcc_info = NULL;
+	soc_private->num_caches = 0;
+
+	num_caches = of_property_count_strings(of_node, "sys-cache-names");
+	if (num_caches <= 0) {
+		CAM_DBG(CAM_CPAS, "no cache-names found");
+		return 0;
+	}
+
+	if (num_caches > CAM_LLCC_MAX) {
+		CAM_ERR(CAM_CPAS,
+			"invalid number of cache-names found: 0x%x",
+			num_caches);
+		return -EINVAL;
+	}
+
+	soc_private->llcc_info = kcalloc(num_caches,
+		sizeof(struct cam_sys_cache_info), GFP_KERNEL);
+	if (!soc_private->llcc_info)
+		return -ENOMEM;
+
+	for (i = 0; i < num_caches; i++) {
+		rc = of_property_read_string_index(of_node, "sys-cache-names", i,
+			&soc_private->llcc_info[i].name);
+		if (rc) {
+			CAM_ERR(CAM_CPAS, "failed to read cache-names at %d", i);
+			goto end;
+		}
+
+		type = cam_cpas_find_type_from_string(
+			soc_private->llcc_info[i].name);
+		if (type == CAM_LLCC_MAX) {
+			CAM_ERR(CAM_CPAS, "Unsupported cache found: %s",
+				soc_private->llcc_info[i].name);
+			rc = -EINVAL;
+			goto end;
+		}
+
+		soc_private->llcc_info[i].type = type;
+		rc = of_property_read_u32_index(of_node,
+				"sys-cache-uids", i,
+				&soc_private->llcc_info[i].uid);
+		if (rc < 0) {
+			CAM_ERR(CAM_CPAS,
+				"unable to read sys cache uid at index %d", i);
+			goto end;
+		}
+
+		soc_private->llcc_info[i].slic_desc =
+			llcc_slice_getd(soc_private->llcc_info[i].uid);
+
+		if (IS_ERR_OR_NULL(soc_private->llcc_info[i].slic_desc)) {
+			CAM_ERR(CAM_CPAS,
+				"Failed to get slice desc for uid %u",
+				soc_private->llcc_info[i].uid);
+			rc = -EINVAL;
+			goto end;
+		}
+
+		scid = llcc_get_slice_id(soc_private->llcc_info[i].slic_desc);
+		soc_private->llcc_info[i].scid = scid;
+		soc_private->llcc_info[i].size =
+			llcc_get_slice_size(soc_private->llcc_info[i].slic_desc);
+		soc_private->num_caches++;
+
+		CAM_DBG(CAM_CPAS,
+			"Cache: %s uid: %u scid: %d size: %zukb",
+			soc_private->llcc_info[i].name,
+			soc_private->llcc_info[i].uid, scid,
+			soc_private->llcc_info[i].size);
+	}
+
+	return 0;
+
+end:
+	kfree(soc_private->llcc_info);
+	soc_private->llcc_info = NULL;
+	return rc;
+}
+
 int cam_cpas_get_custom_dt_info(struct cam_hw_info *cpas_hw,
 	struct platform_device *pdev, struct cam_cpas_private_soc *soc_private)
 {
@@ -952,8 +1051,16 @@ int cam_cpas_get_custom_dt_info(struct cam_hw_info *cpas_hw,
 		CAM_DBG(CAM_CPAS, "RPMH BCM info not available in DT, count=%d",
 			count);
 	}
+
+	/* check cache info */
+	rc = cam_cpas_parse_sys_cache_uids(of_node, soc_private);
+	if (rc)
+		goto cache_parse_fail;
+
 	return 0;
 
+cache_parse_fail:
+	soc_private->rpmh_info[CAM_RPMH_NUMBER_OF_BCMS] = 0;
 cleanup_tree:
 	cam_cpas_node_tree_cleanup(cpas_core, soc_private);
 cleanup_clients:
@@ -1011,11 +1118,13 @@ release_res:
 int cam_cpas_soc_deinit_resources(struct cam_hw_soc_info *soc_info)
 {
 	int rc;
+	struct cam_cpas_private_soc *soc_private = soc_info->soc_private;
 
 	rc = cam_soc_util_release_platform_resource(soc_info);
 	if (rc)
 		CAM_ERR(CAM_CPAS, "release platform failed, rc=%d", rc);
 
+	kfree(soc_private->llcc_info);
 	kfree(soc_info->soc_private);
 	soc_info->soc_private = NULL;
 

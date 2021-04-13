@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CAM_CPAS_HW_INTF_H_
@@ -43,6 +43,9 @@ enum cam_cpas_hw_cmd_process {
 	CAM_CPAS_HW_CMD_LOG_VOTE,
 	CAM_CPAS_HW_CMD_SELECT_QOS,
 	CAM_CPAS_HW_CMD_LOG_EVENT,
+	CAM_CPAS_HW_CMD_GET_SCID,
+	CAM_CPAS_HW_CMD_ACTIVATE_LLC,
+	CAM_CPAS_HW_CMD_DEACTIVATE_LLC,
 	CAM_CPAS_HW_CMD_INVALID,
 };
 

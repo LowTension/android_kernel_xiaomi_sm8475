@@ -6,6 +6,7 @@
 #ifndef _CAM_CPAS_SOC_H_
 #define _CAM_CPAS_SOC_H_
 
+#include <linux/soc/qcom/llcc-qcom.h>
 #include "cam_soc_util.h"
 #include "cam_cpas_hw.h"
 
@@ -90,6 +91,26 @@ struct cam_cpas_feature_info {
 };
 
 /**
+ * struct cam_sys_cache_info : Last level camera cache info
+ *
+ * @ref_cnt:   Ref cnt activate/deactivate cache
+ * @type:      cache type small/large etc.
+ * @uid:       Client user ID
+ * @size:      Cache size
+ * @scid:      Slice ID
+ * @slic_desc: Slice descriptor
+ */
+struct cam_sys_cache_info {
+	uint32_t                         ref_cnt;
+	enum cam_sys_cache_config_types  type;
+	uint32_t                         uid;
+	size_t                           size;
+	int32_t                          scid;
+	const char                      *name;
+	struct llcc_slice_desc          *slic_desc;
+};
+
+/**
  * struct cam_cpas_private_soc : CPAS private DT info
  *
  * @arch_compat: ARCH compatible string
@@ -112,6 +133,8 @@ struct cam_cpas_feature_info {
  * @rpmh_info: RPMH BCM info
  * @num_feature_info: number of feature_info entries
  * @feature_info: Structure for storing feature information
+ * @num_caches: Number of last level caches
+ * @llcc_info:  Cache info
  */
 struct cam_cpas_private_soc {
 	const char *arch_compat;
@@ -132,6 +155,8 @@ struct cam_cpas_private_soc {
 	uint32_t rpmh_info[CAM_RPMH_BCM_INFO_MAX];
 	uint32_t num_feature_info;
 	struct cam_cpas_feature_info  feature_info[CAM_CPAS_MAX_FUSE_FEATURE];
+	uint32_t num_caches;
+	struct cam_sys_cache_info *llcc_info;
 };
 
 void cam_cpas_util_debug_parse_data(struct cam_cpas_private_soc *soc_private);

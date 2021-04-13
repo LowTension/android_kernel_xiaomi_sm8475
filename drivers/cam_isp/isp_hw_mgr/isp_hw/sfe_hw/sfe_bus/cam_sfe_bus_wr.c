@@ -93,6 +93,7 @@ struct cam_sfe_bus_wr_common_data {
 	cam_hw_mgr_event_cb_func                    event_cb;
 
 	uint32_t                                    sfe_debug_cfg;
+	struct cam_sfe_bus_cache_dbg_cfg            cache_dbg_cfg;
 };
 
 struct cam_sfe_wr_scratch_buf_info {
@@ -132,6 +133,10 @@ struct cam_sfe_bus_wr_wm_resource_data {
 
 	uint32_t             acquired_width;
 	uint32_t             acquired_height;
+
+	bool                 enable_caching;
+	uint32_t             cache_cfg;
+	int32_t              current_scid;
 };
 
 struct cam_sfe_bus_wr_comp_grp_data {
@@ -591,6 +596,7 @@ static int cam_sfe_bus_acquire_wm(
 	rsrc_data->acquired_width = out_port_info->width;
 	rsrc_data->acquired_height = out_port_info->height;
 	rsrc_data->is_dual = is_dual;
+	rsrc_data->enable_caching =  false;
 
 	/* RDI0-2 line based mode by default */
 	if (sfe_out_res_id == CAM_SFE_BUS_SFE_OUT_RDI0 ||
@@ -783,6 +789,7 @@ static int cam_sfe_bus_stop_wm(struct cam_isp_resource_node *wm_res)
 	wm_res->res_state = CAM_ISP_RESOURCE_STATE_RESERVED;
 	rsrc_data->init_cfg_done = false;
 	rsrc_data->hfr_cfg_done = false;
+	rsrc_data->enable_caching =  false;
 
 	return 0;
 }
@@ -1007,7 +1014,7 @@ static int cam_sfe_bus_release_comp_grp(
 	if (in_rsrc_data->acquire_dev_cnt == 0) {
 		list_del(&comp_grp->list);
 
-		in_rsrc_data->dual_slave_core = CAM_SFE_BUS_SFE_CORE_MAX;
+		in_rsrc_data->dual_slave_core = CAM_SFE_CORE_MAX;
 		in_rsrc_data->addr_sync_mode = 0;
 		in_rsrc_data->composite_mask = 0;
 
@@ -1083,7 +1090,7 @@ static int cam_sfe_bus_wr_init_comp_grp(uint32_t index,
 
 	rsrc_data->comp_grp_type   = index;
 	rsrc_data->common_data     = &bus_priv->common_data;
-	rsrc_data->dual_slave_core = CAM_SFE_BUS_SFE_CORE_MAX;
+	rsrc_data->dual_slave_core = CAM_SFE_CORE_MAX;
 
 	list_add_tail(&comp_grp->list, &bus_priv->free_comp_grp);
 
@@ -2072,6 +2079,7 @@ static int cam_sfe_bus_wr_update_wm(void *priv, void *cmd_args,
 	struct cam_sfe_bus_wr_out_data         *sfe_out_data = NULL;
 	struct cam_cdm_utils_ops               *cdm_util_ops;
 	struct cam_sfe_bus_wr_wm_resource_data *wm_data = NULL;
+	struct cam_sfe_bus_cache_dbg_cfg       *cache_dbg_cfg = NULL;
 	uint32_t *reg_val_pair;
 	uint32_t num_regval_pairs = 0;
 	uint32_t  i, j, k, size = 0;
@@ -2080,6 +2088,7 @@ static int cam_sfe_bus_wr_update_wm(void *priv, void *cmd_args,
 
 	bus_priv = (struct cam_sfe_bus_wr_priv  *) priv;
 	update_buf =  (struct cam_isp_hw_get_cmd_update *) cmd_args;
+	cache_dbg_cfg = &bus_priv->common_data.cache_dbg_cfg;
 
 	sfe_out_data = (struct cam_sfe_bus_wr_out_data *)
 		update_buf->res->res_priv;
@@ -2120,6 +2129,37 @@ static int cam_sfe_bus_wr_update_wm(void *priv, void *cmd_args,
 		CAM_DBG(CAM_SFE, "WM:%d %s en_cfg 0x%X",
 			wm_data->index, sfe_out_data->wm_res[i].res_name,
 			reg_val_pair[j-1]);
+
+		wm_data->cache_cfg = 0;
+		if (wm_data->enable_caching) {
+			if ((cache_dbg_cfg->disable_for_scratch) &&
+				(update_buf->use_scratch_cfg))
+				goto skip_cache_cfg;
+
+			if ((cache_dbg_cfg->disable_for_buf) &&
+				(!update_buf->use_scratch_cfg))
+				goto skip_cache_cfg;
+
+			wm_data->cache_cfg =
+				wm_data->current_scid << 8;
+			wm_data->cache_cfg |= 3 << 4;
+			if ((update_buf->use_scratch_cfg) &&
+				(cache_dbg_cfg->scratch_dbg_cfg))
+				wm_data->cache_cfg |= cache_dbg_cfg->scratch_alloc;
+			else if ((!update_buf->use_scratch_cfg) &&
+				(cache_dbg_cfg->buf_dbg_cfg))
+				wm_data->cache_cfg |= cache_dbg_cfg->buf_alloc;
+			else
+				wm_data->cache_cfg |= CACHE_ALLOC_ALLOC;
+		}
+
+skip_cache_cfg:
+
+		CAM_SFE_ADD_REG_VAL_PAIR(reg_val_pair, j,
+			wm_data->hw_regs->system_cache_cfg,
+			wm_data->cache_cfg);
+		CAM_DBG(CAM_SFE, "WM:%d cache_cfg:0x%x",
+			wm_data->index, reg_val_pair[j-1]);
 
 		val = (wm_data->height << 16) | wm_data->width;
 		CAM_SFE_ADD_REG_VAL_PAIR(reg_val_pair, j,
@@ -2239,12 +2279,14 @@ static int cam_sfe_bus_wr_config_wm(void *priv, void *cmd_args,
 	struct cam_isp_hw_get_cmd_update       *update_buf;
 	struct cam_sfe_bus_wr_out_data         *sfe_out_data = NULL;
 	struct cam_sfe_bus_wr_wm_resource_data *wm_data = NULL;
+	struct cam_sfe_bus_cache_dbg_cfg       *cache_dbg_cfg = NULL;
 	uint32_t  i, k;
 	uint32_t  frame_inc = 0, val;
 	uint32_t loop_size = 0, stride = 0, slice_h = 0;
 
 	bus_priv = (struct cam_sfe_bus_wr_priv  *) priv;
 	update_buf =  (struct cam_isp_hw_get_cmd_update *) cmd_args;
+	cache_dbg_cfg = &bus_priv->common_data.cache_dbg_cfg;
 
 	sfe_out_data = (struct cam_sfe_bus_wr_out_data *)
 		update_buf->res->res_priv;
@@ -2327,6 +2369,24 @@ static int cam_sfe_bus_wr_config_wm(void *priv, void *cmd_args,
 				wm_data->hw_regs->frame_incr);
 		CAM_DBG(CAM_SFE, "WM:%d frame_inc %d",
 			wm_data->index, frame_inc);
+
+		wm_data->cache_cfg = 0;
+		if ((!cache_dbg_cfg->disable_for_scratch) &&
+			(wm_data->enable_caching)) {
+			wm_data->cache_cfg =
+				wm_data->current_scid << 8;
+			wm_data->cache_cfg |= 3 << 4;
+			if (cache_dbg_cfg->scratch_dbg_cfg)
+				wm_data->cache_cfg |= cache_dbg_cfg->scratch_alloc;
+			else
+				wm_data->cache_cfg |= CACHE_ALLOC_ALLOC;
+		}
+
+		cam_io_w_mb(wm_data->cache_cfg,
+			wm_data->common_data->mem_base +
+			wm_data->hw_regs->system_cache_cfg);
+		CAM_DBG(CAM_SFE, "WM:%d cache_cfg:0x%x",
+			wm_data->index, wm_data->cache_cfg);
 
 		/* enable the WM */
 		cam_io_w_mb(wm_data->en_cfg,
@@ -2596,6 +2656,47 @@ static int __cam_sfe_bus_wr_process_cmd(
 		cmd_args, arg_size);
 }
 
+static int cam_sfe_bus_wr_cache_config(
+	void *priv, void *cmd_args,
+	uint32_t arg_size)
+{
+	int i;
+	struct cam_sfe_bus_wr_priv              *bus_priv;
+	struct cam_isp_sfe_bus_sys_cache_config *cache_cfg;
+	struct cam_sfe_bus_wr_out_data          *sfe_out_data = NULL;
+	struct cam_sfe_bus_wr_wm_resource_data  *wm_data = NULL;
+
+
+	bus_priv = (struct cam_sfe_bus_wr_priv  *)priv;
+	cache_cfg = (struct cam_isp_sfe_bus_sys_cache_config *)cmd_args;
+
+	sfe_out_data = (struct cam_sfe_bus_wr_out_data *)
+		cache_cfg->res->res_priv;
+
+	if (!sfe_out_data) {
+		CAM_ERR(CAM_SFE, "Invalid data");
+		return -EINVAL;
+	}
+
+	if (bus_priv->common_data.cache_dbg_cfg.disable_all)
+		return 0;
+
+	for (i = 0; i < sfe_out_data->num_wm; i++) {
+		wm_data = (struct cam_sfe_bus_wr_wm_resource_data *)
+			sfe_out_data->wm_res[i].res_priv;
+		wm_data->enable_caching = cache_cfg->use_cache;
+		wm_data->current_scid = cache_cfg->scid;
+
+		CAM_DBG(CAM_SFE, "SFE:%d WM:%d cache_enable:%s scid:%u",
+			wm_data->common_data->core_index,
+			wm_data->index,
+			(wm_data->enable_caching ? "true" : "false"),
+			wm_data->current_scid);
+	}
+
+	return 0;
+}
+
 static int cam_sfe_bus_wr_set_debug_cfg(
 	void *priv, void *cmd_args)
 {
@@ -2605,7 +2706,14 @@ static int cam_sfe_bus_wr_set_debug_cfg(
 
 	debug_cfg = (struct cam_sfe_debug_cfg_params *)cmd_args;
 
-	bus_priv->common_data.sfe_debug_cfg = debug_cfg->sfe_debug_cfg;
+	if (debug_cfg->cache_config)
+		cam_sfe_bus_parse_cache_cfg(false,
+			debug_cfg->u.cache_cfg.sfe_cache_dbg,
+			&bus_priv->common_data.cache_dbg_cfg);
+	else
+		bus_priv->common_data.sfe_debug_cfg =
+			debug_cfg->u.dbg_cfg.sfe_debug_cfg;
+
 	return 0;
 }
 
@@ -2667,6 +2775,9 @@ static int cam_sfe_bus_wr_process_cmd(
 		rc = 0;
 	}
 		break;
+	case CAM_ISP_HW_SFE_SYS_CACHE_WM_CONFIG:
+		rc = cam_sfe_bus_wr_cache_config(priv, cmd_args, arg_size);
+		break;
 	case CAM_ISP_HW_CMD_SET_SFE_DEBUG_CFG:
 		rc = cam_sfe_bus_wr_set_debug_cfg(priv, cmd_args);
 		break;
@@ -2687,6 +2798,7 @@ int cam_sfe_bus_wr_init(
 	struct cam_sfe_bus                  **sfe_bus)
 {
 	int i, rc = 0;
+	struct cam_sfe_soc_private    *soc_private;
 	struct cam_sfe_bus_wr_priv    *bus_priv = NULL;
 	struct cam_sfe_bus            *sfe_bus_local;
 	struct cam_sfe_bus_wr_hw_info *hw_info = bus_hw_info;
@@ -2701,6 +2813,7 @@ int cam_sfe_bus_wr_init(
 		goto end;
 	}
 
+	soc_private = soc_info->soc_private;
 	sfe_bus_local = kzalloc(sizeof(struct cam_sfe_bus), GFP_KERNEL);
 	if (!sfe_bus_local) {
 		CAM_DBG(CAM_SFE, "Failed to alloc for sfe_bus");
@@ -2810,7 +2923,11 @@ int cam_sfe_bus_wr_init(
 	sfe_bus_local->bottom_half_handler = NULL;
 	sfe_bus_local->hw_ops.process_cmd  = __cam_sfe_bus_wr_process_cmd;
 	bus_priv->bus_irq_handle = 0;
+	bus_priv->common_data.sfe_debug_cfg = 0;
 	*sfe_bus = sfe_bus_local;
+
+	/* Remove after sys cache verification */
+	bus_priv->common_data.cache_dbg_cfg.disable_all = true;
 
 	CAM_DBG(CAM_SFE, "Exit");
 	return rc;

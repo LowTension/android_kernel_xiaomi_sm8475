@@ -589,6 +589,82 @@ int cam_cpas_register_client(
 }
 EXPORT_SYMBOL(cam_cpas_register_client);
 
+int cam_cpas_get_scid(
+	enum cam_sys_cache_config_types type)
+{
+	int rc;
+
+	if (!CAM_CPAS_INTF_INITIALIZED()) {
+		CAM_ERR(CAM_CPAS, "cpas intf not initialized");
+		return -ENODEV;
+	}
+
+	if (g_cpas_intf->hw_intf->hw_ops.process_cmd) {
+		rc = g_cpas_intf->hw_intf->hw_ops.process_cmd(
+			g_cpas_intf->hw_intf->hw_priv,
+			CAM_CPAS_HW_CMD_GET_SCID, &type,
+			sizeof(type));
+	} else {
+		CAM_ERR(CAM_CPAS, "Invalid process_cmd ops");
+		rc = -EINVAL;
+	}
+
+	return rc;
+}
+EXPORT_SYMBOL(cam_cpas_get_scid);
+
+int cam_cpas_activate_llcc(
+	enum cam_sys_cache_config_types type)
+{
+	int rc;
+
+	if (!CAM_CPAS_INTF_INITIALIZED()) {
+		CAM_ERR(CAM_CPAS, "cpas intf not initialized");
+		return -ENODEV;
+	}
+
+	if (g_cpas_intf->hw_intf->hw_ops.process_cmd) {
+		rc = g_cpas_intf->hw_intf->hw_ops.process_cmd(
+			g_cpas_intf->hw_intf->hw_priv,
+			CAM_CPAS_HW_CMD_ACTIVATE_LLC, &type,
+			sizeof(type));
+		if (rc)
+			CAM_ERR(CAM_CPAS, "Failed in process_cmd, rc=%d", rc);
+	} else {
+		CAM_ERR(CAM_CPAS, "Invalid process_cmd ops");
+		rc = -EINVAL;
+	}
+
+	return rc;
+}
+EXPORT_SYMBOL(cam_cpas_activate_llcc);
+
+int cam_cpas_deactivate_llcc(
+	enum cam_sys_cache_config_types type)
+{
+	int rc;
+
+	if (!CAM_CPAS_INTF_INITIALIZED()) {
+		CAM_ERR(CAM_CPAS, "cpas intf not initialized");
+		return -ENODEV;
+	}
+
+	if (g_cpas_intf->hw_intf->hw_ops.process_cmd) {
+		rc = g_cpas_intf->hw_intf->hw_ops.process_cmd(
+			g_cpas_intf->hw_intf->hw_priv,
+			CAM_CPAS_HW_CMD_DEACTIVATE_LLC, &type,
+			sizeof(type));
+		if (rc)
+			CAM_ERR(CAM_CPAS, "Failed in process_cmd, rc=%d", rc);
+	} else {
+		CAM_ERR(CAM_CPAS, "Invalid process_cmd ops");
+		rc = -EINVAL;
+	}
+
+	return rc;
+}
+EXPORT_SYMBOL(cam_cpas_deactivate_llcc);
+
 int cam_cpas_subdev_cmd(struct cam_cpas_intf *cpas_intf,
 	struct cam_control *cmd)
 {

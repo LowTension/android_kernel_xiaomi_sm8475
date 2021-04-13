@@ -44,9 +44,11 @@ enum cam_ife_ctx_master_type {
  * @dentry:                    Debugfs entry
  * @csid_debug:                csid debug information
  * @enable_recovery:           enable recovery
+ * @camif_debug:               camif debug info
  * @enable_csid_recovery:      enable csid recovery
  * @sfe_debug:                 sfe debug config
  * @sfe_sensor_diag_cfg:       sfe sensor diag config
+ * @sfe_cache_debug:           sfe cache debug info
  * @enable_req_dump:           Enable request dump on HW errors
  * @per_req_reg_dump:          Enable per request reg dump
  * @disable_ubwc_comp:         Disable UBWC compression
@@ -61,6 +63,7 @@ struct cam_ife_hw_mgr_debug {
 	uint32_t       enable_csid_recovery;
 	uint32_t       sfe_debug;
 	uint32_t       sfe_sensor_diag_cfg;
+	uint32_t       sfe_cache_debug[CAM_SFE_HW_NUM_MAX];
 	bool           enable_req_dump;
 	bool           per_req_reg_dump;
 	bool           disable_ubwc_comp;
@@ -123,8 +126,11 @@ struct cam_sfe_scratch_buf_cfg {
  *                       resources
  * @is_sfe_shdr:         indicate if stream is for SFE sHDR
  * @is_sfe_fs:           indicate if stream is for inline SFE FS
- * @dump_on_flush        Set if reg dump triggered on flush
- * @dump_on_error        Set if reg dump triggered on error
+ * @dump_on_flush:       Set if reg dump triggered on flush
+ * @dump_on_error:       Set if reg dump triggered on error
+ * @sys_cache_usage:     Per context sys cache usage
+ *                       The corresponding index will be set
+ *                       for the cache type
  *
  */
 struct cam_ife_hw_mgr_ctx_flags {
@@ -144,6 +150,7 @@ struct cam_ife_hw_mgr_ctx_flags {
 	bool   is_sfe_fs;
 	bool   dump_on_flush;
 	bool   dump_on_error;
+	bool   sys_cache_usage[CAM_LLCC_MAX];
 };
 
 /**
@@ -260,6 +267,19 @@ struct cam_isp_bus_hw_caps {
 	bool         support_consumed_addr;
 };
 
+/*
+ * struct cam_isp_sys_cache_info:
+ *
+ * @Brief:                   ISP Bus sys cache info
+ *
+ * @type:                    Cache type
+ * @scid:                    Cache slice ID
+ */
+struct cam_isp_sys_cache_info {
+	enum cam_sys_cache_config_types type;
+	int32_t                         scid;
+};
+
 /**
  * struct cam_ife_hw_mgr - IFE HW Manager
  *
@@ -292,23 +312,26 @@ struct cam_ife_hw_mgr {
 	struct cam_hw_intf            *sfe_devices[CAM_SFE_HW_NUM_MAX];
 	struct cam_soc_reg_map        *cdm_reg_map[CAM_IFE_HW_NUM_MAX];
 
-	struct mutex                   ctx_mutex;
-	atomic_t                       active_ctx_cnt;
-	struct list_head               free_ctx_list;
-	struct list_head               used_ctx_list;
-	struct cam_ife_hw_mgr_ctx      ctx_pool[CAM_IFE_CTX_MAX];
+	struct mutex                     ctx_mutex;
+	atomic_t                         active_ctx_cnt;
+	struct list_head                 free_ctx_list;
+	struct list_head                 used_ctx_list;
+	struct cam_ife_hw_mgr_ctx        ctx_pool[CAM_IFE_CTX_MAX];
 
-	struct cam_ife_csid_hw_caps    csid_hw_caps[
+	struct cam_ife_csid_hw_caps      csid_hw_caps[
 						CAM_IFE_CSID_HW_NUM_MAX];
-	struct cam_vfe_hw_get_hw_cap   ife_dev_caps[CAM_IFE_HW_NUM_MAX];
-	struct cam_req_mgr_core_workq *workq;
-	struct cam_ife_hw_mgr_debug    debug_cfg;
-	spinlock_t                     ctx_lock;
-	bool                           hw_pid_support;
-	bool                           csid_rup_en;
-	bool                           csid_global_reset_en;
-	struct cam_isp_bus_hw_caps     isp_bus_caps;
-	struct cam_isp_hw_path_port_map   path_port_map;
+	struct cam_vfe_hw_get_hw_cap     ife_dev_caps[CAM_IFE_HW_NUM_MAX];
+	struct cam_req_mgr_core_workq   *workq;
+	struct cam_ife_hw_mgr_debug      debug_cfg;
+	spinlock_t                       ctx_lock;
+	bool                             hw_pid_support;
+	bool                             csid_rup_en;
+	bool                             csid_global_reset_en;
+	struct cam_isp_bus_hw_caps       isp_bus_caps;
+	struct cam_isp_hw_path_port_map  path_port_map;
+
+	uint32_t                         num_caches_found;
+	struct cam_isp_sys_cache_info    sys_cache_info[CAM_LLCC_MAX];
 };
 
 /**

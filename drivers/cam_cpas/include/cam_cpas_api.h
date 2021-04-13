@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CAM_CPAS_API_H_
@@ -208,6 +208,16 @@ enum cam_camnoc_irq_type {
 	CAM_CAMNOC_IRQ_IPE_BPS_UBWC_DECODE_ERROR,
 	CAM_CAMNOC_IRQ_IPE_BPS_UBWC_ENCODE_ERROR,
 	CAM_CAMNOC_IRQ_AHB_TIMEOUT,
+};
+
+
+/**
+ * enum cam_sys_cache_config_types - Enum for camera llc's
+ */
+enum cam_sys_cache_config_types {
+	CAM_LLCC_SMALL_1 = 0,
+	CAM_LLCC_SMALL_2 = 1,
+	CAM_LLCC_MAX = 2,
 };
 
 /**
@@ -720,5 +730,41 @@ int cam_cpas_select_qos_settings(uint32_t selection_mask);
  */
 int cam_cpas_notify_event(const char *identifier_string,
 	int32_t identifier_value);
+
+/**
+ * cam_cpas_get_scid()
+ *
+ * @brief: API to obtain slice id for the given type
+ *
+ * @type: Cache type
+ *
+ * @return slice id, -1 for invalid id.
+ *
+ */
+int cam_cpas_get_scid(enum cam_sys_cache_config_types  type);
+
+/**
+ * cam_cpas_activate_llcc()
+ *
+ * @brief: API to activate system cache
+ *
+ * @type: Cache type
+ *
+ * @return 0 for success.
+ *
+ */
+int cam_cpas_activate_llcc(enum cam_sys_cache_config_types type);
+
+/**
+ * cam_cpas_deactivate_llcc()
+ *
+ * @brief: API to de-activate system cache
+ *
+ * @type: Cache type
+ *
+ * @return 0 for success.
+ *
+ */
+int cam_cpas_deactivate_llcc(enum cam_sys_cache_config_types type);
 
 #endif /* _CAM_CPAS_API_H_ */
