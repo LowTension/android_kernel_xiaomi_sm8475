@@ -755,6 +755,31 @@ static int cam_ife_csid_ver2_rx_top_half(
 	return 0;
 }
 
+static int cam_ife_csid_ver2_handle_event_err(
+	struct cam_ife_csid_ver2_hw  *csid_hw,
+	uint32_t                      irq_status,
+	uint32_t                      err_type)
+{
+	struct cam_isp_hw_event_info      evt = {0};
+
+	if (!csid_hw->event_cb) {
+		CAM_ERR_RATE_LIMIT(CAM_ISP, "CSID[%u] event cb not registered",
+			csid_hw->hw_intf->hw_idx);
+		return 0;
+	}
+
+	evt.hw_idx   = csid_hw->hw_intf->hw_idx;
+	evt.reg_val  = irq_status;
+	evt.hw_type  = CAM_ISP_HW_TYPE_CSID;
+	evt.err_type = err_type;
+
+	csid_hw->event_cb(csid_hw->token,
+		CAM_ISP_HW_EVENT_ERROR, (void *)&evt);
+
+	return 0;
+
+}
+
 static int cam_ife_csid_ver2_rx_err_bottom_half(
 	void                                      *handler_priv,
 	void                                      *evt_payload_priv)
@@ -766,8 +791,10 @@ static int cam_ife_csid_ver2_rx_err_bottom_half(
 	struct cam_hw_soc_info                     *soc_info = NULL;
 	uint8_t                                    *log_buf = NULL;
 	uint32_t                                    irq_status;
+	uint32_t                                    rx_irq_status = 0;
 	uint32_t                                    len = 0;
 	uint32_t                                    val = 0;
+	uint32_t                                    event_type = 0;
 	bool                                        fatal_err_detected = false;
 
 	if (!handler_priv || !evt_payload_priv) {
@@ -837,6 +864,7 @@ static int cam_ife_csid_ver2_rx_err_bottom_half(
 				CAM_IFE_CSID_LOG_BUF_LEN - len,
 				"DPHY_ERROR_ECC: Pkt hdr errors unrecoverable\n");
 
+		rx_irq_status |= irq_status;
 		fatal_err_detected = true;
 	}
 
@@ -870,6 +898,7 @@ static int cam_ife_csid_ver2_rx_err_bottom_half(
 				CAM_IFE_CSID_LOG_BUF_LEN - len,
 				"UNBOUNDED_FRAME: Frame started with EOF or No EOF\n");
 
+		rx_irq_status |= irq_status;
 		fatal_err_detected = true;
 	}
 
@@ -897,41 +926,22 @@ static int cam_ife_csid_ver2_rx_err_bottom_half(
 			payload->irq_reg_val[CAM_IFE_CSID_IRQ_REG_RX],
 			log_buf);
 
-	if (fatal_err_detected)
+	if (csid_hw->flags.fatal_err_detected || fatal_err_detected) {
+		event_type |= CAM_ISP_HW_ERROR_CSID_FATAL;
 		cam_subdev_notify_message(CAM_CSIPHY_DEVICE_TYPE,
 				CAM_SUBDEV_MESSAGE_IRQ_ERR,
 				(csid_hw->rx_cfg.phy_sel));
+	}
+
+	if (event_type)
+		cam_ife_csid_ver2_handle_event_err(csid_hw,
+			rx_irq_status, event_type);
 
 	cam_ife_csid_ver2_put_evt_payload(csid_hw, &payload,
 			&csid_hw->rx_free_payload_list,
 			&csid_hw->rx_payload_lock);
 
 	return 0;
-}
-
-static int cam_ife_csid_ver2_handle_event_err(
-	struct cam_ife_csid_ver2_hw  *csid_hw,
-	uint32_t                      irq_status,
-	uint32_t                      err_type)
-{
-	struct cam_isp_hw_event_info      evt = {0};
-
-	if (!csid_hw->event_cb) {
-		CAM_ERR_RATE_LIMIT(CAM_ISP, "CSID[%u] event cb not registered",
-			csid_hw->hw_intf->hw_idx );
-		return 0;
-	}
-
-	evt.hw_idx   = csid_hw->hw_intf->hw_idx;
-	evt.reg_val  = irq_status;
-	evt.hw_type  = CAM_ISP_HW_TYPE_CSID;
-	evt.err_type = err_type;
-
-	csid_hw->event_cb(csid_hw->token,
-		CAM_ISP_HW_EVENT_ERROR, (void *)&evt);
-
-	return 0;
-
 }
 
 static void cam_ife_csid_ver2_print_debug_reg_status(
