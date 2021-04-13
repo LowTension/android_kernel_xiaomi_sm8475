@@ -21,9 +21,24 @@
 
 static struct cam_bps_device_hw_info cam_bps_hw_info = {
 	.hw_idx = 0,
-	.pwr_ctrl = 0x5c,
-	.pwr_status = 0x58,
-	.reserved = 0,
+	.pwr_ctrl = 0x48,
+	.pwr_status = 0x44,
+	.top_rst_cmd = 0x1008,
+	.top_irq_status = 0x100C,
+	.cdm_rst_cmd = 0x10,
+	.cdm_irq_status = 0x44,
+	.cdm_rst_val = 0xF,
+};
+
+static struct cam_bps_device_hw_info cam_bps680_hw_info = {
+	.hw_idx = 0,
+	.pwr_ctrl = 0x48,
+	.pwr_status = 0x44,
+	.top_rst_cmd = 0x508,
+	.top_irq_status = 0x50C,
+	.cdm_rst_cmd = 0x10,
+	.cdm_irq_status = 0x44,
+	.cdm_rst_val = 0x7F,
 };
 
 static bool cam_bps_cpas_cb(uint32_t client_handle, void *userdata,
@@ -135,7 +150,7 @@ static int cam_bps_component_bind(struct device *dev,
 		rc = -EINVAL;
 		return rc;
 	}
-	hw_info = &cam_bps_hw_info;
+	hw_info = (struct cam_bps_device_hw_info *)match_dev->data;
 	core_info->bps_hw_info = hw_info;
 
 	rc = cam_bps_init_soc_resources(&bps_dev->soc_info, cam_bps_irq,
@@ -215,6 +230,10 @@ static const struct of_device_id cam_bps_dt_match[] = {
 	{
 		.compatible = "qcom,cam-bps",
 		.data = &cam_bps_hw_info,
+	},
+	{
+		.compatible = "qcom,cam-bps680",
+		.data = &cam_bps680_hw_info,
 	},
 	{}
 };
