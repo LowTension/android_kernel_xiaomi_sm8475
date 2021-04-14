@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2021, The Linux Foundation. All rights reserved.
  */
 
 #include "cam_vfe_top_common.h"
@@ -58,6 +58,13 @@ int cam_vfe_top_set_axi_bw_vote(struct cam_vfe_soc_private *soc_private,
 	uint64_t total_bw_new_vote = 0;
 	bool bw_unchanged = true;
 	bool apply_bw_update = false;
+
+	if (top_common->num_mux > CAM_VFE_TOP_MUX_MAX) {
+		CAM_ERR(CAM_PERF,
+			"Number of Mux exceeds max, # Mux: %d > Limit: %d",
+			top_common->num_mux, CAM_VFE_TOP_MUX_MAX);
+		return -EINVAL;
+	}
 
 	for (i = 0; i < top_common->num_mux; i++) {
 		if (top_common->axi_vote_control[i] ==

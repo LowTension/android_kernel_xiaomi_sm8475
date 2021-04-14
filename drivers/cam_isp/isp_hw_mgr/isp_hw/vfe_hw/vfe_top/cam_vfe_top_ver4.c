@@ -1357,7 +1357,7 @@ int cam_vfe_top_ver4_start(void *device_priv,
 	}
 
 	mux_res = (struct cam_isp_resource_node *)start_args;
-	hw_info = (struct cam_hw_info  *)mux_res->hw_intf->hw_priv;
+	hw_info = (struct cam_hw_info *)mux_res->hw_intf->hw_priv;
 
 	if (hw_info->hw_state == CAM_HW_STATE_POWER_UP) {
 		rc = cam_vfe_top_ver4_set_hw_clk_rate(top_priv);
