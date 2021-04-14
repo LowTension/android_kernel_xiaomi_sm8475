@@ -550,7 +550,8 @@ static int cam_cpas_util_set_camnoc_axi_clk_rate(
 		do_div(intermediate_result, soc_private->camnoc_bus_width);
 		clk_rate = intermediate_result;
 
-		CAM_DBG(CAM_CPAS, "Setting camnoc axi clk rate : %llu %lld",
+		CAM_DBG(CAM_CPAS,
+			"Setting camnoc axi clk rate[BW Clk] : [%llu %lld]",
 			required_camnoc_bw, clk_rate);
 
 		/*
