@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  */
 
 #define pr_fmt(fmt) "CAM-REQ-MGR_UTIL %s:%d " fmt, __func__, __LINE__
@@ -9,7 +9,7 @@
 #include <linux/of_platform.h>
 #include <linux/slab.h>
 #include <linux/mutex.h>
-#include <linux/spinlock.h>
+#include <linux/spinlock_types.h>
 #include <linux/random.h>
 #include <media/cam_req_mgr.h>
 #include "cam_req_mgr_util.h"

@@ -7,7 +7,7 @@
 #define _CAM_ISP_CONTEXT_H_
 
 
-#include <linux/spinlock.h>
+#include <linux/spinlock_types.h>
 #include <media/cam_isp.h>
 #include <media/cam_defs.h>
 #include <media/cam_tfe.h>

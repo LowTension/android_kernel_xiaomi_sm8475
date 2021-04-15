@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/uaccess.h>
@@ -9,7 +9,7 @@
 #include <linux/of_platform.h>
 #include <linux/platform_device.h>
 #include <linux/mutex.h>
-#include <linux/spinlock.h>
+#include <linux/spinlock_types.h>
 #include <linux/timer.h>
 #include <linux/debugfs.h>
 #include <media/cam_defs.h>

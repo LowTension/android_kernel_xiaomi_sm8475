@@ -7,7 +7,7 @@
 #ifndef _CAM_TFE_CORE_H_
 #define _CAM_TFE_CORE_H_
 
-#include <linux/spinlock.h>
+#include <linux/spinlock_types.h>
 #include "cam_hw_intf.h"
 #include "cam_tfe_bus.h"
 #include "cam_tfe_hw_intf.h"
