@@ -3988,14 +3988,15 @@ static int cam_ife_csid_ver2_print_hbi_vbi(
 
 	if (res->res_type != CAM_ISP_RESOURCE_PIX_PATH ||
 		res->res_id >= CAM_IFE_PIX_PATH_RES_MAX) {
-		CAM_DBG(CAM_ISP, "CSID:%d Invalid res_type:%d res id%d",
+		CAM_DBG(CAM_ISP,
+			"CSID[%u] Invalid res_type:%d res [id: %d name: %s]",
 			csid_hw->hw_intf->hw_idx, res->res_type,
-			res->res_id);
+			res->res_id, res->res_name);
 		return -EINVAL;
 	}
 
 	if (csid_hw->hw_info->hw_state != CAM_HW_STATE_POWER_UP) {
-		CAM_ERR(CAM_ISP, "CSID:%d Invalid dev state :%d",
+		CAM_ERR(CAM_ISP, "CSID[%u] Invalid dev state :%d",
 			csid_hw->hw_intf->hw_idx,
 			csid_hw->hw_info->hw_state);
 		return -EINVAL;
@@ -4025,13 +4026,15 @@ static int cam_ife_csid_ver2_print_hbi_vbi(
 			csid_reg->rdi_reg[res->res_id]->format_measure2_addr);
 	break;
 	default:
-		CAM_ERR(CAM_ISP, "CSID:%d invalid res %d",
+		CAM_ERR(CAM_ISP, "CSID[%u] invalid res: %d",
 			csid_hw->hw_intf->hw_idx, res->res_id);
 		return -EINVAL;
 	}
 
-	CAM_INFO_RATE_LIMIT(CAM_ISP, "CSID[%u] Resource[id:%d name:%s hbi %u vbi %u]",
-		res->res_id, res->res_name, hbi, vbi);
+	CAM_INFO_RATE_LIMIT(CAM_ISP,
+		"CSID[%u] Resource[id:%d name:%s] hbi 0x%x vbi 0x%x",
+		csid_hw->hw_intf->hw_idx, res->res_id, res->res_name,
+		hbi, vbi);
 
 	return 0;
 }

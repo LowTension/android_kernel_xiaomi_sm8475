@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CAM_IFE_CSID_480_H_
@@ -486,6 +486,7 @@ static struct cam_ife_csid_ver1_common_reg_info
 	.num_pix                         = 1,
 	.num_ppp                         = 1,
 	.drop_supported                  = 1,
+	.early_eof_supported             = 1,
 	.rst_sw_reg_stb                  = 1,
 	.rst_hw_reg_stb                  = 0x1e,
 	.rst_sw_hw_reg_stb               = 0x1f,
