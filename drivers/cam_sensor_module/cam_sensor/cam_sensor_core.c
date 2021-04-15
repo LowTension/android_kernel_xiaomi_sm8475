@@ -731,12 +731,13 @@ int cam_sensor_match_id(struct cam_sensor_ctrl_t *s_ctrl)
 		&chipid, CAMERA_SENSOR_I2C_TYPE_WORD,
 		CAMERA_SENSOR_I2C_TYPE_WORD);
 
-	CAM_DBG(CAM_SENSOR, "read id: 0x%x expected id 0x%x:",
-		chipid, slave_info->sensor_id);
+	CAM_DBG(CAM_SENSOR, "%s read id: 0x%x expected id 0x%x:",
+		s_ctrl->sensor_name, chipid, slave_info->sensor_id);
 
 	if (cam_sensor_id_by_mask(s_ctrl, chipid) != slave_info->sensor_id) {
-		CAM_WARN(CAM_SENSOR, "read id: 0x%x expected id 0x%x:",
-				chipid, slave_info->sensor_id);
+		CAM_WARN(CAM_SENSOR, "%s read id: 0x%x expected id 0x%x:",
+				s_ctrl->sensor_name, chipid,
+				slave_info->sensor_id);
 		return -ENODEV;
 	}
 	return rc;
@@ -766,8 +767,9 @@ int32_t cam_sensor_driver_cmd(struct cam_sensor_ctrl_t *s_ctrl,
 	switch (cmd->op_code) {
 	case CAM_SENSOR_PROBE_CMD: {
 		if (s_ctrl->is_probe_succeed == 1) {
-			CAM_ERR(CAM_SENSOR,
-				"Already Sensor Probed in the slot");
+			CAM_WARN(CAM_SENSOR,
+				"Sensor %s already Probed in the slot",
+				s_ctrl->sensor_name);
 			break;
 		}
 
@@ -781,7 +783,7 @@ int32_t cam_sensor_driver_cmd(struct cam_sensor_ctrl_t *s_ctrl,
 			}
 		} else {
 			CAM_ERR(CAM_SENSOR, "Invalid Command Type: %d",
-				 cmd->handle_type);
+				cmd->handle_type);
 			rc = -EINVAL;
 			goto release_mutex;
 		}
@@ -793,8 +795,8 @@ int32_t cam_sensor_driver_cmd(struct cam_sensor_ctrl_t *s_ctrl,
 			s_ctrl->sensordata->power_info.power_setting_size);
 		if (rc < 0) {
 			CAM_ERR(CAM_SENSOR,
-				"Fail in filling vreg params for PUP rc %d",
-				 rc);
+				"Fail in filling vreg params for %s PUP rc %d",
+				s_ctrl->sensor_name, rc);
 			goto free_power_settings;
 		}
 
@@ -805,15 +807,16 @@ int32_t cam_sensor_driver_cmd(struct cam_sensor_ctrl_t *s_ctrl,
 			s_ctrl->sensordata->power_info.power_down_setting_size);
 		if (rc < 0) {
 			CAM_ERR(CAM_SENSOR,
-				"Fail in filling vreg params for PDOWN rc %d",
-				 rc);
+				"Fail in filling vreg params for %s PDOWN rc %d",
+				s_ctrl->sensor_name, rc);
 			goto free_power_settings;
 		}
 
 		/* Power up and probe sensor */
 		rc = cam_sensor_power_up(s_ctrl);
 		if (rc < 0) {
-			CAM_ERR(CAM_SENSOR, "%s power up failed for sensor_id: 0x%x, slave_addr: 0x%x",
+			CAM_ERR(CAM_SENSOR,
+				"Power up failed for %s sensor_id: 0x%x, slave_addr: 0x%x",
 				s_ctrl->sensor_name,
 				s_ctrl->sensordata->slave_info.sensor_id,
 				s_ctrl->sensordata->slave_info.sensor_slave_addr
@@ -844,7 +847,7 @@ int32_t cam_sensor_driver_cmd(struct cam_sensor_ctrl_t *s_ctrl,
 
 		rc = cam_sensor_power_down(s_ctrl);
 		if (rc < 0) {
-			CAM_ERR(CAM_SENSOR, "%s fail in Sensor Power Down",
+			CAM_ERR(CAM_SENSOR, "Fail in %s sensor Power Down",
 				s_ctrl->sensor_name);
 			goto free_power_settings;
 		}
@@ -871,7 +874,7 @@ int32_t cam_sensor_driver_cmd(struct cam_sensor_ctrl_t *s_ctrl,
 
 		if (s_ctrl->bridge_intf.device_hdl != -1) {
 			CAM_ERR(CAM_SENSOR,
-				"%s device is already acquired",
+				"%s Device is already acquired",
 				s_ctrl->sensor_name);
 			rc = -EINVAL;
 			goto release_mutex;
@@ -908,7 +911,8 @@ int32_t cam_sensor_driver_cmd(struct cam_sensor_ctrl_t *s_ctrl,
 
 		rc = cam_sensor_power_up(s_ctrl);
 		if (rc < 0) {
-			CAM_ERR(CAM_SENSOR, "Sensor Power up failed for %s sensor_id:0x%x, slave_addr:0x%x",
+			CAM_ERR(CAM_SENSOR,
+				"Sensor Power up failed for %s sensor_id:0x%x, slave_addr:0x%x",
 				s_ctrl->sensor_name,
 				s_ctrl->sensordata->slave_info.sensor_id,
 				s_ctrl->sensordata->slave_info.sensor_slave_addr
@@ -947,7 +951,8 @@ int32_t cam_sensor_driver_cmd(struct cam_sensor_ctrl_t *s_ctrl,
 
 		rc = cam_sensor_power_down(s_ctrl);
 		if (rc < 0) {
-			CAM_ERR(CAM_SENSOR, "Sensor Power Down failed for %s sensor_id: 0x%x, slave_addr:0x%x",
+			CAM_ERR(CAM_SENSOR,
+				"Sensor Power Down failed for %s sensor_id: 0x%x, slave_addr:0x%x",
 				s_ctrl->sensor_name,
 				s_ctrl->sensordata->slave_info.sensor_id,
 				s_ctrl->sensordata->slave_info.sensor_slave_addr
@@ -969,7 +974,7 @@ int32_t cam_sensor_driver_cmd(struct cam_sensor_ctrl_t *s_ctrl,
 		rc = cam_destroy_device_hdl(s_ctrl->bridge_intf.device_hdl);
 		if (rc < 0)
 			CAM_ERR(CAM_SENSOR,
-				"%s failed in destroying the device hdl",
+				"Failed in destroying %s device hdl",
 				s_ctrl->sensor_name);
 		s_ctrl->bridge_intf.device_hdl = -1;
 		s_ctrl->bridge_intf.link_hdl = -1;
@@ -1032,8 +1037,8 @@ int32_t cam_sensor_driver_cmd(struct cam_sensor_ctrl_t *s_ctrl,
 			rc = s_ctrl->bridge_intf.crm_cb->notify_timer(&timer);
 			if (rc) {
 				CAM_ERR(CAM_SENSOR,
-					"Enable CRM SOF freeze timer failed rc: %d",
-					rc);
+					"%s Enable CRM SOF freeze timer failed rc: %d",
+					s_ctrl->sensor_name, rc);
 				return rc;
 			}
 		}
@@ -1303,7 +1308,7 @@ int cam_sensor_power_up(struct cam_sensor_ctrl_t *s_ctrl)
 
 	rc = cam_sensor_core_power_up(power_info, soc_info);
 	if (rc < 0) {
-		CAM_ERR(CAM_SENSOR, "power up the core is failed:%d", rc);
+		CAM_ERR(CAM_SENSOR, "core power up failed:%d", rc);
 		return rc;
 	}
 
@@ -1337,13 +1342,15 @@ int cam_sensor_power_down(struct cam_sensor_ctrl_t *s_ctrl)
 	soc_info = &s_ctrl->soc_info;
 
 	if (!power_info) {
-		CAM_ERR(CAM_SENSOR, "failed: power_info %pK", power_info);
+		CAM_ERR(CAM_SENSOR, "failed: %s power_info %pK",
+			s_ctrl->sensor_name, power_info);
 		return -EINVAL;
 	}
 
 	rc = cam_sensor_util_power_down(power_info, soc_info);
 	if (rc < 0) {
-		CAM_ERR(CAM_SENSOR, "power down the core is failed:%d", rc);
+		CAM_ERR(CAM_SENSOR, "%s core power down failed:%d",
+			s_ctrl->sensor_name, rc);
 		return rc;
 	}
 
@@ -1352,7 +1359,8 @@ int cam_sensor_power_down(struct cam_sensor_ctrl_t *s_ctrl)
 			s_ctrl->bob_reg_index, false);
 		if (rc) {
 			CAM_WARN(CAM_SENSOR,
-				"BoB PWM setup failed rc: %d", rc);
+				"%s BoB PWM setup failed rc: %d",
+				s_ctrl->sensor_name, rc);
 			rc = 0;
 		}
 	}

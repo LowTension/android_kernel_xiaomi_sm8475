@@ -1182,12 +1182,12 @@ int cam_sensor_util_request_gpio_table(
 	struct gpio *gpio_tbl = NULL;
 
 	if (!gpio_conf) {
-		CAM_INFO(CAM_SENSOR, "No GPIO data");
+		CAM_DBG(CAM_SENSOR, "No GPIO data");
 		return 0;
 	}
 
 	if (gpio_conf->cam_gpio_common_tbl_size <= 0) {
-		CAM_INFO(CAM_SENSOR, "No GPIO entry");
+		CAM_ERR(CAM_SENSOR, "No GPIO entry");
 		return -EINVAL;
 	}
 
