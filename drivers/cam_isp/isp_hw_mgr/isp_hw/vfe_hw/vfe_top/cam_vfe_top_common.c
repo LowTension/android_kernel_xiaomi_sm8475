@@ -6,6 +6,113 @@
 #include "cam_vfe_top_common.h"
 #include "cam_debug_util.h"
 
+int cam_vfe_top_set_hw_clk_rate(
+	struct cam_vfe_top_priv_common *top_common)
+{
+	struct cam_hw_soc_info        *soc_info = NULL;
+	struct cam_vfe_soc_private    *soc_private = NULL;
+	struct cam_ahb_vote            ahb_vote;
+	int                            i, rc = 0, clk_lvl = -1;
+	unsigned long                  max_clk_rate = 0;
+
+	soc_info = top_common->soc_info;
+	soc_private = (struct cam_vfe_soc_private *)soc_info->soc_private;
+
+	for (i = 0; i < top_common->num_mux; i++) {
+		if (top_common->req_clk_rate[i] > max_clk_rate)
+			max_clk_rate = top_common->req_clk_rate[i];
+	}
+
+	if (max_clk_rate == top_common->hw_clk_rate) {
+		CAM_DBG(CAM_ISP, "VFE:%d Clock Unchanged %llu",
+			top_common->hw_idx, top_common->hw_clk_rate);
+		return 0;
+	}
+
+	CAM_DBG(CAM_PERF, "VFE:%d Clock name=%s idx=%d clk=%llu",
+		top_common->hw_idx,
+		soc_info->clk_name[soc_info->src_clk_idx],
+		soc_info->src_clk_idx, max_clk_rate);
+
+	rc = cam_soc_util_set_src_clk_rate(soc_info, max_clk_rate);
+
+	if (!rc) {
+		soc_private->ife_clk_src = max_clk_rate;
+
+		top_common->hw_clk_rate = max_clk_rate;
+		rc = cam_soc_util_get_clk_level(soc_info, max_clk_rate,
+			soc_info->src_clk_idx, &clk_lvl);
+		if (rc) {
+			CAM_WARN(CAM_ISP,
+				"Failed to get clk level for %s with clk_rate %llu src_idx %d rc %d",
+				soc_info->dev_name, max_clk_rate,
+				soc_info->src_clk_idx, rc);
+			rc = 0;
+			goto end;
+		}
+
+		ahb_vote.type = CAM_VOTE_ABSOLUTE;
+		ahb_vote.vote.level = clk_lvl;
+		cam_cpas_update_ahb_vote(soc_private->cpas_handle, &ahb_vote);
+	} else {
+		CAM_ERR(CAM_PERF, "VFE:%d Set Clock rate failed, rc=%d",
+			top_common->hw_idx, rc);
+	}
+
+end:
+	return rc;
+}
+
+int cam_vfe_top_clock_update(struct cam_vfe_top_priv_common *top_common,
+	void *cmd_args, uint32_t arg_size)
+{
+	struct cam_vfe_clock_update_args     *clk_update = NULL;
+	struct cam_isp_resource_node         *res = NULL;
+	struct cam_hw_info                   *hw_info = NULL;
+	int                                   i, rc = 0;
+
+	clk_update =
+		(struct cam_vfe_clock_update_args *)cmd_args;
+	res = clk_update->node_res;
+
+	if (!res || !res->hw_intf->hw_priv) {
+		CAM_ERR(CAM_PERF, "Invalid input res %pK", res);
+		return -EINVAL;
+	}
+
+	hw_info = res->hw_intf->hw_priv;
+
+	if (res->res_type != CAM_ISP_RESOURCE_VFE_IN ||
+		res->res_id >= CAM_ISP_HW_VFE_IN_MAX) {
+		CAM_ERR(CAM_PERF, "VFE:%d Invalid res_type:%d res id%d",
+			res->hw_intf->hw_idx, res->res_type,
+			res->res_id);
+		return -EINVAL;
+	}
+
+	for (i = 0; i < top_common->num_mux; i++) {
+		if (top_common->mux_rsrc[i].res_id == res->res_id) {
+			top_common->req_clk_rate[i] = clk_update->clk_rate;
+			break;
+		}
+	}
+
+	if (hw_info->hw_state != CAM_HW_STATE_POWER_UP) {
+		CAM_DBG(CAM_PERF,
+			"VFE:%d Not ready to set clocks yet :%d",
+			res->hw_intf->hw_idx,
+			hw_info->hw_state);
+	} else {
+		rc = cam_vfe_top_set_hw_clk_rate(top_common);
+		if (rc)
+			CAM_ERR(CAM_PERF,
+				"VFE:%d Failed in setting clock rate rc=%d",
+				top_common->hw_idx, rc);
+	}
+
+	return rc;
+}
+
 static struct cam_axi_vote *cam_vfe_top_delay_bw_reduction(
 	struct cam_vfe_top_priv_common *top_common,
 	uint64_t *to_be_applied_bw)
