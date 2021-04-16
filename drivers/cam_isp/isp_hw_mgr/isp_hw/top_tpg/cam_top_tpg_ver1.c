@@ -124,13 +124,13 @@ static int cam_top_tpg_ver1_reserve(
 		return -EINVAL;
 	}
 
-	if ((reserv->in_port[0]->vc > 0xF) ||
+	if ((reserv->in_port[0]->vc[0] > 0xF) ||
 		(reserv->in_port[0]->lane_num <= 0 ||
 		reserv->in_port[0]->lane_num > 4) ||
 		(reserv->in_port[0]->pix_pattern > 4) ||
 		(reserv->in_port[0]->lane_type >= 2)) {
 		CAM_ERR_RATE_LIMIT(CAM_ISP, "TPG:%u invalid input %d %d %d %d",
-			tpg_hw->hw_intf->hw_idx, reserv->in_port[0]->vc,
+			tpg_hw->hw_intf->hw_idx, reserv->in_port[0]->vc[0],
 			reserv->in_port[0]->lane_num,
 			reserv->in_port[0]->pix_pattern,
 			reserv->in_port[0]->lane_type);
@@ -145,13 +145,13 @@ static int cam_top_tpg_ver1_reserve(
 	CAM_DBG(CAM_ISP, "TPG: %u enter", tpg_hw->hw_intf->hw_idx);
 
 	tpg_data = (struct cam_top_tpg_cfg *)tpg_hw->tpg_res.res_priv;
-	tpg_data->vc_num[0] = reserv->in_port[0]->vc;
+	tpg_data->vc_num[0] = reserv->in_port[0]->vc[0];
 	tpg_data->phy_sel = reserv->in_port[0]->lane_type;
 	tpg_data->num_active_lanes = reserv->in_port[0]->lane_num;
 	tpg_data->h_blank_count = reserv->in_port[0]->sensor_hbi;
 	tpg_data->v_blank_count = reserv->in_port[0]->sensor_vbi;
 	tpg_data->pix_pattern = reserv->in_port[0]->pix_pattern;
-	tpg_data->dt_cfg[0].data_type = reserv->in_port[0]->dt;
+	tpg_data->dt_cfg[0].data_type = reserv->in_port[0]->dt[0];
 	tpg_data->dt_cfg[0].frame_height = reserv->in_port[0]->height;
 	if (reserv->in_port[0]->usage_type)
 		tpg_data->dt_cfg[0].frame_width =
@@ -182,7 +182,7 @@ static int cam_top_tpg_ver1_reserve(
 		goto end;
 
 	for (i = 1; i < reserv->num_inport; i++) {
-		if ((tpg_data->vc_num[0] != reserv->in_port[i]->vc) ||
+		if ((tpg_data->vc_num[0] != reserv->in_port[i]->vc[0]) ||
 			(tpg_data->phy_sel != reserv->in_port[i]->lane_type) ||
 			(tpg_data->num_active_lanes !=
 				reserv->in_port[i]->lane_num) ||
@@ -199,7 +199,7 @@ static int cam_top_tpg_ver1_reserve(
 		if (rc)
 			return rc;
 
-		tpg_data->dt_cfg[i].data_type = reserv->in_port[i]->dt;
+		tpg_data->dt_cfg[i].data_type = reserv->in_port[i]->dt[0];
 		tpg_data->dt_cfg[i].frame_height =
 			reserv->in_port[i]->height;
 		tpg_data->dt_cfg[i].frame_width =

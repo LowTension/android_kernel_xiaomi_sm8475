@@ -107,6 +107,9 @@ struct cam_tfe_top_reg_offset_common {
 	uint32_t diag_min_hbi_error_shift;
 	uint32_t diag_neq_hbi_shift;
 	uint32_t diag_sensor_hbi_mask;
+
+	/* configuration */
+	bool serializer_supported;
 };
 
 struct cam_tfe_camif_reg {
@@ -163,6 +166,10 @@ struct cam_tfe_camif_reg_data {
 	uint32_t     perf_client_sel_shift;
 	uint32_t     perf_window_start_shift;
 	uint32_t     perf_window_end_shift;
+
+	uint32_t     ai_c_srl_en_shift;
+	uint32_t     ds16_c_srl_en_shift;
+	uint32_t     ds4_c_srl_en_shift;
 };
 
 struct cam_tfe_camif_hw_info {

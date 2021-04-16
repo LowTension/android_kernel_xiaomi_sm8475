@@ -20,6 +20,7 @@
 #include "cam_tfe_soc.h"
 #include "cam_debug_util.h"
 #include "cam_cpas_api.h"
+#include "cam_tfe_csid_hw_intf.h"
 
 
 static const char drv_name[] = "tfe_bus";
@@ -680,15 +681,15 @@ static int cam_tfe_bus_acquire_rdi_wm(
 }
 
 static int cam_tfe_bus_acquire_wm(
-	struct cam_tfe_bus_priv               *bus_priv,
-	struct cam_isp_tfe_out_port_info      *out_port_info,
-	struct cam_isp_resource_node         **wm_res,
-	void                                  *tasklet,
-	enum cam_tfe_bus_tfe_out_id            tfe_out_res_id,
-	enum cam_tfe_bus_plane_type            plane,
-	uint32_t                              *client_done_mask,
-	uint32_t                               is_dual,
-	enum cam_tfe_bus_comp_grp_id          *comp_grp_id)
+	struct cam_tfe_bus_priv                  *bus_priv,
+	struct cam_isp_tfe_out_port_generic_info *out_port_info,
+	struct cam_isp_resource_node            **wm_res,
+	void                                     *tasklet,
+	enum cam_tfe_bus_tfe_out_id               tfe_out_res_id,
+	enum cam_tfe_bus_plane_type               plane,
+	uint32_t                                 *client_done_mask,
+	uint32_t                                  is_dual,
+	enum cam_tfe_bus_comp_grp_id             *comp_grp_id)
 {
 	struct cam_isp_resource_node         *wm_res_local = NULL;
 	struct cam_tfe_bus_wm_resource_data  *rsrc_data = NULL;
@@ -985,15 +986,15 @@ static bool cam_tfe_bus_match_comp_grp(
 }
 
 static int cam_tfe_bus_acquire_comp_grp(
-	struct cam_tfe_bus_priv             *bus_priv,
-	struct cam_isp_tfe_out_port_info    *out_port_info,
-	void                                *tasklet,
-	uint32_t                             is_dual,
-	uint32_t                             is_master,
-	struct cam_isp_resource_node       **comp_grp,
-	enum cam_tfe_bus_comp_grp_id         comp_grp_id,
-	struct cam_isp_resource_node        *out_rsrc,
-	uint32_t                             source_group)
+	struct cam_tfe_bus_priv                  *bus_priv,
+	struct cam_isp_tfe_out_port_generic_info *out_port_info,
+	void                                     *tasklet,
+	uint32_t                                  is_dual,
+	uint32_t                                  is_master,
+	struct cam_isp_resource_node            **comp_grp,
+	enum cam_tfe_bus_comp_grp_id              comp_grp_id,
+	struct cam_isp_resource_node             *out_rsrc,
+	uint32_t                                  source_group)
 {
 	int rc = 0;
 	struct cam_isp_resource_node      *comp_grp_local = NULL;

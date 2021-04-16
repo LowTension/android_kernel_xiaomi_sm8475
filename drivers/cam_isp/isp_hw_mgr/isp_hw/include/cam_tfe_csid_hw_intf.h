@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CAM_TFE_CSID_HW_INTF_H_
@@ -8,6 +8,7 @@
 
 #include "cam_isp_hw.h"
 #include "cam_hw_intf.h"
+#include "cam_tfe.h"
 
 /* MAX TFE CSID instance */
 #define CAM_TFE_CSID_HW_NUM_MAX                        3
@@ -37,6 +38,58 @@ enum cam_tfe_csid_irq_reg {
 	TFE_CSID_IRQ_REG_MAX,
 };
 
+struct cam_isp_tfe_out_port_generic_info {
+	uint32_t                res_id;
+	uint32_t                format;
+	uint32_t                width;
+	uint32_t                height;
+	uint32_t                stride;
+	uint32_t                comp_grp_id;
+	uint32_t                secure_mode;
+	uint32_t                wm_mode;
+	uint32_t                reserved;
+};
+
+struct cam_isp_tfe_in_port_generic_info {
+	uint32_t                        major_ver;
+	uint32_t                        minor_ver;
+	uint32_t                        res_id;
+	uint32_t                        lane_type;
+	uint32_t                        lane_num;
+	uint32_t                        lane_cfg;
+	uint32_t                        vc[CAM_ISP_TFE_VC_DT_CFG];
+	uint32_t                        dt[CAM_ISP_TFE_VC_DT_CFG];
+	uint32_t                        num_valid_vc_dt;
+	uint32_t                        format;
+	uint32_t                        pix_pattern;
+	uint32_t                        usage_type;
+	uint32_t                        left_start;
+	uint32_t                        left_end;
+	uint32_t                        left_width;
+	uint32_t                        right_start;
+	uint32_t                        right_end;
+	uint32_t                        right_width;
+	uint32_t                        line_start;
+	uint32_t                        line_end;
+	uint32_t                        height;
+	uint32_t                        batch_size;
+	uint32_t                        dsp_mode;
+	uint32_t                        sensor_width;
+	uint32_t                        sensor_height;
+	uint32_t                        sensor_hbi;
+	uint32_t                        sensor_vbi;
+	uint32_t                        sensor_fps;
+	uint32_t                        init_frame_drop;
+	uint32_t                        num_out_res;
+	uint32_t                        bayer_bin;
+	uint32_t                        qcfa_bin;
+	uint32_t                        core_cfg;
+	uint32_t                        num_bytes_out;
+	uint32_t                        ipp_count;
+	uint32_t                        rdi_count;
+	uint32_t                        secure_mode;
+	struct cam_isp_tfe_out_port_generic_info    *data;
+};
 
 /**
  * struct cam_tfe_csid_hw_caps- get the CSID hw capability
@@ -75,8 +128,8 @@ struct cam_tfe_csid_hw_caps {
 struct cam_tfe_csid_hw_reserve_resource_args {
 	enum cam_isp_resource_type                res_type;
 	uint32_t                                  res_id;
-	struct cam_isp_tfe_in_port_info          *in_port;
-	struct cam_isp_tfe_out_port_info         *out_port;
+	struct cam_isp_tfe_in_port_generic_info  *in_port;
+	struct cam_isp_tfe_out_port_generic_info *out_port;
 	enum cam_isp_hw_sync_mode                 sync_mode;
 	uint32_t                                  master_idx;
 	uint32_t                                  phy_sel;

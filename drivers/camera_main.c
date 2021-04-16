@@ -58,7 +58,7 @@
 
 #include "cam_top_tpg.h"
 #include "cam_tfe_dev.h"
-#include "cam_tfe_csid530.h"
+#include "cam_tfe_csid.h"
 #include "cam_csid_ppi100.h"
 #include "camera_main.h"
 
@@ -86,7 +86,7 @@ static const struct camera_submodule_component camera_tfe[] = {
 #ifdef CONFIG_SPECTRA_TFE
 	{&cam_csid_ppi100_init_module, &cam_csid_ppi100_exit_module},
 	{&cam_tfe_init_module, &cam_tfe_exit_module},
-	{&cam_tfe_csid530_init_module, &cam_tfe_csid530_exit_module},
+	{&cam_tfe_csid_init_module, &cam_tfe_csid_exit_module},
 #endif
 };
 

@@ -9,6 +9,7 @@
 #include "cam_isp_hw.h"
 #include "cam_hw_intf.h"
 #include "cam_ife_csid_hw_intf.h"
+#include "cam_tfe_csid_hw_intf.h"
 
 /* Max top tpg instance */
 #define CAM_TOP_TPG_HW_NUM_MAX                        3
@@ -52,9 +53,9 @@ struct cam_top_tpg_hw_caps {
  *
  */
 struct cam_top_tpg_ver1_reserve_args {
-	uint32_t                          num_inport;
-	struct cam_isp_tfe_in_port_info  *in_port[CAM_TOP_TPG_MAX_SUPPORTED_DT];
-	struct cam_isp_resource_node     *node_res;
+	uint32_t                                 num_inport;
+	struct cam_isp_tfe_in_port_generic_info *in_port[CAM_TOP_TPG_MAX_SUPPORTED_DT];
+	struct cam_isp_resource_node            *node_res;
 };
 
 /**

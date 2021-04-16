@@ -835,13 +835,13 @@ static int cam_tfe_mgr_process_base_info(
 }
 
 static int cam_tfe_hw_mgr_acquire_res_tfe_out_rdi(
-	struct cam_tfe_hw_mgr_ctx         *tfe_ctx,
-	struct cam_isp_hw_mgr_res         *tfe_in_res,
-	struct cam_isp_tfe_in_port_info   *in_port)
+	struct cam_tfe_hw_mgr_ctx               *tfe_ctx,
+	struct cam_isp_hw_mgr_res               *tfe_in_res,
+	struct cam_isp_tfe_in_port_generic_info *in_port)
 {
 	int rc = -EINVAL;
-	struct cam_tfe_acquire_args              tfe_acquire;
-	struct cam_isp_tfe_out_port_info         *out_port = NULL;
+	struct cam_tfe_acquire_args               tfe_acquire;
+	struct cam_isp_tfe_out_port_generic_info *out_port = NULL;
 	struct cam_isp_hw_mgr_res                *tfe_out_res;
 	struct cam_hw_intf                       *hw_intf;
 	uint32_t  i, tfe_out_res_id, tfe_in_res_id;
@@ -917,14 +917,14 @@ err:
 }
 
 static int cam_tfe_hw_mgr_acquire_res_tfe_out_pixel(
-	struct cam_tfe_hw_mgr_ctx           *tfe_ctx,
-	struct cam_isp_hw_mgr_res           *tfe_in_res,
-	struct cam_isp_tfe_in_port_info     *in_port)
+	struct cam_tfe_hw_mgr_ctx               *tfe_ctx,
+	struct cam_isp_hw_mgr_res               *tfe_in_res,
+	struct cam_isp_tfe_in_port_generic_info *in_port)
 {
 	int rc = -EINVAL;
 	uint32_t  i, j, k;
 	struct cam_tfe_acquire_args               tfe_acquire;
-	struct cam_isp_tfe_out_port_info          *out_port;
+	struct cam_isp_tfe_out_port_generic_info *out_port;
 	struct cam_isp_hw_mgr_res                *tfe_out_res;
 	struct cam_hw_intf                       *hw_intf;
 
@@ -1002,8 +1002,8 @@ err:
 }
 
 static int cam_tfe_hw_mgr_acquire_res_tfe_out(
-	struct cam_tfe_hw_mgr_ctx         *tfe_ctx,
-	struct cam_isp_tfe_in_port_info   *in_port)
+	struct cam_tfe_hw_mgr_ctx               *tfe_ctx,
+	struct cam_isp_tfe_in_port_generic_info *in_port)
 {
 	int rc = -EINVAL;
 	struct cam_isp_hw_mgr_res       *tfe_in_res;
@@ -1039,8 +1039,8 @@ err:
 }
 
 static int cam_tfe_hw_mgr_acquire_res_tfe_in(
-	struct cam_tfe_hw_mgr_ctx         *tfe_ctx,
-	struct cam_isp_tfe_in_port_info   *in_port,
+	struct cam_tfe_hw_mgr_ctx               *tfe_ctx,
+	struct cam_isp_tfe_in_port_generic_info *in_port,
 	uint32_t                          *pdaf_enable)
 {
 	int rc                = -EINVAL;
@@ -1156,8 +1156,8 @@ err:
 }
 
 static int cam_tfe_hw_mgr_acquire_res_tfe_csid_pxl(
-	struct cam_tfe_hw_mgr_ctx              *tfe_ctx,
-	struct cam_isp_tfe_in_port_info        *in_port)
+	struct cam_tfe_hw_mgr_ctx               *tfe_ctx,
+	struct cam_isp_tfe_in_port_generic_info *in_port)
 {
 	int rc = -EINVAL;
 	int i, j;
@@ -1168,7 +1168,7 @@ static int cam_tfe_hw_mgr_acquire_res_tfe_csid_pxl(
 	struct cam_tfe_csid_hw_reserve_resource_args  csid_acquire;
 	enum cam_tfe_csid_path_res_id                 path_res_id;
 	struct cam_isp_hw_mgr_res        *csid_res_temp, *csid_res_iterator;
-	struct cam_isp_tfe_out_port_info        *out_port = NULL;
+	struct cam_isp_tfe_out_port_generic_info     *out_port = NULL;
 
 	tfe_hw_mgr = tfe_ctx->hw_mgr;
 	/* get csid resource */
@@ -1398,9 +1398,9 @@ end:
 }
 
 static int cam_tfe_hw_mgr_acquire_tpg(
-	struct cam_tfe_hw_mgr_ctx               *tfe_ctx,
-	struct cam_isp_tfe_in_port_info        **in_port,
-	uint32_t                                 num_inport)
+	struct cam_tfe_hw_mgr_ctx                *tfe_ctx,
+	struct cam_isp_tfe_in_port_generic_info  *in_port,
+	uint32_t                                  num_inport)
 {
 	int rc = -EINVAL;
 	uint32_t i, j = 0;
@@ -1418,7 +1418,7 @@ static int cam_tfe_hw_mgr_acquire_tpg(
 		tpg_reserve.num_inport = num_inport;
 		tpg_reserve.node_res = NULL;
 		for (j = 0; j < num_inport; j++)
-			tpg_reserve.in_port[j] = in_port[j];
+			tpg_reserve.in_port[j] = &in_port[j];
 
 		rc = hw_intf->hw_ops.reserve(hw_intf->hw_priv,
 			&tpg_reserve, sizeof(tpg_reserve));
@@ -1469,19 +1469,19 @@ static enum cam_tfe_csid_path_res_id
 }
 
 static int cam_tfe_hw_mgr_acquire_res_tfe_csid_rdi(
-	struct cam_tfe_hw_mgr_ctx         *tfe_ctx,
-	struct cam_isp_tfe_in_port_info   *in_port)
+	struct cam_tfe_hw_mgr_ctx               *tfe_ctx,
+	struct cam_isp_tfe_in_port_generic_info *in_port)
 {
 	int rc = -EINVAL;
 	int i, j;
 
-	struct cam_tfe_hw_mgr               *tfe_hw_mgr;
-	struct cam_isp_hw_mgr_res           *csid_res;
-	struct cam_hw_intf                  *hw_intf;
-	struct cam_isp_tfe_out_port_info    *out_port;
-	struct cam_tfe_csid_hw_reserve_resource_args  csid_acquire;
-	struct cam_isp_hw_mgr_res             *csid_res_iterator;
-	enum cam_tfe_csid_path_res_id        path_res_id;
+	struct cam_tfe_hw_mgr                       *tfe_hw_mgr;
+	struct cam_isp_hw_mgr_res                   *csid_res;
+	struct cam_hw_intf                          *hw_intf;
+	struct cam_isp_tfe_out_port_generic_info    *out_port;
+	struct cam_tfe_csid_hw_reserve_resource_args csid_acquire;
+	struct cam_isp_hw_mgr_res                   *csid_res_iterator;
+	enum cam_tfe_csid_path_res_id                path_res_id;
 
 	tfe_hw_mgr = tfe_ctx->hw_mgr;
 
@@ -1639,8 +1639,8 @@ end:
 }
 
 static int cam_tfe_hw_mgr_preprocess_port(
-	struct cam_tfe_hw_mgr_ctx       *tfe_ctx,
-	struct cam_isp_tfe_in_port_info *in_port,
+	struct cam_tfe_hw_mgr_ctx               *tfe_ctx,
+	struct cam_isp_tfe_in_port_generic_info *in_port,
 	int                             *ipp_count,
 	int                             *rdi_count,
 	int                             *pdaf_enable)
@@ -1649,9 +1649,9 @@ static int cam_tfe_hw_mgr_preprocess_port(
 	int rdi_num        = 0;
 	bool rdi2_enable   = false;
 	uint32_t i;
-	struct cam_isp_tfe_out_port_info      *out_port;
-	struct cam_tfe_hw_mgr                 *tfe_hw_mgr;
-	struct cam_hw_intf                    *tfe_device;
+	struct cam_isp_tfe_out_port_generic_info *out_port;
+	struct cam_tfe_hw_mgr                    *tfe_hw_mgr;
+	struct cam_hw_intf                       *tfe_device;
 	bool pdaf_rdi2_mux_en = false;
 
 	tfe_hw_mgr = tfe_ctx->hw_mgr;
@@ -1693,8 +1693,8 @@ static int cam_tfe_hw_mgr_preprocess_port(
 }
 
 static int cam_tfe_mgr_acquire_hw_for_ctx(
-	struct cam_tfe_hw_mgr_ctx              *tfe_ctx,
-	struct cam_isp_tfe_in_port_info        *in_port,
+	struct cam_tfe_hw_mgr_ctx               *tfe_ctx,
+	struct cam_isp_tfe_in_port_generic_info *in_port,
 	uint32_t *num_pix_port, uint32_t  *num_rdi_port,
 	uint32_t *pdaf_enable)
 {
@@ -1834,6 +1834,226 @@ void cam_tfe_cam_cdm_callback(uint32_t handle, void *userdata,
 	}
 }
 
+static int cam_tfe_mgr_acquire_get_unified_structure_v1(
+	struct cam_isp_tfe_acquire_hw_info *acquire_hw_info,
+	uint32_t offset, uint32_t *input_size,
+	struct cam_isp_tfe_in_port_generic_info *in_port)
+{
+	struct cam_isp_tfe_in_port_info *in = NULL;
+	uint32_t in_port_length = 0;
+	int32_t rc = 0, i;
+
+	in = (struct cam_isp_tfe_in_port_info *)
+		((uint8_t *)&acquire_hw_info->data +
+		 acquire_hw_info->input_info_offset + *input_size);
+
+	in_port_length = sizeof(struct cam_isp_tfe_in_port_info) +
+		(in->num_out_res - 1) *
+		sizeof(struct cam_isp_tfe_out_port_info);
+
+	*input_size += in_port_length;
+
+	if (!in_port || ((*input_size) > acquire_hw_info->input_info_size)) {
+		CAM_ERR(CAM_ISP, "Input is not proper");
+		rc = -EINVAL;
+		goto err;
+	}
+
+	in_port->major_ver       =
+		(acquire_hw_info->input_info_version >> 16) & 0xFFFF;
+	in_port->minor_ver       =
+		acquire_hw_info->input_info_version & 0xFFFF;
+	in_port->res_id          =  in->res_id;
+	in_port->lane_type       =  in->lane_type;
+	in_port->lane_num        =  in->lane_num;
+	in_port->lane_cfg        =  in->lane_cfg;
+	in_port->vc[0]           =  in->vc;
+	in_port->dt[0]           =  in->dt;
+	in_port->num_valid_vc_dt = 1;
+	in_port->format          =  in->format;
+	in_port->pix_pattern     =  in->pix_pattern;
+	in_port->usage_type      =  in->usage_type;
+	in_port->left_start      =  in->left_start;
+	in_port->left_end        =  in->left_end;
+	in_port->left_width      =  in->left_width;
+	in_port->right_start     =  in->right_start;
+	in_port->right_end       =  in->right_end;
+	in_port->right_width     =  in->right_width;
+	in_port->line_start      =  in->line_start;
+	in_port->line_end        =  in->line_end;
+	in_port->height          =  in->height;
+	in_port->batch_size      =  in->batch_size;
+	in_port->dsp_mode        =  in->dsp_mode;
+	in_port->sensor_width    =  in->sensor_width;
+	in_port->sensor_height   =  in->sensor_height;
+	in_port->sensor_hbi      =  in->sensor_hbi;
+	in_port->sensor_vbi      =  in->sensor_vbi;
+	in_port->sensor_fps      =  in->sensor_fps;
+	in_port->init_frame_drop =  in->init_frame_drop;
+	in_port->num_out_res     =  in->num_out_res;
+
+	in_port->data = kcalloc(in->num_out_res,
+		sizeof(struct cam_isp_tfe_out_port_generic_info),
+		GFP_KERNEL);
+
+	if (in_port->data == NULL) {
+		rc = -ENOMEM;
+		goto err;
+	}
+
+	for (i = 0; i < in->num_out_res; i++) {
+		in_port->data[i].res_id       = in->data[i].res_id;
+		in_port->data[i].format       = in->data[i].format;
+		in_port->data[i].width        = in->data[i].width;
+		in_port->data[i].height       = in->data[i].height;
+		in_port->data[i].stride       = in->data[i].stride;
+		in_port->data[i].comp_grp_id  = in->data[i].comp_grp_id;
+		in_port->data[i].secure_mode  = in->data[i].secure_mode;
+		in_port->data[i].wm_mode      = in->data[i].wm_mode;
+		in_port->data[i].reserved     = in->data[i].reserved;
+	}
+
+	return 0;
+err:
+	return rc;
+}
+
+static int cam_tfe_mgr_acquire_get_unified_structure_v2(
+	struct cam_isp_tfe_acquire_hw_info *acquire_hw_info,
+	uint32_t offset, uint32_t *input_size,
+	struct cam_isp_tfe_in_port_generic_info *in_port)
+{
+	struct cam_isp_tfe_in_port_info_v2 *in = NULL;
+	uint32_t in_port_length = 0;
+	int32_t rc = 0, i;
+
+	in = (struct cam_isp_tfe_in_port_info_v2 *)
+		((uint8_t *)&acquire_hw_info->data +
+		 acquire_hw_info->input_info_offset + *input_size);
+
+	in_port_length = sizeof(struct cam_isp_tfe_in_port_info_v2) +
+		(in->num_out_res - 1) *
+		sizeof(struct cam_isp_tfe_out_port_info);
+
+	*input_size += in_port_length;
+
+	if (!in_port || ((*input_size) > acquire_hw_info->input_info_size)) {
+		CAM_ERR(CAM_ISP, "Input is not proper");
+		rc = -EINVAL;
+		goto err;
+	}
+
+	in_port->major_ver       =
+		(acquire_hw_info->input_info_version >> 16) & 0xFFFF;
+	in_port->minor_ver       =
+		acquire_hw_info->input_info_version & 0xFFFF;
+	in_port->res_id          =  in->res_id;
+	in_port->lane_type       =  in->lane_type;
+	in_port->lane_num        =  in->lane_num;
+	in_port->lane_cfg        =  in->lane_cfg;
+	in_port->num_valid_vc_dt =  in->num_valid_vc_dt;
+
+	if (in_port->num_valid_vc_dt == 0 ||
+		in_port->num_valid_vc_dt >= CAM_ISP_TFE_VC_DT_CFG) {
+		CAM_ERR(CAM_ISP, "Invalid i/p arg invalid vc-dt: %d",
+			in->num_valid_vc_dt);
+		rc = -EINVAL;
+		goto err;
+	}
+
+	for (i = 0; i < in_port->num_valid_vc_dt; i++) {
+		in_port->vc[i]        =  in->vc[i];
+		in_port->dt[i]        =  in->dt[i];
+	}
+
+	in_port->format          =  in->format;
+	in_port->pix_pattern     =  in->pix_pattern;
+	in_port->usage_type      =  in->usage_type;
+	in_port->left_start      =  in->left_start;
+	in_port->left_end        =  in->left_end;
+	in_port->left_width      =  in->left_width;
+	in_port->right_start     =  in->right_start;
+	in_port->right_end       =  in->right_end;
+	in_port->right_width     =  in->right_width;
+	in_port->line_start      =  in->line_start;
+	in_port->line_end        =  in->line_end;
+	in_port->height          =  in->height;
+	in_port->batch_size      =  in->batch_size;
+	in_port->dsp_mode        =  in->dsp_mode;
+	in_port->sensor_width    =  in->sensor_width;
+	in_port->sensor_height   =  in->sensor_height;
+	in_port->sensor_hbi      =  in->sensor_hbi;
+	in_port->sensor_vbi      =  in->sensor_vbi;
+	in_port->sensor_fps      =  in->sensor_fps;
+	in_port->init_frame_drop =  in->init_frame_drop;
+	in_port->bayer_bin       =  in->feature_flag &
+					CAM_ISP_TFE_FLAG_BAYER_BIN;
+	in_port->qcfa_bin        =  in->feature_flag &
+					CAM_ISP_TFE_FLAG_QCFA_BIN;
+
+	if (in_port->bayer_bin && in_port->qcfa_bin) {
+		CAM_ERR(CAM_ISP,
+			"Bayer and QCFA binning not supported together!");
+		rc = -EINVAL;
+		goto err;
+	}
+
+	in_port->core_cfg        =  in->core_cfg;
+	in_port->num_out_res     =  in->num_out_res;
+
+	in_port->data = kcalloc(in->num_out_res,
+		sizeof(struct cam_isp_tfe_out_port_generic_info),
+		GFP_KERNEL);
+
+	if (in_port->data == NULL) {
+		rc = -ENOMEM;
+		goto err;
+	}
+
+	for (i = 0; i < in->num_out_res; i++) {
+		in_port->data[i].res_id       = in->data[i].res_id;
+		in_port->data[i].format       = in->data[i].format;
+		in_port->data[i].width        = in->data[i].width;
+		in_port->data[i].height       = in->data[i].height;
+		in_port->data[i].stride       = in->data[i].stride;
+		in_port->data[i].comp_grp_id  = in->data[i].comp_grp_id;
+		in_port->data[i].secure_mode  = in->data[i].secure_mode;
+		in_port->data[i].wm_mode      = in->data[i].wm_mode;
+		in_port->data[i].reserved     = in->data[i].reserved;
+	}
+
+	return 0;
+err:
+	return rc;
+}
+static int cam_tfe_mgr_acquire_get_unified_structure(
+	struct cam_isp_tfe_acquire_hw_info *acquire_hw_info,
+	uint32_t offset, uint32_t *input_size,
+	struct cam_isp_tfe_in_port_generic_info *in_port)
+{
+	uint32_t major_ver = 0, minor_ver = 0;
+
+	if (acquire_hw_info == NULL || input_size == NULL)
+		return -EINVAL;
+
+	major_ver = (acquire_hw_info->common_info_version >> 12) & 0xF;
+	minor_ver = (acquire_hw_info->common_info_version) & 0xFFF;
+
+	switch (major_ver) {
+	case 1:
+		return cam_tfe_mgr_acquire_get_unified_structure_v1(
+			acquire_hw_info, offset, input_size, in_port);
+	case 2:
+		return cam_tfe_mgr_acquire_get_unified_structure_v2(
+			acquire_hw_info, offset, input_size, in_port);
+	default:
+		CAM_ERR(CAM_ISP, "Invalid ver of i/p port info from user");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 /* entry function: acquire_hw */
 static int cam_tfe_mgr_acquire_hw(void *hw_mgr_priv, void *acquire_hw_args)
 {
@@ -1842,18 +2062,15 @@ static int cam_tfe_mgr_acquire_hw(void *hw_mgr_priv, void *acquire_hw_args)
 	int rc                                       = -EINVAL;
 	int i, j;
 	struct cam_tfe_hw_mgr_ctx          *tfe_ctx;
-	struct cam_isp_tfe_in_port_info    *in_port = NULL;
+	struct cam_isp_tfe_in_port_generic_info *in_port = NULL;
 	struct cam_cdm_acquire_data         cdm_acquire;
 	uint32_t                            num_pix_port_per_in = 0;
 	uint32_t                            num_rdi_port_per_in = 0;
 	uint32_t                            pdaf_enable = 0;
 	uint32_t                            total_pix_port = 0;
 	uint32_t                            total_rdi_port = 0;
-	uint32_t                            in_port_length = 0;
-	uint32_t                            total_in_port_length = 0;
 	struct cam_isp_tfe_acquire_hw_info *acquire_hw_info = NULL;
-	struct cam_isp_tfe_in_port_info
-		*tpg_inport[CAM_TOP_TPG_MAX_SUPPORTED_DT] = {0, 0, 0, 0};
+	uint32_t                            input_size = 0;
 
 	CAM_DBG(CAM_ISP, "Enter...");
 
@@ -1905,42 +2122,34 @@ static int cam_tfe_mgr_acquire_hw(void *hw_mgr_priv, void *acquire_hw_args)
 
 	acquire_hw_info = (struct cam_isp_tfe_acquire_hw_info *)
 		acquire_args->acquire_info;
-	in_port = (struct cam_isp_tfe_in_port_info *)
-		((uint8_t *)&acquire_hw_info->data +
-		 acquire_hw_info->input_info_offset);
+	in_port = kcalloc(acquire_hw_info->num_inputs,
+			sizeof(struct cam_isp_tfe_in_port_generic_info),
+			GFP_KERNEL);
+
+	if (!in_port) {
+		CAM_ERR(CAM_ISP, "No memory available");
+		rc = -ENOMEM;
+		goto free_cdm;
+	}
+
+	/* Update in_port structure */
+	for (i = 0; i < acquire_hw_info->num_inputs; i++) {
+		rc = cam_tfe_mgr_acquire_get_unified_structure(acquire_hw_info,
+			i, &input_size, &in_port[i]);
+
+		if (rc < 0) {
+			CAM_ERR(CAM_ISP, "Failed in parsing: %d", rc);
+			goto free_cdm;
+		}
+	}
 
 	/* Check any inport has dual tfe usage  */
 	tfe_ctx->is_dual = false;
-	for (i = 0; i < acquire_hw_info->num_inputs; i++) {
-		if (in_port->usage_type)
+	for (i = 0; i < acquire_hw_info->num_inputs; i++)
+		if (in_port[i].usage_type)
 			tfe_ctx->is_dual = true;
 
-		in_port_length =
-			sizeof(struct cam_isp_tfe_in_port_info) +
-			(in_port->num_out_res - 1) *
-			sizeof(struct cam_isp_tfe_out_port_info);
-		total_in_port_length += in_port_length;
-		if (total_in_port_length >
-			acquire_hw_info->input_info_size) {
-			CAM_ERR(CAM_ISP,
-				"buffer size is not enough %d %d",
-				total_in_port_length,
-				acquire_hw_info->input_info_size);
-			rc = -EINVAL;
-			goto free_cdm;
-		}
-
-		in_port = (struct cam_isp_tfe_in_port_info *)
-			((uint8_t *)in_port + in_port_length);
-	}
-
-	in_port_length = 0;
-	total_in_port_length = 0;
-	in_port = (struct cam_isp_tfe_in_port_info *)
-		((uint8_t *)&acquire_hw_info->data +
-		 acquire_hw_info->input_info_offset);
-
-	if (in_port->res_id == CAM_ISP_TFE_IN_RES_TPG) {
+	if (in_port[0].res_id == CAM_ISP_TFE_IN_RES_TPG) {
 		if (acquire_hw_info->num_inputs >
 			CAM_TOP_TPG_MAX_SUPPORTED_DT) {
 			CAM_ERR(CAM_ISP, "too many number inport:%d for TPG ",
@@ -1949,35 +2158,17 @@ static int cam_tfe_mgr_acquire_hw(void *hw_mgr_priv, void *acquire_hw_args)
 			goto free_cdm;
 		}
 
-		for (i = 0; i < acquire_hw_info->num_inputs; i++) {
-			if (in_port->res_id != CAM_ISP_TFE_IN_RES_TPG) {
+		for (i = 1; i < acquire_hw_info->num_inputs; i++) {
+			if (in_port[i].res_id != CAM_ISP_TFE_IN_RES_TPG) {
 				CAM_ERR(CAM_ISP, "Inval :%d inport res id:0x%x",
-					i, in_port->res_id);
+					i, in_port[i].res_id);
 				rc = -EINVAL;
 				goto free_cdm;
 			}
 
-			tpg_inport[i] = in_port;
-			in_port_length =
-				sizeof(struct cam_isp_tfe_in_port_info) +
-				(in_port->num_out_res - 1) *
-				sizeof(struct cam_isp_tfe_out_port_info);
-			total_in_port_length += in_port_length;
-			if (total_in_port_length >
-				acquire_hw_info->input_info_size) {
-				CAM_ERR(CAM_ISP,
-					"buffer size is not enough %d %d",
-					total_in_port_length,
-					acquire_hw_info->input_info_size);
-				rc = -EINVAL;
-				goto free_cdm;
-			}
-
-			in_port = (struct cam_isp_tfe_in_port_info *)
-				((uint8_t *)in_port + in_port_length);
 		}
 
-		rc = cam_tfe_hw_mgr_acquire_tpg(tfe_ctx, tpg_inport,
+		rc = cam_tfe_hw_mgr_acquire_tpg(tfe_ctx, in_port,
 			acquire_hw_info->num_inputs);
 		if (rc)
 			goto free_cdm;
@@ -1985,34 +2176,18 @@ static int cam_tfe_mgr_acquire_hw(void *hw_mgr_priv, void *acquire_hw_args)
 		tfe_ctx->is_tpg = true;
 	}
 
-	in_port = (struct cam_isp_tfe_in_port_info *)
-		((uint8_t *)&acquire_hw_info->data +
-		 acquire_hw_info->input_info_offset);
-	in_port_length = 0;
-	total_in_port_length = 0;
-
 	/* acquire HW resources */
 	for (i = 0; i < acquire_hw_info->num_inputs; i++) {
 
-		if (in_port->num_out_res > CAM_TFE_HW_OUT_RES_MAX) {
+		if (in_port[i].num_out_res > CAM_TFE_HW_OUT_RES_MAX) {
 			CAM_ERR(CAM_ISP, "too many output res %d",
-				in_port->num_out_res);
+				in_port[i].num_out_res);
 			rc = -EINVAL;
-			goto free_res;
+			goto free_cdm;
 		}
 
-		in_port_length = sizeof(struct cam_isp_tfe_in_port_info) +
-			(in_port->num_out_res - 1) *
-			sizeof(struct cam_isp_tfe_out_port_info);
-		total_in_port_length += in_port_length;
-
-		if (total_in_port_length > acquire_hw_info->input_info_size) {
-			CAM_ERR(CAM_ISP, "buffer size is not enough");
-			rc = -EINVAL;
-			goto free_res;
-		}
-		CAM_DBG(CAM_ISP, "in_res_id %x", in_port->res_id);
-		rc = cam_tfe_mgr_acquire_hw_for_ctx(tfe_ctx, in_port,
+		CAM_DBG(CAM_ISP, "in_res_id %x", in_port[i].res_id);
+		rc = cam_tfe_mgr_acquire_hw_for_ctx(tfe_ctx, &in_port[i],
 			&num_pix_port_per_in, &num_rdi_port_per_in,
 			&pdaf_enable);
 		total_pix_port += num_pix_port_per_in;
@@ -2022,8 +2197,6 @@ static int cam_tfe_mgr_acquire_hw(void *hw_mgr_priv, void *acquire_hw_args)
 			CAM_ERR(CAM_ISP, "can not acquire resource");
 			goto free_res;
 		}
-		in_port = (struct cam_isp_tfe_in_port_info *)
-			((uint8_t *)in_port + in_port_length);
 	}
 
 	/* Check whether context has only RDI resource */
@@ -2043,6 +2216,16 @@ static int cam_tfe_mgr_acquire_hw(void *hw_mgr_priv, void *acquire_hw_args)
 	acquire_args->ctxt_to_hw_map = tfe_ctx;
 	tfe_ctx->ctx_in_use = 1;
 	tfe_ctx->num_reg_dump_buf = 0;
+
+	if (in_port) {
+		for (i = 0; i < acquire_hw_info->num_inputs; i++) {
+			kfree(in_port[i].data);
+			in_port[i].data = NULL;
+		}
+
+		kfree(in_port);
+		in_port = NULL;
+	}
 
 	if (g_tfe_hw_mgr.support_consumed_addr)
 		acquire_args->op_flags |=
@@ -2067,11 +2250,81 @@ free_cdm:
 	cam_cdm_release(tfe_ctx->cdm_handle);
 free_ctx:
 	cam_tfe_hw_mgr_put_ctx(&tfe_hw_mgr->free_ctx_list, &tfe_ctx);
+	if (in_port) {
+		for (i = 0; i < acquire_hw_info->num_inputs; i++) {
+			kfree(in_port[i].data);
+			in_port[i].data = NULL;
+		}
+
+		kfree(in_port);
+		in_port = NULL;
+	}
 err:
 	/* Dump all the current acquired HW */
 	cam_tfe_hw_mgr_dump_all_ctx();
 
 	CAM_ERR_RATE_LIMIT(CAM_ISP, "Exit...(rc=%d)", rc);
+	return rc;
+}
+
+int cam_tfe_mgr_acquire_get_unified_dev_str(
+	struct cam_isp_tfe_in_port_info   *in,
+	struct cam_isp_tfe_in_port_generic_info *in_port)
+{
+	int i, rc = 0;
+
+	in_port->res_id          =  in->res_id;
+	in_port->lane_type       =  in->lane_type;
+	in_port->lane_num        =  in->lane_num;
+	in_port->lane_cfg        =  in->lane_cfg;
+	in_port->vc[0]           =  in->vc;
+	in_port->dt[0]           =  in->dt;
+	in_port->num_valid_vc_dt = 1;
+	in_port->format          =  in->format;
+	in_port->pix_pattern     =  in->pix_pattern;
+	in_port->usage_type      =  in->usage_type;
+	in_port->left_start      =  in->left_start;
+	in_port->left_end        =  in->left_end;
+	in_port->left_width      =  in->left_width;
+	in_port->right_start     =  in->right_start;
+	in_port->right_end       =  in->right_end;
+	in_port->right_width     =  in->right_width;
+	in_port->line_start      =  in->line_start;
+	in_port->line_end        =  in->line_end;
+	in_port->height          =  in->height;
+	in_port->batch_size      =  in->batch_size;
+	in_port->dsp_mode        =  in->dsp_mode;
+	in_port->sensor_width    =  in->sensor_width;
+	in_port->sensor_height   =  in->sensor_height;
+	in_port->sensor_hbi      =  in->sensor_hbi;
+	in_port->sensor_vbi      =  in->sensor_vbi;
+	in_port->sensor_fps      =  in->sensor_fps;
+	in_port->init_frame_drop =  in->init_frame_drop;
+	in_port->num_out_res     =  in->num_out_res;
+
+	in_port->data = kcalloc(in->num_out_res,
+		sizeof(struct cam_isp_tfe_out_port_generic_info),
+		GFP_KERNEL);
+
+	if (in_port->data == NULL) {
+		rc = -ENOMEM;
+		goto err;
+	}
+
+	for (i = 0; i < in->num_out_res; i++) {
+		in_port->data[i].res_id       = in->data[i].res_id;
+		in_port->data[i].format       = in->data[i].format;
+		in_port->data[i].width        = in->data[i].width;
+		in_port->data[i].height       = in->data[i].height;
+		in_port->data[i].stride       = in->data[i].stride;
+		in_port->data[i].comp_grp_id  = in->data[i].comp_grp_id;
+		in_port->data[i].secure_mode  = in->data[i].secure_mode;
+		in_port->data[i].wm_mode      = in->data[i].wm_mode;
+		in_port->data[i].reserved     = in->data[i].reserved;
+	}
+
+	return 0;
+err:
 	return rc;
 }
 
@@ -2084,6 +2337,7 @@ static int cam_tfe_mgr_acquire_dev(void *hw_mgr_priv, void *acquire_hw_args)
 	int i, j;
 	struct cam_tfe_hw_mgr_ctx         *tfe_ctx;
 	struct cam_isp_tfe_in_port_info   *in_port = NULL;
+	struct cam_isp_tfe_in_port_generic_info *gen_in_port = NULL;
 	struct cam_isp_resource           *isp_resource = NULL;
 	struct cam_cdm_acquire_data        cdm_acquire;
 	uint32_t                           num_pix_port_per_in = 0;
@@ -2143,6 +2397,16 @@ static int cam_tfe_mgr_acquire_dev(void *hw_mgr_priv, void *acquire_hw_args)
 
 	isp_resource = (struct cam_isp_resource *)acquire_args->acquire_info;
 
+	gen_in_port = kcalloc(acquire_args->num_acq,
+			sizeof(struct cam_isp_tfe_in_port_generic_info),
+			GFP_KERNEL);
+
+	if (!gen_in_port) {
+		CAM_ERR(CAM_ISP, "No memory available");
+		rc = -ENOMEM;
+		goto free_cdm;
+	}
+
 	/* acquire HW resources */
 	for (i = 0; i < acquire_args->num_acq; i++) {
 		if (isp_resource[i].resource_id != CAM_ISP_RES_ID_PORT)
@@ -2186,13 +2450,25 @@ static int cam_tfe_mgr_acquire_dev(void *hw_mgr_priv, void *acquire_hw_args)
 				goto free_res;
 			}
 
-			rc = cam_tfe_mgr_acquire_hw_for_ctx(tfe_ctx, in_port,
+			rc = cam_tfe_mgr_acquire_get_unified_dev_str(in_port,
+				&gen_in_port[i]);
+
+			if (rc) {
+				CAM_ERR(CAM_ISP,
+					"Cannot get in_port structure, rc: %d",
+					rc);
+				goto free_res;
+			}
+
+			rc = cam_tfe_mgr_acquire_hw_for_ctx(tfe_ctx,
+				&gen_in_port[i],
 				&num_pix_port_per_in, &num_rdi_port_per_in,
 				&pdad_enable);
 			total_pix_port += num_pix_port_per_in;
 			total_rdi_port += num_rdi_port_per_in;
 
 			kfree(in_port);
+			in_port = NULL;
 			if (rc) {
 				CAM_ERR(CAM_ISP, "can not acquire resource");
 				goto free_res;
@@ -2220,6 +2496,15 @@ static int cam_tfe_mgr_acquire_dev(void *hw_mgr_priv, void *acquire_hw_args)
 		goto free_res;
 	}
 
+	if (gen_in_port) {
+		for (i = 0; i < acquire_args->num_acq; i++) {
+			kfree(gen_in_port[i].data);
+			gen_in_port[i].data = NULL;
+		}
+		kfree(gen_in_port);
+		gen_in_port = NULL;
+	}
+
 	acquire_args->ctxt_to_hw_map = tfe_ctx;
 	tfe_ctx->ctx_in_use = 1;
 
@@ -2230,7 +2515,13 @@ static int cam_tfe_mgr_acquire_dev(void *hw_mgr_priv, void *acquire_hw_args)
 	return 0;
 free_res:
 	cam_tfe_hw_mgr_release_hw_for_ctx(tfe_ctx);
+free_cdm:
 	cam_cdm_release(tfe_ctx->cdm_handle);
+	if (gen_in_port) {
+		for (i = 0; i < acquire_args->num_acq; i++)
+			kfree(gen_in_port[i].data);
+		kfree(gen_in_port);
+	}
 free_ctx:
 	cam_tfe_hw_mgr_put_ctx(&tfe_hw_mgr->free_ctx_list, &tfe_ctx);
 err:
