@@ -41,11 +41,6 @@ enum cam_sfe_hw_irq_status {
 	CAM_SFE_IRQ_STATUS_MAX,
 };
 
-enum cam_sfe_bw_control_action {
-	CAM_SFE_BW_CONTROL_EXCLUDE,
-	CAM_SFE_BW_CONTROL_INCLUDE,
-};
-
 enum cam_sfe_hw_irq_regs {
 	CAM_SFE_IRQ_TOP_REG_STATUS0,
 	CAM_SFE_IRQ_REGISTERS_MAX,
@@ -94,17 +89,6 @@ struct cam_sfe_debug_cfg_params {
 		struct cam_sfe_generic_debug_config   dbg_cfg;
 		struct cam_sfe_sys_cache_debug_config cache_cfg;
 	} u;
-};
-
-/*
- * struct cam_sfe_bw_control_args:
- *
- * @node_res:             Resource node info
- * @action:               Bandwidth control action
- */
-struct cam_sfe_bw_control_args {
-	struct cam_isp_resource_node      *node_res;
-	enum cam_sfe_bw_control_action     action;
 };
 
 /*

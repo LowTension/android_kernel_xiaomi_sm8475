@@ -104,7 +104,25 @@ struct cam_isp_stop_args {
 	bool                          stop_only;
 };
 
-
+/**
+ * struct cam_isp_clock_config_internal - Clock configuration
+ *
+ * @usage_type:                 Usage type (Single/Dual)
+ * @num_rdi:                    Number of RDI votes
+ * @left_pix_hz:                Pixel Clock for Left ISP
+ * @right_pix_hz:               Pixel Clock for Right ISP, valid only if Dual
+ * @rdi_hz:                     RDI Clock. ISP clock will be max of RDI and
+ *                              PIX clocks. For a particular context which ISP
+ *                              HW the RDI is allocated to is not known to UMD.
+ *                              Hence pass the clock and let KMD decide.
+ */
+struct cam_isp_clock_config_internal {
+	uint64_t                       usage_type;
+	uint64_t                       num_rdi;
+	uint64_t                       left_pix_hz;
+	uint64_t                       right_pix_hz;
+	uint64_t                       rdi_hz[CAM_IFE_RDI_NUM_MAX];
+};
 
 /**
  * struct cam_isp_bw_config_internal_v2 - Bandwidth configuration
@@ -137,6 +155,30 @@ struct cam_isp_bw_config_internal {
 };
 
 /**
+ * struct cam_isp_bw_clk_config_info - Bw/Clk config info
+ *
+ * @bw_config  :            BW vote info for current request V1
+ * @bw_config_v2:           BW vote info for current request V2
+ * @bw_config_valid:        Flag indicating if BW vote is valid for current request
+ * @ife_clock_config:       Clock config information for ife
+ * @ife_clock_config_valid: Flag indicating whether clock config is valid for
+ *                          current request for ife
+ * @sfe_clock_config:       Clock config information for sfe
+ * @sfe_clock_config_valid: Flag indicating whether clock config is valid for
+ *                          current request for sfe
+ */
+struct cam_isp_bw_clk_config_info {
+	struct cam_isp_bw_config_internal     bw_config;
+	struct cam_isp_bw_config_internal_v2  bw_config_v2;
+	bool                                  bw_config_valid;
+	struct cam_isp_clock_config_internal  ife_clock_config;
+	bool                                  ife_clock_config_valid;
+	struct cam_isp_clock_config_internal  sfe_clock_config;
+	bool                                  sfe_clock_config_valid;
+
+};
+
+/**
  * struct cam_isp_prepare_hw_update_data - hw prepare data
  *
  * @isp_mgr_ctx:            ISP HW manager Context for current request
@@ -146,11 +188,7 @@ struct cam_isp_bw_config_internal {
  * @frame_header_cpu_addr:  Frame header cpu addr
  * @frame_header_iova:      Frame header iova
  * @frame_header_res_id:    Out port res_id corresponding to frame header
- * @bw_config_version:      BW config version indicator
- * @bw_config:              BW config information
- * @bw_config_v2:           BW config info for AXI bw voting v2
- * @bw_config_valid:        Flag indicating whether the bw_config at the index
- *                          is valid or not
+ * @bw_clk_config:          BW and clock config info
  * @reg_dump_buf_desc:     cmd buffer descriptors for reg dump
  * @num_reg_dump_buf:      Count of descriptors in reg_dump_buf_desc
  * @packet                 CSL packet from user mode driver
@@ -164,10 +202,7 @@ struct cam_isp_prepare_hw_update_data {
 	uint32_t                             *frame_header_cpu_addr;
 	uint64_t                              frame_header_iova;
 	uint32_t                              frame_header_res_id;
-	uint32_t                              bw_config_version;
-	struct cam_isp_bw_config_internal     bw_config[CAM_IFE_HW_NUM_MAX];
-	struct cam_isp_bw_config_internal_v2  bw_config_v2[CAM_IFE_HW_NUM_MAX];
-	bool                               bw_config_valid[CAM_IFE_HW_NUM_MAX];
+	struct cam_isp_bw_clk_config_info     bw_clk_config;
 	struct cam_cmd_buf_desc               reg_dump_buf_desc[
 						CAM_REG_DUMP_MAX_BUF_ENTRIES];
 	uint32_t                              num_reg_dump_buf;

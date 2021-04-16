@@ -422,7 +422,7 @@ int cam_vfe_top_init_hw(void *device_priv,
 	struct cam_vfe_top_ver2_priv   *top_priv = device_priv;
 	struct cam_vfe_top_ver2_common_data common_data = top_priv->common_data;
 
-	top_priv->top_common.hw_clk_rate = 0;
+	top_priv->top_common.applied_clk_rate = 0;
 
 	top_priv->top_common.hw_version =
 		cam_io_r_mb(top_priv->top_common.soc_info->reg_map[0].mem_base +
@@ -602,18 +602,19 @@ int cam_vfe_top_start(void *device_priv,
 	hw_info = (struct cam_hw_info  *)mux_res->hw_intf->hw_priv;
 
 	if (hw_info->hw_state == CAM_HW_STATE_POWER_UP) {
-		rc = cam_vfe_top_set_hw_clk_rate(&top_priv->top_common);
+		rc = cam_vfe_top_apply_clock_start_stop(&top_priv->top_common);
 		if (rc) {
 			CAM_ERR(CAM_ISP,
-				"set_hw_clk_rate failed, rc=%d", rc);
+				"VFE:%d Failed in applying start clock rc:%d",
+				hw_info->soc_info.index, rc);
 			return rc;
 		}
 
-		rc = cam_vfe_top_set_axi_bw_vote(soc_private,
-			&top_priv->top_common, true);
+		rc = cam_vfe_top_apply_bw_start_stop(&top_priv->top_common);
 		if (rc) {
 			CAM_ERR(CAM_ISP,
-				"set_axi_bw_vote failed, rc=%d", rc);
+				"VFE:%d Failed in applying start bw rc:%d",
+				hw_info->soc_info.index, rc);
 			return rc;
 		}
 
@@ -676,7 +677,7 @@ int cam_vfe_top_stop(void *device_priv,
 				top_priv->top_common.req_axi_vote[i]
 					.axi_path[0].mnoc_ib_bw = 0;
 				top_priv->top_common.axi_vote_control[i] =
-					CAM_VFE_BW_CONTROL_EXCLUDE;
+					CAM_ISP_BW_CONTROL_EXCLUDE;
 				break;
 			}
 		}
@@ -765,6 +766,9 @@ int cam_vfe_top_process_cmd(void *device_priv, uint32_t cmd_type,
 	case CAM_ISP_HW_CMD_BLANKING_UPDATE:
 		rc = cam_vfe_top_blanking_update(cmd_type, cmd_args, arg_size);
 		break;
+	case CAM_ISP_HW_CMD_APPLY_CLK_BW_UPDATE:
+		rc = cam_vfe_top_apply_clk_bw_update(&top_priv->top_common, cmd_args, arg_size);
+		break;
 	default:
 		rc = -EINVAL;
 		CAM_ERR(CAM_ISP, "Error! Invalid cmd:%d", cmd_type);
@@ -802,7 +806,7 @@ int cam_vfe_top_ver2_init(
 	}
 
 	vfe_top->top_priv = top_priv;
-	top_priv->top_common.hw_clk_rate = 0;
+	top_priv->top_common.applied_clk_rate = 0;
 	if (ver2_hw_info->num_mux > CAM_VFE_TOP_MUX_MAX) {
 		CAM_ERR(CAM_ISP, "Invalid number of input rsrc: %d, max: %d",
 			ver2_hw_info->num_mux, CAM_VFE_TOP_MUX_MAX);

@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CAM_VFE_HW_INTF_H_
@@ -267,22 +267,6 @@ struct cam_vfe_bw_update_args {
 struct cam_vfe_fe_update_args {
 	struct cam_isp_resource_node      *node_res;
 	struct cam_fe_config               fe_config;
-};
-
-enum cam_vfe_bw_control_action {
-	CAM_VFE_BW_CONTROL_EXCLUDE       = 0,
-	CAM_VFE_BW_CONTROL_INCLUDE       = 1
-};
-
-/*
- * struct cam_vfe_bw_control_args:
- *
- * @node_res:             Resource to get the time stamp
- * @action:               Bandwidth control action
- */
-struct cam_vfe_bw_control_args {
-	struct cam_isp_resource_node      *node_res;
-	enum cam_vfe_bw_control_action     action;
 };
 
 /*

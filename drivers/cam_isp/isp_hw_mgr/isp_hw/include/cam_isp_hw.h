@@ -27,6 +27,33 @@
  */
 #define CAM_ISP_RES_NAME_LEN      16
 
+enum cam_isp_bw_control_action {
+	CAM_ISP_BW_CONTROL_EXCLUDE       = 0,
+	CAM_ISP_BW_CONTROL_INCLUDE       = 1
+};
+
+/*
+ * struct cam_isp_bw_control_args:
+ *
+ * @node_res:             Resource node info
+ * @action:               Bandwidth control action
+ */
+struct cam_isp_bw_control_args {
+	struct cam_isp_resource_node      *node_res;
+	enum cam_isp_bw_control_action     action;
+};
+
+/*
+ * struct cam_isp_apply_clk_bw_args:
+ *
+ * @hw_intf:             Isp hw intf pointer
+ * @request_id:          Request Id
+ */
+struct cam_isp_apply_clk_bw_args {
+	struct cam_hw_intf                *hw_intf;
+	uint64_t                           request_id;
+};
+
 /*
  * struct cam_isp_timestamp:
  *
@@ -67,6 +94,12 @@ enum cam_isp_hw_split_id {
 	CAM_ISP_HW_SPLIT_LEFT       = 0,
 	CAM_ISP_HW_SPLIT_RIGHT,
 	CAM_ISP_HW_SPLIT_MAX,
+};
+
+enum cam_isp_hw_usage_type {
+	CAM_ISP_HW_USAGE_TYPE_SINGLE = 0,
+	CAM_ISP_HW_USAGE_TYPE_DUAL,
+	CAM_ISP_HW_USAGE_TYPE_MAX,
 };
 
 enum cam_isp_hw_sync_mode {
@@ -163,6 +196,7 @@ enum cam_isp_hw_cmd_type {
 	CAM_ISP_HW_SFE_SYS_CACHE_RM_CONFIG,
 	CAM_ISP_HW_CMD_WM_BW_LIMIT_CONFIG,
 	CAM_ISP_HW_CMD_RM_ENABLE_DISABLE,
+	CAM_ISP_HW_CMD_APPLY_CLK_BW_UPDATE,
 	CAM_ISP_HW_CMD_MAX,
 };
 

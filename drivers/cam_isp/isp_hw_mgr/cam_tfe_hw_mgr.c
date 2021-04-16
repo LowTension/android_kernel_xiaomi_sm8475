@@ -2660,24 +2660,20 @@ static int cam_tfe_mgr_config_hw(void *hw_mgr_priv,
 		ctx->last_cdm_done_req = 0;
 	}
 
-	for (i = 0; i < CAM_TFE_HW_NUM_MAX; i++) {
-		if (hw_update_data->bw_config_valid[i] == true) {
-
-			CAM_DBG(CAM_ISP, "idx=%d, bw_config_version=%d",
-				ctx->ctx_index, i,
-				hw_update_data->bw_config_version);
-			if (hw_update_data->bw_config_version ==
-				CAM_ISP_BW_CONFIG_V2) {
-				rc = cam_isp_tfe_blob_bw_update(
-					&hw_update_data->bw_config_v2[i], ctx);
-				if (rc)
-					CAM_ERR(CAM_ISP,
-					"Bandwidth Update Failed rc: %d", rc);
-			} else {
+	if (hw_update_data->bw_clk_config.bw_config_valid) {
+		CAM_DBG(CAM_ISP, "idx=%d, bw_config_version=%d", ctx->ctx_index,
+			ctx->bw_config_version);
+		if (ctx->bw_config_version ==
+			CAM_ISP_BW_CONFIG_V2) {
+			rc = cam_isp_tfe_blob_bw_update(
+				&hw_update_data->bw_clk_config.bw_config_v2, ctx);
+			if (rc)
 				CAM_ERR(CAM_ISP,
-					"Invalid bw config version: %d",
-					hw_update_data->bw_config_version);
-			}
+				"Bandwidth Update Failed rc: %d", rc);
+		} else {
+			CAM_ERR(CAM_ISP,
+				"Invalid bw config version: %d",
+				ctx->bw_config_version);
 		}
 	}
 
@@ -3869,6 +3865,7 @@ static int cam_isp_tfe_packet_generic_blob_handler(void *user_data,
 	int rc = 0;
 	struct cam_isp_generic_blob_info  *blob_info = user_data;
 	struct cam_hw_prepare_update_args *prepare = NULL;
+	struct cam_tfe_hw_mgr_ctx *tfe_mgr_ctx = NULL;
 
 	if (!blob_data || (blob_size == 0) || !blob_info) {
 		CAM_ERR(CAM_ISP, "Invalid args data %pK size %d info %pK",
@@ -3883,6 +3880,7 @@ static int cam_isp_tfe_packet_generic_blob_handler(void *user_data,
 		return -EINVAL;
 	}
 
+	tfe_mgr_ctx = prepare->ctxt_to_hw_map;
 	CAM_DBG(CAM_ISP, "BLOB Type: %d", blob_type);
 	switch (blob_type) {
 	case CAM_ISP_TFE_GENERIC_BLOB_TYPE_HFR_CONFIG: {
@@ -4031,19 +4029,16 @@ static int cam_isp_tfe_packet_generic_blob_handler(void *user_data,
 		prepare_hw_data = (struct cam_isp_prepare_hw_update_data  *)
 			prepare->priv;
 
-		memset(&prepare_hw_data->bw_config_v2[bw_config->usage_type],
-			0, sizeof(
-			prepare_hw_data->bw_config_v2[bw_config->usage_type]));
+		memset(&prepare_hw_data->bw_clk_config.bw_config_v2,
+			0, sizeof(prepare_hw_data->bw_clk_config.bw_config_v2));
 		bw_config_size = sizeof(struct cam_isp_tfe_bw_config_v2) +
 			((bw_config->num_paths - 1) *
 			sizeof(struct cam_axi_per_path_bw_vote));
-		memcpy(&prepare_hw_data->bw_config_v2[bw_config->usage_type],
-			bw_config, bw_config_size);
+		memcpy(&prepare_hw_data->bw_clk_config.bw_config_v2, bw_config, bw_config_size);
 
-		prepare_hw_data->bw_config_version = CAM_ISP_BW_CONFIG_V2;
-		prepare_hw_data->bw_config_valid[bw_config->usage_type] = true;
+		tfe_mgr_ctx->bw_config_version = CAM_ISP_BW_CONFIG_V2;
+		prepare_hw_data->bw_clk_config.bw_config_valid = true;
 	}
-
 		break;
 	case CAM_ISP_TFE_GENERIC_BLOB_TYPE_CSID_CLOCK_CONFIG: {
 		struct cam_isp_tfe_csid_clock_config    *clock_config =
@@ -4393,13 +4388,6 @@ static int cam_tfe_mgr_prepare_hw_update(void *hw_mgr_priv,
 	prepare->num_in_map_entries = 0;
 	prepare->num_out_map_entries = 0;
 	prepare->num_reg_dump_buf = 0;
-
-	memset(&prepare_hw_data->bw_config[0], 0x0,
-		sizeof(prepare_hw_data->bw_config[0]) *
-		CAM_TFE_HW_NUM_MAX);
-	memset(&prepare_hw_data->bw_config_valid[0], 0x0,
-		sizeof(prepare_hw_data->bw_config_valid[0]) *
-		CAM_TFE_HW_NUM_MAX);
 
 	for (i = 0; i < ctx->num_base; i++) {
 		CAM_DBG(CAM_ISP, "process cmd buffer for device %d", i);

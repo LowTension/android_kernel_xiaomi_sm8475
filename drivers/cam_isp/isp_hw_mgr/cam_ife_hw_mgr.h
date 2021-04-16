@@ -207,6 +207,7 @@ struct cam_ife_hw_mgr_ctx_flags {
  * @buf_done_controller     Buf done controller.
  * @sfe_info                SFE info pertaining to this stream
  * @flags                   Flags pertainting to this ctx
+ * @bw_config_version       BW Config version
  *
  */
 struct cam_ife_hw_mgr_ctx {
@@ -256,6 +257,7 @@ struct cam_ife_hw_mgr_ctx {
 	void                           *buf_done_controller;
 	struct cam_ife_hw_mgr_sfe_info  sfe_info;
 	struct cam_ife_hw_mgr_ctx_flags flags;
+	uint32_t                        bw_config_version;
 };
 
 /**

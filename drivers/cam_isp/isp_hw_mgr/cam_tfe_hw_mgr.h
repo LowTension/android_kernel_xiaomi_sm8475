@@ -82,7 +82,8 @@ struct cam_tfe_hw_mgr_debug {
  * @slave_hw_idx              slave hardware index in dual tfe case
  * @dual_tfe_irq_mismatch_cnt irq mismatch count value per core, used for
  *                              dual TFE
- * packet                     CSL packet from user mode driver
+ * @packet                     CSL packet from user mode driver
+ * @bw_config_version          BW Config version
  */
 struct cam_tfe_hw_mgr_ctx {
 	struct list_head                list;
@@ -124,6 +125,7 @@ struct cam_tfe_hw_mgr_ctx {
 	uint32_t                        slave_hw_idx;
 	uint32_t                        dual_tfe_irq_mismatch_cnt;
 	struct cam_packet              *packet;
+	uint32_t                        bw_config_version;
 };
 
 /**

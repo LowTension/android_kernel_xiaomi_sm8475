@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2017-2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2019, 2021, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CAM_HW_INTF_H_
@@ -12,6 +12,15 @@
  * This file declares Constants, Enums, Structures and APIs to be used as
  * Interface between HW driver and HW Manager.
  */
+
+#define CAM_DELAY_CLK_BW_REDUCTION_NUM_REQ 6
+
+enum cam_clk_bw_state {
+	CAM_CLK_BW_STATE_INIT,
+	CAM_CLK_BW_STATE_UNCHANGED,
+	CAM_CLK_BW_STATE_INCREASE,
+	CAM_CLK_BW_STATE_DECREASE,
+};
 
 /**
  * struct cam_hw_ops - Hardware layer interface functions

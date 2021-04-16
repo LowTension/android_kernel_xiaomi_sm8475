@@ -4977,6 +4977,7 @@ static int __cam_isp_ctx_config_dev_in_top_state(
 	cfg.pf_data = &(req->pf_data);
 	cfg.num_out_map_entries = 0;
 	cfg.num_in_map_entries = 0;
+	memset(&req_isp->hw_update_data, 0, sizeof(req_isp->hw_update_data));
 	req_isp->hw_update_data.fps = -1;
 	req_isp->hw_update_data.packet = packet;
 
