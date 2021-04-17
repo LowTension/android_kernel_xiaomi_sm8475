@@ -389,7 +389,8 @@ static void cam_sfe_top_check_module_status(
 	const struct cam_sfe_top_debug_info status_list[][8])
 {
 	bool found = false;
-	uint32_t i, j, val = 0, len = 0;
+	uint32_t i, j, val = 0;
+	size_t len = 0;
 	uint8_t log_buf[1024];
 
 	if (!status_list)
@@ -406,11 +407,9 @@ static void cam_sfe_top_check_module_status(
 			if (val == 0 || val == 5)
 				continue;
 
-			len += scnprintf(log_buf + len, 1024 -
-				len, "\nCAM_INFO: %s [I:%u V:%u R:%u]",
+			CAM_INFO_BUF(CAM_SFE, log_buf, 1024, &len, "%s [I:%u V:%u R:%u]",
 				status_list[i][j].clc_name,
-				((val >> 2) & 1), ((val >> 1) & 1),
-				(val & 1));
+				((val >> 2) & 1), ((val >> 1) & 1), (val & 1));
 			found = true;
 		}
 		if (found)

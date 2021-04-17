@@ -332,6 +332,40 @@ const char *cam_get_module_name(unsigned int module_id);
 	})
 
 /**
+ * cam_print_to_buffer
+ * @brief:         Function to print to camera logs to a buffer. Don't use directly. Use macros
+ *                 provided below.
+ *
+ * @buf:           Buffer to print into
+ * @buf_size:      Total size of the buffer
+ * @len:           Pointer to variable used to keep track of the length
+ * @tag:           Log level tag to be prefixed
+ * @module_id:     Module id tag to be prefixed
+ * @fmt:           Formatted string which needs to be print in log
+ * @args:          Arguments which needs to be print in log
+ */
+void cam_print_to_buffer(char *buf, const size_t buf_size, size_t *len, unsigned int tag,
+	unsigned int module_id, const char *fmt, ...);
+
+/**
+ * CAM_[ERR/WARN/INFO]_BUF
+ * @brief:         Macro to print a new line into log buffer.
+ *
+ * @module_id:     Module id tag to be prefixed
+ * @buf:           Buffer to print into
+ * @buf_size:      Total size of the buffer
+ * @len:           Pointer to the variable used to keep track of the length
+ * @fmt:           Formatted string which needs to be print in log
+ * @args:          Arguments which needs to be print in log
+ */
+#define CAM_ERR_BUF(module_id, buf, buf_size, len, fmt, args...)                                   \
+	cam_print_to_buffer(buf, buf_size, len, CAM_TYPE_ERR, module_id, fmt, ##args)
+#define CAM_WARN_BUF(module_id, buf, buf_size, len, fmt, args...)                                  \
+	cam_print_to_buffer(buf, buf_size, len, CAM_TYPE_WARN, module_id, fmt, ##args)
+#define CAM_INFO_BUF(module_id, buf, buf_size, len, fmt, args...)                                  \
+	cam_print_to_buffer(buf, buf_size, len, CAM_TYPE_INFO, module_id, fmt, ##args)
+
+/**
  * @brief : API to get camera debug settings
  * @return const struct camera_debug_settings pointer.
  */

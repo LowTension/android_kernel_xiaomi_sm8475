@@ -792,7 +792,7 @@ static int cam_ife_csid_ver2_rx_err_bottom_half(
 	uint8_t                                    *log_buf = NULL;
 	uint32_t                                    irq_status;
 	uint32_t                                    rx_irq_status = 0;
-	uint32_t                                    len = 0;
+	size_t                                      len = 0;
 	uint32_t                                    val = 0;
 	uint32_t                                    event_type = 0;
 	bool                                        fatal_err_detected = false;
@@ -817,52 +817,45 @@ static int cam_ife_csid_ver2_rx_err_bottom_half(
 			csi2_reg->fatal_err_mask;
 
 	if (irq_status) {
-		len += scnprintf(log_buf, CAM_IFE_CSID_LOG_BUF_LEN - len,
-			"Fatal Errors:\n");
+		CAM_ERR_BUF(CAM_ISP, log_buf, CAM_IFE_CSID_LOG_BUF_LEN, &len,
+			"Fatal Errors:");
 
 		if (irq_status & IFE_CSID_VER2_RX_LANE0_FIFO_OVERFLOW)
-			len += scnprintf(log_buf + len,
-				CAM_IFE_CSID_LOG_BUF_LEN - len,
-				"RX_ERROR_LANE0_FIFO_OVERFLOW: Skew/Less Data on lanes/ Slow csid clock:%luHz\n",
+			CAM_ERR_BUF(CAM_ISP, log_buf, CAM_IFE_CSID_LOG_BUF_LEN, &len,
+				"RX_ERROR_LANE0_FIFO_OVERFLOW: Skew/Less Data on lanes/ Slow csid clock:%luHz",
 				soc_info->applied_src_clk_rate);
 
 		if (irq_status & IFE_CSID_VER2_RX_LANE1_FIFO_OVERFLOW)
-			len += scnprintf(log_buf + len,
-				CAM_IFE_CSID_LOG_BUF_LEN - len,
-				"RX_ERROR_LANE1_FIFO_OVERFLOW: Skew/Less Data on lanes/ Slow csid clock:%luHz\n",
+			CAM_ERR_BUF(CAM_ISP, log_buf, CAM_IFE_CSID_LOG_BUF_LEN, &len,
+				"RX_ERROR_LANE1_FIFO_OVERFLOW: Skew/Less Data on lanes/ Slow csid clock:%luHz",
 				soc_info->applied_src_clk_rate);
 
 		if (irq_status & IFE_CSID_VER2_RX_LANE2_FIFO_OVERFLOW)
-			len += scnprintf(log_buf + len,
-				CAM_IFE_CSID_LOG_BUF_LEN - len,
-				"RX_ERROR_LANE2_FIFO_OVERFLOW: Skew/Less Data on lanes/ Slow csid clock:%luHz\n",
+			CAM_ERR_BUF(CAM_ISP, log_buf, CAM_IFE_CSID_LOG_BUF_LEN, &len,
+				"RX_ERROR_LANE2_FIFO_OVERFLOW: Skew/Less Data on lanes/ Slow csid clock:%luHz",
 				soc_info->applied_src_clk_rate);
 
 		if (irq_status & IFE_CSID_VER2_RX_LANE3_FIFO_OVERFLOW)
-			len += scnprintf(log_buf + len,
-				CAM_IFE_CSID_LOG_BUF_LEN - len,
-				"RX_ERROR_LANE3_FIFO_OVERFLOW: Skew/Less Data on lanes/ Slow csid clock:%luHz\n",
+			CAM_ERR_BUF(CAM_ISP, log_buf, CAM_IFE_CSID_LOG_BUF_LEN, &len,
+				"RX_ERROR_LANE3_FIFO_OVERFLOW: Skew/Less Data on lanes/ Slow csid clock:%luHz",
 				soc_info->applied_src_clk_rate);
 
 		if (irq_status & IFE_CSID_VER2_RX_ERROR_CPHY_PH_CRC)
-			len += scnprintf(log_buf + len,
-				CAM_IFE_CSID_LOG_BUF_LEN - len,
-				"CPHY_PH_CRC: Pkt Hdr CRC mismatch\n");
+			CAM_ERR_BUF(CAM_ISP, log_buf, CAM_IFE_CSID_LOG_BUF_LEN, &len,
+				"CPHY_PH_CRC: Pkt Hdr CRC mismatch");
 
 		if (irq_status & IFE_CSID_VER2_RX_STREAM_UNDERFLOW) {
 			val = cam_io_r_mb(soc_info->reg_map[0].mem_base +
 				csi2_reg->captured_long_pkt_0_addr);
 
-			len += scnprintf(log_buf + len,
-				CAM_IFE_CSID_LOG_BUF_LEN - len,
-				"ERROR_STREAM_UNDERFLOW: Fewer bytes rcvd than WC:%d in pkt hdr\n",
+			CAM_ERR_BUF(CAM_ISP, log_buf, CAM_IFE_CSID_LOG_BUF_LEN, &len,
+				"ERROR_STREAM_UNDERFLOW: Fewer bytes rcvd than WC:%d in pkt hdr",
 				val & 0xFFFF);
 		}
 
 		if (irq_status & IFE_CSID_VER2_RX_ERROR_ECC)
-			len += scnprintf(log_buf + len,
-				CAM_IFE_CSID_LOG_BUF_LEN - len,
-				"DPHY_ERROR_ECC: Pkt hdr errors unrecoverable\n");
+			CAM_ERR_BUF(CAM_ISP, log_buf, CAM_IFE_CSID_LOG_BUF_LEN, &len,
+				"DPHY_ERROR_ECC: Pkt hdr errors unrecoverable");
 
 		rx_irq_status |= irq_status;
 		fatal_err_detected = true;
@@ -872,31 +865,27 @@ static int cam_ife_csid_ver2_rx_err_bottom_half(
 		csi2_reg->part_fatal_err_mask;
 
 	if (irq_status) {
-		len += scnprintf(log_buf + len, CAM_IFE_CSID_LOG_BUF_LEN - len,
-			"Recoverable-errors:\n");
+		CAM_ERR_BUF(CAM_ISP, log_buf, CAM_IFE_CSID_LOG_BUF_LEN, &len,
+			"Recoverable-errors:");
 
 		if (irq_status & IFE_CSID_VER2_RX_CPHY_EOT_RECEPTION)
-			len += scnprintf(log_buf + len,
-				CAM_IFE_CSID_LOG_BUF_LEN - len,
-				"CPHY_EOT_RECEPTION: No EOT on lane/s, is_EPD: %d, PHY_Type: %s(%u) \n",
+			CAM_ERR_BUF(CAM_ISP, log_buf, CAM_IFE_CSID_LOG_BUF_LEN, &len,
+				"CPHY_EOT_RECEPTION: No EOT on lane/s, is_EPD: %d, PHY_Type: %s(%u) ",
 				csid_hw->rx_cfg.epd_supported,
 				(csid_hw->rx_cfg.lane_type) ? "cphy" : "dphy",
 				csid_hw->rx_cfg.lane_type);
 
 		if (irq_status & IFE_CSID_VER2_RX_CPHY_SOT_RECEPTION)
-			len += scnprintf(log_buf + len,
-				CAM_IFE_CSID_LOG_BUF_LEN - len,
-				"CPHY_SOT_RECEPTION: Less SOTs on lane/s\n");
+			CAM_ERR_BUF(CAM_ISP, log_buf, CAM_IFE_CSID_LOG_BUF_LEN, &len,
+				"CPHY_SOT_RECEPTION: Less SOTs on lane/s");
 
 		if (irq_status & IFE_CSID_VER2_RX_ERROR_CRC)
-			len += scnprintf(log_buf + len,
-				CAM_IFE_CSID_LOG_BUF_LEN - len,
-				"CPHY_ERROR_CRC: Long pkt payload CRC mismatch\n");
+			CAM_ERR_BUF(CAM_ISP, log_buf, CAM_IFE_CSID_LOG_BUF_LEN, &len,
+				"CPHY_ERROR_CRC: Long pkt payload CRC mismatch");
 
 		if (irq_status & IFE_CSID_VER2_RX_UNBOUNDED_FRAME)
-			len += scnprintf(log_buf + len,
-				CAM_IFE_CSID_LOG_BUF_LEN - len,
-				"UNBOUNDED_FRAME: Frame started with EOF or No EOF\n");
+			CAM_ERR_BUF(CAM_ISP, log_buf, CAM_IFE_CSID_LOG_BUF_LEN, &len,
+				"UNBOUNDED_FRAME: Frame started with EOF or No EOF");
 
 		rx_irq_status |= irq_status;
 		fatal_err_detected = true;
@@ -906,16 +895,15 @@ static int cam_ife_csid_ver2_rx_err_bottom_half(
 		csi2_reg->non_fatal_err_mask;
 
 	if (irq_status) {
-		len += scnprintf(log_buf + len, CAM_IFE_CSID_LOG_BUF_LEN - len,
-			"Non-fatal-errors:\n");
+		CAM_ERR_BUF(CAM_ISP, log_buf, CAM_IFE_CSID_LOG_BUF_LEN, &len,
+			"Non-fatal-errors:");
 
 		if (irq_status & IFE_CSID_VER2_RX_MMAPPED_VC_DT) {
 			val = cam_io_r_mb(soc_info->reg_map[0].mem_base +
 				csi2_reg->captured_long_pkt_0_addr);
 
-			len += scnprintf(log_buf + len,
-				CAM_IFE_CSID_LOG_BUF_LEN - len,
-				"MMAPPED_VC_DT: VC:%d DT:%d mapped to more than 1 csid paths\n",
+			CAM_ERR_BUF(CAM_ISP, log_buf, CAM_IFE_CSID_LOG_BUF_LEN, &len,
+				"MMAPPED_VC_DT: VC:%d DT:%d mapped to more than 1 csid paths",
 				(val >> 22), ((val >> 16) & 0x3F));
 		}
 	}
@@ -1014,7 +1002,7 @@ static int cam_ife_csid_ver2_parse_path_irq_status(
 	uint32_t                         bit_pos = 0;
 	uint32_t                         status;
 	uint32_t                         sof_irq_debug_en = 0;
-	uint32_t                         len = 0;
+	size_t                           len = 0;
 	uint8_t                         *log_buf = NULL;
 
 	log_buf = csid_hw->log_buf;
@@ -1025,8 +1013,8 @@ static int cam_ife_csid_ver2_parse_path_irq_status(
 	status = irq_status & err_mask;
 	while (status) {
 		if (status & 0x1 )
-			len += scnprintf(log_buf + len, CAM_IFE_CSID_LOG_BUF_LEN - len,
-			"\n%s", ver2_path_irq_desc[bit_pos].desc);
+			CAM_ERR_BUF(CAM_ISP, log_buf, CAM_IFE_CSID_LOG_BUF_LEN, &len, "%s",
+				ver2_path_irq_desc[bit_pos].desc);
 		bit_pos++;
 		status >>= 1;
 	}
