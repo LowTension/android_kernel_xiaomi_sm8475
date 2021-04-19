@@ -3252,6 +3252,8 @@ int cam_ife_csid_ver1_stop(void *hw_priv,
 		res->res_state = CAM_ISP_RESOURCE_STATE_INIT_HW;
 	}
 
+	csid_hw->counters.error_irq_count = 0;
+
 	return rc;
 }
 
