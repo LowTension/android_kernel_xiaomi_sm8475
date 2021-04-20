@@ -637,6 +637,7 @@ static int cam_tfe_csid_cid_reserve(struct cam_tfe_csid_hw *csid_hw,
 	uint32_t  *cid_value)
 {
 	int i,  rc = 0;
+	const struct cam_tfe_csid_reg_offset       *csid_reg;
 
 	CAM_DBG(CAM_ISP,
 		"CSID:%d res_id:0x%x Lane type:%d lane_num:%d dt:%d vc:%d",
@@ -745,12 +746,24 @@ static int cam_tfe_csid_cid_reserve(struct cam_tfe_csid_hw *csid_hw,
 		csid_hw->csi2_rx_cfg.lane_num =
 			cid_reserv->in_port->lane_num;
 
-		if (cid_reserv->in_port->res_id != CAM_ISP_TFE_IN_RES_TPG)
+		switch (cid_reserv->in_port->res_id) {
+		case CAM_ISP_TFE_IN_RES_TPG:
+			csid_hw->csi2_rx_cfg.phy_sel = 0;
+			break;
+		case CAM_ISP_TFE_IN_RES_CPHY_TPG_0:
+		case CAM_ISP_TFE_IN_RES_CPHY_TPG_1:
+		case CAM_ISP_TFE_IN_RES_CPHY_TPG_2:
+			csid_reg = csid_hw->csid_info->csid_reg;
 			csid_hw->csi2_rx_cfg.phy_sel =
-				(cid_reserv->in_port->res_id & 0xFF) - 1;
-		else
+				((cid_reserv->in_port->res_id & 0xFF) -
+				CAM_ISP_TFE_IN_RES_CPHY_TPG_0) +
+				csid_reg->csi2_reg->phy_tpg_base_id;
+			break;
+		default:
 			csid_hw->csi2_rx_cfg.phy_sel =
-				(cid_reserv->phy_sel & 0xFF) - 1;
+			    (cid_reserv->in_port->res_id & 0xFF) - 1;
+		    break;
+		}
 	}
 
 	csid_hw->csi2_reserve_cnt++;

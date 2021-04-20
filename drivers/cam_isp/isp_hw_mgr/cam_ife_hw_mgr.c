@@ -822,9 +822,6 @@ static void cam_ife_hw_mgr_deinit_hw(
 
 	hw_mgr = ctx->hw_mgr;
 
-	if (ctx->flags.is_tpg)
-		cam_ife_hw_mgr_deinit_hw_res(&ctx->res_list_tpg);
-
 	if (hw_mgr->csid_global_reset_en)
 		cam_ife_hw_mgr_reset_csid(ctx, CAM_IFE_CSID_RESET_GLOBAL);
 
@@ -880,17 +877,6 @@ static int cam_ife_hw_mgr_init_hw(
 	struct cam_isp_hw_mgr_res *hw_mgr_res;
 	struct cam_ife_hw_mgr          *hw_mgr;
 	int rc = 0, i;
-
-	if (ctx->flags.is_tpg) {
-		CAM_DBG(CAM_ISP, "INIT TPG ... in ctx id:%d",
-			ctx->ctx_index);
-		rc = cam_ife_hw_mgr_init_hw_res(&ctx->res_list_tpg);
-		if (rc) {
-			CAM_ERR(CAM_ISP, "Can not INIT TFE TPG(id :%d)",
-				ctx->res_list_tpg.hw_res[0]->hw_intf->hw_idx);
-			goto deinit;
-		}
-	}
 
 	/* INIT IFE SRC */
 	CAM_DBG(CAM_ISP, "INIT IFE SRC in ctx id:%d",
@@ -1117,15 +1103,9 @@ static void cam_ife_hw_mgr_dump_all_ctx(void)
 	list_for_each_entry_safe(ctx, ctx_temp,
 		&g_ife_hw_mgr.used_ctx_list, list) {
 		CAM_INFO_RATE_LIMIT(CAM_ISP,
-			"ctx id:%d is_dual:%d is_tpg:%d num_base:%d rdi only:%d",
-			ctx->ctx_index, ctx->flags.is_dual, ctx->flags.is_tpg,
+			"ctx id:%d is_dual:%d num_base:%d rdi only:%d",
+			ctx->ctx_index, ctx->flags.is_dual,
 			ctx->num_base, ctx->flags.is_rdi_only_context);
-
-		if (ctx->res_list_tpg.res_type == CAM_ISP_RESOURCE_TPG) {
-			CAM_INFO_RATE_LIMIT(CAM_ISP,
-				"Acquired TPG HW:%d",
-				ctx->res_list_tpg.hw_res[0]->hw_intf->hw_idx);
-		}
 
 		list_for_each_entry_safe(hw_mgr_res, hw_mgr_res_temp,
 			&ctx->res_list_ife_csid, list) {
@@ -1238,9 +1218,6 @@ static void cam_ife_hw_mgr_print_acquire_info(
 
 	if (hw_mgr_ctx->flags.dsp_enabled)
 		len += scnprintf(log_info + len, (128 - len), " DSP: Y");
-
-	if (hw_mgr_ctx->flags.is_tpg)
-		len += scnprintf(log_info + len, (128 - len), " TPG: Y");
 
 	if (hw_mgr_ctx->flags.is_offline)
 		len += scnprintf(log_info + len, (128 - len), " OFFLINE: Y");
@@ -1515,10 +1492,6 @@ static int cam_ife_hw_mgr_release_hw_for_ctx(
 		cam_ife_hw_mgr_free_hw_res(hw_mgr_res);
 		cam_ife_hw_mgr_put_res(&ife_ctx->free_res_list, &hw_mgr_res);
 	}
-
-	/* ife phy tpg resource */
-	if (ife_ctx->flags.is_tpg)
-		cam_ife_hw_mgr_free_hw_res(&ife_ctx->res_list_tpg);
 
 	/* ife root node */
 	if (ife_ctx->res_list_ife_in.res_type != CAM_ISP_RESOURCE_UNINT)
@@ -3117,53 +3090,6 @@ acquire_successful:
 	return rc;
 }
 
-static int cam_ife_hw_mgr_acquire_tpg(
-	struct cam_ife_hw_mgr_ctx               *ife_ctx,
-	struct cam_isp_in_port_generic_info     *in_port,
-	uint32_t                                 num_inport)
-{
-	int rc = -EINVAL;
-	uint32_t i = 0;
-	struct cam_ife_hw_mgr *ife_hw_mgr;
-	struct cam_hw_intf *hw_intf;
-	struct cam_top_tpg_reserve_args tpg_reserve;
-
-	ife_hw_mgr = ife_ctx->hw_mgr;
-
-	tpg_reserve.num_inport = num_inport;
-	tpg_reserve.node_res = NULL;
-	if ((num_inport > 0) &&
-		(num_inport <= CAM_TOP_TPG_MAX_SUPPORTED_IN_PORTS)){
-		for (i = 0; i < num_inport; i++)
-			tpg_reserve.in_port[i] = (in_port + i);
-
-		for (i = 0; i < CAM_TOP_TPG_HW_NUM_MAX; i++) {
-			if (!ife_hw_mgr->tpg_devices[i])
-				continue;
-
-			hw_intf = ife_hw_mgr->tpg_devices[i];
-			rc = hw_intf->hw_ops.reserve(hw_intf->hw_priv,
-				&tpg_reserve, sizeof(tpg_reserve));
-			if (!rc)
-				break;
-		}
-	}
-
-	if ((i == CAM_TOP_TPG_HW_NUM_MAX) || !tpg_reserve.node_res) {
-		CAM_ERR(CAM_ISP,
-			"Can not acquire IFE TPG. rc:%d, num_inports:%u",
-			rc, num_inport);
-		rc = -EINVAL;
-		goto end;
-	}
-
-	ife_ctx->res_list_tpg.hw_res[0] = tpg_reserve.node_res;
-	ife_ctx->flags.is_tpg = true;
-
-end:
-	return rc;
-}
-
 static int cam_ife_hw_mgr_acquire_res_ife_csid_pxl(
 	struct cam_ife_hw_mgr_ctx           *ife_ctx,
 	struct cam_isp_in_port_generic_info *in_port,
@@ -4724,18 +4650,6 @@ static int cam_ife_mgr_acquire_hw(void *hw_mgr_priv, void *acquire_hw_args)
 	if (total_lite_port == total_pix_port + total_rdi_port)
 		ife_ctx->flags.is_lite_context = true;
 
-	/* Acquire tpg HW */
-	if ((in_port->res_type == CAM_ISP_IFE_IN_RES_CPHY_TPG_0) ||
-		(in_port->res_type == CAM_ISP_IFE_IN_RES_CPHY_TPG_1) ||
-		(in_port->res_type == CAM_ISP_IFE_IN_RES_CPHY_TPG_2))
-		rc = cam_ife_hw_mgr_acquire_tpg(ife_ctx, &in_port[0],
-			acquire_hw_info->num_inputs);
-	if (rc) {
-		CAM_ERR(CAM_ISP, "can not acquire TPG resource");
-		goto free_res;
-
-	}
-
 	/* acquire HW resources */
 	for (i = 0; i < acquire_hw_info->num_inputs; i++) {
 		CAM_DBG(CAM_ISP, "in_res_type %x", in_port[i].res_type);
@@ -4751,9 +4665,6 @@ static int cam_ife_mgr_acquire_hw(void *hw_mgr_priv, void *acquire_hw_args)
 				ife_ctx->ctx_type = CAM_IFE_CTX_TYPE_SFE;
 			}
 		}
-
-		if (ife_ctx->flags.is_tpg)
-			ife_ctx->res_list_tpg.res_type = in_port[i].res_type;
 
 		CAM_DBG(CAM_ISP,
 			"in_res_type: 0x%x sfe_in_path_type: 0x%x sfe_ife_enable: 0x%x",
@@ -6012,9 +5923,6 @@ static int cam_ife_mgr_stop_hw(void *hw_mgr_priv, void *stop_hw_args)
 			"config done completion timeout for last applied req_id=%llu ctx_index %",
 			ctx->applied_req_id, ctx->ctx_index);
 
-	if (ctx->flags.is_tpg)
-		cam_ife_hw_mgr_stop_hw_res(&ctx->res_list_tpg);
-
 	if (stop_isp->stop_only)
 		goto end;
 
@@ -6498,17 +6406,6 @@ start_only:
 		ctx->ctx_index);
 	/* Start the IFE CSID HW devices */
 	cam_ife_mgr_csid_start_hw(ctx, primary_rdi_csid_res);
-
-	if (ctx->flags.is_tpg) {
-		CAM_DBG(CAM_ISP, "START TPG HW ... in ctx id:%d",
-			ctx->ctx_index);
-		rc = cam_ife_hw_mgr_start_hw_res(&ctx->res_list_tpg, ctx);
-		if (rc) {
-			CAM_ERR(CAM_ISP, "Can not start IFE TPG (%d)",
-				ctx->res_list_tpg.res_id);
-			goto err;
-		}
-	}
 
 	/* Start IFE root node: do nothing */
 	CAM_DBG(CAM_ISP, "Start success for ctx id:%d", ctx->ctx_index);
@@ -7908,37 +7805,6 @@ static int cam_isp_blob_sfe_clock_update(
 	return rc;
 }
 
-static int cam_isp_blob_tpg_config(
-	struct cam_isp_tpg_core_config        *tpg_config,
-	struct cam_hw_prepare_update_args     *prepare)
-{
-	int                                 i, rc = -EINVAL;
-	struct cam_ife_hw_mgr_ctx          *ctx = NULL;
-	struct cam_isp_hw_mgr_res          *hw_mgr_res;
-	struct cam_hw_intf                 *hw_intf;
-
-	ctx = prepare->ctxt_to_hw_map;
-	hw_mgr_res = &ctx->res_list_tpg;
-
-	for (i = 0; i < CAM_ISP_HW_SPLIT_MAX; i++) {
-		if (!hw_mgr_res->hw_res[i])
-			continue;
-		hw_intf = hw_mgr_res->hw_res[i]->hw_intf;
-		CAM_DBG(CAM_ISP, "TPG ctrl config for hw %u",
-			hw_intf->hw_idx);
-		if (hw_intf->hw_ops.process_cmd) {
-			rc = hw_intf->hw_ops.process_cmd(hw_intf->hw_priv,
-				CAM_ISP_HW_CMD_TPG_CORE_CFG_CMD, tpg_config,
-				sizeof(struct cam_isp_tpg_core_config));
-			if (rc)
-				goto end;
-		}
-	}
-
-end:
-	return rc;
-}
-
 static int cam_isp_blob_vfe_out_update(
 	uint32_t                               blob_type,
 	struct cam_isp_generic_blob_info      *blob_info,
@@ -8710,25 +8576,6 @@ static int cam_isp_packet_generic_blob_handler(void *user_data,
 				"Epoch Configuration Update Failed rc:%d", rc);
 	}
 		break;
-	case CAM_ISP_GENERIC_BLOB_TYPE_TPG_CORE_CONFIG: {
-		struct cam_isp_tpg_core_config *tpg_config;
-
-		if (blob_size < sizeof(struct cam_isp_tpg_core_config)) {
-			CAM_ERR(CAM_ISP, "Invalid blob size %zu expected %zu",
-				blob_size,
-				sizeof(struct cam_isp_tpg_core_config));
-			return -EINVAL;
-		}
-
-		tpg_config =
-			(struct cam_isp_tpg_core_config *)blob_data;
-
-		rc = cam_isp_blob_tpg_config(tpg_config, prepare);
-		if (rc)
-			CAM_ERR(CAM_ISP,
-				"TPG config failed rc: %d", rc);
-	}
-		break;
 	case CAM_ISP_GENERIC_BLOB_TYPE_DISCARD_INITIAL_FRAMES: {
 		struct cam_isp_discard_initial_frames *discard_config;
 
@@ -9268,7 +9115,6 @@ static int cam_sfe_packet_generic_blob_handler(void *user_data,
 	case CAM_ISP_GENERIC_BLOB_TYPE_BW_CONFIG_V2:
 	case CAM_ISP_GENERIC_BLOB_TYPE_CSID_QCFA_CONFIG:
 	case CAM_ISP_GENERIC_BLOB_TYPE_SENSOR_BLANKING_CONFIG:
-	case CAM_ISP_GENERIC_BLOB_TYPE_TPG_CORE_CONFIG:
 	case CAM_ISP_GENERIC_BLOB_TYPE_DISCARD_INITIAL_FRAMES:
 	case CAM_ISP_GENERIC_BLOB_TYPE_FPS_CONFIG:
 		break;
@@ -11975,15 +11821,6 @@ int cam_ife_hw_mgr_init(struct cam_hw_mgr_intf *hw_mgr_intf, int *iommu_hdl)
 		return -EINVAL;
 	}
 
-	/* fill tpg hw intf information */
-	for (i = 0, j = 0; i < CAM_TOP_TPG_HW_NUM_MAX; i++) {
-		rc = cam_top_tpg_hw_init(&g_ife_hw_mgr.tpg_devices[i], i);
-		if (!rc)
-			j++;
-	}
-	if (!j)
-		CAM_ERR(CAM_ISP, "no valid IFE TPG HW");
-
 	/* fill sfe hw intf info */
 	for (i = 0, j = 0; i < CAM_SFE_HW_NUM_MAX; i++) {
 		rc = cam_sfe_hw_init(&g_ife_hw_mgr.sfe_devices[i], i);
@@ -12062,7 +11899,6 @@ int cam_ife_hw_mgr_init(struct cam_hw_mgr_intf *hw_mgr_intf, int *iommu_hdl)
 			sizeof(g_ife_hw_mgr.ctx_pool[i]));
 		INIT_LIST_HEAD(&g_ife_hw_mgr.ctx_pool[i].list);
 
-		INIT_LIST_HEAD(&g_ife_hw_mgr.ctx_pool[i].res_list_tpg.list);
 		INIT_LIST_HEAD(&g_ife_hw_mgr.ctx_pool[i].res_list_ife_in.list);
 		INIT_LIST_HEAD(&g_ife_hw_mgr.ctx_pool[i].res_list_ife_csid);
 		INIT_LIST_HEAD(&g_ife_hw_mgr.ctx_pool[i].res_list_ife_src);

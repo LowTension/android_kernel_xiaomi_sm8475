@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CAM_TFE_HW_MGR_H_
@@ -11,7 +11,6 @@
 #include "cam_isp_hw_mgr.h"
 #include "cam_tfe_hw_intf.h"
 #include "cam_tfe_csid_hw_intf.h"
-#include "cam_top_tpg_hw_intf.h"
 #include "cam_tasklet_util.h"
 #include "cam_cdm_intf_api.h"
 
@@ -79,7 +78,6 @@ struct cam_tfe_hw_mgr_debug {
  * @last_dump_err_req_id      last req id for which reg dump on error was called
  * @init_done                 indicate whether init hw is done
  * @is_dual                   indicate whether context is in dual TFE mode
- * @is_tpg                    indicate whether context use tpg
  * @master_hw_idx             master hardware index in dual tfe case
  * @slave_hw_idx              slave hardware index in dual tfe case
  * @dual_tfe_irq_mismatch_cnt irq mismatch count value per core, used for
@@ -94,7 +92,6 @@ struct cam_tfe_hw_mgr_ctx {
 	struct cam_tfe_hw_mgr          *hw_mgr;
 	uint32_t                        ctx_in_use;
 
-	struct cam_isp_hw_mgr_res       res_list_tpg;
 	struct list_head                res_list_tfe_csid;
 	struct list_head                res_list_tfe_in;
 	struct cam_isp_hw_mgr_res
@@ -123,7 +120,6 @@ struct cam_tfe_hw_mgr_ctx {
 	uint64_t                        last_dump_err_req_id;
 	bool                            init_done;
 	bool                            is_dual;
-	bool                            is_tpg;
 	uint32_t                        master_hw_idx;
 	uint32_t                        slave_hw_idx;
 	uint32_t                        dual_tfe_irq_mismatch_cnt;
@@ -134,8 +130,6 @@ struct cam_tfe_hw_mgr_ctx {
  * struct cam_tfe_hw_mgr - TFE HW Manager
  *
  * @mgr_common:            common data for all HW managers
- * @tpg_devices:           tpg devices instacnce array. This will be filled by
- *                         HW manager during the initialization.
  * @csid_devices:          csid device instances array. This will be filled by
  *                         HW manager during the initialization.
  * @tfe_devices:           TFE device instances array. This will be filled by
@@ -155,7 +149,6 @@ struct cam_tfe_hw_mgr_ctx {
  */
 struct cam_tfe_hw_mgr {
 	struct cam_isp_hw_mgr          mgr_common;
-	struct cam_hw_intf            *tpg_devices[CAM_TOP_TPG_HW_NUM_MAX];
 	struct cam_hw_intf            *csid_devices[CAM_TFE_CSID_HW_NUM_MAX];
 	struct cam_isp_hw_intf_data   *tfe_devices[CAM_TFE_HW_NUM_MAX];
 	struct cam_soc_reg_map        *cdm_reg_map[CAM_TFE_HW_NUM_MAX];

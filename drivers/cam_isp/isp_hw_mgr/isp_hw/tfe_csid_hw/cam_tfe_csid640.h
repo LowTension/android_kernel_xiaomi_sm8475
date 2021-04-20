@@ -198,6 +198,7 @@ static struct cam_tfe_csid_csi2_rx_reg_offset
 	.csid_csi2_rx_stats_ecc_addr                  = 0x164,
 	.csid_csi2_rx_total_crc_err_addr              = 0x168,
 
+	.phy_tpg_base_id                              = 0,
 	.csi2_rst_srb_all                             = 0x3FFF,
 	.csi2_rst_done_shift_val                      = 27,
 	.csi2_irq_mask_all                            = 0xFFFFFFF,
