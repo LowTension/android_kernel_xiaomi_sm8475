@@ -132,7 +132,7 @@ struct cam_cre_bus_wr_reg_val bus_wr_reg_value = {
 		.bw_limit_en              = 0x1,
 		.bw_limit_en_mask         = 0x1,
 		.bw_limit_counter_mask    = 0x1fe,
-		.output_port_id           = 1,
+		.output_port_id           = CAM_CRE_OUTPUT_IMAGE,
 		.wm_port_id               = 1,
 	},
 };
@@ -178,6 +178,7 @@ struct cam_cre_bus_rd_reg_val bus_rd_reg_value = {
 		.misr_cfg_samp_mode_mask = 0x3,
 		.x_int_mask              = 0xffff,
 		.byte_offset_mask        = 0xff,
+		.input_port_id           = CAM_CRE_INPUT_IMAGE,
 		.rm_port_id              = 0x0,
 	},
 };

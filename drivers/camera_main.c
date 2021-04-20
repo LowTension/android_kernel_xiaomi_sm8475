@@ -55,6 +55,7 @@
 #include "cam_debug_util.h"
 
 #include "ope_dev_intf.h"
+#include "cre_dev_intf.h"
 
 #include "cam_top_tpg.h"
 #include "cam_tfe_dev.h"
@@ -137,6 +138,7 @@ static const struct camera_submodule_component camera_ope[] = {
 static const struct camera_submodule_component camera_cre[] = {
 #ifdef CONFIG_SPECTRA_CRE
 	{&cam_cre_init_module, &cam_cre_exit_module},
+	{&cam_cre_subdev_init_module, &cam_cre_subdev_exit_module},
 #endif
 };
 static const struct camera_submodule_component camera_jpeg[] = {

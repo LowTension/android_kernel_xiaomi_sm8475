@@ -135,7 +135,11 @@ static int cam_cre_mgr_process_cmd_io_buf_req(struct cam_cre_hw_mgr *hw_mgr,
 	for (i = 0; i < cre_request->num_batch; i++) {
 		for (j = 0; j < packet->num_io_configs; j++) {
 			cre_request->num_io_bufs[i]++;
-			acq_io_buf = cam_cre_mgr_get_rsc(ctx_data, &io_cfg_ptr[i]);
+			acq_io_buf = cam_cre_mgr_get_rsc(ctx_data, &io_cfg_ptr[j]);
+			if (!acq_io_buf) {
+				CAM_ERR(CAM_CRE, "get rsc failed");
+				return -EINVAL;
+			}
 
 			cre_request->io_buf[i][j] =
 				kzalloc(sizeof(struct cre_io_buf), GFP_KERNEL);
@@ -1560,10 +1564,6 @@ cre_irq_set_failed:
 			if (hw_mgr->cre_dev_intf[i]->hw_ops.deinit(
 				hw_mgr->cre_dev_intf[i]->hw_priv, NULL, 0))
 				CAM_ERR(CAM_CRE, "CRE deinit fail");
-			if (hw_mgr->cre_dev_intf[i]->hw_ops.stop(
-				hw_mgr->cre_dev_intf[i]->hw_priv,
-				NULL, 0))
-				CAM_ERR(CAM_CRE, "CRE stop fail");
 		}
 	}
 end:
@@ -1692,17 +1692,6 @@ static int cam_cre_mgr_release_hw(void *hw_priv, void *hw_release_args)
 	rc = cam_cre_mgr_remove_bw(hw_mgr, ctx_id);
 	if (rc)
 		CAM_ERR(CAM_CRE, "CRE remove bw failed: %d", rc);
-
-	if (!hw_mgr->cre_ctx_cnt) {
-		for (i = 0; i < cre_hw_mgr->num_cre; i++) {
-			dev_intf = hw_mgr->cre_dev_intf[i];
-			rc = dev_intf->hw_ops.stop(
-				hw_mgr->cre_dev_intf[i]->hw_priv,
-				NULL, 0);
-			if (rc)
-				CAM_ERR(CAM_CRE, "stop failed: %d", rc);
-		}
-	}
 
 	mutex_unlock(&hw_mgr->hw_mgr_mutex);
 

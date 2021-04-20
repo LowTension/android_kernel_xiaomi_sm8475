@@ -53,6 +53,7 @@ extern struct platform_driver cam_ope_subdev_driver;
 #endif
 #ifdef CONFIG_SPECTRA_CRE
 extern struct platform_driver cam_cre_driver;
+extern struct platform_driver cam_cre_subdev_driver;
 #endif
 #ifdef CONFIG_SPECTRA_JPEG
 extern struct platform_driver cam_jpeg_enc_driver;
@@ -128,6 +129,7 @@ static struct platform_driver *const cam_component_drivers[] = {
 #endif
 #ifdef CONFIG_SPECTRA_CRE
 	&cam_cre_driver,
+	&cam_cre_subdev_driver,
 #endif
 #ifdef CONFIG_SPECTRA_FD
 	&cam_fd_hw_driver,

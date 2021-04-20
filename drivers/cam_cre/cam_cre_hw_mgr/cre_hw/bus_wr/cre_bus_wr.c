@@ -27,37 +27,12 @@
 #include "cre_bus_wr.h"
 
 static struct cre_bus_wr *wr_info;
-
 #define update_cre_reg_set(cre_reg_buf, off, val) \
 	do {                                           \
 		cre_reg_buf->wr_reg_set[cre_reg_buf->num_wr_reg_set].offset = (off); \
 		cre_reg_buf->wr_reg_set[cre_reg_buf->num_wr_reg_set].value = (val); \
 		cre_reg_buf->num_wr_reg_set++; \
 	} while (0)
-
-static int cam_cre_bus_en_port_idx(
-	struct cam_cre_request *cre_request,
-	uint32_t batch_idx,
-	uint32_t output_port_id)
-{
-	int i;
-	struct cre_io_buf *io_buf;
-
-	if (batch_idx >= CRE_MAX_BATCH_SIZE) {
-		CAM_ERR(CAM_CRE, "Invalid batch idx: %d", batch_idx);
-		return -EINVAL;
-	}
-
-	for (i = 0; i < cre_request->num_io_bufs[batch_idx]; i++) {
-		io_buf = cre_request->io_buf[batch_idx][i];
-		if (io_buf->direction != CAM_BUF_OUTPUT)
-			continue;
-		if (io_buf->resource_type == output_port_id)
-			return i;
-	}
-
-	return -EINVAL;
-}
 
 static int cam_cre_bus_wr_out_port_idx(uint32_t output_port_id)
 {
@@ -103,7 +78,7 @@ static int cam_cre_bus_wr_release(struct cam_cre_hw *cam_cre_hw_info,
 	return 0;
 }
 
-static uint32_t *cam_cre_bus_wr_update(struct cam_cre_hw *cam_cre_hw_info,
+static int cam_cre_bus_wr_update(struct cam_cre_hw *cam_cre_hw_info,
 	int32_t ctx_id, struct cam_cre_dev_prepare_req *prepare,
 	int batch_idx, int io_idx,
 	struct cre_reg_buffer *cre_reg_buf)
@@ -114,6 +89,7 @@ static uint32_t *cam_cre_bus_wr_update(struct cam_cre_hw *cam_cre_hw_info,
 	uint32_t req_idx;
 	uint32_t temp = 0;
 	uint32_t wm_port_id;
+	uint32_t iova_base, iova_offset;
 	struct cam_hw_prepare_update_args *prepare_args;
 	struct cam_cre_ctx *ctx_data;
 	struct cam_cre_request *cre_request;
@@ -127,17 +103,17 @@ static uint32_t *cam_cre_bus_wr_update(struct cam_cre_hw *cam_cre_hw_info,
 
 	if (ctx_id < 0 || !prepare) {
 		CAM_ERR(CAM_CRE, "Invalid data: %d %x", ctx_id, prepare);
-		return NULL;
+		return -EINVAL;
 	}
 
 	if (batch_idx >= CRE_MAX_BATCH_SIZE) {
 		CAM_ERR(CAM_CRE, "Invalid batch idx: %d", batch_idx);
-		return NULL;
+		return -EINVAL;
 	}
 
 	if (io_idx >= CRE_MAX_IO_BUFS) {
 		CAM_ERR(CAM_CRE, "Invalid IO idx: %d", io_idx);
-		return NULL;
+		return -EINVAL;
 	}
 
 	prepare_args = prepare->prepare_args;
@@ -161,7 +137,7 @@ static uint32_t *cam_cre_bus_wr_update(struct cam_cre_hw *cam_cre_hw_info,
 	if (out_port_idx < 0) {
 		CAM_ERR(CAM_CRE, "Invalid idx for rsc type: %d",
 			io_buf->resource_type);
-		return NULL;
+		return -EINVAL;
 	}
 	out_port_to_wm = &wr_info->out_port_to_wm[out_port_idx];
 	num_wm_ports = out_port_to_wm->num_wm;
@@ -183,10 +159,19 @@ static uint32_t *cam_cre_bus_wr_update(struct cam_cre_hw *cam_cre_hw_info,
 			wr_reg->offset + wr_reg_client->client_cfg,
 			temp);
 
-		/* Address of the Image */
+		/*
+		 * As CRE have 36 Bit addressing support Image Address
+		 * register will have 32 bit MSB of 36 bit iova.
+		 * and addr_config will have 8 bit byte offset.
+		 */
+		iova_base = (io_buf->p_info[k].iova_addr & 0xffffff00) >> 8;
 		update_cre_reg_set(cre_reg_buf,
 			wr_reg->offset + wr_reg_client->img_addr,
-			io_buf->p_info[k].iova_addr);
+			iova_base);
+		iova_offset = io_buf->p_info[k].iova_addr & 0xff;
+		update_cre_reg_set(cre_reg_buf,
+			wr_reg->offset + wr_reg_client->addr_cfg,
+			iova_offset);
 
 		/* Buffer size */
 		temp = 0;
@@ -225,60 +210,7 @@ static uint32_t *cam_cre_bus_wr_update(struct cam_cre_hw *cam_cre_hw_info,
 			temp);
 	}
 
-	return (uint32_t *)cre_reg_buf;
-}
-
-static uint32_t *cam_cre_bus_wm_disable(struct cam_cre_hw *cam_cre_hw_info,
-	int32_t ctx_id, struct cam_cre_dev_prepare_req *prepare,
-	int batch_idx, int io_idx,
-	struct cre_reg_buffer *cre_reg_buf)
-{
-	int k;
-	uint32_t num_wm_ports;
-	uint32_t req_idx;
-	uint32_t wm_port_id;
-	struct cam_cre_ctx *ctx_data;
-	struct cre_bus_wr_ctx *bus_wr_ctx;
-	struct cam_cre_bus_wr_reg *wr_reg;
-	struct cre_bus_out_port_to_wm *out_port_to_wm;
-	struct cam_cre_bus_wr_client_reg *wr_reg_client;
-
-
-	if (ctx_id < 0 || !prepare) {
-		CAM_ERR(CAM_CRE, "Invalid data: %d %x", ctx_id, prepare);
-		return NULL;
-	}
-
-	if (batch_idx >= CRE_MAX_BATCH_SIZE) {
-		CAM_ERR(CAM_CRE, "Invalid batch idx: %d", batch_idx);
-		return NULL;
-	}
-
-	ctx_data = prepare->ctx_data;
-	req_idx = prepare->req_idx;
-
-	bus_wr_ctx = wr_info->bus_wr_ctx[ctx_id];
-	wr_reg = cam_cre_hw_info->bus_wr_reg_offset;
-
-	CAM_DBG(CAM_CRE,
-		"req_idx = %d out_idx %d b %d",
-		req_idx, io_idx, batch_idx);
-
-	out_port_to_wm = &wr_info->out_port_to_wm[io_idx];
-	num_wm_ports = out_port_to_wm->num_wm;
-
-	for (k = 0; k < num_wm_ports; k++) {
-		/* frame level info */
-		wm_port_id = out_port_to_wm->wm_port_id[k];
-		wr_reg_client = &wr_reg->wr_clients[wm_port_id];
-
-		/* Core cfg: enable, Mode */
-		update_cre_reg_set(cre_reg_buf,
-			wr_reg->offset + wr_reg_client->client_cfg,
-			0);
-	}
-
-	return (uint32_t *)cre_reg_buf;
+	return 0;
 }
 
 static int cam_cre_bus_wr_prepare(struct cam_cre_hw *cam_cre_hw_info,
@@ -291,10 +223,8 @@ static int cam_cre_bus_wr_prepare(struct cam_cre_hw *cam_cre_hw_info,
 	struct cam_cre_ctx *ctx_data;
 	struct cam_cre_request *cre_request;
 	struct cre_io_buf *io_buf;
-	int io_buf_idx;
 	struct cre_bus_wr_ctx *bus_wr_ctx;
 	struct cre_reg_buffer *cre_reg_buf;
-	uint32_t *ret;
 
 	if (ctx_id < 0 || !data) {
 		CAM_ERR(CAM_CRE, "Invalid data: %d %x", ctx_id, data);
@@ -308,9 +238,8 @@ static int cam_cre_bus_wr_prepare(struct cam_cre_hw *cam_cre_hw_info,
 	cre_request = ctx_data->req_list[req_idx];
 	cre_reg_buf = &cre_request->cre_reg_buf;
 
-	CAM_DBG(CAM_CRE, "req_idx = %d req_id = %lld offset = %d",
-		req_idx, cre_request->request_id);
-
+	CAM_DBG(CAM_CRE, "req_idx = %d req_id = %lld num_io_bufs = %d",
+		req_idx, cre_request->request_id, cre_request->num_io_bufs[0]);
 
 	for (i = 0; i < cre_request->num_batch; i++) {
 		for (j = 0; j < cre_request->num_io_bufs[i]; j++) {
@@ -320,36 +249,11 @@ static int cam_cre_bus_wr_prepare(struct cam_cre_hw *cam_cre_hw_info,
 			if (io_buf->direction != CAM_BUF_OUTPUT)
 				continue;
 
-			ret = cam_cre_bus_wr_update(cam_cre_hw_info,
+			rc = cam_cre_bus_wr_update(cam_cre_hw_info,
 				ctx_id, prepare, i, j,
 				cre_reg_buf);
-			if (!ret) {
-				rc = -EINVAL;
+			if (rc)
 				goto end;
-			}
-		}
-	}
-
-	/* Disable WMs which are not enabled */
-	for (i = 0; i < cre_request->num_batch; i++) {
-		for (j = CRE_MAX_IN_RES; j <= CRE_MAX_OUT_RES; j++) {
-			io_buf_idx = cam_cre_bus_en_port_idx(cre_request, i, j);
-			if (io_buf_idx >= 0)
-				continue;
-
-			io_buf_idx = cam_cre_bus_wr_out_port_idx(j);
-			if (io_buf_idx < 0) {
-				CAM_ERR(CAM_CRE, "Invalid idx for rsc type:%d",
-					j);
-				return io_buf_idx;
-			}
-			ret = cam_cre_bus_wm_disable(cam_cre_hw_info,
-				ctx_id, prepare, i, io_buf_idx,
-				cre_reg_buf);
-			if (!ret) {
-				rc = -EINVAL;
-				goto end;
-			}
 		}
 	}
 
@@ -400,7 +304,8 @@ static int cam_cre_bus_wr_acquire(struct cam_cre_hw *cam_cre_hw_info,
 			rc = -EINVAL;
 			goto end;
 		}
-		out_port_to_wr = &wr_info->out_port_to_wm[out_port_idx];
+		CAM_DBG(CAM_CRE, "out_port_idx %d", out_port_idx);
+		out_port_to_wr = &wr_info->out_port_to_wm[out_port_idx - 1];
 		if (!out_port_to_wr->num_wm) {
 			CAM_DBG(CAM_CRE, "Invalid format for Input port");
 			rc = -EINVAL;
