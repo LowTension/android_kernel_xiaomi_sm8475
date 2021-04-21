@@ -2252,22 +2252,6 @@ static int cam_ife_csid_ver2_init_config_rdi_path(
 
 	cam_io_w_mb(val, mem_base + path_reg->cfg1_addr);
 
-	if (path_cfg->crop_enable) {
-		val = (((path_cfg->end_pixel & cmn_reg->crop_pix_start_mask) <<
-			cmn_reg->crop_shift_val) |
-			(path_cfg->start_pixel & cmn_reg->crop_pix_end_mask));
-		cam_io_w_mb(val, mem_base + path_reg->hcrop_addr);
-		CAM_DBG(CAM_ISP, "CSID:%d Horizontal crop config val: 0x%x",
-			csid_hw->hw_intf->hw_idx, val);
-
-		val = (((path_cfg->end_line & cmn_reg->crop_line_start_mask) <<
-			csid_reg->cmn_reg->crop_shift_val) |
-			(path_cfg->start_line & cmn_reg->crop_line_end_mask));
-		cam_io_w_mb(val, mem_base + path_reg->vcrop_addr);
-		CAM_DBG(CAM_ISP, "CSID:%d Vertical Crop config val: 0x%x",
-			csid_hw->hw_intf->hw_idx, val);
-	}
-
 	/* set frame drop pattern to 0 and period to 1 */
 	cam_io_w_mb(1, mem_base + path_reg->frm_drop_period_addr);
 	cam_io_w_mb(0, mem_base + path_reg->frm_drop_pattern_addr);
@@ -2451,22 +2435,6 @@ static int cam_ife_csid_ver2_init_config_pxl_path(
 		val);
 
 	cam_io_w_mb(val, mem_base + path_reg->cfg1_addr);
-
-	if (path_cfg->crop_enable) {
-		val = (((path_cfg->end_pixel & cmn_reg->crop_pix_start_mask) <<
-			cmn_reg->crop_shift_val) |
-			(path_cfg->start_pixel & cmn_reg->crop_pix_end_mask));
-		cam_io_w_mb(val, mem_base + path_reg->hcrop_addr);
-		CAM_DBG(CAM_ISP, "CSID:%d Horizontal crop config val: 0x%x",
-			csid_hw->hw_intf->hw_idx, val);
-
-		val = (((path_cfg->end_line & cmn_reg->crop_line_start_mask) <<
-			csid_reg->cmn_reg->crop_shift_val) |
-			(path_cfg->start_line & cmn_reg->crop_line_end_mask));
-		cam_io_w_mb(val, mem_base + path_reg->vcrop_addr);
-		CAM_DBG(CAM_ISP, "CSID:%d Vertical Crop config val: 0x%x",
-			csid_hw->hw_intf->hw_idx, val);
-	}
 
 	/* set frame drop pattern to 0 and period to 1 */
 	cam_io_w_mb(1, mem_base + path_reg->frm_drop_period_addr);
