@@ -11173,7 +11173,7 @@ static int cam_ife_hw_mgr_debug_register(void)
 			rc = PTR_ERR(dbgfileptr);
 	}
 end:
-	g_ife_hw_mgr.debug_cfg.enable_recovery = 1;
+	g_ife_hw_mgr.debug_cfg.enable_csid_recovery = 1;
 	return rc;
 }
 
