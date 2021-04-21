@@ -20,6 +20,10 @@
 #define ICP_LX7_CIRQ_OB_CLEAR  0x4
 #define ICP_LX7_CIRQ_OB_STATUS 0xc
 
+/* ICP WD reg space */
+#define ICP_LX7_WD_CTRL        0x8
+#define ICP_LX7_WD_INTCLR      0xC
+
 /* These bitfields are shared by OB_MASK, OB_CLEAR, OB_STATUS */
 #define LX7_WDT_BITE_WS1       (1 << 6)
 #define LX7_WDT_BARK_WS1       (1 << 5)

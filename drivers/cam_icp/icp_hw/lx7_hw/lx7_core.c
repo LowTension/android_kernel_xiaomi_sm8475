@@ -857,8 +857,15 @@ irqreturn_t cam_lx7_handle_irq(int irq_num, void *data)
 	cam_io_w_mb(status, cirq_base + ICP_LX7_CIRQ_OB_CLEAR);
 	cam_io_w_mb(LX7_IRQ_CLEAR_CMD, cirq_base + ICP_LX7_CIRQ_OB_IRQ_CMD);
 
-	if (status & (LX7_WDT_BITE_WS0 | LX7_WDT_BITE_WS1)) {
-		CAM_ERR_RATE_LIMIT(CAM_ICP, "got watchdog interrupt from LX7");
+	if (status & LX7_WDT_BITE_WS0) {
+		/* WD clear sequence - SW listens only to WD0 */
+		cam_io_w_mb(0x0,
+			lx7_info->soc_info.reg_map[LX7_WD0_BASE].mem_base +
+			ICP_LX7_WD_CTRL);
+		cam_io_w_mb(0x1,
+			lx7_info->soc_info.reg_map[LX7_WD0_BASE].mem_base +
+			ICP_LX7_WD_INTCLR);
+		CAM_ERR_RATE_LIMIT(CAM_ICP, "Fatal: Watchdog Bite from LX7");
 		recover = true;
 	}
 
