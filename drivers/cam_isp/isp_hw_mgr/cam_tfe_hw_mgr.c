@@ -664,7 +664,7 @@ static int cam_tfe_hw_mgr_release_hw_for_ctx(
 
 	/* clean up the callback function */
 	tfe_ctx->common.cb_priv = NULL;
-	memset(tfe_ctx->common.event_cb, 0, sizeof(tfe_ctx->common.event_cb));
+	tfe_ctx->common.event_cb = NULL;
 
 	CAM_DBG(CAM_ISP, "release context completed ctx id:%d",
 		tfe_ctx->ctx_index);
@@ -2087,8 +2087,7 @@ static int cam_tfe_mgr_acquire_hw(void *hw_mgr_priv, void *acquire_hw_args)
 	}
 
 	tfe_ctx->common.cb_priv = acquire_args->context_data;
-	for (i = 0; i < CAM_ISP_HW_EVENT_MAX; i++)
-		tfe_ctx->common.event_cb[i] = acquire_args->event_cb;
+	tfe_ctx->common.event_cb = acquire_args->event_cb;
 
 	tfe_ctx->hw_mgr = tfe_hw_mgr;
 
@@ -2362,8 +2361,7 @@ static int cam_tfe_mgr_acquire_dev(void *hw_mgr_priv, void *acquire_hw_args)
 	}
 
 	tfe_ctx->common.cb_priv = acquire_args->context_data;
-	for (i = 0; i < CAM_ISP_HW_EVENT_MAX; i++)
-		tfe_ctx->common.event_cb[i] = acquire_args->event_cb;
+	tfe_ctx->common.event_cb = acquire_args->event_cb;
 
 	tfe_ctx->hw_mgr = tfe_hw_mgr;
 
@@ -5428,7 +5426,6 @@ static int  cam_tfe_hw_mgr_find_affected_ctx(
 	struct cam_tfe_hw_mgr_ctx   *tfe_hwr_mgr_ctx = NULL;
 	cam_hw_event_cb_func         notify_err_cb;
 	struct cam_tfe_hw_mgr       *tfe_hwr_mgr = NULL;
-	enum cam_isp_hw_event_type   event_type = CAM_ISP_HW_EVENT_ERROR;
 	uint32_t i = 0;
 
 	if (!recovery_data) {
@@ -5457,7 +5454,7 @@ static int  cam_tfe_hw_mgr_find_affected_ctx(
 		}
 
 		atomic_set(&tfe_hwr_mgr_ctx->overflow_pending, 1);
-		notify_err_cb = tfe_hwr_mgr_ctx->common.event_cb[event_type];
+		notify_err_cb = tfe_hwr_mgr_ctx->common.event_cb;
 
 		/* Add affected_context in list of recovery data */
 		CAM_DBG(CAM_ISP, "Add affected ctx %d to list",
@@ -5583,8 +5580,7 @@ static int cam_tfe_hw_mgr_handle_hw_rup(
 	cam_hw_event_cb_func                     tfe_hwr_irq_rup_cb;
 	struct cam_isp_hw_reg_update_event_data  rup_event_data;
 
-	tfe_hwr_irq_rup_cb =
-		tfe_hw_mgr_ctx->common.event_cb[CAM_ISP_HW_EVENT_REG_UPDATE];
+	tfe_hwr_irq_rup_cb = tfe_hw_mgr_ctx->common.event_cb;
 
 	switch (event_info->res_id) {
 	case CAM_ISP_HW_TFE_IN_CAMIF:
@@ -5631,8 +5627,7 @@ static int cam_tfe_hw_mgr_handle_hw_epoch(
 	cam_hw_event_cb_func                  tfe_hw_irq_epoch_cb;
 	struct cam_isp_hw_epoch_event_data    epoch_done_event_data;
 
-	tfe_hw_irq_epoch_cb =
-		tfe_hw_mgr_ctx->common.event_cb[CAM_ISP_HW_EVENT_EPOCH];
+	tfe_hw_irq_epoch_cb = tfe_hw_mgr_ctx->common.event_cb;
 
 	switch (event_info->res_id) {
 	case CAM_ISP_HW_TFE_IN_CAMIF:
@@ -5668,8 +5663,7 @@ static int cam_tfe_hw_mgr_handle_hw_sof(
 	cam_hw_event_cb_func                  tfe_hw_irq_sof_cb;
 	struct cam_isp_hw_sof_event_data      sof_done_event_data;
 
-	tfe_hw_irq_sof_cb =
-		tfe_hw_mgr_ctx->common.event_cb[CAM_ISP_HW_EVENT_SOF];
+	tfe_hw_irq_sof_cb = tfe_hw_mgr_ctx->common.event_cb;
 
 	switch (event_info->res_id) {
 	case CAM_ISP_HW_TFE_IN_CAMIF:
@@ -5719,8 +5713,7 @@ static int cam_tfe_hw_mgr_handle_hw_eof(
 	cam_hw_event_cb_func                  tfe_hw_irq_eof_cb;
 	struct cam_isp_hw_eof_event_data      eof_done_event_data;
 
-	tfe_hw_irq_eof_cb =
-		tfe_hw_mgr_ctx->common.event_cb[CAM_ISP_HW_EVENT_EOF];
+	tfe_hw_irq_eof_cb = tfe_hw_mgr_ctx->common.event_cb;
 
 	switch (event_info->res_id) {
 	case CAM_ISP_HW_TFE_IN_CAMIF:
@@ -5757,8 +5750,7 @@ static int cam_tfe_hw_mgr_handle_hw_buf_done(
 	struct cam_isp_hw_done_event_data    buf_done_event_data = {0};
 	struct cam_isp_hw_event_info        *event_info = evt_info;
 
-	tfe_hwr_irq_wm_done_cb =
-		tfe_hw_mgr_ctx->common.event_cb[CAM_ISP_HW_EVENT_DONE];
+	tfe_hwr_irq_wm_done_cb = tfe_hw_mgr_ctx->common.event_cb;
 
 	buf_done_event_data.num_handles = 1;
 	buf_done_event_data.resource_handle[0] = event_info->res_id;
