@@ -1127,9 +1127,19 @@ static int cam_vfe_bus_ver3_acquire_wm(
 
 	} else if (vfe_out_res_id == CAM_VFE_BUS_VER3_VFE_OUT_SPARSE_PD) {
 		switch (rsrc_data->format) {
-		case CAM_FORMAT_PLAIN16_16:
+		case CAM_FORMAT_PLAIN8:
 			rsrc_data->stride = ALIGNUP(rsrc_data->width * 2, 8);
 			rsrc_data->en_cfg = 0x1;
+			break;
+		case CAM_FORMAT_PLAIN16_8:
+		case CAM_FORMAT_PLAIN16_10:
+		case CAM_FORMAT_PLAIN16_12:
+		case CAM_FORMAT_PLAIN16_14:
+			rsrc_data->stride = ALIGNUP(rsrc_data->width * 2, 8);
+			rsrc_data->en_cfg = 0x1;
+			/* LSB aligned */
+			rsrc_data->pack_fmt |= (1 <<
+				ver3_bus_priv->common_data.pack_align_shift);
 			break;
 		default:
 			CAM_ERR(CAM_ISP, "Invalid format %d out_type:%d",
