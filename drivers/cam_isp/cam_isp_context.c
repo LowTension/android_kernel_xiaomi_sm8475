@@ -2024,6 +2024,9 @@ static int __cam_isp_ctx_epoch_in_applied(struct cam_isp_context *ctx_isp,
 		goto end;
 	}
 
+	/* Update state prior to notifying CRM */
+	ctx_isp->substate_activated = CAM_ISP_CTX_ACTIVATED_BUBBLE;
+
 	req = list_first_entry(&ctx->wait_req_list, struct cam_ctx_request,
 		list);
 	req_isp = (struct cam_isp_ctx_req *)req->req_priv;
@@ -2118,11 +2121,6 @@ static int __cam_isp_ctx_epoch_in_applied(struct cam_isp_context *ctx_isp,
 	__cam_isp_ctx_send_sof_timestamp(ctx_isp, request_id,
 		sof_event_status);
 
-	ctx_isp->substate_activated = CAM_ISP_CTX_ACTIVATED_BUBBLE;
-	CAM_DBG(CAM_ISP, "next Substate[%s]",
-		__cam_isp_ctx_substate_val_to_type(
-		ctx_isp->substate_activated));
-
 	cam_req_mgr_debug_delay_detect();
 	trace_cam_delay_detect("ISP",
 		"bubble epoch_in_applied", req->request_id,
@@ -2138,6 +2136,10 @@ end:
 		__cam_isp_ctx_update_state_monitor_array(ctx_isp,
 			CAM_ISP_STATE_CHANGE_TRIGGER_EPOCH, request_id);
 	}
+
+	CAM_DBG(CAM_ISP, "next Substate[%s]",
+		__cam_isp_ctx_substate_val_to_type(
+		ctx_isp->substate_activated));
 	return 0;
 }
 
