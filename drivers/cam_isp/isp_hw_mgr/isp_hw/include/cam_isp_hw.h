@@ -241,6 +241,7 @@ struct cam_isp_blanking_config {
  * @err_type:       Error type if any
  * @reg_val:        Any critical register value captured during irq handling
  * @hw_type:        Hw Type sending the event
+ * @in_core_type:   Input core type if CSID error evt
  *
  */
 struct cam_isp_hw_event_info {
@@ -250,6 +251,7 @@ struct cam_isp_hw_event_info {
 	uint32_t                       err_type;
 	uint32_t                       reg_val;
 	uint32_t                       hw_type;
+	uint32_t                       in_core_type;
 };
 
 /*

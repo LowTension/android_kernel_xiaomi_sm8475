@@ -1013,6 +1013,11 @@ static int cam_ife_csid_ver2_handle_event_err(
 			csid_hw->hw_intf->hw_idx, err_type, irq_status);
 	}
 
+	if (csid_hw->top_cfg.input_core_type == CAM_IFE_CSID_INPUT_CORE_SEL_SFE_0)
+		evt.in_core_type = 0;
+	else if (csid_hw->top_cfg.input_core_type == CAM_IFE_CSID_INPUT_CORE_SEL_SFE_1)
+		evt.in_core_type = 1;
+
 	csid_hw->event_cb(csid_hw->token,
 		CAM_ISP_HW_EVENT_ERROR, (void *)&evt);
 
