@@ -350,11 +350,11 @@ static int cam_ife_csid_ver2_sof_irq_debug(
 		(sof_irq_enable) ? "enabled" : "disabled");
 
 	CAM_INFO(CAM_ISP, "Notify CSIPHY: %d",
-			csid_hw->rx_cfg.phy_sel);
+			csid_hw->rx_cfg.phy_sel - 1);
 
 	cam_subdev_notify_message(CAM_CSIPHY_DEVICE_TYPE,
 			CAM_SUBDEV_MESSAGE_IRQ_ERR,
-			(csid_hw->rx_cfg.phy_sel));
+			(csid_hw->rx_cfg.phy_sel - 1));
 
 	return 0;
 }
@@ -929,8 +929,8 @@ static int cam_ife_csid_ver2_rx_err_bottom_half(
 	if (csid_hw->flags.fatal_err_detected || fatal_err_detected) {
 		event_type |= CAM_ISP_HW_ERROR_CSID_FATAL;
 		cam_subdev_notify_message(CAM_CSIPHY_DEVICE_TYPE,
-				CAM_SUBDEV_MESSAGE_IRQ_ERR,
-				(csid_hw->rx_cfg.phy_sel));
+			CAM_SUBDEV_MESSAGE_IRQ_ERR,
+			(csid_hw->rx_cfg.phy_sel -1));
 	}
 
 	if (event_type)
@@ -938,8 +938,8 @@ static int cam_ife_csid_ver2_rx_err_bottom_half(
 			rx_irq_status, event_type);
 
 	cam_ife_csid_ver2_put_evt_payload(csid_hw, &payload,
-			&csid_hw->rx_free_payload_list,
-			&csid_hw->rx_payload_lock);
+		&csid_hw->rx_free_payload_list,
+		&csid_hw->rx_payload_lock);
 
 	return 0;
 }
