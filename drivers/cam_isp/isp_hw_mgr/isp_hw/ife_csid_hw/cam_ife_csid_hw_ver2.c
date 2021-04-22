@@ -2073,6 +2073,8 @@ int cam_ife_csid_ver2_release(void *hw_priv,
 
 	memset(path_cfg, 0, sizeof(*path_cfg));
 
+	csid_hw->sync_mode = CAM_ISP_HW_SYNC_NONE;
+
 	if (csid_hw->counters.csi2_reserve_cnt)
 		csid_hw->counters.csi2_reserve_cnt--;
 
