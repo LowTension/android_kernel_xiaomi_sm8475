@@ -493,15 +493,20 @@ reset_settings:
 
 void cam_csiphy_cphy_irq_config(struct csiphy_device *csiphy_dev)
 {
-	int32_t i;
+	int32_t                        i;
+	struct csiphy_reg_t           *csiphy_irq_reg;
 	void __iomem *csiphybase =
 		csiphy_dev->soc_info.reg_map[0].mem_base;
 
-	for (i = 0; i < csiphy_dev->num_irq_registers; i++)
-		cam_io_w_mb(
-			csiphy_dev->ctrl_reg->csiphy_irq_reg[i].reg_data,
-			csiphybase +
-			csiphy_dev->ctrl_reg->csiphy_irq_reg[i].reg_addr);
+	for (i = 0; i < csiphy_dev->num_irq_registers; i++) {
+		csiphy_irq_reg = &csiphy_dev->ctrl_reg->csiphy_irq_reg[i];
+		cam_io_w_mb(csiphy_irq_reg->reg_data,
+			csiphybase + csiphy_irq_reg->reg_addr);
+
+		if (csiphy_irq_reg->delay)
+			usleep_range(csiphy_irq_reg->delay,
+				csiphy_irq_reg->delay + 5);
+	}
 }
 
 void cam_csiphy_cphy_irq_disable(struct csiphy_device *csiphy_dev)

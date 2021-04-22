@@ -18,7 +18,7 @@ struct csiphy_reg_parms_t csiphy_v2_1_0 = {
 	.csiphy_3ph_config_array_size = 44,
 	.csiphy_2ph_clock_lane = 0x1,
 	.csiphy_2ph_combo_ck_ln = 0x10,
-	.csiphy_interrupt_status_size = 12,
+	.csiphy_interrupt_status_size = 11,
 };
 
 struct csiphy_reg_t csiphy_common_reg_2_1_0[] = {
@@ -53,8 +53,7 @@ struct csiphy_reg_t csiphy_irq_reg_2_1_0[] = {
 	{0x1048, 0xef, 0x00, CSIPHY_DEFAULT_PARAMS},
 	{0x104c, 0xff, 0x00, CSIPHY_DEFAULT_PARAMS},
 	{0x1050, 0xff, 0x00, CSIPHY_DEFAULT_PARAMS},
-	{0x1054, 0xff, 0x00, CSIPHY_2PH_REGS},
-	{0x1054, 0xff, 0x64, CSIPHY_3PH_REGS},
+	{0x1054, 0xff, 0x64, CSIPHY_DEFAULT_PARAMS},
 };
 
 struct csiphy_reg_t csiphy_2ph_v2_1_0_reg[MAX_LANES][MAX_SETTINGS_PER_LANE] = {
