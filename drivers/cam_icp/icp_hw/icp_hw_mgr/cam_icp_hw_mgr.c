@@ -437,6 +437,23 @@ done:
 	return rc;
 }
 
+static inline bool cam_icp_validate_bw_path_idx(
+	int path_idx, uint32_t path_data_type)
+{
+	if (path_idx < 0) {
+		return true;
+	} else if (path_idx >= CAM_ICP_MAX_PER_PATH_VOTES) {
+		CAM_WARN(CAM_PERF,
+			"Invalid path: %u start offset: %d, max: %d",
+			path_data_type,
+			CAM_AXI_PATH_DATA_IPE_START_OFFSET,
+			CAM_ICP_MAX_PER_PATH_VOTES);
+		return true;
+	} else {
+		return false;
+	}
+}
+
 static int cam_icp_remove_ctx_bw(struct cam_icp_hw_mgr *hw_mgr,
 	struct cam_icp_hw_ctx_data *ctx_data)
 {
@@ -554,14 +571,9 @@ static int cam_icp_remove_ctx_bw(struct cam_icp_hw_mgr *hw_mgr,
 				CAM_AXI_PATH_DATA_IPE_START_OFFSET;
 			}
 
-			if (path_index >= CAM_ICP_MAX_PER_PATH_VOTES) {
-				CAM_WARN(CAM_PERF,
-				"Invalid path %d, start offset=%d, max=%d",
-				ctx_data->clk_info.axi_path[i].path_data_type,
-				CAM_AXI_PATH_DATA_IPE_START_OFFSET,
-				CAM_ICP_MAX_PER_PATH_VOTES);
+			if (cam_icp_validate_bw_path_idx(path_index,
+				ctx_data->clk_info.axi_path[i].path_data_type))
 				continue;
-			}
 
 			clk_info->axi_path[path_index].camnoc_bw -=
 				ctx_data->clk_info.axi_path[i].camnoc_bw;
@@ -1175,14 +1187,9 @@ static bool cam_icp_update_bw_v2(struct cam_icp_hw_mgr *hw_mgr,
 				CAM_AXI_PATH_DATA_IPE_START_OFFSET;
 		}
 
-		if (path_index >= CAM_ICP_MAX_PER_PATH_VOTES) {
-			CAM_WARN(CAM_PERF,
-				"Invalid path %d, start offset=%d, max=%d",
-				ctx_data->clk_info.axi_path[i].path_data_type,
-				CAM_AXI_PATH_DATA_IPE_START_OFFSET,
-				CAM_ICP_MAX_PER_PATH_VOTES);
+		if (cam_icp_validate_bw_path_idx(path_index,
+			ctx_data->clk_info.axi_path[i].path_data_type))
 			continue;
-		}
 
 		hw_mgr_clk_info->axi_path[path_index].camnoc_bw -=
 			ctx_data->clk_info.axi_path[i].camnoc_bw;
@@ -1219,14 +1226,9 @@ static bool cam_icp_update_bw_v2(struct cam_icp_hw_mgr *hw_mgr,
 				CAM_AXI_PATH_DATA_IPE_START_OFFSET;
 		}
 
-		if (path_index >= CAM_ICP_MAX_PER_PATH_VOTES) {
-			CAM_WARN(CAM_PERF,
-				"Invalid path %d, start offset=%d, max=%d",
-				ctx_data->clk_info.axi_path[i].path_data_type,
-				CAM_AXI_PATH_DATA_IPE_START_OFFSET,
-				CAM_ICP_MAX_PER_PATH_VOTES);
+		if (cam_icp_validate_bw_path_idx(path_index,
+			ctx_data->clk_info.axi_path[i].path_data_type))
 			continue;
-		}
 
 		hw_mgr_clk_info->axi_path[path_index].path_data_type =
 			ctx_data->clk_info.axi_path[i].path_data_type;
