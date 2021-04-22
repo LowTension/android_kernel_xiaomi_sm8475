@@ -173,6 +173,7 @@ static int cam_fd_hw_util_processcmd_prestart(struct cam_hw_info *fd_hw,
 	uint32_t *cmd_buf_addr = prestart_args->cmd_buf_addr;
 	uint32_t reg_val_pair[CAM_FD_REG_VAL_PAIR_SIZE];
 	uint32_t num_cmds = 0;
+	uint32_t num_regval_pairs = 0;
 	int i;
 	struct cam_fd_hw_io_buffer *io_buf;
 	struct cam_fd_hw_req_private *req_private;
@@ -364,19 +365,25 @@ static int cam_fd_hw_util_processcmd_prestart(struct cam_hw_info *fd_hw,
 	ctx_hw_private->cdm_ops->cdm_write_changebase(cmd_buf_addr, mem_base);
 	cmd_buf_addr += size;
 	available_size -= (size * 4);
+	num_regval_pairs = num_cmds / 2;
 
-	size = ctx_hw_private->cdm_ops->cdm_required_size_reg_random(
-		num_cmds/2);
-	/* cdm util returns dwords, need to convert to bytes */
-	if ((size * 4) > available_size) {
-		CAM_ERR(CAM_FD, "Insufficient size:%d , expected size:%d",
-			available_size, size);
-		return -ENOMEM;
+	if (num_regval_pairs) {
+		size = ctx_hw_private->cdm_ops->cdm_required_size_reg_random(
+			num_regval_pairs);
+		/* cdm util returns dwords, need to convert to bytes */
+		if ((size * 4) > available_size) {
+			CAM_ERR(CAM_FD,
+				"Insufficient size:%d , expected size:%d",
+				available_size, size);
+			return -ENOMEM;
+		}
+		ctx_hw_private->cdm_ops->cdm_write_regrandom(cmd_buf_addr,
+			num_regval_pairs, reg_val_pair);
+		cmd_buf_addr += size;
+		available_size -= (size * 4);
+	} else {
+		CAM_DBG(CAM_FD, "No reg val pairs");
 	}
-	ctx_hw_private->cdm_ops->cdm_write_regrandom(cmd_buf_addr, num_cmds/2,
-		reg_val_pair);
-	cmd_buf_addr += size;
-	available_size -= (size * 4);
 
 	/* Update pre_config_buf_size in bytes */
 	prestart_args->pre_config_buf_size =
@@ -385,19 +392,27 @@ static int cam_fd_hw_util_processcmd_prestart(struct cam_hw_info *fd_hw,
 	/* Insert start trigger command into CDM as post config commands. */
 	num_cmds = cam_fd_cdm_write_reg_val_pair(reg_val_pair, 0,
 		hw_static_info->core_regs.control, 0x2);
-	size = ctx_hw_private->cdm_ops->cdm_required_size_reg_random(
-		num_cmds/2);
-	if ((size * 4) > available_size) {
-		CAM_ERR(CAM_FD, "Insufficient size:%d , expected size:%d",
-			available_size, size);
-		return -ENOMEM;
-	}
-	ctx_hw_private->cdm_ops->cdm_write_regrandom(cmd_buf_addr, num_cmds/2,
-		reg_val_pair);
-	cmd_buf_addr += size;
-	available_size -= (size * 4);
 
-	prestart_args->post_config_buf_size = size * 4;
+	num_regval_pairs = num_cmds / 2;
+
+	if (num_regval_pairs) {
+		size = ctx_hw_private->cdm_ops->cdm_required_size_reg_random(
+			num_regval_pairs);
+		if ((size * 4) > available_size) {
+			CAM_ERR(CAM_FD,
+				"Insufficient size:%d , expected size:%d",
+				available_size, size);
+			return -ENOMEM;
+		}
+		ctx_hw_private->cdm_ops->cdm_write_regrandom(cmd_buf_addr,
+			num_regval_pairs, reg_val_pair);
+		cmd_buf_addr += size;
+		available_size -= (size * 4);
+		prestart_args->post_config_buf_size = size * 4;
+	} else {
+		CAM_DBG(CAM_FD, "No reg val pairs");
+		prestart_args->post_config_buf_size = 0;
+	}
 
 	CAM_DBG(CAM_FD, "PreConfig [%pK %d], PostConfig[%pK %d]",
 		prestart_args->cmd_buf_addr, prestart_args->pre_config_buf_size,

@@ -1208,7 +1208,9 @@ static int cam_sfe_bus_rd_update_rm(void *priv, void *cmd_args,
 	struct cam_buf_io_cfg                  *io_cfg = NULL;
 	struct cam_sfe_bus_rd_data             *sfe_bus_rd_data = NULL;
 	struct cam_sfe_bus_rd_rm_resource_data *rm_data = NULL;
+	struct cam_cdm_utils_ops               *cdm_util_ops;
 	uint32_t *reg_val_pair;
+	uint32_t num_regval_pairs = 0;
 	uint32_t width = 0, height = 0, stride = 0;
 	uint32_t  i, j, size = 0;
 
@@ -1218,7 +1220,9 @@ static int cam_sfe_bus_rd_update_rm(void *priv, void *cmd_args,
 	sfe_bus_rd_data = (struct cam_sfe_bus_rd_data *)
 		update_buf->res->res_priv;
 
-	if (!sfe_bus_rd_data || !sfe_bus_rd_data->cdm_util_ops) {
+	cdm_util_ops = sfe_bus_rd_data->cdm_util_ops;
+
+	if (!sfe_bus_rd_data || !cdm_util_ops) {
 		CAM_ERR(CAM_SFE, "Failed! Invalid data");
 		return -EINVAL;
 	}
@@ -1287,21 +1291,31 @@ static int cam_sfe_bus_rd_update_rm(void *priv, void *cmd_args,
 		rm_data->img_addr = reg_val_pair[j-1];
 	}
 
-	size = sfe_bus_rd_data->cdm_util_ops->cdm_required_size_reg_random(j/2);
+	num_regval_pairs = j / 2;
+	if (num_regval_pairs) {
+		size = cdm_util_ops->cdm_required_size_reg_random(
+			num_regval_pairs);
 
-	/* cdm util returns dwords, need to convert to bytes */
-	if ((size * 4) > update_buf->cmd.size) {
-		CAM_ERR(CAM_SFE,
-			"Failed! Buf size:%d insufficient, expected size:%d",
-			update_buf->cmd.size, size);
-		return -ENOMEM;
+		/* cdm util returns dwords, need to convert to bytes */
+		if ((size * 4) > update_buf->cmd.size) {
+			CAM_ERR(CAM_SFE,
+				"Failed! Buf size:%d insufficient, expected size:%d",
+				update_buf->cmd.size, size);
+			return -ENOMEM;
+		}
+
+		cdm_util_ops->cdm_write_regrandom(
+			update_buf->cmd.cmd_buf_addr, num_regval_pairs,
+			reg_val_pair);
+
+		/* cdm util returns dwords, need to convert to bytes */
+		update_buf->cmd.used_bytes = size * 4;
+	} else {
+		update_buf->cmd.used_bytes = 0;
+		CAM_DBG(CAM_SFE,
+			"No reg val pairs. num_rms: %u",
+			sfe_bus_rd_data->num_rm);
 	}
-
-	sfe_bus_rd_data->cdm_util_ops->cdm_write_regrandom(
-		update_buf->cmd.cmd_buf_addr, j/2, reg_val_pair);
-
-	/* cdm util returns dwords, need to convert to bytes */
-	update_buf->cmd.used_bytes = size * 4;
 
 	return 0;
 }

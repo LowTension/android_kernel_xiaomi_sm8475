@@ -154,6 +154,7 @@ static uint32_t *cam_ope_bus_rd_update(struct ope_hw *ope_hw_info,
 	uint32_t temp_reg[128] = {0};
 	uint32_t rm_id, header_size;
 	uint32_t rsc_type;
+	uint32_t *next_buff_addr = NULL;
 	struct cam_hw_prepare_update_args *prepare_args;
 	struct cam_ope_ctx *ctx_data;
 	struct cam_ope_request *ope_request;
@@ -306,10 +307,12 @@ static uint32_t *cam_ope_bus_rd_update(struct ope_hw *ope_hw_info,
 			io_port_cdm->s_cdm_info[l][idx].addr = kmd_buf;
 			io_port_cdm->num_s_cmd_bufs[l]++;
 
-			kmd_buf = cdm_ops->cdm_write_regrandom(
+			next_buff_addr = cdm_ops->cdm_write_regrandom(
 				kmd_buf, count/2, temp_reg);
-			prepare->kmd_buf_offset += ((count + header_size) *
-				sizeof(temp));
+			if (next_buff_addr > kmd_buf)
+				prepare->kmd_buf_offset +=
+					((count + header_size) * sizeof(temp));
+			kmd_buf = next_buff_addr;
 			CAM_DBG(CAM_OPE, "b:%d io:%d p:%d s:%d",
 				batch_idx, io_idx, k, l);
 			for (m = 0; m < count; m += 2)
@@ -340,6 +343,7 @@ static uint32_t *cam_ope_bus_rm_disable(struct ope_hw *ope_hw_info,
 	uint32_t count = 0;
 	uint32_t temp = 0;
 	uint32_t header_size;
+	uint32_t *next_buff_addr = NULL;
 	struct cam_ope_ctx *ctx_data;
 	struct ope_bus_rd_ctx *bus_rd_ctx;
 	struct cam_ope_bus_rd_reg *rd_reg;
@@ -398,11 +402,12 @@ static uint32_t *cam_ope_bus_rm_disable(struct ope_hw *ope_hw_info,
 		io_port_cdm->s_cdm_info[l][idx].addr = kmd_buf;
 		io_port_cdm->num_s_cmd_bufs[l]++;
 
-		kmd_buf = cdm_ops->cdm_write_regrandom(
+		next_buff_addr = cdm_ops->cdm_write_regrandom(
 			kmd_buf, count/2, temp_reg);
-		prepare->kmd_buf_offset += ((count + header_size) *
-			sizeof(temp));
-
+		if (next_buff_addr > kmd_buf)
+			prepare->kmd_buf_offset += ((count + header_size) *
+				sizeof(temp));
+		kmd_buf = next_buff_addr;
 		CAM_DBG(CAM_OPE, "RD cmd bufs = %d",
 			io_port_cdm->num_s_cmd_bufs[l]);
 		CAM_DBG(CAM_OPE, "stripe %d off:%d len:%d",
@@ -426,6 +431,7 @@ static int cam_ope_bus_rd_prepare(struct ope_hw *ope_hw_info,
 	uint32_t temp_reg[32] = {0};
 	uint32_t header_size;
 	uint32_t *kmd_buf;
+	uint32_t *next_buff_addr = NULL;
 	int is_rm_enabled;
 	struct cam_ope_dev_prepare_req *prepare;
 	struct cam_ope_ctx *ctx_data;
@@ -537,10 +543,12 @@ static int cam_ope_bus_rd_prepare(struct ope_hw *ope_hw_info,
 		io_port_cdm->go_cmd_offset =
 			prepare->kmd_buf_offset;
 	}
-	kmd_buf = cdm_ops->cdm_write_regrandom(
+	next_buff_addr = cdm_ops->cdm_write_regrandom(
 		kmd_buf, count/2, temp_reg);
-	prepare->kmd_buf_offset +=
-		((count + header_size) * sizeof(temp));
+	if (next_buff_addr > kmd_buf)
+		prepare->kmd_buf_offset +=
+			((count + header_size) * sizeof(temp));
+	kmd_buf = next_buff_addr;
 	CAM_DBG(CAM_OPE, "kmd_buf:%x,offset:%d",
 		kmd_buf, prepare->kmd_buf_offset);
 	CAM_DBG(CAM_OPE, "t_reg:%xcount: %d size:%d",
