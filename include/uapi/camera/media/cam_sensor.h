@@ -547,7 +547,8 @@ struct cam_flash_set_rer {
  *			     CAM_FLASH_OFF
  * @cmd_type               : Command buffer operation type
  * @led_current_ma         : Flash led current in ma
- * @time_on_duration_ms    : Flash time on duration in ns
+ * @time_on_duration_ns    : Flash time on duration in ns
+ * @led_on_wait_time_ns    : Flash led turn on wait time in ns
  *
  */
 struct cam_flash_set_on_off {
@@ -557,6 +558,7 @@ struct cam_flash_set_on_off {
 	__u16    reserved;
 	__u32    led_current_ma[CAM_FLASH_MAX_LED_TRIGGERS];
 	__u64    time_on_duration_ns;
+	__u64    led_on_wait_time_ns;
 } __attribute__((packed));
 
 /**
