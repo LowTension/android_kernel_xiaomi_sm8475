@@ -2394,15 +2394,6 @@ static int cam_hw_cdm_component_bind(struct device *dev,
 
 	cdm_core->cdm_status = CAM_CDM_HW_INIT_STATUS;
 
-	rc = cam_hw_cdm_init(cdm_hw, NULL, 0);
-	if (rc) {
-		CAM_ERR(CAM_CDM, "Failed to Init %s%u HW",
-			cdm_hw->soc_info.label_name,
-			cdm_hw->soc_info.index);
-		goto cpas_stop;
-	}
-	cdm_hw->open_count++;
-
 	cdm_core->ops = cam_cdm_get_ops(cdm_core->hw_version, NULL,
 		false);
 
@@ -2411,29 +2402,19 @@ static int cam_hw_cdm_component_bind(struct device *dev,
 			cdm_hw->soc_info.label_name,
 			cdm_hw->soc_info.index);
 		rc = -EINVAL;
-		goto deinit;
+		goto cpas_stop;
 	}
 
 	if (!cam_cdm_set_cam_hw_version(cdm_core->hw_version,
 		&cdm_core->version)) {
 		CAM_ERR(CAM_CDM, "Failed to set cam hw version for hw");
 		rc = -EINVAL;
-		goto deinit;
-	}
-
-	rc = cam_hw_cdm_deinit(cdm_hw, NULL, 0);
-	if (rc) {
-		CAM_ERR(CAM_CDM, "Failed to Deinit %s%u HW",
-			cdm_hw->soc_info.label_name,
-			cdm_hw->soc_info.index);
-		cdm_hw->open_count--;
 		goto cpas_stop;
 	}
 
 	rc = cam_cpas_stop(cdm_core->cpas_handle);
 	if (rc) {
 		CAM_ERR(CAM_CDM, "CPAS stop failed");
-		cdm_hw->open_count--;
 		goto cpas_unregister;
 	}
 
@@ -2441,20 +2422,14 @@ static int cam_hw_cdm_component_bind(struct device *dev,
 		soc_private, CAM_HW_CDM, &cdm_core->index);
 	if (rc) {
 		CAM_ERR(CAM_CDM, "HW CDM Interface registration failed");
-		cdm_hw->open_count--;
 		goto cpas_unregister;
 	}
-	cdm_hw->open_count--;
 	mutex_unlock(&cdm_hw->hw_mutex);
 
 	CAM_DBG(CAM_CDM, "%s component bound successfully", cdm_core->name);
 
 	return rc;
 
-deinit:
-	if (cam_hw_cdm_deinit(cdm_hw, NULL, 0))
-		CAM_ERR(CAM_CDM, "Deinit failed for hw");
-	cdm_hw->open_count--;
 cpas_stop:
 	if (cam_cpas_stop(cdm_core->cpas_handle))
 		CAM_ERR(CAM_CDM, "CPAS stop failed");
