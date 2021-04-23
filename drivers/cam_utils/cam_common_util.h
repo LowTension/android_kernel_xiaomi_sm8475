@@ -103,4 +103,17 @@ int cam_common_read_poll_timeout(
 	uint32_t             mask,
 	uint32_t             check_val,
 	uint32_t            *status);
+
+/**
+ * cam_common_modify_timer()
+ *
+ * @brief                  common interface to modify timer,
+ *
+ * @timer:                 reference to system timer
+ * @timeout_val:           timeout value for timer
+ *
+ * @return:                0 if success and negative if fail
+ */
+int cam_common_modify_timer(struct timer_list *timer, int32_t timeout_val);
+
 #endif /* _CAM_COMMON_UTIL_H_ */

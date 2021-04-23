@@ -6,6 +6,7 @@
 #include <linux/string.h>
 #include <linux/types.h>
 #include <linux/slab.h>
+#include <linux/timer.h>
 #include <linux/completion.h>
 #include <linux/module.h>
 #include <linux/iopoll.h>
@@ -102,4 +103,22 @@ int cam_common_read_poll_timeout(
 		*status, (*status & mask) == check_val, delay, wait_time_us);
 
 	return rc;
+}
+
+int cam_common_modify_timer(struct timer_list *timer, int32_t timeout_val)
+{
+	if (!timer) {
+		CAM_ERR(CAM_UTIL, "Invalid reference to system timer");
+		return -EINVAL;
+	}
+
+	if (timeout_multiplier < 1)
+		timeout_multiplier = 1;
+
+	CAM_DBG(CAM_UTIL, "Starting timer to fire in %d ms. (jiffies=%lu)\n",
+		(timeout_val * timeout_multiplier), jiffies);
+	mod_timer(timer,
+		(jiffies + msecs_to_jiffies(timeout_val * timeout_multiplier)));
+
+	return 0;
 }
