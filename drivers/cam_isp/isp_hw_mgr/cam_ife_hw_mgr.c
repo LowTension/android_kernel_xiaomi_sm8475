@@ -72,6 +72,9 @@ static int cam_ife_hw_mgr_event_handler(
 	uint32_t                             evt_id,
 	void                                *evt_info);
 
+static int cam_ife_mgr_prog_default_settings(
+	struct cam_ife_hw_mgr_ctx *ctx);
+
 static int cam_ife_mgr_finish_clk_bw_update(
 	struct cam_ife_hw_mgr_ctx             *ctx, uint64_t request_id)
 {
@@ -4845,6 +4848,8 @@ static int cam_ife_mgr_acquire_hw(void *hw_mgr_priv, void *acquire_hw_args)
 			rc = -ENOMEM;
 			goto free_cdm_cmd;
 		}
+		/* Set scratch by default at stream on */
+		ife_ctx->sfe_info.skip_scratch_cfg_streamon = false;
 	}
 
 	acquire_args->ctxt_to_hw_map = ife_ctx;
@@ -6050,6 +6055,7 @@ static int cam_ife_mgr_stop_hw(void *hw_mgr_priv, void *stop_hw_args)
 	if (ctx->sfe_info.scratch_config)
 		memset(ctx->sfe_info.scratch_config, 0,
 			sizeof(struct cam_sfe_scratch_buf_cfg));
+	ctx->sfe_info.skip_scratch_cfg_streamon = false;
 
 	cam_ife_mgr_pause_hw(ctx);
 
@@ -6538,6 +6544,14 @@ start_only:
 				hw_mgr_res->res_id);
 			goto err;
 		}
+	}
+
+	if ((ctx->flags.is_sfe_fs || ctx->flags.is_sfe_shdr) &&
+		(!ctx->sfe_info.skip_scratch_cfg_streamon)) {
+		rc = cam_ife_mgr_prog_default_settings(ctx);
+		if (rc)
+			goto err;
+		ctx->sfe_info.skip_scratch_cfg_streamon = false;
 	}
 
 	CAM_DBG(CAM_ISP, "START CSID HW ... in ctx id:%d",
@@ -7112,7 +7126,7 @@ static int cam_isp_blob_sfe_scratch_buf_update(
 		port_info->slice_height = buffer_info->slice_height;
 		port_info->offset = 0;
 		CAM_DBG(CAM_ISP,
-			"res_id: 0x%x w: 0x%x h: 0x%x s: 0x%x sh: 0x%x addr: %pK",
+			"res_id: 0x%x w: 0x%x h: 0x%x s: 0x%x sh: 0x%x addr: 0x%x",
 			port_info->res_id, port_info->width,
 			port_info->height, port_info->stride,
 			port_info->slice_height, port_info->io_addr);
@@ -7998,8 +8012,8 @@ static int cam_ife_hw_mgr_update_scratch_offset(
 	port_info = &ctx->sfe_info.scratch_config->buf_info[res_id];
 	port_info->offset = wm_config->offset;
 
-	CAM_DBG(CAM_ISP, "Scratch offset: %u updated for: %s",
-		port_info->offset, wm_config->port_type);
+	CAM_DBG(CAM_ISP, "Scratch addr: 0x%x offset: %u updated for: %s",
+		port_info->io_addr, port_info->offset, wm_config->port_type);
 
 	return 0;
 }
@@ -9459,7 +9473,7 @@ static int cam_isp_sfe_add_scratch_buffer_cfg(
 	struct cam_sfe_scratch_buf_info   *buf_info;
 	struct cam_isp_hw_mgr_res         *hw_mgr_res;
 
-	if (!ctx) {
+	if (!ctx || !ctx->sfe_info.scratch_config->config_done) {
 		CAM_ERR(CAM_ISP, "Scratch buffer info invalid");
 		rc = -EINVAL;
 		return rc;
@@ -9882,6 +9896,12 @@ static int cam_ife_mgr_prepare_hw_update(void *hw_mgr_priv,
 		return rc;
 	}
 
+	if (((prepare->packet->header.op_code + 1) & 0xF) ==
+		CAM_ISP_PACKET_INIT_DEV)
+		prepare_hw_data->packet_opcode_type = CAM_ISP_PACKET_INIT_DEV;
+	else
+		prepare_hw_data->packet_opcode_type = CAM_ISP_PACKET_UPDATE_DEV;
+
 	for (i = 0; i < ctx->num_base; i++) {
 
 		memset(&frame_header_info, 0,
@@ -9952,20 +9972,31 @@ static int cam_ife_mgr_prepare_hw_update(void *hw_mgr_priv,
 			fill_ife_fence)
 			fill_ife_fence = false;
 
-		/* Add scratch buffer if there no output buffer for RDI WMs/RMs */
+		/*
+		 * Add scratch buffer if there no output buffer for RDI WMs/RMs
+		 * only for UPDATE packets. For INIT we could have ePCR enabled
+		 * based on that decide to configure scratch via AHB at
+		 * stream on or not
+		 */
 		if (sfe_fe_chk_cfg.sfe_fe_enabled) {
 			if ((sfe_fe_chk_cfg.sfe_rdi_cfg_mask) !=
 				((1 << ctx->sfe_info.num_fetches) - 1)) {
-				CAM_DBG(CAM_ISP,
-					"Adding scratch buffer cfg_mask expected: 0x%x actual: 0x%x",
-					((1 << ctx->sfe_info.num_fetches) - 1),
-					sfe_fe_chk_cfg.sfe_rdi_cfg_mask);
-				rc = cam_isp_sfe_add_scratch_buffer_cfg(
-					ctx->base[i].idx, sfe_fe_chk_cfg.sfe_rdi_cfg_mask,
-					prepare, &kmd_buf, ctx->res_list_sfe_out,
-					&ctx->res_list_ife_in_rd, ctx);
-				if (rc)
-					goto end;
+				if (prepare_hw_data->packet_opcode_type ==
+					CAM_ISP_PACKET_UPDATE_DEV) {
+					CAM_DBG(CAM_ISP,
+						"Adding scratch buffer cfg_mask expected: 0x%x actual: 0x%x",
+						((1 << ctx->sfe_info.num_fetches) - 1),
+						sfe_fe_chk_cfg.sfe_rdi_cfg_mask);
+					rc = cam_isp_sfe_add_scratch_buffer_cfg(
+						ctx->base[i].idx, sfe_fe_chk_cfg.sfe_rdi_cfg_mask,
+						prepare, &kmd_buf, ctx->res_list_sfe_out,
+						&ctx->res_list_ife_in_rd, ctx);
+					if (rc)
+						goto end;
+				}
+			} else {
+				if (prepare_hw_data->packet_opcode_type == CAM_ISP_PACKET_INIT_DEV)
+					ctx->sfe_info.skip_scratch_cfg_streamon = true;
 			}
 		}
 
@@ -9997,10 +10028,7 @@ static int cam_ife_mgr_prepare_hw_update(void *hw_mgr_priv,
 	 * bits to get the type of operation since UMD definition
 	 * of op_code has some difference from KMD.
 	 */
-	if (((prepare->packet->header.op_code + 1) & 0xF) ==
-		CAM_ISP_PACKET_INIT_DEV) {
-		prepare_hw_data->packet_opcode_type = CAM_ISP_PACKET_INIT_DEV;
-
+	if (prepare_hw_data->packet_opcode_type == CAM_ISP_PACKET_INIT_DEV) {
 		if ((!prepare->num_reg_dump_buf) || (prepare->num_reg_dump_buf >
 			CAM_REG_DUMP_MAX_BUF_ENTRIES))
 			goto end;
@@ -10023,7 +10051,6 @@ static int cam_ife_mgr_prepare_hw_update(void *hw_mgr_priv,
 
 		goto end;
 	} else {
-		prepare_hw_data->packet_opcode_type = CAM_ISP_PACKET_UPDATE_DEV;
 		prepare_hw_data->num_reg_dump_buf = prepare->num_reg_dump_buf;
 		if ((prepare_hw_data->num_reg_dump_buf) &&
 			(prepare_hw_data->num_reg_dump_buf <
@@ -10432,7 +10459,7 @@ int cam_isp_config_csid_rup_aup(
 }
 
 /*
- * Scratch buffer is for sHDR usescases involing SFE RDI0-2
+ * Scratch buffer is for sHDR/FS usescases involing SFE RDI0-2
  * There is no possibility of dual in this case, hence
  * using the scratch buffer provided during INIT corresponding
  * to each left RDIs
@@ -10448,6 +10475,12 @@ static int cam_ife_mgr_prog_default_settings(
 
 	res_list_in_rd = &ctx->res_list_ife_in_rd;
 	res_list_sfe_out = ctx->res_list_sfe_out;
+
+	if (!ctx->sfe_info.scratch_config->config_done) {
+		CAM_ERR(CAM_ISP, "No scratch config on ctx: %u",
+			ctx->ctx_index);
+		return -EINVAL;
+	}
 
 	for (i = 0; i < CAM_SFE_FE_RDI_NUM_MAX; i++) {
 		hw_mgr_res = &res_list_sfe_out[i];
