@@ -165,12 +165,12 @@ static int cam_cre_mgr_process_cmd_io_buf_req(struct cam_cre_hw_mgr *hw_mgr,
 					rc = cam_mem_get_io_buf(
 						io_cfg_ptr[j].mem_handle[k],
 						hw_mgr->iommu_sec_hdl,
-						&iova_addr, &len);
+						&iova_addr, &len, NULL);
 				else
 					rc = cam_mem_get_io_buf(
 						io_cfg_ptr[j].mem_handle[k],
 						hw_mgr->iommu_hdl,
-						&iova_addr, &len);
+						&iova_addr, &len, NULL);
 
 				if (rc) {
 					CAM_ERR(CAM_CRE, "get buf failed: %d",
@@ -2098,17 +2098,11 @@ static void cam_cre_mgr_print_io_bufs(struct cam_packet *packet,
 				io_cfg[i].mem_handle[j]) ? sec_mmu_hdl :
 				iommu_hdl;
 			rc = cam_mem_get_io_buf(io_cfg[i].mem_handle[j],
-				mmu_hdl, &iova_addr, &src_buf_size);
+				mmu_hdl, &iova_addr, &src_buf_size, NULL);
 			if (rc < 0) {
 				CAM_ERR(CAM_UTIL,
 					"get src buf address fail rc %d mem %x",
 					rc, io_cfg[i].mem_handle[j]);
-				continue;
-			}
-
-			if ((iova_addr & 0xFFFFFFFF) != iova_addr) {
-				CAM_ERR(CAM_CRE, "Invalid mapped address");
-				rc = -EINVAL;
 				continue;
 			}
 

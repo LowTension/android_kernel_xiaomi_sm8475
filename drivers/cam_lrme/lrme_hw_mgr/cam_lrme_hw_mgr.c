@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/module.h>
@@ -167,7 +167,7 @@ static int cam_lrme_mgr_util_prepare_io_buffer(int32_t iommu_hdl,
 				break;
 
 			rc = cam_mem_get_io_buf(io_cfg[i].mem_handle[plane],
-				iommu_hdl, &io_addr[plane], &size);
+				iommu_hdl, &io_addr[plane], &size, NULL);
 			if (rc) {
 				CAM_ERR(CAM_LRME, "Cannot get io buf for %d %d",
 					plane, rc);

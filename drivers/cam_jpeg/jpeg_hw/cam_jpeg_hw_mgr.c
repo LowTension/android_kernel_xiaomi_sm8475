@@ -741,7 +741,7 @@ static void cam_jpeg_mgr_print_io_bufs(struct cam_packet *packet,
 				io_cfg[i].mem_handle[j]) ? sec_mmu_hdl :
 				iommu_hdl;
 			rc = cam_mem_get_io_buf(io_cfg[i].mem_handle[j],
-				mmu_hdl, &iova_addr, &src_buf_size);
+				mmu_hdl, &iova_addr, &src_buf_size, NULL);
 			if (rc < 0) {
 				CAM_ERR(CAM_UTIL, "get src buf address fail");
 				continue;

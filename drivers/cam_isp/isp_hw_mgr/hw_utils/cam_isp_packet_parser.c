@@ -895,7 +895,7 @@ int cam_isp_add_io_buffers(
 
 				rc = cam_mem_get_io_buf(
 					io_cfg[i].mem_handle[plane_id],
-					mmu_hdl, &io_addr[plane_id], &size);
+					mmu_hdl, &io_addr[plane_id], &size, NULL);
 				if (rc) {
 					CAM_ERR(CAM_ISP,
 						"no io addr for plane%d",
@@ -1055,7 +1055,7 @@ int cam_isp_add_io_buffers(
 
 				rc = cam_mem_get_io_buf(
 					io_cfg[i].mem_handle[plane_id],
-					mmu_hdl, &io_addr[plane_id], &size);
+					mmu_hdl, &io_addr[plane_id], &size, NULL);
 				if (rc) {
 					CAM_ERR(CAM_ISP,
 						"no io addr for plane%d",

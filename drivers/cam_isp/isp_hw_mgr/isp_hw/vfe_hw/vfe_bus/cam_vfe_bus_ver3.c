@@ -23,6 +23,8 @@
 #include "cam_debug_util.h"
 #include "cam_cpas_api.h"
 #include "cam_trace.h"
+#include "cam_smmu_api.h"
+#include "cam_common_util.h"
 
 static const char drv_name[] = "vfe_bus";
 
@@ -2894,15 +2896,22 @@ static void cam_vfe_bus_ver3_update_ubwc_meta_addr(
 	dma_addr_t  image_buf)
 {
 	struct cam_vfe_bus_ver3_reg_offset_ubwc_client *ubwc_regs;
+	uint32_t temp = cam_smmu_is_expanded_memory() ?
+		CAM_36BIT_INTF_GET_IOVA_BASE(image_buf) : image_buf;
+
+	if (cam_smmu_is_expanded_memory() &&
+		CAM_36BIT_INTF_GET_IOVA_OFFSET(image_buf)) {
+		CAM_ERR(CAM_ISP, "Error, address not aligned! offset:0x%x",
+			CAM_36BIT_INTF_GET_IOVA_OFFSET(image_buf));
+	}
 
 	if (!regs || !reg_val_pair || !j) {
 		CAM_ERR(CAM_ISP, "Invalid args");
 		goto end;
 	}
 
-	ubwc_regs = (struct cam_vfe_bus_ver3_reg_offset_ubwc_client *)regs;
-	CAM_VFE_ADD_REG_VAL_PAIR(reg_val_pair, *j,
-		ubwc_regs->meta_addr, image_buf);
+	ubwc_regs = (struct cam_vfe_bus_ver3_reg_offset_ubwc_client *) regs;
+	CAM_VFE_ADD_REG_VAL_PAIR(reg_val_pair, *j, ubwc_regs->meta_addr, temp);
 
 end:
 	return;
@@ -2993,12 +3002,14 @@ static int cam_vfe_bus_ver3_update_wm(void *priv, void *cmd_args,
 	struct cam_cdm_utils_ops                       *cdm_util_ops;
 	uint32_t *reg_val_pair;
 	uint32_t num_regval_pairs = 0;
-	uint32_t  i, j, k, size = 0;
-	uint32_t  frame_inc = 0, val;
+	uint32_t i, j, k, size = 0;
+	uint32_t frame_inc = 0, val;
 	uint32_t loop_size = 0;
+	uint32_t iova_addr, iova_offset, image_buf_offset = 0;
+	dma_addr_t iova;
 
 	bus_priv = (struct cam_vfe_bus_ver3_priv  *) priv;
-	update_buf =  (struct cam_isp_hw_get_cmd_update *) cmd_args;
+	update_buf = (struct cam_isp_hw_get_cmd_update *) cmd_args;
 
 	vfe_out_data = (struct cam_vfe_bus_ver3_vfe_out_data *)
 		update_buf->res->res_priv;
@@ -3036,22 +3047,34 @@ static int cam_vfe_bus_ver3_update_wm(void *priv, void *cmd_args,
 			wm_data->en_cfg &= ~(1 << 2);
 
 		if (update_buf->wm_update->frame_header &&
-			!update_buf->wm_update->fh_enabled) {
-			if (wm_data->hw_regs->frame_header_addr) {
-				wm_data->en_cfg |= 1 << 2;
-				update_buf->wm_update->fh_enabled = true;
-				CAM_VFE_ADD_REG_VAL_PAIR(reg_val_pair, j,
-						wm_data->hw_regs->frame_header_addr,
-						update_buf->wm_update->frame_header);
-				CAM_VFE_ADD_REG_VAL_PAIR(reg_val_pair, j,
-						wm_data->hw_regs->frame_header_cfg,
-						update_buf->wm_update->local_id);
-				CAM_DBG(CAM_ISP,
-					"WM: %d en_cfg 0x%x frame_header %pK local_id %u",
-					wm_data->index, wm_data->en_cfg,
-					update_buf->wm_update->frame_header,
-					update_buf->wm_update->local_id);
+			!update_buf->wm_update->fh_enabled &&
+			wm_data->hw_regs->frame_header_addr) {
+
+			wm_data->en_cfg |= 1 << 2;
+			update_buf->wm_update->fh_enabled = true;
+			if (cam_smmu_is_expanded_memory()) {
+				iova_addr = CAM_36BIT_INTF_GET_IOVA_BASE(
+					update_buf->wm_update->frame_header);
+				iova_offset = CAM_36BIT_INTF_GET_IOVA_OFFSET(
+					update_buf->wm_update->frame_header);
+			} else {
+				iova_addr = update_buf->wm_update->frame_header;
+				iova_offset = 0;
 			}
+
+			if (iova_offset)
+				CAM_ERR(CAM_ISP, "Error, address not aligned! offset:0x%x",
+					iova_offset);
+			CAM_VFE_ADD_REG_VAL_PAIR(reg_val_pair, j,
+				wm_data->hw_regs->frame_header_addr, iova_addr);
+			CAM_VFE_ADD_REG_VAL_PAIR(reg_val_pair, j,
+				wm_data->hw_regs->frame_header_cfg,
+				update_buf->wm_update->local_id);
+			CAM_DBG(CAM_ISP,
+				"WM: %d en_cfg 0x%x frame_header %pK local_id %u",
+				wm_data->index, wm_data->en_cfg,
+				update_buf->wm_update->frame_header,
+				update_buf->wm_update->local_id);
 		}
 
 		CAM_VFE_ADD_REG_VAL_PAIR(reg_val_pair, j,
@@ -3107,7 +3130,7 @@ static int cam_vfe_bus_ver3_update_wm(void *priv, void *cmd_args,
 
 		if (wm_data->en_ubwc) {
 			frame_inc = ALIGNUP(io_cfg->planes[i].plane_stride *
-			    io_cfg->planes[i].slice_height, 4096);
+				io_cfg->planes[i].slice_height, 4096);
 			frame_inc += io_cfg->planes[i].meta_size;
 			CAM_DBG(CAM_ISP,
 				"WM:%d frm %d: ht: %d stride %d meta: %d",
@@ -3133,34 +3156,42 @@ static int cam_vfe_bus_ver3_update_wm(void *priv, void *cmd_args,
 		else
 			loop_size = 1;
 
+		if (wm_data->en_ubwc)
+			image_buf_offset = io_cfg->planes[i].meta_size;
+		else if (wm_data->en_cfg & (0x3 << 16))
+			image_buf_offset = wm_data->offset;
+		else
+			image_buf_offset = 0;
+
 		/* WM Image address */
 		for (k = 0; k < loop_size; k++) {
-			if (wm_data->en_ubwc) {
-				CAM_VFE_ADD_REG_VAL_PAIR(reg_val_pair, j,
-					wm_data->hw_regs->image_addr,
-					update_buf->wm_update->image_buf[i] +
-					io_cfg->planes[i].meta_size +
-					k * frame_inc);
-				update_buf->wm_update->image_buf_offset[i] =
-					io_cfg->planes[i].meta_size;
-			} else if (wm_data->en_cfg & (0x3 << 16)) {
-				CAM_VFE_ADD_REG_VAL_PAIR(reg_val_pair, j,
-					wm_data->hw_regs->image_addr,
-					(update_buf->wm_update->image_buf[i] +
-					wm_data->offset + k * frame_inc));
-				update_buf->wm_update->image_buf_offset[i] =
-					wm_data->offset;
-			} else {
-				CAM_VFE_ADD_REG_VAL_PAIR(reg_val_pair, j,
-					wm_data->hw_regs->image_addr,
-					(update_buf->wm_update->image_buf[i] +
-					k * frame_inc));
-				update_buf->wm_update->image_buf_offset[i] = 0;
-			}
+			iova = update_buf->wm_update->image_buf[i] +
+				image_buf_offset + (k * frame_inc);
 
-			CAM_DBG(CAM_ISP, "WM:%d image address 0x%X",
-				wm_data->index, reg_val_pair[j-1]);
+			if (cam_smmu_is_expanded_memory()) {
+				iova_addr = CAM_36BIT_INTF_GET_IOVA_BASE(iova);
+				iova_offset = CAM_36BIT_INTF_GET_IOVA_OFFSET(iova);
+
+				CAM_VFE_ADD_REG_VAL_PAIR(reg_val_pair, j,
+					wm_data->hw_regs->image_addr, iova_addr);
+
+				CAM_VFE_ADD_REG_VAL_PAIR(reg_val_pair, j,
+					wm_data->hw_regs->addr_cfg, iova_offset);
+
+				CAM_DBG(CAM_ISP, "WM:%d image address 0x%X 0x%X",
+					wm_data->index, reg_val_pair[j-2], reg_val_pair[j-1]);
+			} else {
+				iova_addr = iova;
+
+				CAM_VFE_ADD_REG_VAL_PAIR(reg_val_pair, j,
+					wm_data->hw_regs->image_addr, iova_addr);
+
+				CAM_DBG(CAM_ISP, "WM:%d image address 0x%X",
+					wm_data->index, reg_val_pair[j-1]);
+			}
 		}
+
+		update_buf->wm_update->image_buf_offset[i] = image_buf_offset;
 
 		CAM_VFE_ADD_REG_VAL_PAIR(reg_val_pair, j,
 			wm_data->hw_regs->frame_incr, frame_inc);
