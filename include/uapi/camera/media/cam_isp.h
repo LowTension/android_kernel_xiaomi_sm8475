@@ -115,6 +115,7 @@
 #define CAM_ISP_GENERIC_BLOB_TYPE_IFE_CORE_CONFIG           7
 #define CAM_ISP_GENERIC_BLOB_TYPE_VFE_OUT_CONFIG            8
 #define CAM_ISP_GENERIC_BLOB_TYPE_BW_CONFIG_V2              9
+#define CAM_ISP_GENERIC_BLOB_TYPE_DISCARD_INITIAL_FRAMES    10
 #define CAM_ISP_GENERIC_BLOB_TYPE_SENSOR_DIMENSION_CONFIG   11
 #define CAM_ISP_GENERIC_BLOB_TYPE_CSID_QCFA_CONFIG          12
 #define CAM_ISP_GENERIC_BLOB_TYPE_SENSOR_BLANKING_CONFIG    13
@@ -914,6 +915,22 @@ struct cam_isp_sfe_exp_config {
 	__u32                                   reserved;
 	struct cam_isp_sfe_wm_exp_order_config  wm_config[1];
 };
+
+/**
+ * struct cam_isp_discard_initial_frames - Discard init frames
+ *
+ *   Some sensors require discarding the initial frames
+ *   after the sensor is streamed on. The discard would be
+ *   applied on all paths [IPP/PPP/RDIx] for the given
+ *   pipeline.
+ *
+ * @num_frames              : Number of frames to be discarded
+ * @discard_params          : Params for future use
+ */
+struct cam_isp_discard_initial_frames {
+	__u32                    num_frames;
+	__u32                    discard_params[5];
+} __attribute__((packed));
 
 #define CAM_ISP_ACQUIRE_COMMON_VER0         0x1000
 
