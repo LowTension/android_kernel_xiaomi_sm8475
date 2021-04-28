@@ -382,4 +382,16 @@ struct cam_ife_csid_offline_cmd_update_args {
 struct cam_ife_csid_mup_update_args {
 	uint32_t                           mup;
 };
+
+/*
+ * struct cam_ife_csid_discard_init_frame_args:
+ *
+ * @num_frames: Num frames to discard
+ * @res: Node res for this path
+ */
+struct cam_ife_csid_discard_init_frame_args {
+	uint32_t                          num_frames;
+	struct cam_isp_resource_node     *res;
+};
+
 #endif /* _CAM_CSID_HW_INTF_H_ */
