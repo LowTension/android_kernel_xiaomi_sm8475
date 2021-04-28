@@ -1977,6 +1977,11 @@ static int cam_ife_hw_mgr_acquire_res_sfe_out(
 	int rc = -EINVAL;
 	struct cam_isp_hw_mgr_res *sfe_res_iterator;
 
+	if (list_empty(&ife_ctx->res_list_sfe_src)) {
+		CAM_WARN(CAM_ISP, "SFE src list empty");
+		return 0;
+	}
+
 	list_for_each_entry(sfe_res_iterator,
 		&ife_ctx->res_list_sfe_src, list) {
 		if (sfe_res_iterator->num_children)
@@ -2025,6 +2030,11 @@ static int cam_ife_hw_mgr_acquire_res_ife_out(
 {
 	int rc = -EINVAL;
 	struct cam_isp_hw_mgr_res       *ife_src_res;
+
+	if (list_empty(&ife_ctx->res_list_ife_src)) {
+		CAM_WARN(CAM_ISP, "IFE src list empty");
+		return 0;
+	}
 
 	list_for_each_entry(ife_src_res, &ife_ctx->res_list_ife_src, list) {
 		if (ife_src_res->num_children)
@@ -4224,8 +4234,8 @@ skip_csid_pxl:
 		}
 	}
 
-	/* get ife src resource */
-	if (in_port->ipp_count || in_port->rdi_count) {
+	/* get ife IPP src resource */
+	if (in_port->ipp_count) {
 		if (ife_ctx->ctx_type == CAM_IFE_CTX_TYPE_SFE) {
 			if (in_port->sfe_ife_enable)
 				rc = cam_ife_hw_mgr_acquire_ife_src_for_sfe(
@@ -4239,8 +4249,23 @@ skip_csid_pxl:
 
 		if (rc) {
 			CAM_ERR(CAM_ISP,
-				"Acquire IFE IPP/RDI SRC resource Failed");
+				"Acquire IFE IPP SRC resource Failed");
 			goto err;
+		}
+	}
+
+	/* get ife RDI src resource for non SFE streams */
+	if (in_port->rdi_count) {
+		if (ife_ctx->ctx_type != CAM_IFE_CTX_TYPE_SFE) {
+			rc = cam_ife_hw_mgr_acquire_res_ife_src(ife_ctx,
+				in_port, false, false,
+				acquired_hw_id, acquired_hw_path);
+
+			if (rc) {
+				CAM_ERR(CAM_ISP,
+					"Acquire IFE RDI SRC resource Failed");
+				goto err;
+			}
 		}
 	}
 
@@ -4272,15 +4297,10 @@ skip_csid_pxl:
 		}
 	}
 
-	if (((ife_ctx->ctx_type == CAM_IFE_CTX_TYPE_SFE) &&
-		in_port->sfe_ife_enable) ||
-		(ife_ctx->ctx_type != CAM_IFE_CTX_TYPE_SFE)) {
-		CAM_DBG(CAM_ISP, "Acquiring IFE OUT resource...");
-		rc = cam_ife_hw_mgr_acquire_res_ife_out(ife_ctx, in_port);
-		if (rc) {
-			CAM_ERR(CAM_ISP, "Acquire IFE OUT resource Failed");
-			goto err;
-		}
+	rc = cam_ife_hw_mgr_acquire_res_ife_out(ife_ctx, in_port);
+	if (rc) {
+		CAM_ERR(CAM_ISP, "Acquire IFE OUT resource Failed");
+		goto err;
 	}
 
 	if (ife_ctx->ctx_type == CAM_IFE_CTX_TYPE_SFE) {
