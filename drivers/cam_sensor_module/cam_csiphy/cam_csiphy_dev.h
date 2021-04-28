@@ -270,6 +270,12 @@ struct cam_csiphy_param {
 	struct csiphy_hdl_tbl      hdl_data;
 };
 
+struct csiphy_work_queue {
+	struct csiphy_device *csiphy_dev;
+	int32_t acquire_idx;
+	struct work_struct work;
+};
+
 /**
  * struct csiphy_device
  * @device_name                : Device name
@@ -300,6 +306,7 @@ struct cam_csiphy_param {
  * @enable_irq_dump            : Debugfs flag to enable hw IRQ register dump
  * @en_status_reg_dump         : Debugfs flag to enable cphy/dphy specific
  * @preamble_enable            : To enable preamble pattern
+ * @work_queue                 : Work queue to offload the work
  */
 struct csiphy_device {
 	char                           device_name[CAM_CTX_DEV_NAME_MAX_LENGTH];
@@ -332,6 +339,7 @@ struct csiphy_device {
 	bool                           enable_irq_dump;
 	bool                           en_status_reg_dump;
 	uint16_t                       preamble_enable;
+	struct workqueue_struct       *work_queue;
 };
 
 /**

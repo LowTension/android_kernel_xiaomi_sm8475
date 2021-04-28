@@ -198,6 +198,8 @@ static int cam_csiphy_component_bind(struct device *dev,
 	struct csiphy_device *new_csiphy_dev;
 	int32_t               rc = 0;
 	struct platform_device *pdev = to_platform_device(dev);
+	char wq_name[32];
+
 	int i;
 
 	new_csiphy_dev = devm_kzalloc(&pdev->dev,
@@ -230,8 +232,10 @@ static int cam_csiphy_component_bind(struct device *dev,
 		&csiphy_subdev_intern_ops;
 	new_csiphy_dev->v4l2_dev_str.ops =
 		&csiphy_subdev_ops;
-	strlcpy(new_csiphy_dev->device_name, CAMX_CSIPHY_DEV_NAME,
-		sizeof(new_csiphy_dev->device_name));
+	snprintf(new_csiphy_dev->device_name,
+		CAM_CTX_DEV_NAME_MAX_LENGTH,
+		"%s%d", CAMX_CSIPHY_DEV_NAME,
+		new_csiphy_dev->soc_info.index);
 	new_csiphy_dev->v4l2_dev_str.name =
 		new_csiphy_dev->device_name;
 	new_csiphy_dev->v4l2_dev_str.sd_flags =
@@ -285,6 +289,19 @@ static int cam_csiphy_component_bind(struct device *dev,
 	CAM_DBG(CAM_CSIPHY, "CPAS registration successful handle=%d",
 		cpas_parms.client_handle);
 	new_csiphy_dev->cpas_handle = cpas_parms.client_handle;
+
+	snprintf(wq_name, 32, "%s%d%s", "csiphy",
+		new_csiphy_dev->soc_info.index, "_wq");
+
+	new_csiphy_dev->work_queue = alloc_workqueue("wq_name",
+		WQ_UNBOUND | WQ_MEM_RECLAIM, 1);
+	if (!new_csiphy_dev->work_queue) {
+		CAM_ERR(CAM_CSIPHY,
+			"Error allocating workqueue for csiphy: %d",
+			new_csiphy_dev->soc_info.index);
+		rc = -ENOMEM;
+		goto csiphy_unregister_subdev;
+	}
 
 	cam_csiphy_register_baseaddress(new_csiphy_dev);
 
