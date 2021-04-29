@@ -439,19 +439,38 @@ struct cam_mem_cache_ops_cmd {
 #define CAM_REQ_MGR_ERROR_TYPE_PAGE_FAULT       6
 
 /**
+ * Request Manager : Error codes
+ * @CAM_REQ_MGR_ISP_UNREPORTED_ERROR         : No Error Code reported
+ * @CAM_REQ_MGR_LINK_STALLED_ERROR           : Unable to apply requests on link
+ * @CAM_REQ_MGR_CSID_FATAL_ERROR             : CSID FATAL Error
+ * @CAM_REQ_MGR_CSID_FIFO_OVERFLOW_ERROR     : CSID FIFO Overflow
+ * @CAM_REQ_MGR_CSID_RECOVERY_OVERFLOW_ERROR : CSID Recovery Overflow
+ * @CAM_REQ_MGR_CSID_PIXEL_COUNT_MISMATCH    : CSID Pixel Count Mismatch
+ */
+#define CAM_REQ_MGR_ISP_UNREPORTED_ERROR                 0
+#define CAM_REQ_MGR_LINK_STALLED_ERROR                   BIT(0)
+#define CAM_REQ_MGR_CSID_FATAL_ERROR                     BIT(1)
+#define CAM_REQ_MGR_CSID_FIFO_OVERFLOW_ERROR             BIT(2)
+#define CAM_REQ_MGR_CSID_RECOVERY_OVERFLOW_ERROR         BIT(3)
+#define CAM_REQ_MGR_CSID_PIXEL_COUNT_MISMATCH            BIT(5)
+
+/**
  * struct cam_req_mgr_error_msg
  * @error_type: type of error
  * @request_id: request id of frame
  * @device_hdl: device handle
  * @linke_hdl: link_hdl
  * @resource_size: size of the resource
+ * @error_code: Error code reported by the event.
+ *              Note: This field is a bit field.
  */
 struct cam_req_mgr_error_msg {
 	__u32 error_type;
 	__u32 request_id;
 	__s32 device_hdl;
 	__s32 link_hdl;
-	__u64 resource_size;
+	__u32 resource_size;
+	__u32 error_code;
 };
 
 /**

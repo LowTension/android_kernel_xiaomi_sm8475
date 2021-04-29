@@ -2628,13 +2628,16 @@ end:
 			if (error_type == CAM_ISP_HW_ERROR_CSID_FATAL)
 				req_msg.u.err_msg.error_type =
 					CAM_REQ_MGR_ERROR_TYPE_FULL_RECOVERY;
-			else
+			else {
 				req_msg.u.err_msg.error_type =
 					CAM_REQ_MGR_ERROR_TYPE_RECOVERY;
+			}
 
 			req_msg.u.err_msg.link_hdl = ctx_isp->base->link_hdl;
 			req_msg.u.err_msg.request_id = error_request_id;
 			req_msg.u.err_msg.resource_size = 0x0;
+			req_msg.u.err_msg.error_code =
+				error_event_data->error_code;
 
 			if (cam_req_mgr_notify_message(&req_msg,
 					V4L_EVENT_CAM_REQ_MGR_ERROR,
@@ -6119,7 +6122,7 @@ static int cam_isp_context_dump_requests(void *data,
 	struct cam_isp_ctx_req *req_isp  = NULL;
 	struct cam_isp_prepare_hw_update_data *hw_update_data = NULL;
 	struct cam_hw_mgr_dump_pf_data *pf_dbg_entry = NULL;
-	struct cam_req_mgr_message       req_msg;
+	struct cam_req_mgr_message       req_msg = {0};
 	struct cam_isp_context          *ctx_isp;
 	uint32_t  resource_type = 0;
 	bool mem_found = false, ctx_found = false, send_error = false;
@@ -6236,6 +6239,7 @@ static int cam_isp_context_dump_requests(void *data,
 		req_msg.u.err_msg.link_hdl = ctx->link_hdl;
 		req_msg.u.err_msg.request_id = 0;
 		req_msg.u.err_msg.resource_size = 0x0;
+		req_msg.u.err_msg.error_code = CAM_REQ_MGR_ISP_UNREPORTED_ERROR;
 
 		if (cam_req_mgr_notify_message(&req_msg,
 				V4L_EVENT_CAM_REQ_MGR_ERROR,

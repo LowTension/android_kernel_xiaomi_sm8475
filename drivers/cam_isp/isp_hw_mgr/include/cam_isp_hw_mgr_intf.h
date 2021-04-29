@@ -241,6 +241,7 @@ struct cam_isp_hw_eof_event_data {
  * struct cam_isp_hw_error_event_data - Event payload for CAM_HW_EVENT_ERROR
  *
  * @error_type:            Error type for the error event
+ * @error_code:            HW Error Code that caused to trigger this event
  * @timestamp:             Timestamp for the error event
  * @recovery_enabled:      Identifies if the context needs to recover & reapply
  *                         this request
@@ -248,6 +249,7 @@ struct cam_isp_hw_eof_event_data {
  */
 struct cam_isp_hw_error_event_data {
 	uint32_t             error_type;
+	uint32_t             error_code;
 	uint64_t             timestamp;
 	bool                 recovery_enabled;
 	bool                 enable_req_dump;

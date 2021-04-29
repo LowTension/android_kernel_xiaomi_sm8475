@@ -10402,6 +10402,7 @@ static int cam_ife_hw_mgr_handle_csid_error(
 		g_ife_hw_mgr.debug_cfg.enable_csid_recovery) {
 
 		error_event_data.error_type = CAM_ISP_HW_ERROR_CSID_FATAL;
+		error_event_data.error_code = CAM_REQ_MGR_CSID_FATAL_ERROR;
 		rc = cam_ife_hw_mgr_find_affected_ctx(&error_event_data,
 			event_info->hw_idx, &recovery_data);
 		goto end;
@@ -10413,6 +10414,15 @@ static int cam_ife_hw_mgr_handle_csid_error(
 
 		cam_ife_hw_mgr_notify_overflow(event_info, ctx);
 		error_event_data.error_type = CAM_ISP_HW_ERROR_OVERFLOW;
+		if (event_info->err_type & CAM_ISP_HW_ERROR_CSID_FIFO_OVERFLOW)
+			error_event_data.error_code |=
+				CAM_REQ_MGR_CSID_FIFO_OVERFLOW_ERROR;
+		if (event_info->err_type & CAM_ISP_HW_ERROR_RECOVERY_OVERFLOW)
+			error_event_data.error_code |=
+				CAM_REQ_MGR_CSID_RECOVERY_OVERFLOW_ERROR;
+		if (event_info->err_type & CAM_ISP_HW_ERROR_CSID_FRAME_SIZE)
+			error_event_data.error_code |=
+				CAM_REQ_MGR_CSID_PIXEL_COUNT_MISMATCH;
 		rc = cam_ife_hw_mgr_find_affected_ctx(&error_event_data,
 			event_info->hw_idx, &recovery_data);
 	}
@@ -10631,6 +10641,8 @@ static int cam_ife_hw_mgr_handle_hw_err(
 
 	if (g_ife_hw_mgr.debug_cfg.enable_req_dump)
 		error_event_data.enable_req_dump = true;
+
+	error_event_data.error_code = CAM_REQ_MGR_ISP_UNREPORTED_ERROR;
 
 	rc = cam_ife_hw_mgr_find_affected_ctx(&error_event_data,
 		core_idx, &recovery_data);
