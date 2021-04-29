@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CAM_IFE_CSID_COMMON_H_
@@ -307,6 +307,8 @@ struct cam_ife_csid_cid_data {
  * @dynamic_senso_switch_en:  Flag if dynamic sensor switch is enabled
  * @mup:                      Mode Update bit. 0 for odd vc, 1 for even VC
  * @epd_supported:            Flag to check if epd supported
+ * @irq_handle:               IRQ Handle
+ * @err_irq_handle:           Error IRQ Handle
  */
 struct cam_ife_csid_rx_cfg  {
 	uint32_t                        phy_sel;
@@ -318,6 +320,8 @@ struct cam_ife_csid_rx_cfg  {
 	uint32_t                        dynamic_sensor_switch_en;
 	uint32_t                        mup;
 	uint32_t                        epd_supported;
+	uint32_t                        irq_handle;
+	uint32_t                        err_irq_handle;
 };
 
 int cam_ife_csid_is_pix_res_format_supported(

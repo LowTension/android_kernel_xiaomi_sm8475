@@ -3870,7 +3870,7 @@ static int cam_ife_csid_ver1_handle_event_err(
 	struct cam_ife_csid_ver1_evt_payload *evt_payload,
 	uint32_t err_type)
 {
-	struct cam_isp_hw_event_info event_info;
+	struct cam_isp_hw_event_info event_info = {0};
 	int rc = 0;
 
 	event_info.hw_idx = evt_payload->hw_idx;
