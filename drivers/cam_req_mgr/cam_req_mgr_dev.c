@@ -729,6 +729,12 @@ int cam_unregister_subdev(struct cam_subdev *csd)
 }
 EXPORT_SYMBOL(cam_unregister_subdev);
 
+static inline void cam_req_mgr_destroy_timer_slab(void)
+{
+	kmem_cache_destroy(g_cam_req_mgr_timer_cachep);
+	g_cam_req_mgr_timer_cachep = NULL;
+}
+
 static int cam_req_mgr_component_master_bind(struct device *dev)
 {
 	int rc = 0;
@@ -767,9 +773,7 @@ static int cam_req_mgr_component_master_bind(struct device *dev)
 
 	if (g_cam_req_mgr_timer_cachep == NULL) {
 		g_cam_req_mgr_timer_cachep = kmem_cache_create("crm_timer",
-			sizeof(struct cam_req_mgr_timer), 64,
-			SLAB_CONSISTENCY_CHECKS | SLAB_RED_ZONE |
-			SLAB_POISON | SLAB_STORE_USER, NULL);
+			sizeof(struct cam_req_mgr_timer), 64, 0x0, NULL);
 		if (!g_cam_req_mgr_timer_cachep)
 			CAM_ERR(CAM_CRM,
 				"Failed to create kmem_cache for crm_timer");
@@ -801,6 +805,7 @@ static int cam_req_mgr_component_master_bind(struct device *dev)
 sysfs_fail:
 	sysfs_remove_file(&dev->kobj, &camera_debug_sysfs_attr.attr);
 req_mgr_device_deinit:
+	cam_req_mgr_destroy_timer_slab();
 	cam_req_mgr_core_device_deinit();
 req_mgr_core_fail:
 	cam_req_mgr_util_deinit();
@@ -828,6 +833,7 @@ static void cam_req_mgr_component_master_unbind(struct device *dev)
 	cam_media_device_cleanup();
 	cam_video_device_cleanup();
 	cam_v4l2_device_cleanup();
+	cam_req_mgr_destroy_timer_slab();
 	mutex_destroy(&g_dev.dev_lock);
 	g_dev.state = false;
 }
