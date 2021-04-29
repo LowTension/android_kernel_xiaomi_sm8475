@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/debugfs.h>
@@ -575,7 +575,7 @@ static int __cam_node_crm_apply_req(struct cam_req_mgr_apply_request *apply)
 		return -EINVAL;
 	}
 
-	trace_cam_apply_req("Node", apply->request_id);
+	trace_cam_apply_req("Node", ctx->ctx_id, apply->request_id, apply->link_hdl);
 
 	return cam_context_handle_crm_apply_req(ctx, apply);
 }
@@ -595,7 +595,7 @@ static int __cam_node_crm_notify_frame_skip(
 		return -EINVAL;
 	}
 
-	trace_cam_apply_req("Node", apply->request_id);
+	trace_cam_apply_req("Node", ctx->ctx_id, apply->request_id, apply->link_hdl);
 
 	return cam_context_handle_crm_notify_frame_skip(ctx, apply);
 }

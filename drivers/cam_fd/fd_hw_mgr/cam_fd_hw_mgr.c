@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/module.h>
@@ -1858,7 +1858,7 @@ static int cam_fd_mgr_hw_config(void *hw_mgr_priv, void *hw_config_args)
 	frame_req = config->priv;
 	req_id = frame_req->request_id;
 
-	trace_cam_apply_req("FD", frame_req->request_id);
+	trace_cam_apply_req("FD", hw_ctx->ctx_index, frame_req->request_id, 0);
 	CAM_DBG(CAM_FD, "FrameHWConfig : Frame[%lld]", frame_req->request_id);
 
 	frame_req->num_hw_update_entries = config->num_hw_update_entries;
