@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only WITH Linux-syscall-note */
 /*
- * Copyright (c) 2016-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
  */
 
 #ifndef __UAPI_CAM_ISP_H__
@@ -126,6 +126,7 @@
 #define CAM_ISP_GENERIC_BLOB_TYPE_SFE_HFR_CONFIG            24
 #define CAM_ISP_GENERIC_BLOB_TYPE_SFE_FE_CONFIG             25
 #define CAM_ISP_GENERIC_BLOB_TYPE_SFE_SCRATCH_BUF_CFG       26
+#define CAM_ISP_GENERIC_BLOB_TYPE_SFE_EXP_ORDER_CFG         27
 
 #define CAM_ISP_VC_DT_CFG    4
 
@@ -881,6 +882,38 @@ struct cam_isp_mode_switch_info{
 	__u32                                num_expoures;
 	__u32                                reserved;
 } __attribute__((packed));
+
+/**
+ * struct cam_isp_sfe_wm_exp_order_config - SFE write master
+ *                                          exposure order config
+ *
+ *    This config will reflect for corresponding RM as well
+ *
+ * @res_type          : output resource type defined in file
+ *                      cam_isp_sfe.h or cam_isp_ife.h
+ * @additional_params : Params for future use
+ */
+struct cam_isp_sfe_wm_exp_order_config {
+	__u32         res_type;
+	__u32         additional_params[5];
+};
+
+/**
+ * struct cam_isp_sfe_exp_config - SFE out exposure config
+ *
+ *    Exp order is determined by it's index in wm_config[]
+ *    The last resource in the array will be considered as
+ *    last [shortest] exposure.
+ *
+ * @num_ports      : Number of ports
+ * @reserved       : Reserved field
+ * @wm_config      : WM exp config
+ */
+struct cam_isp_sfe_exp_config {
+	__u32                                   num_ports;
+	__u32                                   reserved;
+	struct cam_isp_sfe_wm_exp_order_config  wm_config[1];
+};
 
 #define CAM_ISP_ACQUIRE_COMMON_VER0         0x1000
 
