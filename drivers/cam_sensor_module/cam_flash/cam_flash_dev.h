@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CAM_FLASH_DEV_H_
@@ -108,13 +108,14 @@ struct cam_flash_init_packet {
 
 /**
  * struct flash_frame_setting
- * @cmn_attr             : Provides common attributes
- * @num_iterations       : Iterations used to perform RER
- * @led_on_delay_ms      : LED on time in milisec
- * @led_off_delay_ms     : LED off time in milisec
- * @opcode               : Command buffer opcode
- * @led_current_ma[]     : LED current array in miliamps
- * @flash_active_time_ms : Flash_On time with precise flash
+ * @cmn_attr              : Provides common attributes
+ * @num_iterations        : Iterations used to perform RER
+ * @led_on_delay_ms       : LED on time in milisec
+ * @led_off_delay_ms      : LED off time in milisec
+ * @opcode                : Command buffer opcode
+ * @led_current_ma[]      : LED current array in miliamps
+ * @flash_active_time_ms  : Flash_On time with precise flash
+ * @flash_on_wait_time_ms : Flash on wait time with precise flash
  */
 struct cam_flash_frame_setting {
 	struct cam_flash_common_attr cmn_attr;
@@ -124,6 +125,7 @@ struct cam_flash_frame_setting {
 	int8_t                       opcode;
 	uint32_t                     led_current_ma[CAM_FLASH_MAX_LED_TRIGGERS];
 	uint64_t                     flash_active_time_ms;
+	uint64_t                     flash_on_wait_time_ms;
 };
 
 /**

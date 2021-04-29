@@ -11,9 +11,6 @@
 #include "cam_common_util.h"
 #include "cam_packet_util.h"
 
-static uint default_on_timer = 2;
-module_param(default_on_timer, uint, 0644);
-
 int cam_flash_led_prepare(struct led_trigger *trigger, int options,
 	int *max_current, bool is_wled)
 {
@@ -428,8 +425,7 @@ static int cam_flash_ops(struct cam_flash_ctrl *flash_ctrl,
 
 			param.off_time_ms =
 				flash_data->flash_active_time_ms;
-			/* This is to dynamically change the turn on time */
-			param.on_time_ms = default_on_timer;
+			param.on_time_ms = flash_data->flash_on_wait_time_ms;
 			CAM_DBG(CAM_FLASH,
 				"Precise flash_on time: %u, Precise flash_off time: %u",
 				param.on_time_ms, param.off_time_ms);
@@ -1559,8 +1555,12 @@ int cam_flash_pmic_pkt_parser(struct cam_flash_ctrl *fctrl, void *arg)
 				flash_data->flash_active_time_ms =
 				(flash_operation_info->time_on_duration_ns)
 					/ 1000000;
+				flash_data->flash_on_wait_time_ms =
+				(flash_operation_info->led_on_wait_time_ns)
+					/ 1000000;
 				CAM_DBG(CAM_FLASH,
-					"PRECISE FLASH: active_time: %llu",
+					"PRECISE FLASH: active wait tme:%llu duration: %llu",
+					flash_data->flash_on_wait_time_ms,
 					flash_data->flash_active_time_ms);
 			}
 		}
