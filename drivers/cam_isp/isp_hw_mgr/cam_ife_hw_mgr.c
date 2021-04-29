@@ -6230,6 +6230,20 @@ static int cam_ife_mgr_start_hw(void *hw_mgr_priv, void *start_hw_args)
 		}
 	}
 
+	/* set IFE bus WR MMU config */
+	for (i = 0; i < CAM_IFE_HW_NUM_MAX; i++) {
+		if (g_ife_hw_mgr.ife_devices[i]) {
+			rc = g_ife_hw_mgr.ife_devices[i]->hw_intf->hw_ops.process_cmd(
+				g_ife_hw_mgr.ife_devices[i]->hw_intf->hw_priv,
+				CAM_ISP_HW_CMD_IFE_BUS_DEBUG_CFG,
+				&g_ife_hw_mgr.debug_cfg.disable_ife_mmu_prefetch,
+				sizeof(g_ife_hw_mgr.debug_cfg.disable_ife_mmu_prefetch));
+			if (rc)
+				CAM_DBG(CAM_ISP,
+					"Failed to set IFE_%d bus wr debug cfg", i);
+		}
+	}
+
 	if (ctx->flags.need_csid_top_cfg) {
 		list_for_each_entry(hw_mgr_res, &ctx->res_list_ife_csid,
 				list) {
@@ -11191,6 +11205,9 @@ static int cam_ife_hw_mgr_debug_register(void)
 		g_ife_hw_mgr.debug_cfg.dentry, NULL, &cam_ife_sfe_debug);
 	dbgfileptr = debugfs_create_file("sfe_sensor_diag_sel", 0644,
 		g_ife_hw_mgr.debug_cfg.dentry, NULL, &cam_ife_sfe_sensor_diag_debug);
+	dbgfileptr = debugfs_create_bool("disable_ife_mmu_prefetch", 0644,
+		g_ife_hw_mgr.debug_cfg.dentry,
+		&g_ife_hw_mgr.debug_cfg.disable_ife_mmu_prefetch);
 
 	if (IS_ERR(dbgfileptr)) {
 		if (PTR_ERR(dbgfileptr) == -ENODEV)

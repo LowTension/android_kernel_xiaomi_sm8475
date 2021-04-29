@@ -44,6 +44,7 @@ struct cam_sfe_hw_core_info {
 #define SFE_DEBUG_ENABLE_SENSOR_DIAG_INFO         BIT(1)
 #define SFE_DEBUG_ENABLE_FRAME_COUNTER            BIT(2)
 #define SFE_DEBUG_ENABLE_RD_DONE_IRQ              BIT(3)
+#define SFE_DEBUG_DISABLE_MMU_PREFETCH            BIT(4)
 
 int cam_sfe_get_hw_caps(void *device_priv,
 	void *get_hw_cap_args, uint32_t arg_size);

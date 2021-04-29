@@ -734,6 +734,16 @@ static int cam_sfe_bus_start_wm(struct cam_isp_resource_node *wm_res)
 			rsrc_data->hw_regs->line_done_cfg);
 	}
 
+	if (!(common_data->sfe_debug_cfg & SFE_DEBUG_DISABLE_MMU_PREFETCH)) {
+		cam_io_w_mb(1, common_data->mem_base +
+			rsrc_data->hw_regs->mmu_prefetch_cfg);
+		cam_io_w_mb(0xFFFFFFFF, common_data->mem_base +
+			rsrc_data->hw_regs->mmu_prefetch_max_offset);
+		CAM_DBG(CAM_SFE, "SFE: %u WM: %u MMU prefetch enabled",
+			rsrc_data->common_data->core_index,
+			rsrc_data->index);
+	}
+
 	/* Enable WM */
 	cam_io_w_mb(rsrc_data->en_cfg, common_data->mem_base +
 		rsrc_data->hw_regs->cfg);

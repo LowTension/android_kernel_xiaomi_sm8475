@@ -50,6 +50,7 @@ enum cam_ife_ctx_master_type {
  * @enable_req_dump:           Enable request dump on HW errors
  * @per_req_reg_dump:          Enable per request reg dump
  * @disable_ubwc_comp:         Disable UBWC compression
+ * @disable_ife_mmu_prefetch:  Disable MMU prefetch for IFE bus WR
  *
  */
 struct cam_ife_hw_mgr_debug {
@@ -63,6 +64,7 @@ struct cam_ife_hw_mgr_debug {
 	bool           enable_req_dump;
 	bool           per_req_reg_dump;
 	bool           disable_ubwc_comp;
+	bool           disable_ife_mmu_prefetch;
 };
 
 /**
