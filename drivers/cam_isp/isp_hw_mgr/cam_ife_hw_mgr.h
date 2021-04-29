@@ -45,7 +45,8 @@ enum cam_ife_ctx_master_type {
  * @csid_debug:                csid debug information
  * @enable_recovery:           enable recovery
  * @enable_csid_recovery:      enable csid recovery
- * @enable_diag_sensor_status: enable sensor diagnosis status
+ * @sfe_debug:                 sfe debug config
+ * @sfe_sensor_diag_cfg:       sfe sensor diag config
  * @enable_req_dump:           Enable request dump on HW errors
  * @per_req_reg_dump:          Enable per request reg dump
  * @disable_ubwc_comp:         Disable UBWC compression
@@ -57,6 +58,8 @@ struct cam_ife_hw_mgr_debug {
 	uint32_t       enable_recovery;
 	uint32_t       camif_debug;
 	uint32_t       enable_csid_recovery;
+	uint32_t       sfe_debug;
+	uint32_t       sfe_sensor_diag_cfg;
 	bool           enable_req_dump;
 	bool           per_req_reg_dump;
 	bool           disable_ubwc_comp;

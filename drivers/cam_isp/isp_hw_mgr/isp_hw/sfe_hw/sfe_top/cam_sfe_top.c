@@ -1493,6 +1493,9 @@ int cam_sfe_top_start(
 		}
 	}
 
+	/* Remove after driver stabilizes */
+	top_priv->sfe_debug_cfg |= SFE_DEBUG_ENABLE_SOF_EOF_IRQ;
+
 	if ((top_priv->sfe_debug_cfg & SFE_DEBUG_ENABLE_SOF_EOF_IRQ) ||
 		(debug_cfg_enabled)) {
 		if (!path_data->sof_eof_handle) {
@@ -1733,9 +1736,6 @@ int cam_sfe_top_init(
 	top_priv->module_desc = sfe_top_hw_info->module_desc;
 	top_priv->wr_client_desc = sfe_top_hw_info->wr_client_desc;
 	top_priv->sfe_debug_cfg = 0;
-
-	/* Remove after driver stabilizes */
-	top_priv->sfe_debug_cfg |= SFE_DEBUG_ENABLE_SOF_EOF_IRQ;
 
 	sfe_top->hw_ops.process_cmd = cam_sfe_top_process_cmd;
 	sfe_top->hw_ops.start = cam_sfe_top_start;
