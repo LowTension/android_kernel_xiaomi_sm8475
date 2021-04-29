@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/init.h>
@@ -932,7 +932,8 @@ static void cam_res_mgr_component_unbind(struct device *dev,
 {
 	if (cam_res) {
 		cam_res_mgr_free_res();
-		devm_pinctrl_put(cam_res->pinctrl);
+		if (cam_res->pinctrl)
+			devm_pinctrl_put(cam_res->pinctrl);
 		cam_res->pinctrl = NULL;
 		cam_res->pstatus = PINCTRL_STATUS_PUT;
 		kfree(cam_res);
