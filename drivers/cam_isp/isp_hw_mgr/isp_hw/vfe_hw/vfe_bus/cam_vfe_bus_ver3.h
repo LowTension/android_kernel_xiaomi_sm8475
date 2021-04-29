@@ -14,6 +14,7 @@
 #define CAM_VFE_BUS_VER3_MAX_MID_PER_PORT 4
 #define CAM_VFE_BUS_VER3_480_MAX_CLIENTS     26
 #define CAM_VFE_BUS_VER3_680_MAX_CLIENTS     28
+#define CAM_VFE_BUS_VER3_CONS_ERR_MAX        21
 
 enum cam_vfe_bus_ver3_vfe_core_id {
 	CAM_VFE_BUS_VER3_VFE_CORE_0,
@@ -86,6 +87,16 @@ enum cam_vfe_bus_ver3_vfe_out_type {
 	CAM_VFE_BUS_VER3_VFE_OUT_STATS_BG,
 	CAM_VFE_BUS_VER3_VFE_OUT_PREPROCESS_RAW,
 	CAM_VFE_BUS_VER3_VFE_OUT_MAX,
+};
+
+/*
+ * struct cam_vfe_constraint_error_info:
+ *
+ * @Brief:        Constraint error info
+ */
+struct cam_vfe_constraint_error_info {
+	uint32_t  bitmask;
+	char     *error_description;
 };
 
 /*
@@ -191,6 +202,7 @@ struct cam_vfe_bus_ver3_vfe_out_hw_info {
  * @num_client:            Total number of write clients
  * @bus_client_reg:        Bus client register info
  * @vfe_out_hw_info:       VFE output capability
+ * @constraint_error_list: Static list of all constraint errors
  * @num_comp_grp:          Number of composite groups
  * @comp_done_shift:       Mask shift for comp done mask
  * @top_irq_shift:         Mask shift for top level BUS WR irq
@@ -208,6 +220,8 @@ struct cam_vfe_bus_ver3_hw_info {
 	uint32_t num_out;
 	struct cam_vfe_bus_ver3_vfe_out_hw_info
 		vfe_out_hw_info[CAM_VFE_BUS_VER3_VFE_OUT_MAX];
+	struct cam_vfe_constraint_error_info
+		constraint_error_list[CAM_VFE_BUS_VER3_CONS_ERR_MAX];
 	uint32_t num_comp_grp;
 	uint32_t comp_done_shift;
 	uint32_t top_irq_shift;

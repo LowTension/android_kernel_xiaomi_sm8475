@@ -1856,6 +1856,92 @@ static struct cam_vfe_bus_ver3_hw_info vfe680_bus_hw_info = {
 			},
 		},
 	},
+	.constraint_error_list = {
+		{
+			.bitmask = 0x000001,
+			.error_description = "PPC 1x1 illegal"
+		},
+		{
+			.bitmask = 0x000002,
+			.error_description = "PPC 1x2 illegal"
+		},
+		{
+			.bitmask = 0x000004,
+			.error_description = "PPC 2x1 illegal"
+		},
+		{
+			.bitmask = 0x000008,
+			.error_description = "PPC 2x2 illegal"
+		},
+		{
+			.bitmask = 0x000010,
+			.error_description = "Pack 8 BPP illegal"
+		},
+		{
+			.bitmask = 0x000020,
+			.error_description = "Pack 16 BPP illegal"
+		},
+		{
+			.bitmask = 0x000040,
+			.error_description = "Pack 32 BPP illegal"
+		},
+		{
+			.bitmask = 0x000080,
+			.error_description = "Pack 64 BPP illegal"
+		},
+		{
+			.bitmask = 0x000100,
+			.error_description = "Pack 128 BPP illegal"
+		},
+		{
+			.bitmask = 0x000200,
+			.error_description = "UBWC NV12 illegal"
+		},
+		{
+			.bitmask = 0x000400,
+			.error_description = "UBWC NV12 4R illegal"
+		},
+		{
+			.bitmask = 0x000800,
+			.error_description = "UBWC TP10 illegal"
+		},
+		{
+			.bitmask = 0x001000,
+			.error_description = "Frame based illegal"
+		},
+		{
+			.bitmask = 0x002000,
+			.error_description = "Index based illegal"
+		},
+		{
+			.bitmask = 0x004000,
+			.error_description = "Image address unalign"
+		},
+		{
+			.bitmask = 0x008000,
+			.error_description = "UBWC address unalign"
+		},
+		{
+			.bitmask = 0x010000,
+			.error_description = "Frame Header address unalign"
+		},
+		{
+			.bitmask = 0x020000,
+			.error_description = "X Initialization unalign"
+		},
+		{
+			.bitmask = 0x040000,
+			.error_description = "Image Width unalign"
+		},
+		{
+			.bitmask = 0x080000,
+			.error_description = "Image Height unalign"
+		},
+		{
+			.bitmask = 0x100000,
+			.error_description = "Meta Stride unalign"
+		},
+	},
 	.num_comp_grp    = 17,
 	.support_consumed_addr = true,
 	.comp_done_shift = 0,

@@ -72,12 +72,6 @@ struct cam_vfe_bus_ver3_comp_grp_acquire_args {
 	uint32_t                             composite_mask;
 };
 
-struct cam_vfe_bus_error_info {
-	uint32_t  bitmask;
-	uint32_t  vfe_output;
-	char     *error_description;
-};
-
 struct cam_vfe_bus_ver3_common_data {
 	uint32_t                                    core_index;
 	void __iomem                               *mem_base;
@@ -216,114 +210,7 @@ struct cam_vfe_bus_ver3_priv {
 	int                                 error_irq_handle;
 	void                               *tasklet_info;
 	uint32_t                            max_out_res;
-};
-
-static const struct cam_vfe_bus_error_info vfe_constraint_error_list[] = {
-	{
-		.bitmask = 0x000001,
-		.vfe_output = CAM_VFE_BUS_VER3_VFE_OUT_MAX,
-		.error_description = "PPC 1x1 illegal"
-	},
-	{
-		.bitmask = 0x000002,
-		.vfe_output = CAM_VFE_BUS_VER3_VFE_OUT_MAX,
-		.error_description = "PPC 1x2 illegal"
-	},
-	{
-		.bitmask = 0x000004,
-		.vfe_output = CAM_VFE_BUS_VER3_VFE_OUT_MAX,
-		.error_description = "PPC 2x1 illegal"
-	},
-	{
-		.bitmask = 0x000008,
-		.vfe_output = CAM_VFE_BUS_VER3_VFE_OUT_MAX,
-		.error_description = "PPC 2x2 illegal"
-	},
-	{
-		.bitmask = 0x000010,
-		.vfe_output = CAM_VFE_BUS_VER3_VFE_OUT_MAX,
-		.error_description = "Pack 8 BPP illegal"
-	},
-	{
-		.bitmask = 0x000020,
-		.vfe_output = CAM_VFE_BUS_VER3_VFE_OUT_MAX,
-		.error_description = "Pack 16 BPP illegal"
-	},
-	{
-		.bitmask = 0x000040,
-		.vfe_output = CAM_VFE_BUS_VER3_VFE_OUT_MAX,
-		.error_description = "Pack 32 BPP illegal"
-	},
-	{
-		.bitmask = 0x000080,
-		.vfe_output = CAM_VFE_BUS_VER3_VFE_OUT_MAX,
-		.error_description = "Pack 64 BPP illegal"
-	},
-	{
-		.bitmask = 0x000100,
-		.vfe_output = CAM_VFE_BUS_VER3_VFE_OUT_MAX,
-		.error_description = "Pack 128 BPP illegal"
-	},
-	{
-		.bitmask = 0x000200,
-		.vfe_output = CAM_VFE_BUS_VER3_VFE_OUT_MAX,
-		.error_description = "UBWC NV12 illegal"
-	},
-	{
-		.bitmask = 0x000400,
-		.vfe_output = CAM_VFE_BUS_VER3_VFE_OUT_MAX,
-		.error_description = "UBWC NV12 4R illegal"
-	},
-	{
-		.bitmask = 0x000800,
-		.vfe_output = CAM_VFE_BUS_VER3_VFE_OUT_MAX,
-		.error_description = "UBWC TP10 illegal"
-	},
-	{
-		.bitmask = 0x001000,
-		.vfe_output = CAM_VFE_BUS_VER3_VFE_OUT_MAX,
-		.error_description = "Frame based illegal"
-	},
-	{
-		.bitmask = 0x002000,
-		.vfe_output = CAM_VFE_BUS_VER3_VFE_OUT_MAX,
-		.error_description = "Index based illegal"
-	},
-	{
-		.bitmask = 0x004000,
-		.vfe_output = CAM_VFE_BUS_VER3_VFE_OUT_MAX,
-		.error_description = "Image address unalign"
-	},
-	{
-		.bitmask = 0x008000,
-		.vfe_output = CAM_VFE_BUS_VER3_VFE_OUT_MAX,
-		.error_description = "UBWC address unalign"
-	},
-	{
-		.bitmask = 0x010000,
-		.vfe_output = CAM_VFE_BUS_VER3_VFE_OUT_MAX,
-		.error_description = "Frame Header address unalign"
-	},
-	{
-		.bitmask = 0x020000,
-		.vfe_output = CAM_VFE_BUS_VER3_VFE_OUT_MAX,
-		.error_description = "X Initialization unalign"
-	},
-	{
-		.bitmask = 0x040000,
-		.vfe_output = CAM_VFE_BUS_VER3_VFE_OUT_MAX,
-		.error_description = "Image Width unalign"
-	},
-	{
-		.bitmask = 0x080000,
-		.vfe_output = CAM_VFE_BUS_VER3_VFE_OUT_MAX,
-		.error_description = "Image Height unalign"
-	},
-	{
-		.bitmask = 0x100000,
-		.vfe_output = CAM_VFE_BUS_VER3_VFE_OUT_MAX,
-		.error_description = "Meta Stride unalign"
-	},
+	struct cam_vfe_constraint_error_info      *constraint_error_list;
 };
 
 static void cam_vfe_bus_ver3_unsubscribe_init_irq(
@@ -750,19 +637,21 @@ static int cam_vfe_bus_ver3_handle_rup_top_half(uint32_t evt_id,
 }
 
 static void cam_vfe_bus_ver3_print_constraint_errors(
-	uint32_t wm_idx,
+	struct cam_vfe_bus_ver3_priv *bus_priv,
+	uint8_t *wm_name,
 	uint32_t constraint_errors)
 {
 	uint32_t i;
 
-	CAM_INFO(CAM_ISP, "Constraint violation bitflags: %u",
+	CAM_INFO_RATE_LIMIT(CAM_ISP, "Constraint violation bitflags: 0x%X",
 		constraint_errors);
 
-	for (i = 0; i < ARRAY_SIZE(vfe_constraint_error_list); i++) {
-		if (vfe_constraint_error_list[i].bitmask & constraint_errors) {
-			CAM_INFO(CAM_ISP, "WM:%u %s programming",
-				wm_idx,
-				vfe_constraint_error_list[i].error_description);
+	for (i = 0; i < CAM_VFE_BUS_VER3_CONS_ERR_MAX; i++) {
+		if (bus_priv->constraint_error_list[i].bitmask &
+			constraint_errors) {
+			CAM_INFO(CAM_ISP, "WM:%s %s programming",
+				wm_name, bus_priv->constraint_error_list[i]
+				.error_description);
 		}
 	}
 }
@@ -771,6 +660,7 @@ static void cam_vfe_bus_ver3_get_constraint_errors(
 	struct cam_vfe_bus_ver3_priv *bus_priv)
 {
 	uint32_t i, j, constraint_errors;
+	uint8_t *wm_name = NULL;
 	struct cam_isp_resource_node              *out_rsrc_node = NULL;
 	struct cam_vfe_bus_ver3_vfe_out_data      *out_rsrc_data = NULL;
 	struct cam_vfe_bus_ver3_wm_resource_data  *wm_data   = NULL;
@@ -785,12 +675,16 @@ static void cam_vfe_bus_ver3_get_constraint_errors(
 		out_rsrc_data = out_rsrc_node->res_priv;
 		for (j = 0; j < out_rsrc_data->num_wm; j++) {
 			wm_data = out_rsrc_data->wm_res[j].res_priv;
+			wm_name = out_rsrc_data->wm_res[j].res_name;
 			if (wm_data) {
 				constraint_errors = cam_io_r_mb(
 					bus_priv->common_data.mem_base +
 					wm_data->hw_regs->debug_status_1);
-				cam_vfe_bus_ver3_print_constraint_errors(j,
-					constraint_errors);
+				if (!constraint_errors)
+					continue;
+
+				cam_vfe_bus_ver3_print_constraint_errors(
+					bus_priv, wm_name, constraint_errors);
 			}
 		}
 	}
@@ -3020,8 +2914,9 @@ static int cam_vfe_bus_ver3_update_wm(void *priv, void *cmd_args,
 
 		CAM_VFE_ADD_REG_VAL_PAIR(reg_val_pair, j,
 			wm_data->hw_regs->cfg, wm_data->en_cfg);
-		CAM_DBG(CAM_ISP, "WM:%d en_cfg 0x%X",
-			wm_data->index, reg_val_pair[j-1]);
+		CAM_DBG(CAM_ISP, "WM:%d %s en_cfg 0x%X",
+			wm_data->index, vfe_out_data->wm_res[i].res_name,
+			reg_val_pair[j-1]);
 
 		val = (wm_data->height << 16) | wm_data->width;
 		CAM_VFE_ADD_REG_VAL_PAIR(reg_val_pair, j,
@@ -3798,6 +3693,7 @@ int cam_vfe_bus_ver3_init(
 	bus_priv->common_data.init_irq_subscribed = false;
 	bus_priv->common_data.pack_align_shift =
 		ver3_hw_info->pack_align_shift;
+	bus_priv->constraint_error_list = ver3_hw_info->constraint_error_list;
 
 	if (bus_priv->num_out >= CAM_VFE_BUS_VER3_VFE_OUT_MAX) {
 		CAM_ERR(CAM_ISP, "number of vfe out:%d more than max value:%d ",

@@ -757,6 +757,7 @@ static struct cam_sfe_bus_wr_hw_info sfe680_bus_wr_hw_info = {
 			.mid[0]        = 25,
 			.num_wm        = 1,
 			.wm_idx        = 8,
+			.name          = "RDI_0",
 		},
 		{
 			.sfe_out_type  = CAM_SFE_BUS_SFE_OUT_RDI1,
@@ -766,6 +767,7 @@ static struct cam_sfe_bus_wr_hw_info sfe680_bus_wr_hw_info = {
 			.mid[0]        = 26,
 			.num_wm        = 1,
 			.wm_idx        = 9,
+			.name          = "RDI_1",
 		},
 		{
 			.sfe_out_type  = CAM_SFE_BUS_SFE_OUT_RDI2,
@@ -775,6 +777,7 @@ static struct cam_sfe_bus_wr_hw_info sfe680_bus_wr_hw_info = {
 			.mid[0]        = 27,
 			.num_wm        = 1,
 			.wm_idx        = 10,
+			.name          = "RDI_2",
 		},
 		{
 			.sfe_out_type  = CAM_SFE_BUS_SFE_OUT_RDI3,
@@ -784,6 +787,7 @@ static struct cam_sfe_bus_wr_hw_info sfe680_bus_wr_hw_info = {
 			.mid[0]        = 28,
 			.num_wm        = 1,
 			.wm_idx        = 11,
+			.name          = "RDI_3",
 		},
 		{
 			.sfe_out_type  = CAM_SFE_BUS_SFE_OUT_RDI4,
@@ -793,6 +797,7 @@ static struct cam_sfe_bus_wr_hw_info sfe680_bus_wr_hw_info = {
 			.mid[0]        = 29,
 			.num_wm        = 1,
 			.wm_idx        = 12,
+			.name          = "RDI_4",
 		},
 		{
 			.sfe_out_type  = CAM_SFE_BUS_SFE_OUT_RAW_DUMP,
@@ -803,6 +808,7 @@ static struct cam_sfe_bus_wr_hw_info sfe680_bus_wr_hw_info = {
 			.mid[1]        = 17,
 			.num_wm        = 1,
 			.wm_idx        = 0,
+			.name          = "REMOSIAC",
 		},
 		{
 			.sfe_out_type  = CAM_SFE_BUS_SFE_OUT_LCR,
@@ -812,6 +818,7 @@ static struct cam_sfe_bus_wr_hw_info sfe680_bus_wr_hw_info = {
 			.mid[0]        = 18,
 			.num_wm        = 1,
 			.wm_idx        = 1,
+			.name          = "LCR",
 		},
 		{
 			.sfe_out_type  = CAM_SFE_BUS_SFE_OUT_BE_0,
@@ -821,6 +828,7 @@ static struct cam_sfe_bus_wr_hw_info sfe680_bus_wr_hw_info = {
 			.mid[0]        = 19,
 			.num_wm        = 1,
 			.wm_idx        = 2,
+			.name          = "STATS_BE_0",
 		},
 		{
 			.sfe_out_type  = CAM_SFE_BUS_SFE_OUT_BHIST_0,
@@ -830,6 +838,7 @@ static struct cam_sfe_bus_wr_hw_info sfe680_bus_wr_hw_info = {
 			.mid[0]        = 20,
 			.num_wm        = 1,
 			.wm_idx        = 3,
+			.name          = "STATS_BHIST_0",
 		},
 		{
 			.sfe_out_type  = CAM_SFE_BUS_SFE_OUT_BE_1,
@@ -839,6 +848,7 @@ static struct cam_sfe_bus_wr_hw_info sfe680_bus_wr_hw_info = {
 			.mid[0]        = 21,
 			.num_wm        = 1,
 			.wm_idx        = 4,
+			.name          = "STATS_BE_1",
 		},
 		{
 			.sfe_out_type  = CAM_SFE_BUS_SFE_OUT_BHIST_1,
@@ -848,6 +858,7 @@ static struct cam_sfe_bus_wr_hw_info sfe680_bus_wr_hw_info = {
 			.mid[0]        = 22,
 			.num_wm        = 1,
 			.wm_idx        = 5,
+			.name          = "STATS_BHIST_1",
 		},
 		{
 			.sfe_out_type  = CAM_SFE_BUS_SFE_OUT_BE_2,
@@ -857,6 +868,7 @@ static struct cam_sfe_bus_wr_hw_info sfe680_bus_wr_hw_info = {
 			.mid[0]        = 23,
 			.num_wm        = 1,
 			.wm_idx        = 6,
+			.name          = "STATS_BE_2",
 		},
 		{
 			.sfe_out_type  = CAM_SFE_BUS_SFE_OUT_BHIST_2,
@@ -866,6 +878,77 @@ static struct cam_sfe_bus_wr_hw_info sfe680_bus_wr_hw_info = {
 			.mid[0]        = 24,
 			.num_wm        = 1,
 			.wm_idx        = 7,
+			.name          = "STATS_BHIST_2",
+		},
+	},
+	.constraint_error_list = {
+		{
+			.bitmask = 0x000001,
+			.error_description = "PPC 1x1 illegal"
+		},
+		{
+			.bitmask = 0x000002,
+			.error_description = "PPC 1x2 illegal"
+		},
+		{
+			.bitmask = 0x000004,
+			.error_description = "PPC 2x1 illegal"
+		},
+		{
+			.bitmask = 0x000008,
+			.error_description = "PPC 2x2 illegal"
+		},
+		{
+			.bitmask = 0x000010,
+			.error_description = "Pack 8 BPP illegal"
+		},
+		{
+			.bitmask = 0x000020,
+			.error_description = "Pack 16 BPP illegal"
+		},
+		{
+			.bitmask = 0x000040,
+			.error_description = "Pack 32 BPP illegal"
+		},
+		{
+			.bitmask = 0x000080,
+			.error_description = "Pack 64 BPP illegal"
+		},
+		{
+			.bitmask = 0x000100,
+			.error_description = "Pack 128 BPP illegal"
+		},
+		{
+			.bitmask = 0x000200,
+			.error_description = "Frame based illegal"
+		},
+		{
+			.bitmask = 0x000400,
+			.error_description = "Index based illegal"
+		},
+		{
+			.bitmask = 0x000800,
+			.error_description = "Image address unalign"
+		},
+		{
+			.bitmask = 0x001000,
+			.error_description = "Frame Header address unalign"
+		},
+		{
+			.bitmask = 0x002000,
+			.error_description = "X Initialization unalign"
+		},
+		{
+			.bitmask = 0x004000,
+			.error_description = "Image Width unalign"
+		},
+		{
+			.bitmask = 0x008000,
+			.error_description = "Image Height unalign"
+		},
+		{
+			.bitmask = 0x010000,
+			.error_description = "Meta Stride unalign"
 		},
 	},
 	.num_comp_grp    = 10,
