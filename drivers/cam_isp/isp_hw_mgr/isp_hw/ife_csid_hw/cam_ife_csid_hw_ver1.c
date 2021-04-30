@@ -2956,70 +2956,70 @@ int cam_ife_csid_ver1_deinit_hw(void *hw_priv,
 	return rc;
 }
 
-int cam_ife_csid_ver1_start(void *hw_priv, void *start_args,
+int cam_ife_csid_ver1_start(void *hw_priv, void *args,
 			uint32_t arg_size)
 {
 	struct cam_ife_csid_ver1_hw *csid_hw  = NULL;
 	struct cam_isp_resource_node           *res;
 	struct cam_hw_info *hw_info;
+	struct cam_csid_hw_start_args         *start_args;
 	int rc = 0;
+	uint32_t i = 0;
 
 	hw_info = (struct cam_hw_info *)hw_priv;
 	csid_hw = (struct cam_ife_csid_ver1_hw *)hw_info->core_info;
-	res = (struct cam_isp_resource_node *)start_args;
-
-	if (res->res_type != CAM_ISP_RESOURCE_PIX_PATH) {
-		CAM_ERR(CAM_ISP, "CSID:%d Invalid res type%d",
-			csid_hw->hw_intf->hw_idx, res->res_type);
-		rc = -EINVAL;
-		goto end;
-	}
-
-	if (res->res_type == CAM_ISP_RESOURCE_PIX_PATH &&
-		res->res_id >= CAM_IFE_PIX_PATH_RES_MAX) {
-		CAM_ERR(CAM_ISP, "CSID:%d Invalid res tpe:%d res id:%d",
-			csid_hw->hw_intf->hw_idx, res->res_type,
-			res->res_id);
-		rc = -EINVAL;
-		goto end;
-	}
+	start_args = (struct cam_csid_hw_start_args *)args;
 
 	csid_hw->flags.sof_irq_triggered = false;
 	csid_hw->counters.irq_debug_cnt = 0;
 
-	CAM_DBG(CAM_ISP, "CSID:%d res_type :%d res_id:%d",
-		csid_hw->hw_intf->hw_idx, res->res_type, res->res_id);
+	CAM_DBG(CAM_ISP, "CSID:%d num_res %u",
+		csid_hw->hw_intf->hw_idx, start_args->num_res);
 
 	cam_ife_csid_ver1_enable_csi2(csid_hw);
 
 	if (csid_hw->res_type == CAM_ISP_IFE_IN_RES_TPG)
 		cam_ife_csid_ver1_tpg_start(csid_hw);
 
-	switch (res->res_id) {
-	case  CAM_IFE_PIX_PATH_RES_IPP:
-	case  CAM_IFE_PIX_PATH_RES_PPP:
-		rc = cam_ife_csid_ver1_start_pix_path(csid_hw, res);
-		break;
-	case CAM_IFE_PIX_PATH_RES_RDI_0:
-	case CAM_IFE_PIX_PATH_RES_RDI_1:
-	case CAM_IFE_PIX_PATH_RES_RDI_2:
-	case CAM_IFE_PIX_PATH_RES_RDI_3:
-	case CAM_IFE_PIX_PATH_RES_RDI_4:
-		rc = cam_ife_csid_ver1_start_rdi_path(csid_hw, res);
-		break;
-	case CAM_IFE_PIX_PATH_RES_UDI_0:
-	case CAM_IFE_PIX_PATH_RES_UDI_1:
-	case CAM_IFE_PIX_PATH_RES_UDI_2:
-		rc = cam_ife_csid_ver1_start_udi_path(csid_hw, res);
-		break;
-	default:
-		CAM_ERR(CAM_ISP, "CSID:%d Invalid res type%d",
-			csid_hw->hw_intf->hw_idx, res->res_type);
-		rc = -EINVAL;
-		break;
+	for (i = 0; i < start_args->num_res; i++) {
+
+		res = start_args->node_res[i];
+		if (!res || res->res_type != CAM_ISP_RESOURCE_PIX_PATH) {
+			CAM_ERR(CAM_ISP, "CSID:%d Invalid res type%d",
+				csid_hw->hw_intf->hw_idx, res->res_type);
+			rc = -EINVAL;
+			goto end;
+		}
+		CAM_DBG(CAM_ISP, "CSID:%d res_type :%d res: %s",
+			csid_hw->hw_intf->hw_idx, res->res_type,
+			res->res_name);
+
+		switch (res->res_id) {
+		case  CAM_IFE_PIX_PATH_RES_IPP:
+		case  CAM_IFE_PIX_PATH_RES_PPP:
+			rc = cam_ife_csid_ver1_start_pix_path(csid_hw, res);
+			break;
+		case CAM_IFE_PIX_PATH_RES_RDI_0:
+		case CAM_IFE_PIX_PATH_RES_RDI_1:
+		case CAM_IFE_PIX_PATH_RES_RDI_2:
+		case CAM_IFE_PIX_PATH_RES_RDI_3:
+		case CAM_IFE_PIX_PATH_RES_RDI_4:
+			rc = cam_ife_csid_ver1_start_rdi_path(csid_hw, res);
+			break;
+		case CAM_IFE_PIX_PATH_RES_UDI_0:
+		case CAM_IFE_PIX_PATH_RES_UDI_1:
+		case CAM_IFE_PIX_PATH_RES_UDI_2:
+			rc = cam_ife_csid_ver1_start_udi_path(csid_hw, res);
+			break;
+		default:
+			CAM_ERR(CAM_ISP, "CSID:%d Invalid res type%d",
+					csid_hw->hw_intf->hw_idx, res->res_type);
+			rc = -EINVAL;
+			break;
+		}
 	}
 
-	if (rc)
+	if (rc && res)
 		CAM_ERR(CAM_ISP, "CSID:%d start fail res type:%d res id:%d",
 			csid_hw->hw_intf->hw_idx, res->res_type,
 			res->res_id);

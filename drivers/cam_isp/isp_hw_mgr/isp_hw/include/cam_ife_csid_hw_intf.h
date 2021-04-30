@@ -250,6 +250,12 @@ struct cam_csid_hw_stop_args {
 	uint32_t                                  num_res;
 };
 
+struct cam_csid_hw_start_args {
+	struct cam_isp_resource_node            **node_res;
+	uint32_t                                  num_res;
+};
+
+
 /**
  * enum cam_ife_csid_reset_type - Specify the reset type
  */
