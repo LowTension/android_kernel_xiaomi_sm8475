@@ -852,7 +852,8 @@ static void cam_vfe_top_ver4_check_module_status(
 	const struct cam_vfe_top_debug_info status_list[][8])
 {
 	bool found = false;
-	uint32_t i, j, val = 0, len = 0;
+	uint32_t i, j, val = 0;
+	size_t len = 0;
 	uint8_t log_buf[1024];
 
 	if (!status_list)
@@ -869,10 +870,9 @@ static void cam_vfe_top_ver4_check_module_status(
 			if (val == 0 || val == 5)
 				continue;
 
-			len += scnprintf(log_buf + len, 1024 -
-				len, "\nCAM_INFO: %s [I:%u V:%u R:%u]",
-				status_list[i][j].clc_name, ((val >> 2) & 1),
-				((val >> 1) & 1), (val & 1));
+			CAM_INFO_BUF(CAM_ISP, log_buf, 1024, &len, "%s [I:%u V:%u R:%u]",
+				status_list[i][j].clc_name,
+				((val >> 2) & 1), ((val >> 1) & 1), (val & 1));
 			found = true;
 		}
 		if (found)
@@ -889,7 +889,8 @@ static void cam_vfe_top_ver4_print_debug_reg_status(
 	struct cam_vfe_top_ver4_reg_offset_common  *common_reg;
 	uint32_t                                    val = 0;
 	uint32_t                                    num_reg =  0;
-	uint32_t                                    i = 0, j, len = 0;
+	uint32_t                                    i = 0, j;
+	size_t                                      len = 0;
 	uint8_t                                    *log_buf;
 	uint32_t                                   *reg_val = NULL;
 	struct cam_hw_soc_info                     *soc_info;
@@ -908,17 +909,14 @@ static void cam_vfe_top_ver4_print_debug_reg_status(
 		return;
 
 	while (i < num_reg) {
-		len += scnprintf(log_buf + len, CAM_VFE_LEN_LOG_BUF - len,
-				"VFE[%u]: Top Debug Status",
-				soc_info->index);
 		for(j = 0; j < 4 && i < num_reg; j++, i++) {
 			val = cam_io_r(base +
 				common_reg->top_debug[i]);
 			reg_val[i] = val;
-			len += scnprintf(log_buf + len, CAM_VFE_LEN_LOG_BUF -
-				len, "\nstatus %2d : 0x%08x", i, val);
+			CAM_INFO_BUF(CAM_ISP, log_buf, CAM_VFE_LEN_LOG_BUF, &len,
+				"status %2d : 0x%08x", i, val);
 		}
-		CAM_INFO(CAM_ISP, "%s", log_buf);
+		CAM_INFO(CAM_ISP, "VFE[%u]: Top Debug Status: %s", soc_info->index, log_buf);
 		len = 0;
 		memset(log_buf, 0, sizeof(uint8_t)*CAM_VFE_LEN_LOG_BUF);
 	}
