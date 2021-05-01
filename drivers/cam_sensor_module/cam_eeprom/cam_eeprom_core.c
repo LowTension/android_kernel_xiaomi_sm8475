@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/module.h>
@@ -1164,7 +1164,7 @@ static int32_t cam_eeprom_write(struct cam_eeprom_ctrl_t *e_ctrl)
 			&(i2c_set->list_head), list) {
 			rc = camera_io_dev_write_continuous(
 				&e_ctrl->io_master_info,
-				&i2c_list->i2c_settings, 1);
+				&i2c_list->i2c_settings, CAM_SENSOR_I2C_WRITE_BURST);
 		if (rc < 0) {
 			CAM_ERR(CAM_EEPROM,
 				"Error in EEPROM write");

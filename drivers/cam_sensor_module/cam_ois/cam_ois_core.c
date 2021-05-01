@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/module.h>
@@ -280,7 +280,7 @@ static int cam_ois_apply_settings(struct cam_ois_ctrl_t *o_ctrl,
 			rc = camera_io_dev_write_continuous(
 				&(o_ctrl->io_master_info),
 				&(i2c_list->i2c_settings),
-				0);
+				CAM_SENSOR_I2C_WRITE_SEQ);
 			if (rc < 0) {
 				CAM_ERR(CAM_OIS,
 					"Failed to seq write I2C settings: %d",
@@ -413,7 +413,7 @@ static int cam_ois_fw_download(struct cam_ois_ctrl_t *o_ctrl)
 	}
 
 	rc = camera_io_dev_write_continuous(&(o_ctrl->io_master_info),
-		&i2c_reg_setting, 1);
+		&i2c_reg_setting, CAM_SENSOR_I2C_WRITE_BURST);
 	if (rc < 0) {
 		CAM_ERR(CAM_OIS, "OIS FW(prog) size(%d) download failed. %d",
 			total_bytes, rc);
@@ -459,7 +459,7 @@ static int cam_ois_fw_download(struct cam_ois_ctrl_t *o_ctrl)
 	}
 
 	rc = camera_io_dev_write_continuous(&(o_ctrl->io_master_info),
-		&i2c_reg_setting, 1);
+		&i2c_reg_setting, CAM_SENSOR_I2C_WRITE_BURST);
 
 	if (rc < 0)
 		CAM_ERR(CAM_OIS, "OIS FW(coeff) size(%d) download failed rc: %d",
