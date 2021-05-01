@@ -3314,9 +3314,10 @@ static int cam_ife_csid_ver2_enable_core(struct cam_ife_csid_ver2_hw *csid_hw)
 			csid_hw->clk_rate);
 	}
 
-	CAM_DBG(CAM_ISP, "CSID[%d] clock lvl %u rate %u",
-		csid_hw->hw_intf->hw_idx,
-		clk_lvl, csid_hw->clk_rate);
+	CAM_DBG(CAM_ISP,
+		"CSID[%d] clk lvl %u received clk_rate %u applied clk_rate %lu",
+		csid_hw->hw_intf->hw_idx, clk_lvl, csid_hw->clk_rate,
+		soc_info->applied_src_clk_rate);
 
 	rc = cam_ife_csid_enable_soc_resources(soc_info, clk_lvl);
 
@@ -4189,9 +4190,6 @@ static int cam_ife_csid_ver2_set_csid_clock(
 		(struct cam_ife_csid_clock_update_args *)cmd_args;
 
 	csid_hw->clk_rate = clk_update->clk_rate;
-	CAM_INFO(CAM_ISP, "CSID[%u] clock rate %llu",
-		csid_hw->hw_intf->hw_idx,
-		csid_hw->clk_rate);
 
 	return 0;
 }
