@@ -2373,10 +2373,6 @@ static int cam_ife_csid_ver2_init_config_rdi_path(
 			path_reg->format_measure_cfg0_addr);
 	}
 
-	cam_io_w_mb(val, mem_base +
-		csid_reg->csi2_reg->capture_ctrl_addr);
-	CAM_DBG(CAM_ISP, "rx capture control value 0x%x", val);
-
 	return rc;
 }
 
@@ -2549,10 +2545,6 @@ static int cam_ife_csid_ver2_init_config_pxl_path(
 		cam_io_w_mb(val,
 			mem_base + path_reg->format_measure_cfg0_addr);
 	}
-
-	cam_io_w_mb(val, mem_base +
-		csid_reg->csi2_reg->capture_ctrl_addr);
-	CAM_DBG(CAM_ISP, "rx capture control value 0x%x", val);
 
 	res->res_state = CAM_ISP_RESOURCE_STATE_INIT_HW;
 
