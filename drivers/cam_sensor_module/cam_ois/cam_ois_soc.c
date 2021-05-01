@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/of.h>
@@ -39,6 +39,21 @@ static int cam_ois_get_dt_data(struct cam_ois_ctrl_t *o_ctrl)
 		CAM_ERR(CAM_OIS, "cam_soc_util_get_dt_properties rc %d",
 			rc);
 		return rc;
+	}
+
+	/* Initialize regulators to default parameters */
+	for (i = 0; i < soc_info->num_rgltr; i++) {
+		soc_info->rgltr[i] = devm_regulator_get(soc_info->dev,
+					soc_info->rgltr_name[i]);
+		if (IS_ERR_OR_NULL(soc_info->rgltr[i])) {
+			rc = PTR_ERR(soc_info->rgltr[i]);
+			rc = rc ? rc : -EINVAL;
+			CAM_ERR(CAM_OIS, "get failed for regulator %s",
+				 soc_info->rgltr_name[i]);
+			return rc;
+		}
+		CAM_DBG(CAM_OIS, "get for regulator %s",
+			soc_info->rgltr_name[i]);
 	}
 
 	if (!soc_info->gpio_data) {
