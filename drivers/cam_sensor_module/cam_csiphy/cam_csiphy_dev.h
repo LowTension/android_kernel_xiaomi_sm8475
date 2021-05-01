@@ -64,14 +64,22 @@
 #define DPHY_LANE_3    BIT(6)
 #define DPHY_CLK_LN    BIT(7)
 
-#define CAM_CSIPHY_CPAS_AON_SEL_ADDR    0x001E0
-#define CAM_CSIPHY_CPAS_MAIN_CAM_SEL    BIT(0)
-#define CAM_CSIPHY_CPAS_MCLK_SEL        BIT(8)
-
 enum cam_csiphy_state {
 	CAM_CSIPHY_INIT,
 	CAM_CSIPHY_ACQUIRE,
 	CAM_CSIPHY_START,
+};
+
+/**
+ * struct cam_csiphy_aon_sel_params_t
+ * @aon_cam_sel_offset : AON Cam Select Register offset in cpas top
+ * @cam_sel_mask       : Camera select mask.
+ * @mclk_sel_mask      : MCLK select mask.
+ */
+struct cam_csiphy_aon_sel_params_t {
+	uint32_t aon_cam_sel_offset;
+	uint32_t cam_sel_mask;
+	uint32_t mclk_sel_mask;
 };
 
 /**
@@ -97,6 +105,7 @@ enum cam_csiphy_state {
  * @csiphy_cpas_cp_3ph_offset: cp register 3ph offset
  * @csiphy_2ph_clock_lane: clock lane in 2ph
  * @csiphy_2ph_combo_ck_ln: clk lane in combo 2ph
+ * @aon_sel_params: aon selection parameters
  */
 struct csiphy_reg_parms_t {
 /*MIPI CSI PHY registers*/
@@ -120,6 +129,7 @@ struct csiphy_reg_parms_t {
 	uint32_t csiphy_2ph_clock_lane;
 	uint32_t csiphy_2ph_combo_ck_ln;
 	uint32_t prgm_cmn_reg_across_csiphy;
+	struct cam_csiphy_aon_sel_params_t *aon_sel_params;
 };
 
 /**

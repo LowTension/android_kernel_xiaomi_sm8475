@@ -44,6 +44,7 @@ struct g_csiphy_data {
 	void __iomem *base_address;
 	uint8_t is_3phase;
 	uint32_t cpas_handle;
+	struct cam_csiphy_aon_sel_params_t *aon_sel_param;
 };
 
 static struct g_csiphy_data g_phy_data[MAX_CSIPHY] = {{0, 0}};
@@ -1117,6 +1118,7 @@ int cam_csiphy_util_update_aon_ops(
 {
 	uint32_t aon_config = 0;
 	uint32_t cpas_hdl = 0;
+	struct cam_csiphy_aon_sel_params_t *aon_sel_params;
 	int rc = 0;
 
 	if (phy_idx > MAX_CSIPHY) {
@@ -1124,7 +1126,13 @@ int cam_csiphy_util_update_aon_ops(
 		return -ENODEV;
 	}
 
+	if (g_phy_data[phy_idx].aon_sel_param == NULL) {
+		CAM_ERR(CAM_CSIPHY, "AON select parameters are null");
+		return -EINVAL;
+	}
+
 	cpas_hdl = g_phy_data[phy_idx].cpas_handle;
+	aon_sel_params = g_phy_data[phy_idx].aon_sel_param;
 
 	CAM_DBG(CAM_CSIPHY, "PHY idx: %d", phy_idx);
 	rc = cam_csiphy_cpas_ops(cpas_hdl, true);
@@ -1139,23 +1147,25 @@ int cam_csiphy_util_update_aon_ops(
 	}
 
 	cam_cpas_reg_read(cpas_hdl, CAM_CPAS_REG_CPASTOP,
-		CAM_CSIPHY_CPAS_AON_SEL_ADDR, true,	&aon_config);
+		aon_sel_params->aon_cam_sel_offset,
+		true, &aon_config);
 
 	if (get_access) {
-		aon_config &= ~(CAM_CSIPHY_CPAS_MAIN_CAM_SEL |
-			CAM_CSIPHY_CPAS_MCLK_SEL);
+		aon_config &= ~(aon_sel_params->cam_sel_mask |
+			aon_sel_params->mclk_sel_mask);
 		CAM_DBG(CAM_CSIPHY,
 			"Selecting MainCamera over AON Camera");
 	} else if (!get_access) {
-		aon_config |= (CAM_CSIPHY_CPAS_MAIN_CAM_SEL |
-			CAM_CSIPHY_CPAS_MCLK_SEL);
+		aon_config |= (aon_sel_params->cam_sel_mask |
+			aon_sel_params->mclk_sel_mask);
 		CAM_DBG(CAM_CSIPHY,
 			"Releasing MainCamera to AON Camera");
 	}
 
 	CAM_DBG(CAM_CSIPHY, "value of aon_config = %u", aon_config);
 	if (cam_cpas_reg_write(cpas_hdl, CAM_CPAS_REG_CPASTOP,
-		CAM_CSIPHY_CPAS_AON_SEL_ADDR, true, aon_config)) {
+		aon_sel_params->aon_cam_sel_offset,
+		true, aon_config)) {
 		CAM_ERR(CAM_CSIPHY,
 				"CPAS AON sel register write failed");
 	}
@@ -1692,4 +1702,6 @@ void cam_csiphy_register_baseaddress(struct csiphy_device *csiphy_dev)
 		csiphy_dev->soc_info.reg_map[0].mem_base;
 	g_phy_data[csiphy_dev->soc_info.index].cpas_handle =
 		csiphy_dev->cpas_handle;
+	g_phy_data[csiphy_dev->soc_info.index].aon_sel_param =
+		csiphy_dev->ctrl_reg->csiphy_reg.aon_sel_params;
 }

@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CAM_CSIPHY_1_0_HWREG_H_
@@ -17,6 +17,7 @@ struct csiphy_reg_parms_t csiphy_v1_0 = {
 	.csiphy_reset_array_size = 5,
 	.csiphy_2ph_config_array_size = 14,
 	.csiphy_3ph_config_array_size = 19,
+	.aon_sel_params = NULL,
 };
 
 struct csiphy_reg_t csiphy_common_reg_1_0[] = {
