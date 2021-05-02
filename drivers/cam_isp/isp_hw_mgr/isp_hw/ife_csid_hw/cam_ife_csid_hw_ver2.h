@@ -211,7 +211,7 @@ struct cam_ife_csid_ver2_top_reg_info {
 	uint32_t dual_cfg_rst_val;
 };
 
-struct cam_ife_csid_ver2_rdi_reg_info {
+struct cam_ife_csid_ver2_path_reg_info {
 	uint32_t irq_status_addr;
 	uint32_t irq_mask_addr;
 	uint32_t irq_clear_addr;
@@ -221,9 +221,13 @@ struct cam_ife_csid_ver2_rdi_reg_info {
 	uint32_t debug_clr_cmd_addr;
 	uint32_t multi_vcdt_cfg0_addr;
 	uint32_t cfg1_addr;
+	uint32_t sparse_pd_extractor_cfg_addr;
 	uint32_t err_recovery_cfg0_addr;
 	uint32_t err_recovery_cfg1_addr;
 	uint32_t err_recovery_cfg2_addr;
+	uint32_t bin_pd_detect_cfg0_addr;
+	uint32_t bin_pd_detect_cfg1_addr;
+	uint32_t bin_pd_detect_cfg2_addr;
 	uint32_t debug_byte_cntr_ping_addr;
 	uint32_t debug_byte_cntr_pong_addr;
 	uint32_t camif_frame_cfg_addr;
@@ -260,106 +264,7 @@ struct cam_ife_csid_ver2_rdi_reg_info {
 	uint32_t timestamp_curr1_eof_addr;
 	uint32_t timestamp_perv0_eof_addr;
 	uint32_t timestamp_perv1_eof_addr;
-	uint32_t batch_id_cfg0_addr;
-	uint32_t batch_id_cfg1_addr;
-	uint32_t batch_period_cfg_addr;
-	uint32_t batch_stream_id_cfg_addr;
-	uint32_t epoch0_cfg_batch_id0_addr;
-	uint32_t epoch1_cfg_batch_id0_addr;
-	uint32_t epoch0_cfg_batch_id1_addr;
-	uint32_t epoch1_cfg_batch_id1_addr;
-	uint32_t epoch0_cfg_batch_id2_addr;
-	uint32_t epoch1_cfg_batch_id2_addr;
-	uint32_t epoch0_cfg_batch_id3_addr;
-	uint32_t epoch1_cfg_batch_id3_addr;
-	uint32_t epoch0_cfg_batch_id4_addr;
-	uint32_t epoch1_cfg_batch_id4_addr;
-	uint32_t epoch0_cfg_batch_id5_addr;
-	uint32_t epoch1_cfg_batch_id5_addr;
-
-	/*Shift Bit Configurations*/
-	uint32_t resume_frame_boundary;
-	uint32_t offline_mode_supported;
-	uint32_t mipi_pack_supported;
-	uint32_t packing_fmt_shift_val;
-	uint32_t plain_fmt_shift_val;
-	uint32_t plain_alignment_shift_val;
-	uint32_t crop_v_en_shift_val;
-	uint32_t crop_h_en_shift_val;
-	uint32_t drop_v_en_shift_val;
-	uint32_t drop_h_en_shift_val;
-	uint32_t early_eof_en_shift_val;
-	uint32_t format_measure_en_shift_val;
-	uint32_t timestamp_en_shift_val;
-	uint32_t byte_cntr_en_shift_val;
-	uint32_t offline_mode_en_shift_val;
-	uint32_t debug_byte_cntr_rst_shift_val;
-	uint32_t ccif_violation_en;
-	uint32_t overflow_ctrl_mode_val;
-	uint32_t overflow_ctrl_en;
-	uint32_t fatal_err_mask;
-	uint32_t non_fatal_err_mask;
-	uint32_t camif_irq_mask;
-	uint32_t rup_aup_mask;
-	uint32_t top_irq_mask;
-	uint32_t epoch0_cfg_val;
-	uint32_t epoch1_cfg_val;
-	uint32_t epoch0_shift_val;
-	uint32_t epoch1_shift_val;
-};
-
-struct cam_ife_csid_ver2_pxl_reg_info {
-	uint32_t irq_status_addr;
-	uint32_t irq_mask_addr;
-	uint32_t irq_clear_addr;
-	uint32_t irq_set_addr;
-	uint32_t cfg0_addr;
-	uint32_t ctrl_addr;
-	uint32_t debug_clr_cmd_addr;
-	uint32_t multi_vcdt_cfg0_addr;
-	uint32_t cfg1_addr;
-	uint32_t sparse_pd_extractor_cfg_addr;
-	uint32_t err_recovery_cfg0_addr;
-	uint32_t err_recovery_cfg1_addr;
-	uint32_t err_recovery_cfg2_addr;
-	uint32_t bin_pd_detect_cfg0_addr;
-	uint32_t bin_pd_detect_cfg1_addr;
-	uint32_t bin_pd_detect_cfg2_addr;
-	uint32_t camif_frame_cfg_addr;
-	uint32_t epoch_irq_cfg_addr;
-	uint32_t epoch0_subsample_ptrn_addr;
-	uint32_t epoch1_subsample_ptrn_addr;
-	uint32_t debug_camif_1_addr;
-	uint32_t debug_camif_0_addr;
-	uint32_t debug_halt_status_addr;
-	uint32_t debug_misr_val0_addr;
-	uint32_t debug_misr_val1_addr;
-	uint32_t debug_misr_val2_addr;
-	uint32_t debug_misr_val3_addr;
-	uint32_t hcrop_addr;
-	uint32_t vcrop_addr;
-	uint32_t pix_drop_pattern_addr;
-	uint32_t pix_drop_period_addr;
-	uint32_t line_drop_pattern_addr;
-	uint32_t line_drop_period_addr;
-	uint32_t frm_drop_pattern_addr;
-	uint32_t frm_drop_period_addr;
-	uint32_t irq_subsample_pattern_addr;
-	uint32_t irq_subsample_period_addr;
-	uint32_t format_measure_cfg0_addr;
-	uint32_t format_measure_cfg1_addr;
-	uint32_t format_measure0_addr;
-	uint32_t format_measure1_addr;
-	uint32_t format_measure2_addr;
-	uint32_t timestamp_curr0_sof_addr;
-	uint32_t timestamp_curr1_sof_addr;
-	uint32_t timestamp_perv0_sof_addr;
-	uint32_t timestamp_perv1_sof_addr;
-	uint32_t timestamp_curr0_eof_addr;
-	uint32_t timestamp_curr1_eof_addr;
-	uint32_t timestamp_perv0_eof_addr;
-	uint32_t timestamp_perv1_eof_addr;
-	uint32_t lut_bank_cfg_addr;
+        uint32_t lut_bank_cfg_addr;
 	uint32_t batch_id_cfg0_addr;
 	uint32_t batch_id_cfg1_addr;
 	uint32_t batch_period_cfg_addr;
@@ -385,11 +290,17 @@ struct cam_ife_csid_ver2_pxl_reg_info {
 	uint32_t start_mode_shift;
 	uint32_t start_master_sel_val;
 	uint32_t start_master_sel_shift;
+	uint32_t resume_frame_boundary;
+	uint32_t offline_mode_supported;
+	uint32_t mipi_pack_supported;
+	uint32_t packing_fmt_shift_val;
+	uint32_t plain_fmt_shift_val;
+	uint32_t plain_alignment_shift_val;
 	uint32_t crop_v_en_shift_val;
 	uint32_t crop_h_en_shift_val;
 	uint32_t drop_v_en_shift_val;
 	uint32_t drop_h_en_shift_val;
-	uint32_t pix_store_en_shift_val;
+        uint32_t pix_store_en_shift_val;
 	uint32_t early_eof_en_shift_val;
 	uint32_t bin_h_en_shift_val;
 	uint32_t bin_v_en_shift_val;
@@ -406,23 +317,27 @@ struct cam_ife_csid_ver2_pxl_reg_info {
 	uint32_t bin_pd_detect_x_end_shift_val;
 	uint32_t bin_pd_detect_y_offset_shift_val;
 	uint32_t bin_pd_detect_y_end_shift_val;
-	uint32_t epoch0_cfg_val;
-	uint32_t epoch1_cfg_val;
-	uint32_t epoch0_shift_val;
-	uint32_t epoch1_shift_val;
-	/* config Values */
-	uint32_t resume_frame_boundary;
+	uint32_t byte_cntr_en_shift_val;
+	uint32_t offline_mode_en_shift_val;
+	uint32_t debug_byte_cntr_rst_shift_val;
+	uint32_t stripe_loc_shift_val;
+	uint32_t pix_pattern_shift_val;
+	uint32_t ccif_violation_en;
 	uint32_t overflow_ctrl_mode_val;
 	uint32_t overflow_ctrl_en;
 	uint32_t lut_bank_0_sel_val;
 	uint32_t lut_bank_1_sel_val;
-	uint32_t ccif_violation_en;
 	uint32_t binning_supported;
 	uint32_t fatal_err_mask;
 	uint32_t non_fatal_err_mask;
+	uint32_t pix_pattern_shift;
 	uint32_t camif_irq_mask;
 	uint32_t rup_aup_mask;
 	uint32_t top_irq_mask;
+	uint32_t epoch0_cfg_val;
+	uint32_t epoch1_cfg_val;
+	uint32_t epoch0_shift_val;
+	uint32_t epoch1_shift_val;
 };
 
 struct cam_ife_csid_ver2_common_reg_info {
@@ -555,10 +470,8 @@ struct cam_ife_csid_ver2_reg_info {
 	struct cam_irq_controller_reg_info               *buf_done_irq_reg_info;
 	const struct cam_ife_csid_ver2_common_reg_info   *cmn_reg;
 	const struct cam_ife_csid_csi2_rx_reg_info       *csi2_reg;
-	const struct cam_ife_csid_ver2_pxl_reg_info      *ipp_reg;
-	const struct cam_ife_csid_ver2_pxl_reg_info      *ppp_reg;
-	const struct cam_ife_csid_ver2_rdi_reg_info      *rdi_reg
-		    [CAM_IFE_CSID_RDI_MAX];
+	const struct cam_ife_csid_ver2_path_reg_info     *path_reg[
+						    CAM_IFE_PIX_PATH_RES_MAX];
 	const struct cam_ife_csid_ver2_top_reg_info      *top_reg;
 	const uint32_t                                    need_top_cfg;
 	const uint32_t                                    csid_cust_node_map[
