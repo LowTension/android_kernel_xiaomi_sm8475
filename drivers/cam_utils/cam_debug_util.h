@@ -7,6 +7,7 @@
 #define _CAM_DEBUG_UTIL_H_
 
 #include <linux/platform_device.h>
+#include "cam_presil_hw_access.h"
 
 /* Module IDs used for debug logging */
 #define CAM_CDM           BIT_ULL(0)

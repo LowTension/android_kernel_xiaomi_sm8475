@@ -86,6 +86,12 @@ camera-y := \
 	drivers/cam_cdm/cam_cdm_virtual_core.o \
 	drivers/cam_cdm/cam_cdm_hw_core.o
 
+ifeq (,$(filter $(CONFIG_CAM_PRESIL),y m))
+	camera-y += drivers/cam_presil/stub/cam_presil_hw_access_stub.o
+else
+	ccflags-y += -DCONFIG_CAM_PRESIL=1
+endif
+
 camera-$(CONFIG_QCOM_CX_IPEAK) += drivers/cam_utils/cam_cx_ipeak.o
 camera-$(CONFIG_QCOM_BUS_SCALING) += drivers/cam_utils/cam_soc_bus.o
 camera-$(CONFIG_INTERCONNECT_QCOM) += drivers/cam_utils/cam_soc_icc.o
