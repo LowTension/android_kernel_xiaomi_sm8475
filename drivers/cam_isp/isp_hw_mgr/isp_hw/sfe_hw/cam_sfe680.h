@@ -311,6 +311,7 @@ static struct cam_sfe_bus_rd_hw_info sfe680_bus_rd_hw_info = {
 			.stride                   = 0x00000464,
 			.unpacker_cfg             = 0x00000468,
 			.latency_buf_allocation   = 0x0000047C,
+			.system_cache_cfg         = 0x0000049C,
 		},
 		/* BUS Client 1 */
 		{
@@ -321,6 +322,7 @@ static struct cam_sfe_bus_rd_hw_info sfe680_bus_rd_hw_info = {
 			.stride                   = 0x00000504,
 			.unpacker_cfg             = 0x00000508,
 			.latency_buf_allocation   = 0x0000051C,
+			.system_cache_cfg         = 0x0000053C,
 		},
 		/* BUS Client 2 */
 		{
@@ -331,6 +333,7 @@ static struct cam_sfe_bus_rd_hw_info sfe680_bus_rd_hw_info = {
 			.stride                   = 0x000005A4,
 			.unpacker_cfg             = 0x000005A8,
 			.latency_buf_allocation   = 0x000005BC,
+			.system_cache_cfg         = 0x000005DC,
 		},
 	},
 	.num_bus_rd_resc = 3,

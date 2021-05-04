@@ -781,6 +781,12 @@ static void cam_ife_hw_mgr_deinit_hw(
 	for (i = 0; i < max_ife_out_res; i++)
 		cam_ife_hw_mgr_deinit_hw_res(&ctx->res_list_ife_out[i]);
 
+	/* Check if any cache needs to be de-activated */
+	for (i = CAM_LLCC_SMALL_1; i < CAM_LLCC_MAX; i++) {
+		if (ctx->flags.sys_cache_usage[i])
+			cam_cpas_deactivate_llcc(i);
+		ctx->flags.sys_cache_usage[i] = false;
+	}
 	ctx->flags.init_done = false;
 }
 
@@ -887,6 +893,18 @@ static int cam_ife_hw_mgr_init_hw(
 		if (rc) {
 			CAM_ERR(CAM_ISP, "CSID reset failed");
 			goto deinit;
+		}
+	}
+
+	/* Check if any cache needs to be activated */
+	for (i = CAM_LLCC_SMALL_1; i < CAM_LLCC_MAX; i++) {
+		if (ctx->flags.sys_cache_usage[i]) {
+			rc = cam_cpas_activate_llcc(i);
+			if (rc) {
+				CAM_ERR(CAM_ISP,
+				"Failed to activate cache: %d", i);
+				goto deinit;
+			}
 		}
 	}
 
@@ -6219,8 +6237,9 @@ static int cam_ife_mgr_start_hw(void *hw_mgr_priv, void *start_hw_args)
 	for (i = 0; i < CAM_SFE_HW_NUM_MAX; i++) {
 		struct cam_sfe_debug_cfg_params debug_cfg;
 
-		debug_cfg.sfe_debug_cfg = g_ife_hw_mgr.debug_cfg.sfe_debug;
-		debug_cfg.sfe_sensor_sel = g_ife_hw_mgr.debug_cfg.sfe_sensor_diag_cfg;
+		debug_cfg.cache_config = false;
+		debug_cfg.u.dbg_cfg.sfe_debug_cfg = g_ife_hw_mgr.debug_cfg.sfe_debug;
+		debug_cfg.u.dbg_cfg.sfe_sensor_sel = g_ife_hw_mgr.debug_cfg.sfe_sensor_diag_cfg;
 		if (g_ife_hw_mgr.sfe_devices[i]) {
 			rc = g_ife_hw_mgr.sfe_devices[i]->hw_ops.process_cmd(
 				g_ife_hw_mgr.sfe_devices[i]->hw_priv,
@@ -6970,8 +6989,6 @@ end:
 }
 
 static int cam_isp_blob_sfe_scratch_buf_update(
-	uint32_t                                     blob_type,
-	struct cam_isp_generic_blob_info            *blob_info,
 	struct cam_isp_sfe_init_scratch_buf_config  *scratch_config,
 	struct cam_hw_prepare_update_args           *prepare)
 {
@@ -7053,6 +7070,148 @@ static int cam_isp_blob_sfe_scratch_buf_update(
 
 	ctx->scratch_config.num_config = scratch_config->num_ports;
 	ctx->scratch_config.config_done = true;
+	return 0;
+}
+
+static inline int __cam_isp_sfe_send_cache_config(
+	int32_t                                   cmd_type,
+	struct cam_isp_sfe_bus_sys_cache_config  *wm_rm_cache_cfg)
+{
+	int rc = 0;
+	struct cam_isp_resource_node *hw_res = wm_rm_cache_cfg->res;
+
+	rc = hw_res->hw_intf->hw_ops.process_cmd(
+		hw_res->hw_intf->hw_priv,
+		cmd_type, wm_rm_cache_cfg,
+		sizeof(struct cam_isp_sfe_bus_sys_cache_config));
+	if (rc) {
+		CAM_ERR(CAM_ISP,
+			"Failed in sending cache config for:%d",
+			hw_res->res_id);
+	}
+
+	return rc;
+}
+
+static int cam_isp_blob_sfe_exp_order_update(
+	uint32_t                             base_idx,
+	struct cam_isp_sfe_exp_config       *exp_config,
+	struct cam_hw_prepare_update_args   *prepare)
+{
+	int rc = 0, i, j;
+	uint32_t exp_order_max = 0;
+	uint32_t res_id_out, res_id_in;
+	struct cam_ife_hw_mgr_ctx               *ctx;
+	struct cam_isp_hw_mgr_res               *hw_mgr_res;
+	struct cam_isp_hw_mgr_res               *tmp;
+	struct cam_isp_sfe_wm_exp_order_config  *order_cfg;
+	struct cam_ife_hw_mgr                   *hw_mgr;
+	struct cam_isp_sfe_bus_sys_cache_config  wm_rm_cache_cfg;
+
+	ctx = prepare->ctxt_to_hw_map;
+	hw_mgr = ctx->hw_mgr;
+	memset(ctx->flags.sys_cache_usage, false, sizeof(ctx->flags.sys_cache_usage));
+
+	if (!hw_mgr->num_caches_found) {
+		CAM_DBG(CAM_ISP, "No caches found during probe");
+		return 0;
+	}
+
+	/*
+	 *  The last resource in the array will be considered as
+	 *  last exposure
+	 */
+	exp_order_max = exp_config->num_ports - 1;
+	for (i = 0; i < exp_config->num_ports; i++) {
+		order_cfg = &exp_config->wm_config[i];
+
+		rc = cam_ife_hw_mgr_is_sfe_rdi_for_fetch(
+			order_cfg->res_type);
+		if (!rc) {
+			CAM_ERR(CAM_ISP,
+				"Not a SFE fetch RDI: 0x%x",
+				order_cfg->res_type);
+			return -EINVAL;
+		}
+
+		/* Add more params if needed */
+		wm_rm_cache_cfg.use_cache =
+			(exp_order_max == i) ? true : false;
+		wm_rm_cache_cfg.scid = 0;
+
+		/* Currently using cache for short only */
+		if (wm_rm_cache_cfg.use_cache) {
+			if (base_idx == CAM_SFE_CORE_0) {
+				wm_rm_cache_cfg.scid =
+					hw_mgr->sys_cache_info[CAM_LLCC_SMALL_1].scid;
+				if (wm_rm_cache_cfg.scid <= 0)
+					goto end;
+
+				ctx->flags.sys_cache_usage[CAM_LLCC_SMALL_1] = true;
+			} else if (base_idx == CAM_SFE_CORE_1) {
+				wm_rm_cache_cfg.scid =
+					hw_mgr->sys_cache_info[CAM_LLCC_SMALL_2].scid;
+				if (wm_rm_cache_cfg.scid <= 0)
+					goto end;
+
+				ctx->flags.sys_cache_usage[CAM_LLCC_SMALL_2] = true;
+			}
+		}
+
+		/* Configure cache config for WM */
+		res_id_out = order_cfg->res_type & 0xFF;
+		hw_mgr_res = &ctx->res_list_sfe_out[res_id_out];
+		for (j = 0; j < CAM_ISP_HW_SPLIT_MAX; j++) {
+			if (!hw_mgr_res->hw_res[j])
+				continue;
+
+			if (hw_mgr_res->hw_res[j]->hw_intf->hw_idx != base_idx)
+				continue;
+
+			wm_rm_cache_cfg.res = hw_mgr_res->hw_res[j];
+			rc = __cam_isp_sfe_send_cache_config(
+				CAM_ISP_HW_SFE_SYS_CACHE_WM_CONFIG,
+				&wm_rm_cache_cfg);
+			if (rc)
+				return rc;
+		}
+
+		/* RDI WMs have been validated find corresponding RM */
+		if (order_cfg->res_type == CAM_ISP_SFE_OUT_RES_RDI_0)
+			res_id_in = CAM_ISP_HW_SFE_IN_RD0;
+		else if (order_cfg->res_type == CAM_ISP_SFE_OUT_RES_RDI_1)
+			res_id_in = CAM_ISP_HW_SFE_IN_RD1;
+		else
+			res_id_in = CAM_ISP_HW_SFE_IN_RD2;
+
+		/* Configure cache config for RM */
+		list_for_each_entry_safe(hw_mgr_res, tmp, &ctx->res_list_ife_in_rd, list) {
+			for (j = 0; j < CAM_ISP_HW_SPLIT_MAX; j++) {
+				if (!hw_mgr_res->hw_res[j])
+					continue;
+
+				if (hw_mgr_res->hw_res[j]->res_id != res_id_in)
+					continue;
+
+				if (hw_mgr_res->hw_res[j]->hw_intf->hw_idx != base_idx)
+					continue;
+
+				wm_rm_cache_cfg.res = hw_mgr_res->hw_res[j];
+				rc = __cam_isp_sfe_send_cache_config(
+					CAM_ISP_HW_SFE_SYS_CACHE_RM_CONFIG,
+					&wm_rm_cache_cfg);
+				if (rc)
+					return rc;
+			}
+		}
+		CAM_DBG(CAM_ISP,
+			"cache config based on exp order: %u [max: %u] for out: 0x%x",
+			i, exp_order_max, order_cfg->res_type);
+	}
+
+	return rc;
+
+end:
 	return 0;
 }
 
@@ -8288,6 +8447,7 @@ static int cam_isp_packet_generic_blob_handler(void *user_data,
 	case CAM_ISP_GENERIC_BLOB_TYPE_SFE_HFR_CONFIG:
 	case CAM_ISP_GENERIC_BLOB_TYPE_SFE_FE_CONFIG:
 	case CAM_ISP_GENERIC_BLOB_TYPE_SFE_SCRATCH_BUF_CFG:
+	case CAM_ISP_GENERIC_BLOB_TYPE_SFE_EXP_ORDER_CFG:
 		break;
 	case CAM_ISP_GENERIC_BLOB_TYPE_DYNAMIC_MODE_SWITCH: {
 		struct cam_isp_mode_switch_info    *mup_config;
@@ -8604,7 +8764,7 @@ static int cam_sfe_packet_generic_blob_handler(void *user_data,
 			return -EINVAL;
 		}
 
-		rc = cam_isp_blob_sfe_scratch_buf_update(blob_type, blob_info,
+		rc = cam_isp_blob_sfe_scratch_buf_update(
 			scratch_config, prepare);
 		if (rc)
 			CAM_ERR(CAM_ISP, "SFE scratch buffer update failed");
@@ -8640,6 +8800,69 @@ static int cam_sfe_packet_generic_blob_handler(void *user_data,
 		mup_config = (struct cam_isp_mode_switch_info *)blob_data;
 		ife_mgr_ctx->scratch_config.curr_num_exp =
 			mup_config->num_expoures;
+	}
+		break;
+	case CAM_ISP_GENERIC_BLOB_TYPE_SFE_EXP_ORDER_CFG: {
+		struct cam_isp_sfe_exp_config *exp_config;
+
+		if (!ife_mgr_ctx->flags.is_sfe_shdr) {
+			CAM_ERR(CAM_ISP,
+				"Blob %u supported only for sHDR streams",
+				blob_type);
+			return -EINVAL;
+		}
+
+		if (blob_size <
+			sizeof(struct cam_isp_sfe_exp_config)) {
+			CAM_ERR(CAM_ISP, "Invalid blob size %u", blob_size);
+			return -EINVAL;
+		}
+
+		exp_config =
+			(struct cam_isp_sfe_exp_config *)blob_data;
+
+		if ((exp_config->num_ports > CAM_SFE_FE_RDI_NUM_MAX) ||
+			(exp_config->num_ports == 0)) {
+			CAM_ERR(CAM_ISP,
+				"Invalid num_ports %u in exp order config",
+				exp_config->num_ports);
+			return -EINVAL;
+		}
+
+		/* Check for integer overflow */
+		if (exp_config->num_ports != 1) {
+			if (sizeof(struct cam_isp_sfe_wm_exp_order_config) >
+				((UINT_MAX -
+				sizeof(
+				struct cam_isp_sfe_exp_config)) /
+				(exp_config->num_ports - 1))) {
+				CAM_ERR(CAM_ISP,
+					"Max size exceeded in exp order config num_ports: %u size per port: %lu",
+					exp_config->num_ports,
+					sizeof(
+					struct cam_isp_sfe_wm_exp_order_config));
+				return -EINVAL;
+			}
+		}
+
+		if (blob_size <
+			(sizeof(struct cam_isp_sfe_exp_config) +
+			(exp_config->num_ports - 1) *
+			sizeof(struct cam_isp_sfe_wm_exp_order_config))) {
+			CAM_ERR(CAM_ISP, "Invalid blob size: %u expected: %lu",
+				blob_size,
+				sizeof(
+				struct cam_isp_sfe_exp_config) +
+				(exp_config->num_ports - 1) *
+				sizeof(
+				struct cam_isp_sfe_wm_exp_order_config));
+			return -EINVAL;
+		}
+
+		rc = cam_isp_blob_sfe_exp_order_update(
+			blob_info->base_info->idx, exp_config, prepare);
+		if (rc)
+			CAM_ERR(CAM_ISP, "SFE exp order update failed");
 	}
 		break;
 	case CAM_ISP_GENERIC_BLOB_TYPE_HFR_CONFIG:
@@ -11086,6 +11309,49 @@ static int cam_ife_hw_mgr_sort_dev_with_caps(
 	return 0;
 }
 
+static int cam_ife_set_sfe_cache_debug(void *data, u64 val)
+{
+	int i, rc = -EINVAL;
+	uint32_t hw_idx = 0;
+	struct cam_sfe_debug_cfg_params debug_cfg;
+	struct cam_hw_intf *hw_intf = NULL;
+
+	debug_cfg.cache_config = true;
+
+	/* BITS [0:3] is for hw_idx */
+	hw_idx = val & 0xF;
+	for (i = 0; i < CAM_SFE_HW_NUM_MAX; i++) {
+		if ((g_ife_hw_mgr.sfe_devices[i]) && (i == hw_idx)) {
+			hw_intf = g_ife_hw_mgr.sfe_devices[i];
+
+			debug_cfg.u.cache_cfg.sfe_cache_dbg = (val >> 4);
+			g_ife_hw_mgr.debug_cfg.sfe_cache_debug[i] =
+				debug_cfg.u.cache_cfg.sfe_cache_dbg;
+			rc = hw_intf->hw_ops.process_cmd(hw_intf->hw_priv,
+				CAM_ISP_HW_CMD_SET_SFE_DEBUG_CFG,
+				&debug_cfg,
+				sizeof(struct cam_sfe_debug_cfg_params));
+		}
+	}
+
+	CAM_DBG(CAM_ISP, "Set SFE cache debug value: 0x%llx", val);
+	return rc;
+}
+
+static int cam_ife_get_sfe_cache_debug(void *data, u64 *val)
+{
+	*val = g_ife_hw_mgr.debug_cfg.sfe_cache_debug[CAM_SFE_CORE_1];
+	*val = *val << 32;
+	*val |=  g_ife_hw_mgr.debug_cfg.sfe_cache_debug[CAM_SFE_CORE_0];
+	CAM_DBG(CAM_ISP, "Get SFE cace debug value: 0x%llx", *val);
+
+	return 0;
+}
+
+DEFINE_DEBUGFS_ATTRIBUTE(cam_ife_sfe_cache_debug,
+	cam_ife_get_sfe_cache_debug,
+	cam_ife_set_sfe_cache_debug, "%16llu");
+
 static int cam_ife_set_csid_debug(void *data, u64 val)
 {
 	g_ife_hw_mgr.debug_cfg.csid_debug = val;
@@ -11208,6 +11474,8 @@ static int cam_ife_hw_mgr_debug_register(void)
 	dbgfileptr = debugfs_create_bool("disable_ife_mmu_prefetch", 0644,
 		g_ife_hw_mgr.debug_cfg.dentry,
 		&g_ife_hw_mgr.debug_cfg.disable_ife_mmu_prefetch);
+	dbgfileptr = debugfs_create_file("sfe_cache_debug", 0644,
+		g_ife_hw_mgr.debug_cfg.dentry, NULL, &cam_ife_sfe_cache_debug);
 
 	if (IS_ERR(dbgfileptr)) {
 		if (PTR_ERR(dbgfileptr) == -ENODEV)
@@ -11464,6 +11732,18 @@ int cam_ife_hw_mgr_init(struct cam_hw_mgr_intf *hw_mgr_intf, int *iommu_hdl)
 		goto end;
 	}
 
+	/* Populate sys cache info */
+	g_ife_hw_mgr.num_caches_found = 0;
+	for (i = CAM_LLCC_SMALL_1; i < CAM_LLCC_MAX; i++) {
+		g_ife_hw_mgr.sys_cache_info[i].scid =
+			cam_cpas_get_scid(i);
+		g_ife_hw_mgr.sys_cache_info[i].type = i;
+		CAM_DBG(CAM_ISP, "Cache_%d scid: %d",
+			i, g_ife_hw_mgr.sys_cache_info[i].scid);
+		if (g_ife_hw_mgr.sys_cache_info[i].scid > 0)
+			g_ife_hw_mgr.num_caches_found++;
+	}
+
 	/* fill return structure */
 	hw_mgr_intf->hw_mgr_priv = &g_ife_hw_mgr;
 	hw_mgr_intf->hw_get_caps = cam_ife_mgr_get_hw_caps;
@@ -11531,4 +11811,5 @@ void cam_ife_hw_mgr_deinit(void)
 
 	cam_smmu_destroy_handle(g_ife_hw_mgr.mgr_common.img_iommu_hdl);
 	g_ife_hw_mgr.mgr_common.img_iommu_hdl = -1;
+	g_ife_hw_mgr.num_caches_found = 0;
 }
