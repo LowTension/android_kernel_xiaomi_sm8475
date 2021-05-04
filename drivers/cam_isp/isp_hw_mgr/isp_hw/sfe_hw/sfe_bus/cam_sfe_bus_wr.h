@@ -116,6 +116,7 @@ struct cam_sfe_bus_reg_offset_bus_client {
 	uint32_t debug_status_1;
 	uint32_t mmu_prefetch_cfg;
 	uint32_t mmu_prefetch_max_offset;
+	uint32_t bw_limiter_addr;
 	uint32_t comp_group;
 };
 
@@ -140,15 +141,16 @@ struct cam_sfe_bus_sfe_out_hw_info {
  *
  * @Brief:            HW register info for entire Bus
  *
- * @common_reg:       Common register details
- * @num_client:       Total number of write clients
- * @bus_client_reg:   Bus client register info
- * @sfe_out_hw_info:  SFE output capability
+ * @common_reg:            Common register details
+ * @num_client:            Total number of write clients
+ * @bus_client_reg:        Bus client register info
+ * @sfe_out_hw_info:       SFE output capability
  * @constraint_error_list: Static list of all constraint errors
- * @num_comp_grp:     Number of composite groups
- * @comp_done_shift:  Mask shift for comp done mask
- * @line_done_cfg:    Line done cfg for wr/rd sync
- * @top_irq_shift:    Mask shift for top level BUS WR irq
+ * @num_comp_grp:          Number of composite groups
+ * @comp_done_shift:       Mask shift for comp done mask
+ * @line_done_cfg:         Line done cfg for wr/rd sync
+ * @top_irq_shift:         Mask shift for top level BUS WR irq
+ * @max_bw_counter_limit:  Max BW counter limit
  */
 struct cam_sfe_bus_wr_hw_info {
 	struct cam_sfe_bus_reg_offset_common common_reg;
@@ -164,6 +166,7 @@ struct cam_sfe_bus_wr_hw_info {
 	uint32_t comp_done_shift;
 	uint32_t line_done_cfg;
 	uint32_t top_irq_shift;
+	uint32_t max_bw_counter_limit;
 };
 
 /*
