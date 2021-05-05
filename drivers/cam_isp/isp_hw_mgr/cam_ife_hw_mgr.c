@@ -2104,7 +2104,7 @@ static int cam_convert_hw_idx_to_ife_hw_num(int hw_idx)
 		case 1: return CAM_ISP_IFE1_HW;
 		case 2: return CAM_ISP_IFE2_HW;
 		}
-	} else if (hw_idx < g_num_ife_lite) {
+	} else if (hw_idx < g_num_ife + g_num_ife_lite) {
 		switch (hw_idx - g_num_ife) {
 		case 0: return CAM_ISP_IFE0_LITE_HW;
 		case 1: return CAM_ISP_IFE1_LITE_HW;
