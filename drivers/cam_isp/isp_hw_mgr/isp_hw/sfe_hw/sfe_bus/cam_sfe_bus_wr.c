@@ -2926,9 +2926,6 @@ int cam_sfe_bus_wr_init(
 	bus_priv->common_data.sfe_debug_cfg = 0;
 	*sfe_bus = sfe_bus_local;
 
-	/* Remove after sys cache verification */
-	bus_priv->common_data.cache_dbg_cfg.disable_all = true;
-
 	CAM_DBG(CAM_SFE, "Exit");
 	return rc;
 

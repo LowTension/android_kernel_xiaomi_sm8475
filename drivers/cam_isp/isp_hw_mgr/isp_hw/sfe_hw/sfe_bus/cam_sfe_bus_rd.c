@@ -1602,9 +1602,6 @@ int cam_sfe_bus_rd_init(
 	*sfe_bus = sfe_bus_local;
 	bus_priv->common_data.sfe_debug_cfg = 0;
 
-	/* Remove after sys cache verification */
-	bus_priv->common_data.cache_dbg_cfg.disable_all = true;
-
 	return rc;
 
 deinit_sfe_bus_rd:

@@ -7205,7 +7205,8 @@ static int cam_isp_blob_sfe_exp_order_update(
 			}
 		}
 		CAM_DBG(CAM_ISP,
-			"cache config based on exp order: %u [max: %u] for out: 0x%x",
+			"cache %s on exp order: %u [max: %u] for out: 0x%x",
+			(wm_rm_cache_cfg.use_cache ? "enabled" : "not enabled"),
 			i, exp_order_max, order_cfg->res_type);
 	}
 
