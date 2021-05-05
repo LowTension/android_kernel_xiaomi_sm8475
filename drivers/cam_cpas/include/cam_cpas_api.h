@@ -767,4 +767,16 @@ int cam_cpas_activate_llcc(enum cam_sys_cache_config_types type);
  */
 int cam_cpas_deactivate_llcc(enum cam_sys_cache_config_types type);
 
+/**
+ * cam_cpas_dump_camnoc_buff_fill_info()
+ *
+ * @brief: API to dump camnoc buffer fill level info
+ *
+ * @client_handle : Client cpas handle
+ *
+ * @return 0 on success
+ *
+ */
+int cam_cpas_dump_camnoc_buff_fill_info(uint32_t client_handle);
+
 #endif /* _CAM_CPAS_API_H_ */
