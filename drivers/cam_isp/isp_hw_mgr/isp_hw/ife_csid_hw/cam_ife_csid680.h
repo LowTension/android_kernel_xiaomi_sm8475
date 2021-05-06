@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CAM_IFE_CSID_680_H_
@@ -884,7 +884,7 @@ static struct cam_ife_csid_ver2_common_reg_info
 	.vfr_supported                           = 1,
 	.multi_vcdt_supported                    = 1,
 	.frame_id_dec_supported                  = 1,
-	.measure_en_hbi_vbi_cnt_mask             = 0xc,
+	.measure_en_hbi_vbi_cnt_mask             = 0x1c,
 	.measure_pixel_line_en_mask              = 0x3,
 	.crop_pix_start_mask                     = 0x3fff,
 	.crop_pix_end_mask                       = 0xffff,
