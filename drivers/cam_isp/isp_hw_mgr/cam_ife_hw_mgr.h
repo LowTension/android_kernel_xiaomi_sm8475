@@ -109,6 +109,17 @@ struct cam_sfe_scratch_buf_cfg {
 };
 
 /**
+ * struct cam_ife_hw_mgr_sfe_info - SFE info
+ *
+ * @num_fetches:      Indicate number of SFE fetches for this stream
+ * @scratch_config    Scratch buffer config if any for this stream
+ */
+struct cam_ife_hw_mgr_sfe_info {
+	uint32_t                        num_fetches;
+	struct cam_sfe_scratch_buf_cfg *scratch_config;
+};
+
+/**
  * struct cam_ife_hw_mgr_ctx_flags - IFE HW mgr ctx flags
  *
  * @ctx_in_use:          flag to tell whether context is active
@@ -200,7 +211,7 @@ struct cam_ife_hw_mgr_ctx_flags {
  * @ts                      captured timestamp when the ctx is acquired
  * @hw_enabled              Array to indicate active HW
  * @buf_done_controller     Buf done controller.
- * @scratch_config          Scratch buffer config if any for this ctx
+ * @sfe_info                SFE info pertaining to this stream
  * @flags                   Flags pertainting to this ctx
  *
  */
@@ -250,7 +261,7 @@ struct cam_ife_hw_mgr_ctx {
 	uint32_t                        ctx_config;
 	struct timespec64               ts;
 	void                           *buf_done_controller;
-	struct cam_sfe_scratch_buf_cfg  scratch_config;
+	struct cam_ife_hw_mgr_sfe_info  sfe_info;
 	struct cam_ife_hw_mgr_ctx_flags flags;
 };
 

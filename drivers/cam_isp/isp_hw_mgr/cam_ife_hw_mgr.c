@@ -2208,64 +2208,6 @@ static int cam_convert_res_id_to_hw_path(int res_id)
 	return 0;
 }
 
-/*
- * This API is to ensure RDI0-2 is not acquired without
- * corresponding RD0-2 acquired [HW restriction]
- */
-static int cam_ife_hw_mgr_acquire_sfe_rdi_for_fe(
-	struct cam_sfe_acquire_args *sfe_acquire,
-	struct cam_isp_hw_mgr_res   *sfe_src_res,
-	struct cam_ife_hw_mgr_ctx   *ife_ctx)
-{
-	uint32_t sfe_rd_id;
-	int rc  = -1;
-	struct cam_hw_intf         *hw_intf;
-	struct cam_isp_hw_mgr_res  *sfe_rd_rsrc;
-
-	switch (sfe_acquire->sfe_in.res_id) {
-	case CAM_ISP_HW_SFE_IN_RDI0:
-		sfe_rd_id = CAM_ISP_SFE_IN_RD_0;
-		break;
-	case CAM_ISP_HW_SFE_IN_RDI1:
-		sfe_rd_id = CAM_ISP_SFE_IN_RD_1;
-		break;
-	case CAM_ISP_HW_SFE_IN_RDI2:
-		sfe_rd_id = CAM_ISP_SFE_IN_RD_2;
-		break;
-	default:
-		CAM_ERR(CAM_ISP,
-			"Invalid SFE fetch engine RDI rsrc: %u",
-			sfe_acquire->sfe_in.res_id);
-		return rc;
-	}
-
-	list_for_each_entry(sfe_rd_rsrc, &ife_ctx->res_list_ife_in_rd, list) {
-		if (sfe_rd_id != sfe_rd_rsrc->res_id)
-			continue;
-
-		CAM_DBG(CAM_ISP, "res_id: 0x%x", sfe_rd_id);
-		hw_intf = sfe_rd_rsrc->hw_res[CAM_ISP_HW_SPLIT_LEFT]->hw_intf;
-		rc = hw_intf->hw_ops.reserve(hw_intf->hw_priv,
-			sfe_acquire,
-			sizeof(struct cam_sfe_acquire_args));
-
-		if (rc || !sfe_acquire->sfe_in.rsrc_node) {
-			CAM_ERR(CAM_ISP,
-				"Failed to acquire SFE res: %u from hw: %u [BUS_RD needs to be acquired]",
-				sfe_acquire->sfe_in.res_id, hw_intf->hw_idx);
-			return rc;
-		}
-		sfe_src_res->hw_res[0] =
-			sfe_acquire->sfe_in.rsrc_node;
-		CAM_DBG(CAM_ISP,
-			"Acquired SFE: %u for res_id: 0x%x", hw_intf->hw_idx,
-			sfe_acquire->sfe_in.res_id);
-		break;
-	}
-
-	return rc;
-}
-
 static int cam_ife_hw_mgr_acquire_sfe_hw(
 	struct cam_ife_hw_mgr_ctx          *ife_ctx,
 	struct cam_sfe_acquire_args        *sfe_acquire)
@@ -2381,21 +2323,6 @@ static int cam_ife_hw_mgr_acquire_res_sfe_src(
 		sfe_src_res->res_type = sfe_acquire.rsrc_type;
 		sfe_src_res->res_id = sfe_acquire.sfe_in.res_id;
 		sfe_src_res->is_dual_isp = csid_res->is_dual_isp;
-
-		/* SFE RDI0-2 works only for fetch engine use-cases */
-		if ((sfe_acquire.sfe_in.res_id == CAM_ISP_HW_SFE_IN_RDI0) ||
-			(sfe_acquire.sfe_in.res_id == CAM_ISP_HW_SFE_IN_RDI1) ||
-			(sfe_acquire.sfe_in.res_id == CAM_ISP_HW_SFE_IN_RDI2)) {
-			rc = cam_ife_hw_mgr_acquire_sfe_rdi_for_fe(
-				&sfe_acquire, sfe_src_res,
-				ife_ctx);
-			if (rc)
-				goto err;
-			else {
-				csid_res->num_children++;
-				continue;
-			}
-		}
 
 		for (i = sfe_src_res->is_dual_isp; i >= 0; i--) {
 			rc = cam_ife_hw_mgr_acquire_sfe_hw(ife_ctx,
@@ -3579,7 +3506,7 @@ static int cam_ife_mgr_check_and_update_fe_v2(
 	uint32_t                           acquire_info_size)
 {
 	int i;
-	bool is_sfe_rd = false;
+	bool is_sfe_rd = false, fetch_cfg = false;
 	struct cam_isp_in_port_info_v2    *in_port = NULL;
 	uint32_t                           in_port_length = 0;
 	uint32_t                           total_in_port_length = 0;
@@ -3606,7 +3533,8 @@ static int cam_ife_mgr_check_and_update_fe_v2(
 			return -EINVAL;
 		}
 
-		if ((in_port->num_out_res > max_ife_out_res) ||
+		if ((in_port->num_out_res > (max_ife_out_res +
+			g_ife_hw_mgr.isp_bus_caps.max_sfe_out_res_type)) ||
 			(in_port->num_out_res <= 0)) {
 			CAM_ERR(CAM_ISP, "Invalid num output res %u",
 				in_port->num_out_res);
@@ -3625,9 +3553,11 @@ static int cam_ife_mgr_check_and_update_fe_v2(
 		CAM_DBG(CAM_ISP, "in_port%d res_type %d", i,
 			in_port->res_type);
 		is_sfe_rd = cam_ife_mgr_check_for_sfe_rd(in_port->sfe_in_path_type);
+		if (is_sfe_rd)
+			ife_ctx->sfe_info.num_fetches++;
 
-		if ((in_port->res_type == CAM_ISP_IFE_IN_RES_RD) ||
-			(is_sfe_rd)) {
+		if ((!fetch_cfg) && ((in_port->res_type == CAM_ISP_IFE_IN_RES_RD) ||
+			(is_sfe_rd))) {
 			ife_ctx->flags.is_fe_enabled = true;
 
 			/* Check for offline */
@@ -3643,16 +3573,20 @@ static int cam_ife_mgr_check_and_update_fe_v2(
 					ife_ctx->flags.is_sfe_shdr = true;
 			}
 
-			break;
+			/* If once configured skip these checks thereafter */
+			fetch_cfg = true;
 		}
 
 		in_port = (struct cam_isp_in_port_info_v2 *)
 			((uint8_t *)in_port + in_port_length);
 	}
-	CAM_DBG(CAM_ISP, "is_fe_enabled %d is_offline %d sfe_fs %d",
+	CAM_DBG(CAM_ISP,
+		"is_fe_enabled %d is_offline %d sfe_fs %d sfe_shdr: %d num_sfe_fetches: %u",
 		ife_ctx->flags.is_fe_enabled,
 		ife_ctx->flags.is_offline,
-		ife_ctx->flags.is_sfe_fs);
+		ife_ctx->flags.is_sfe_fs,
+		ife_ctx->flags.is_sfe_shdr,
+		ife_ctx->sfe_info.num_fetches);
 
 	return 0;
 }
@@ -4865,9 +4799,17 @@ static int cam_ife_mgr_acquire_hw(void *hw_mgr_priv, void *acquire_hw_args)
 			CAM_IFE_CTX_CONSUME_ADDR_EN;
 
 	if ((ife_ctx->flags.is_sfe_shdr) ||
-		(ife_ctx->flags.is_sfe_fs))
+		(ife_ctx->flags.is_sfe_fs)) {
 		acquire_args->op_flags |=
 			CAM_IFE_CTX_APPLY_DEFAULT_CFG;
+		ife_ctx->sfe_info.scratch_config =
+			kzalloc(sizeof(struct cam_sfe_scratch_buf_cfg), GFP_KERNEL);
+		if (!ife_ctx->sfe_info.scratch_config) {
+			CAM_ERR(CAM_ISP, "Failed to allocate scratch config");
+			rc = -ENOMEM;
+			goto free_cdm_cmd;
+		}
+	}
 
 	acquire_args->ctxt_to_hw_map = ife_ctx;
 	if (ife_ctx->ctx_type == CAM_IFE_CTX_TYPE_CUSTOM)
@@ -4884,8 +4826,6 @@ static int cam_ife_mgr_acquire_hw(void *hw_mgr_priv, void *acquire_hw_args)
 
 	ife_ctx->flags.ctx_in_use = true;
 	ife_ctx->num_reg_dump_buf = 0;
-	memset(&ife_ctx->scratch_config, 0,
-		sizeof(struct cam_sfe_scratch_buf_cfg));
 
 	acquire_args->valid_acquired_hw =
 		acquire_hw_info->num_inputs;
@@ -6014,8 +5954,10 @@ static int cam_ife_mgr_stop_hw(void *hw_mgr_priv, void *stop_hw_args)
 	cam_tasklet_stop(ctx->common.tasklet_info);
 
 	/* reset scratch buffer expect init again for SFE */
-	memset(&ctx->scratch_config, 0,
-		sizeof(struct cam_sfe_scratch_buf_cfg));
+	if (ctx->sfe_info.scratch_config)
+		memset(ctx->sfe_info.scratch_config, 0,
+			sizeof(struct cam_sfe_scratch_buf_cfg));
+
 	cam_ife_mgr_pause_hw(ctx);
 
 	rem_jiffies = cam_common_wait_for_completion_timeout(
@@ -6656,6 +6598,10 @@ static int cam_ife_mgr_release_hw(void *hw_mgr_priv,
 	ctx->last_cdm_done_req = 0;
 	ctx->left_hw_idx = 0;
 	ctx->right_hw_idx = 0;
+	ctx->sfe_info.num_fetches = 0;
+
+	kfree(ctx->sfe_info.scratch_config);
+	ctx->sfe_info.scratch_config = NULL;
 
 	memset(&ctx->flags, 0, sizeof(struct cam_ife_hw_mgr_ctx_flags));
 	atomic_set(&ctx->overflow_pending, 0);
@@ -7051,7 +6997,7 @@ static int cam_isp_blob_sfe_scratch_buf_update(
 
 	ctx = prepare->ctxt_to_hw_map;
 	ife_hw_mgr = ctx->hw_mgr;
-	if (ctx->scratch_config.config_done) {
+	if (ctx->sfe_info.scratch_config->config_done) {
 		CAM_ERR(CAM_ISP,
 			"Scratch buffers already configured on ctx: %u",
 			ctx->ctx_index);
@@ -7081,7 +7027,7 @@ static int cam_isp_blob_sfe_scratch_buf_update(
 			return -EINVAL;
 		}
 
-		port_info = &ctx->scratch_config.buf_info[res_id_out];
+		port_info = &ctx->sfe_info.scratch_config->buf_info[res_id_out];
 		is_buf_secure = cam_mem_is_secure_buf(buffer_info->mem_handle);
 		if (is_buf_secure) {
 			port_info->is_secure = true;
@@ -7114,8 +7060,8 @@ static int cam_isp_blob_sfe_scratch_buf_update(
 			port_info->slice_height, port_info->io_addr);
 	}
 
-	ctx->scratch_config.num_config = scratch_config->num_ports;
-	ctx->scratch_config.config_done = true;
+	ctx->sfe_info.scratch_config->num_config = scratch_config->num_ports;
+	ctx->sfe_info.scratch_config->config_done = true;
 	return 0;
 }
 
@@ -9094,7 +9040,7 @@ static int cam_sfe_packet_generic_blob_handler(void *user_data,
 		}
 
 		mup_config = (struct cam_isp_mode_switch_info *)blob_data;
-		ife_mgr_ctx->scratch_config.curr_num_exp =
+		ife_mgr_ctx->sfe_info.scratch_config->curr_num_exp =
 			mup_config->num_expoures;
 	}
 		break;
@@ -9265,6 +9211,7 @@ static int cam_isp_sfe_send_scratch_buf_upd(
 
 static int cam_isp_sfe_add_scratch_buffer_cfg(
 	uint32_t                              base_idx,
+	uint32_t                              sfe_rdi_cfg_mask,
 	struct cam_hw_prepare_update_args    *prepare,
 	struct cam_kmd_buf_info              *kmd_buf_info,
 	struct cam_isp_hw_mgr_res            *res_list_isp_out,
@@ -9294,7 +9241,7 @@ static int cam_isp_sfe_add_scratch_buffer_cfg(
 
 	io_cfg_used_bytes = 0;
 	CAM_DBG(CAM_ISP, "num_ports: %u",
-		ctx->scratch_config.num_config);
+		ctx->sfe_info.scratch_config->num_config);
 
 	/* Update RDI WMs */
 	for (i = 0; i < CAM_SFE_FE_RDI_NUM_MAX; i++) {
@@ -9321,16 +9268,25 @@ static int cam_isp_sfe_add_scratch_buffer_cfg(
 
 			res_id = hw_mgr_res->hw_res[j]->res_id;
 
-			/* check for num exposures */
+			/* check for num exposures for static mode but using RDI1-2 without RD1-2 */
+			if ((res_id - CAM_ISP_SFE_OUT_RES_RDI_0) >=
+				ctx->sfe_info.num_fetches)
+				continue;
+
+			/* check if buffer provided for this RDI is from userspace */
+			if (sfe_rdi_cfg_mask & (1 << (res_id - CAM_ISP_SFE_OUT_RES_RDI_0)))
+				continue;
+
+			/* check for num exposures for dynamic mode */
 			if ((ctx->ctx_config &
 				CAM_IFE_CTX_CFG_DYNAMIC_SWITCH_ON) &&
 				((res_id - CAM_ISP_SFE_OUT_RES_RDI_0) >=
-				ctx->scratch_config.curr_num_exp))
+				ctx->sfe_info.scratch_config->curr_num_exp))
 				continue;
 
 			cpu_addr = kmd_buf_info->cpu_addr +
 				kmd_buf_info->used_bytes / 4 + io_cfg_used_bytes / 4;
-			buf_info = &ctx->scratch_config.buf_info[
+			buf_info = &ctx->sfe_info.scratch_config->buf_info[
 				res_id - CAM_ISP_SFE_OUT_RES_RDI_0];
 
 			CAM_DBG(CAM_ISP, "WM res_id: 0x%x idx: %u io_addr: %pK",
@@ -9374,17 +9330,25 @@ static int cam_isp_sfe_add_scratch_buffer_cfg(
 
 			res_id = hw_mgr_res->hw_res[j]->res_id;
 
+			if ((res_id - CAM_ISP_HW_SFE_IN_RD0) >=
+				ctx->sfe_info.num_fetches)
+				continue;
+
+			/* check if buffer provided for this RM is from userspace */
+			if (sfe_rdi_cfg_mask & (1 << (res_id - CAM_ISP_HW_SFE_IN_RD0)))
+				continue;
+
 			/* check for num exposures */
 			if ((ctx->ctx_config &
 				CAM_IFE_CTX_CFG_DYNAMIC_SWITCH_ON) &&
 				((res_id - CAM_ISP_HW_SFE_IN_RD0) >=
-				ctx->scratch_config.curr_num_exp))
+				ctx->sfe_info.scratch_config->curr_num_exp))
 				continue;
 
 			cpu_addr = kmd_buf_info->cpu_addr +
 				kmd_buf_info->used_bytes  / 4 +
 				io_cfg_used_bytes / 4;
-			buf_info = &ctx->scratch_config.buf_info[
+			buf_info = &ctx->sfe_info.scratch_config->buf_info[
 				res_id - CAM_ISP_HW_SFE_IN_RD0];
 
 			CAM_DBG(CAM_ISP, "RM res_id: 0x%x idx: %u io_addr: %pK",
@@ -9749,6 +9713,8 @@ static int cam_ife_mgr_prepare_hw_update(void *hw_mgr_priv,
 			((ctx->flags.is_sfe_fs) || (ctx->flags.is_sfe_shdr))) {
 			sfe_fe_chk_cfg.sfe_fe_enabled = true;
 			sfe_fe_chk_cfg.sfe_rdi_cfg_mask = 0;
+			sfe_fe_chk_cfg.num_active_fe_rdis =
+				ctx->sfe_info.num_fetches;
 		}
 
 		/* get IO buffers */
@@ -9794,14 +9760,20 @@ static int cam_ife_mgr_prepare_hw_update(void *hw_mgr_priv,
 			fill_ife_fence = false;
 
 		/* Add scratch buffer if there no output buffer for RDI WMs/RMs */
-		if (sfe_fe_chk_cfg.sfe_fe_enabled &&
-			!sfe_fe_chk_cfg.sfe_rdi_cfg_mask) {
-			rc = cam_isp_sfe_add_scratch_buffer_cfg(
-				ctx->base[i].idx, prepare,
-				&kmd_buf, ctx->res_list_sfe_out,
-				&ctx->res_list_ife_in_rd, ctx);
-			if (rc)
-				goto end;
+		if (sfe_fe_chk_cfg.sfe_fe_enabled) {
+			if ((sfe_fe_chk_cfg.sfe_rdi_cfg_mask) !=
+				((1 << ctx->sfe_info.num_fetches) - 1)) {
+				CAM_DBG(CAM_ISP,
+					"Adding scratch buffer cfg_mask expected: 0x%x actual: 0x%x",
+					((1 << ctx->sfe_info.num_fetches) - 1),
+					sfe_fe_chk_cfg.sfe_rdi_cfg_mask);
+				rc = cam_isp_sfe_add_scratch_buffer_cfg(
+					ctx->base[i].idx, sfe_fe_chk_cfg.sfe_rdi_cfg_mask,
+					prepare, &kmd_buf, ctx->res_list_sfe_out,
+					&ctx->res_list_ife_in_rd, ctx);
+				if (rc)
+					goto end;
+			}
 		}
 
 		memset(&sfe_fe_chk_cfg, 0, sizeof(sfe_fe_chk_cfg));
@@ -10298,14 +10270,20 @@ static int cam_ife_mgr_prog_default_settings(
 				continue;
 
 			res_id = hw_mgr_res->hw_res[j]->res_id;
+
+			/* check for num exposures for static mode but using RDI1-2 without RD1-2 */
+			if ((res_id - CAM_ISP_SFE_OUT_RES_RDI_0) >=
+				ctx->sfe_info.num_fetches)
+				continue;
+
 			/* check for num exposures */
 			if ((ctx->ctx_config &
 				CAM_IFE_CTX_CFG_DYNAMIC_SWITCH_ON) &&
 				((res_id - CAM_ISP_SFE_OUT_RES_RDI_0) >=
-				ctx->scratch_config.curr_num_exp))
+				ctx->sfe_info.scratch_config->curr_num_exp))
 				continue;
 
-			buf_info = &ctx->scratch_config.buf_info[
+			buf_info = &ctx->sfe_info.scratch_config->buf_info[
 				res_id - CAM_ISP_SFE_OUT_RES_RDI_0];
 
 			CAM_DBG(CAM_ISP,
@@ -10331,14 +10309,19 @@ static int cam_ife_mgr_prog_default_settings(
 
 			res_id = hw_mgr_res->hw_res[j]->res_id;
 
+			/* check for num exposures for static mode but using RDI1-2 without RD1-2 */
+			if ((res_id - CAM_ISP_HW_SFE_IN_RD0) >=
+				ctx->sfe_info.num_fetches)
+				continue;
+
 			/* check for num exposures */
 			if ((ctx->ctx_config &
 				CAM_IFE_CTX_CFG_DYNAMIC_SWITCH_ON) &&
 				((res_id - CAM_ISP_HW_SFE_IN_RD0) >=
-				ctx->scratch_config.curr_num_exp))
+				ctx->sfe_info.scratch_config->curr_num_exp))
 				continue;
 
-			buf_info = &ctx->scratch_config.buf_info
+			buf_info = &ctx->sfe_info.scratch_config->buf_info
 				[res_id - CAM_ISP_HW_SFE_IN_RD0];
 			CAM_DBG(CAM_ISP,
 				"RD res_id 0x%x idx %u io_addr %pK",
@@ -11453,7 +11436,7 @@ static int cam_ife_hw_mgr_check_rdi_scratch_buf_done(
 	int rc = 0;
 	struct cam_sfe_scratch_buf_info   *buf_info;
 
-	if (!hw_mgr_ctx->scratch_config.config_done) {
+	if (!hw_mgr_ctx->sfe_info.scratch_config->config_done) {
 		CAM_DBG(CAM_ISP, "No scratch config for ctx: %u",
 			hw_mgr_ctx->ctx_index);
 		return 0;
@@ -11461,7 +11444,7 @@ static int cam_ife_hw_mgr_check_rdi_scratch_buf_done(
 
 	switch (res_id) {
 	case CAM_ISP_SFE_OUT_RES_RDI_0:
-		buf_info = &hw_mgr_ctx->scratch_config.buf_info[
+		buf_info = &hw_mgr_ctx->sfe_info.scratch_config->buf_info[
 				res_id - CAM_ISP_SFE_OUT_RES_RDI_0];
 		if ((uint32_t)buf_info->io_addr ==
 			last_consumed_addr) {
@@ -11471,7 +11454,7 @@ static int cam_ife_hw_mgr_check_rdi_scratch_buf_done(
 
 		break;
 	case CAM_ISP_SFE_OUT_RES_RDI_1:
-		buf_info = &hw_mgr_ctx->scratch_config.buf_info[
+		buf_info = &hw_mgr_ctx->sfe_info.scratch_config->buf_info[
 				res_id - CAM_ISP_SFE_OUT_RES_RDI_0];
 		if ((uint32_t)buf_info->io_addr ==
 			last_consumed_addr) {
@@ -11480,7 +11463,7 @@ static int cam_ife_hw_mgr_check_rdi_scratch_buf_done(
 		}
 		break;
 	case CAM_ISP_SFE_OUT_RES_RDI_2:
-		buf_info = &hw_mgr_ctx->scratch_config.buf_info[
+		buf_info = &hw_mgr_ctx->sfe_info.scratch_config->buf_info[
 				res_id - CAM_ISP_SFE_OUT_RES_RDI_0];
 		if ((uint32_t)buf_info->io_addr ==
 			last_consumed_addr) {
