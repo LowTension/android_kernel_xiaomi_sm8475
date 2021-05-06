@@ -535,6 +535,153 @@ static int cam_ife_csid_ver2_path_top_half(
 	return 0;
 }
 
+static inline void cam_ife_csid_ver2_reset_discard_frame_cfg(
+	char                                        *res_name,
+	struct cam_ife_csid_ver2_hw                 *csid_hw,
+	struct cam_ife_csid_ver2_path_cfg           *path_cfg)
+{
+	int rc;
+
+	/* Reset discard config params */
+	path_cfg->discard_init_frames = false;
+	path_cfg->num_frames_discard = 0;
+	path_cfg->sof_cnt = 0;
+
+	/* Decrement discard frame ref cnt for this path */
+	atomic_dec(&csid_hw->discard_frame_per_path);
+
+	/* If input SOF irq is enabled explicitly - unsubscribe in th*/
+	if (path_cfg->discard_irq_handle > 0) {
+		rc = cam_irq_controller_unsubscribe_irq(
+			csid_hw->csid_irq_controller,
+			path_cfg->discard_irq_handle);
+		if (rc)
+			CAM_WARN(CAM_ISP,
+				"Failed to unsubscribe input SOF for res: %s",
+				res_name);
+
+		path_cfg->discard_irq_handle = 0;
+	}
+
+	CAM_DBG(CAM_ISP, "CSID[%u] Reset discard frame config for res: %s discard_ref_cnt: %u",
+		csid_hw->hw_intf->hw_idx, res_name,
+		atomic_read(&csid_hw->discard_frame_per_path));
+}
+
+static int cam_ife_csid_ver2_discard_sof_pix_top_half(
+	uint32_t                                   evt_id,
+	struct cam_irq_th_payload                 *th_payload)
+{
+	struct cam_hw_info                          *hw_info;
+	struct cam_ife_csid_ver2_hw                 *csid_hw = NULL;
+	struct cam_isp_resource_node                *res;
+	struct cam_ife_csid_ver2_reg_info           *csid_reg = NULL;
+	const struct cam_ife_csid_ver2_pxl_reg_info *path_reg = NULL;
+	struct cam_ife_csid_ver2_path_cfg           *path_cfg;
+	struct cam_hw_soc_info                      *soc_info;
+	void    __iomem                             *base;
+	uint32_t                                     val;
+
+	res  = th_payload->handler_priv;
+
+	if (!res) {
+		CAM_ERR_RATE_LIMIT(CAM_ISP, "No private returned");
+		return -ENODEV;
+	}
+
+	hw_info = (struct cam_hw_info *)res->hw_intf->hw_priv;
+	csid_hw = (struct cam_ife_csid_ver2_hw *)hw_info->core_info;
+	csid_reg = (struct cam_ife_csid_ver2_reg_info *)
+			csid_hw->core_info->csid_reg;
+	path_cfg = (struct cam_ife_csid_ver2_path_cfg *)res->res_priv;
+	soc_info = &csid_hw->hw_info->soc_info;
+	base  = soc_info->reg_map[CAM_IFE_CSID_CLC_MEM_BASE_ID].mem_base;
+
+	if (res->res_id == CAM_IFE_PIX_PATH_RES_IPP) {
+		path_reg = csid_reg->ipp_reg;
+	} else if (res->res_id == CAM_IFE_PIX_PATH_RES_PPP) {
+		path_reg = csid_reg->ppp_reg;
+	} else {
+		CAM_WARN(CAM_ISP, "Invalid res_id: 0x%x", res->res_id);
+		return -ENODEV;
+	}
+
+	/* Count SOFs */
+	path_cfg->sof_cnt++;
+
+	CAM_DBG(CAM_ISP, "CSID[%u] Discard frame on %s path, num SOFs: %u",
+		csid_hw->hw_intf->hw_idx, res->res_name, path_cfg->sof_cnt);
+
+	/* Check with requested number of frames to be dropped */
+	if (path_cfg->sof_cnt == path_cfg->num_frames_discard) {
+		if (path_cfg->sync_mode == CAM_ISP_HW_SYNC_MASTER ||
+			path_cfg->sync_mode == CAM_ISP_HW_SYNC_NONE) {
+			val = cam_io_r_mb(base + path_reg->ctrl_addr);
+			val |= path_reg->resume_frame_boundary;
+			cam_io_w_mb(val, base + path_reg->ctrl_addr);
+			CAM_DBG(CAM_ISP,
+				"CSID[%u] start cmd programmed for %s sof_cnt %u",
+				csid_hw->hw_intf->hw_idx,
+				res->res_name,
+				path_cfg->sof_cnt);
+		}
+		cam_ife_csid_ver2_reset_discard_frame_cfg(res->res_name, csid_hw, path_cfg);
+	}
+
+	return IRQ_HANDLED;
+}
+
+static int cam_ife_csid_ver2_discard_sof_rdi_top_half(
+	uint32_t                                   evt_id,
+	struct cam_irq_th_payload                 *th_payload)
+{
+	struct cam_hw_info                          *hw_info;
+	struct cam_ife_csid_ver2_hw                 *csid_hw = NULL;
+	struct cam_isp_resource_node                *res;
+	struct cam_ife_csid_ver2_reg_info           *csid_reg = NULL;
+	const struct cam_ife_csid_ver2_rdi_reg_info *path_reg = NULL;
+	struct cam_ife_csid_ver2_path_cfg           *path_cfg;
+	struct cam_hw_soc_info                      *soc_info;
+	void    __iomem                             *base;
+	uint32_t                                     val;
+
+	res  = th_payload->handler_priv;
+
+	if (!res) {
+		CAM_ERR_RATE_LIMIT(CAM_ISP, "No private returned");
+		return -ENODEV;
+	}
+
+	hw_info = (struct cam_hw_info *)res->hw_intf->hw_priv;
+	csid_hw = (struct cam_ife_csid_ver2_hw *)hw_info->core_info;
+	csid_reg = (struct cam_ife_csid_ver2_reg_info *)
+			csid_hw->core_info->csid_reg;
+	path_cfg = (struct cam_ife_csid_ver2_path_cfg *)res->res_priv;
+	soc_info = &csid_hw->hw_info->soc_info;
+	base  = soc_info->reg_map[CAM_IFE_CSID_CLC_MEM_BASE_ID].mem_base;
+	path_reg = csid_reg->rdi_reg[res->res_id];
+
+	/* Count SOFs */
+	path_cfg->sof_cnt++;
+	CAM_DBG(CAM_ISP, "CSID[%u] Discard frame on %s path, num SOFs: %u",
+		csid_hw->hw_intf->hw_idx, res->res_name, path_cfg->sof_cnt);
+
+	/* Check with requested number of frames to be dropped */
+	if (path_cfg->sof_cnt == path_cfg->num_frames_discard) {
+		val = cam_io_r_mb(base + path_reg->ctrl_addr);
+		val |= path_reg->resume_frame_boundary;
+		cam_io_w_mb(val, base + path_reg->ctrl_addr);
+		CAM_DBG(CAM_ISP,
+			"CSID[%u] start cmd programmed for %s sof_cnt %u",
+			csid_hw->hw_intf->hw_idx,
+			res->res_name, path_cfg->sof_cnt);
+
+		cam_ife_csid_ver2_reset_discard_frame_cfg(res->res_name, csid_hw, path_cfg);
+	}
+
+	return IRQ_HANDLED;
+}
+
 static int cam_ife_csid_ver2_stop_csi2_in_err(
 	struct cam_ife_csid_ver2_hw  *csid_hw)
 {
@@ -631,6 +778,8 @@ static int cam_ife_csid_ver2_rx_err_top_half(
 				csid_hw->core_info->csid_reg;
 	csi2_reg = csid_reg->csi2_reg;
 
+	if (atomic_read(&csid_hw->discard_frame_per_path))
+		return -ENODEV;
 
 	if (csid_hw->flags.fatal_err_detected) {
 		CAM_INFO_RATE_LIMIT(CAM_ISP,
@@ -1177,6 +1326,9 @@ static int cam_ife_csid_ver2_ipp_bottom_half(
 	path_cfg = (struct cam_ife_csid_ver2_path_cfg *)res->res_priv;
 	irq_status_ipp = payload->irq_reg_val[path_cfg->irq_reg_idx];
 
+	CAM_DBG(CAM_ISP, "CSID[%u] IPP status:0x%x", csid_hw->hw_intf->hw_idx,
+		irq_status_ipp);
+
 	evt_info.hw_idx   = csid_hw->hw_intf->hw_idx;
 	evt_info.res_id   = CAM_IFE_PIX_PATH_RES_IPP;
 	evt_info.res_type = CAM_ISP_RESOURCE_PIX_PATH;
@@ -1291,8 +1443,6 @@ static int cam_ife_csid_ver2_ppp_bottom_half(
 
 	csid_reg = (struct cam_ife_csid_ver2_reg_info *)
 			csid_hw->core_info->csid_reg;
-
-	res = &csid_hw->path_res[CAM_IFE_CSID_IRQ_REG_PPP];
 
 	err_mask = csid_reg->ppp_reg->fatal_err_mask |
 			csid_reg->ppp_reg->non_fatal_err_mask;
@@ -1724,6 +1874,17 @@ static int cam_ife_csid_ver2_disable_path(
 		path_cfg->err_irq_handle = 0;
 	}
 
+	if (path_cfg->discard_irq_handle) {
+		rc = cam_irq_controller_unsubscribe_irq(
+			csid_hw->csid_irq_controller,
+			path_cfg->discard_irq_handle);
+		path_cfg->discard_irq_handle = 0;
+	}
+
+	/* Reset frame drop fields at stream off */
+	path_cfg->discard_init_frames = false;
+	path_cfg->num_frames_discard = 0;
+	path_cfg->sof_cnt = 0;
 	return rc;
 }
 
@@ -2539,6 +2700,41 @@ static int cam_ife_csid_ver2_init_config_pxl_path(
 	return rc;
 }
 
+static inline int cam_ife_csid_ver2_subscribe_sof_for_discard(
+	struct cam_ife_csid_ver2_path_cfg *path_cfg,
+	struct cam_ife_csid_ver2_hw       *csid_hw,
+	struct cam_isp_resource_node      *res,
+	CAM_IRQ_HANDLER_TOP_HALF           top_half_handler)
+{
+	int rc = 0;
+	uint32_t val;
+	uint32_t irq_mask[CAM_IFE_CSID_IRQ_REG_MAX] = {0};
+
+	val = IFE_CSID_VER2_PATH_INFO_INPUT_SOF;
+	irq_mask[path_cfg->irq_reg_idx] = val;
+	path_cfg->discard_irq_handle = cam_irq_controller_subscribe_irq(
+		csid_hw->csid_irq_controller,
+		CAM_IRQ_PRIORITY_1,
+		irq_mask,
+		res,
+		top_half_handler,
+		NULL,
+		NULL,
+		NULL);
+
+	if (path_cfg->discard_irq_handle < 1) {
+		CAM_ERR(CAM_ISP,
+			"CSID[%d] Subscribing input SOF failed for discarding %d",
+			csid_hw->hw_intf->hw_idx, res->res_id);
+		rc = -EINVAL;
+	}
+
+	CAM_DBG(CAM_ISP,
+		"Subscribing input SOF for discard done res: %s rc: %d",
+		res->res_name, rc);
+	return rc;
+}
+
 static int cam_ife_csid_ver2_start_rdi_path(
 	struct cam_ife_csid_ver2_hw *csid_hw,
 	struct cam_isp_resource_node    *res)
@@ -2588,9 +2784,10 @@ static int cam_ife_csid_ver2_start_rdi_path(
 	mem_base = soc_info->reg_map[CAM_IFE_CSID_CLC_MEM_BASE_ID].mem_base;
 	path_cfg = (struct cam_ife_csid_ver2_path_cfg *)res->res_priv;
 	if (!csid_hw->flags.offline_mode) {
-		/* Resume at frame boundary */
-		cam_io_w_mb(path_reg->resume_frame_boundary,
-			mem_base + path_reg->ctrl_addr);
+		/* Resume at frame boundary if skip not requested */
+		if (!path_cfg->discard_init_frames)
+			cam_io_w_mb(path_reg->resume_frame_boundary,
+				mem_base + path_reg->ctrl_addr);
 
 		CAM_DBG(CAM_ISP, "CSID:%d Rdi res: %d",
 			csid_hw->hw_intf->hw_idx, res->res_id);
@@ -2660,6 +2857,14 @@ static int cam_ife_csid_ver2_start_rdi_path(
 			csid_hw->hw_intf->hw_idx, res->res_id);
 		rc = -EINVAL;
 		goto end;
+	}
+
+	if (path_cfg->discard_init_frames) {
+		rc = cam_ife_csid_ver2_subscribe_sof_for_discard(
+			path_cfg, csid_hw, res,
+			cam_ife_csid_ver2_discard_sof_rdi_top_half);
+		if (rc)
+			goto end;
 	}
 
 	val = path_reg->fatal_err_mask | path_reg->non_fatal_err_mask;
@@ -2790,6 +2995,14 @@ static int cam_ife_csid_ver2_start_ipp_path(
 		goto end;
 	}
 
+	if (path_cfg->discard_init_frames) {
+		rc = cam_ife_csid_ver2_subscribe_sof_for_discard(
+			path_cfg, csid_hw, res,
+			cam_ife_csid_ver2_discard_sof_pix_top_half);
+		if (rc)
+			goto end;
+	}
+
 	val = path_reg->fatal_err_mask | path_reg->non_fatal_err_mask;
 	irq_mask[path_cfg->irq_reg_idx] = val;
 	path_cfg->err_irq_handle = cam_irq_controller_subscribe_irq(
@@ -2831,9 +3044,11 @@ static int cam_ife_csid_ver2_start_ipp_path(
 	/*
 	 * Resume at frame boundary if Master or No Sync.
 	 * Slave will get resume command from Master.
+	 * If init frame drop requested skip resume
 	 */
-	if (path_cfg->sync_mode == CAM_ISP_HW_SYNC_MASTER ||
-		path_cfg->sync_mode == CAM_ISP_HW_SYNC_NONE)
+	if ((!path_cfg->discard_init_frames) &&
+		(path_cfg->sync_mode == CAM_ISP_HW_SYNC_MASTER ||
+		path_cfg->sync_mode == CAM_ISP_HW_SYNC_NONE))
 		val |= path_reg->resume_frame_boundary;
 
 	cam_io_w_mb(val, mem_base + path_reg->ctrl_addr);
@@ -2940,9 +3155,11 @@ static int cam_ife_csid_ver2_start_ppp_path(
 	/*
 	 * Resume at frame boundary if Master or No Sync.
 	 * Slave will get resume command from Master.
+	 * If init frame drop requested skip resume
 	 */
-	if (csid_hw->sync_mode == CAM_ISP_HW_SYNC_MASTER ||
-		csid_hw->sync_mode == CAM_ISP_HW_SYNC_NONE)
+	if ((!path_cfg->discard_init_frames) &&
+		(csid_hw->sync_mode == CAM_ISP_HW_SYNC_MASTER ||
+		csid_hw->sync_mode == CAM_ISP_HW_SYNC_NONE))
 		val |= path_reg->resume_frame_boundary;
 
 	cam_io_w_mb(val, mem_base + path_reg->ctrl_addr);
@@ -2978,6 +3195,14 @@ static int cam_ife_csid_ver2_start_ppp_path(
 			csid_hw->hw_intf->hw_idx);
 		rc = -EINVAL;
 		goto end;
+	}
+
+	if (path_cfg->discard_init_frames) {
+		rc = cam_ife_csid_ver2_subscribe_sof_for_discard(
+			path_cfg, csid_hw, res,
+			cam_ife_csid_ver2_discard_sof_pix_top_half);
+		if (rc)
+			goto end;
 	}
 
 	val = path_reg->fatal_err_mask | path_reg->non_fatal_err_mask;
@@ -3661,6 +3886,7 @@ int cam_ife_csid_ver2_stop(void *hw_priv,
 		csid_hw->hw_intf->hw_idx,
 		csid_stop->num_res);
 
+	atomic_set(&csid_hw->discard_frame_per_path, 0);
 	mutex_lock(&csid_hw->hw_info->hw_mutex);
 	for (i = 0; i < csid_stop->num_res; i++) {
 
@@ -4197,6 +4423,62 @@ static int cam_ife_csid_ver2_dual_sync_cfg(
 	return 0;
 }
 
+static int cam_ife_csid_ver2_set_discard_frame_cfg(
+	struct cam_ife_csid_ver2_hw    *csid_hw,
+	void                           *cmd_args)
+{
+	struct cam_isp_resource_node                 *res;
+	struct cam_ife_csid_ver2_path_cfg            *path_cfg;
+	struct cam_ife_csid_discard_init_frame_args  *discard_config = NULL;
+
+	if (!csid_hw)
+		return -EINVAL;
+
+	discard_config =
+		(struct cam_ife_csid_discard_init_frame_args *)cmd_args;
+
+	if (discard_config->num_frames == 0xffffffff) {
+		CAM_ERR(CAM_ISP, "Invalid number of frames: 0x%x",
+			discard_config->num_frames);
+		return -EINVAL;
+	}
+
+	if (!discard_config->num_frames) {
+		CAM_DBG(CAM_ISP, "No discard requested");
+		return 0;
+	}
+
+	res = discard_config->res;
+	if (res->res_type != CAM_ISP_RESOURCE_PIX_PATH ||
+		res->res_id >= CAM_IFE_PIX_PATH_RES_MAX) {
+		CAM_ERR(CAM_ISP, "CSID[%u] Invalid res_type: %d res id: %d",
+			csid_hw->hw_intf->hw_idx, res->res_type,
+			res->res_id);
+		return -EINVAL;
+	}
+
+	/* Handle first stream on and consecutive streamons post flush */
+	if ((res->res_state == CAM_ISP_RESOURCE_STATE_RESERVED) ||
+		(res->res_state == CAM_ISP_RESOURCE_STATE_INIT_HW)) {
+		/* Skip if already set */
+		path_cfg = (struct cam_ife_csid_ver2_path_cfg *)res->res_priv;
+		if (path_cfg->discard_init_frames)
+			goto end;
+
+		path_cfg->discard_init_frames = true;
+		path_cfg->sof_cnt = 0;
+		path_cfg->num_frames_discard = discard_config->num_frames;
+		atomic_inc(&csid_hw->discard_frame_per_path);
+		CAM_DBG(CAM_ISP,
+			"CSID[%u] discard num of frames: %u for path: %s discard_ref_cnt: %u",
+			csid_hw->hw_intf->hw_idx, discard_config->num_frames, res->res_name,
+			atomic_read(&csid_hw->discard_frame_per_path));
+	}
+
+end:
+	return 0;
+}
+
 static int cam_ife_csid_ver2_process_cmd(void *hw_priv,
 	uint32_t cmd_type, void *cmd_args, uint32_t arg_size)
 {
@@ -4268,6 +4550,9 @@ static int cam_ife_csid_ver2_process_cmd(void *hw_priv,
 		*((struct cam_hw_soc_info **)cmd_args) = soc_info;
 		break;
 	}
+	case CAM_ISP_HW_CMD_CSID_DISCARD_INIT_FRAMES:
+		rc = cam_ife_csid_ver2_set_discard_frame_cfg(csid_hw, cmd_args);
+		break;
 	default:
 		CAM_ERR(CAM_ISP, "CSID:%d unsupported cmd:%d",
 			csid_hw->hw_intf->hw_idx, cmd_type);
@@ -4526,6 +4811,7 @@ int cam_ife_csid_hw_ver2_init(struct cam_hw_intf *hw_intf,
 	spin_lock_init(&csid_hw->hw_info->hw_lock);
 	spin_lock_init(&csid_hw->lock_state);
 	init_completion(&csid_hw->hw_info->hw_complete);
+	atomic_set(&csid_hw->discard_frame_per_path, 0);
 
 	for (i = 0; i < CAM_IFE_PIX_PATH_RES_MAX; i++)
 		init_completion(&csid_hw->irq_complete[i]);

@@ -7318,6 +7318,54 @@ static int cam_isp_blob_hfr_update(
 	return rc;
 }
 
+static int cam_isp_blob_csid_discard_init_frame_update(
+	struct cam_isp_generic_blob_info       *blob_info,
+	struct cam_isp_discard_initial_frames  *discard_config,
+	struct cam_hw_prepare_update_args      *prepare)
+{
+	struct cam_ife_hw_mgr_ctx                   *ctx = NULL;
+	struct cam_ife_hw_mgr                       *ife_hw_mgr;
+	struct cam_hw_intf                          *hw_intf;
+	struct cam_isp_hw_mgr_res                   *hw_mgr_res;
+	struct cam_isp_resource_node                *res;
+	struct cam_ife_csid_discard_init_frame_args discard_args;
+	int rc = -EINVAL, i;
+
+	ctx = prepare->ctxt_to_hw_map;
+	ife_hw_mgr = ctx->hw_mgr;
+	discard_args.num_frames = discard_config->num_frames;
+
+	list_for_each_entry(hw_mgr_res, &ctx->res_list_ife_csid, list) {
+		for (i = 0; i < CAM_ISP_HW_SPLIT_MAX; i++) {
+			if (!hw_mgr_res->hw_res[i])
+				continue;
+
+			hw_intf = hw_mgr_res->hw_res[i]->hw_intf;
+			res = hw_mgr_res->hw_res[i];
+			if (hw_intf && hw_intf->hw_ops.process_cmd) {
+				if (hw_intf->hw_idx != blob_info->base_info->idx)
+					continue;
+
+				discard_args.res = res;
+				rc = hw_intf->hw_ops.process_cmd(
+					hw_intf->hw_priv,
+					CAM_ISP_HW_CMD_CSID_DISCARD_INIT_FRAMES,
+					&discard_args,
+					sizeof(struct cam_ife_csid_discard_init_frame_args));
+				if (rc) {
+					CAM_ERR(CAM_ISP,
+						"Failed to update discard frame cfg for res: %s on CSID[%u]",
+						res->res_name, blob_info->base_info->idx);
+					break;
+				}
+			}
+		}
+	}
+
+	return rc;
+}
+
+
 static int cam_isp_blob_csid_mup_update(
 	uint32_t                               blob_type,
 	struct cam_isp_generic_blob_info      *blob_info,
@@ -8441,6 +8489,26 @@ static int cam_isp_packet_generic_blob_handler(void *user_data,
 				"TPG config failed rc: %d", rc);
 	}
 		break;
+	case CAM_ISP_GENERIC_BLOB_TYPE_DISCARD_INITIAL_FRAMES: {
+		struct cam_isp_discard_initial_frames *discard_config;
+
+		if (blob_size < sizeof(struct cam_isp_discard_initial_frames)) {
+			CAM_ERR(CAM_ISP,
+				"Invalid discard frames blob size %u expected %u",
+				blob_size,
+				sizeof(struct cam_isp_discard_initial_frames));
+			return -EINVAL;
+		}
+
+		discard_config = (struct cam_isp_discard_initial_frames *)blob_data;
+
+		rc = cam_isp_blob_csid_discard_init_frame_update(
+			blob_info, discard_config, prepare);
+		if (rc)
+			CAM_ERR(CAM_ISP, "Discard initial frames update failed rc: %d", rc);
+
+	}
+		break;
 	case CAM_ISP_GENERIC_BLOB_TYPE_SFE_CLOCK_CONFIG:
 	case CAM_ISP_GENERIC_BLOB_TYPE_SFE_CORE_CONFIG:
 	case CAM_ISP_GENERIC_BLOB_TYPE_SFE_OUT_CONFIG:
@@ -8878,6 +8946,7 @@ static int cam_sfe_packet_generic_blob_handler(void *user_data,
 	case CAM_ISP_GENERIC_BLOB_TYPE_CSID_QCFA_CONFIG:
 	case CAM_ISP_GENERIC_BLOB_TYPE_SENSOR_BLANKING_CONFIG:
 	case CAM_ISP_GENERIC_BLOB_TYPE_TPG_CORE_CONFIG:
+	case CAM_ISP_GENERIC_BLOB_TYPE_DISCARD_INITIAL_FRAMES:
 		break;
 	default:
 		CAM_WARN(CAM_ISP, "Invalid blob type: %u", blob_type);
