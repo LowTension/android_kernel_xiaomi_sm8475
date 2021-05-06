@@ -27,8 +27,8 @@ struct csiphy_reg_parms_t csiphy_v2_1_0 = {
 	.size_offset_betn_lanes = 0x400,
 	.mipi_csiphy_interrupt_clear0_addr = 0x1058,
 	.mipi_csiphy_glbl_irq_cmd_addr = 0x1028,
-	.csiphy_common_array_size = 5,
-	.csiphy_reset_array_size = 2,
+	.csiphy_common_array_size = 4,
+	.csiphy_reset_array_size = 3,
 	.csiphy_2ph_config_array_size = 24,
 	.csiphy_3ph_config_array_size = 45,
 	.csiphy_2ph_clock_lane = 0x1,
@@ -39,14 +39,14 @@ struct csiphy_reg_parms_t csiphy_v2_1_0 = {
 };
 
 struct csiphy_reg_t csiphy_common_reg_2_1_0[] = {
-	{0x1014, 0xD5, 0x00, CSIPHY_2PH_REGS},
-	{0x1014, 0x2A, 0x00, CSIPHY_3PH_REGS},
+	{0x1014, 0x00, 0x00, CSIPHY_LANE_ENABLE},
 	{0x1084, 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
 	{0x1018, 0x01, 0x00, CSIPHY_DEFAULT_PARAMS},
 	{0x101C, 0x7A, 0x00, CSIPHY_DEFAULT_PARAMS},
 };
 
 struct csiphy_reg_t csiphy_reset_reg_2_1_0[] = {
+	{0x1014, 0x00, 0x00, CSIPHY_LANE_ENABLE},
 	{0x1000, 0x01, 0x01, CSIPHY_DEFAULT_PARAMS},
 	{0x1000, 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
 };
