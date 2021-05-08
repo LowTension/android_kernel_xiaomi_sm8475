@@ -83,9 +83,27 @@ struct cam_csiphy_aon_sel_params_t {
 };
 
 /**
+ * struct cam_cphy_dphy_status_reg_params_t
+ * @csiphy_3ph_status0_offset       : CSIPhy 3ph status addr
+ * @2ph_status0_offset              : CSIPhy 2ph status addr
+ * @3ph_status_size                 : CSIPhy 3ph status registers size
+ * @2ph_status_size                 : CSIPhy 2ph status registers size
+ */
+struct cam_cphy_dphy_status_reg_params_t {
+	uint32_t csiphy_3ph_status0_offset;
+	uint32_t csiphy_2ph_status0_offset;
+	uint16_t csiphy_3ph_status_size;
+	uint16_t csiphy_2ph_status_size;
+};
+
+/**
  * struct csiphy_reg_parms_t
  * @mipi_csiphy_glbl_irq_cmd_addr     : CSIPhy irq addr
  * @mipi_csiphy_interrupt_status0_addr: CSIPhy interrupt status addr
+ * @status_reg_params                 : Parameters to read cphy/dphy
+ *                                      specific status registers
+ * @size_offset_betn_lanes            : Size Offset between consecutive
+ *                                      2ph or 3ph lanes
  * @mipi_csiphy_interrupt_mask0_addr  : CSIPhy interrupt mask addr
  * @mipi_csiphy_interrupt_mask_val    : CSIPhy interrupt mask val
  * @mipi_csiphy_interrupt_clear0_addr : CSIPhy interrupt clear addr
@@ -107,6 +125,8 @@ struct csiphy_reg_parms_t {
 /*MIPI CSI PHY registers*/
 	uint32_t mipi_csiphy_glbl_irq_cmd_addr;
 	uint32_t mipi_csiphy_interrupt_status0_addr;
+	struct cam_cphy_dphy_status_reg_params_t *status_reg_params;
+	uint32_t size_offset_betn_lanes;
 	uint32_t mipi_csiphy_interrupt_mask0_addr;
 	uint32_t mipi_csiphy_interrupt_mask_val;
 	uint32_t mipi_csiphy_interrupt_mask_addr;
@@ -266,7 +286,9 @@ struct cam_csiphy_param {
  * @csiphy_cpas_cp_reg_mask    : Secure csiphy lane mask
  * @ops                        : KMD operations
  * @crm_cb                     : Callback API pointers
- * @enable_irq_dump            : Debugfs variable to enable hw IRQ register dump
+ * @enable_irq_dump            : Debugfs flag to enable hw IRQ register dump
+ * @en_status_reg_dump         : Debugfs flag to enable cphy/dphy specific
+ *                               status register dump
  */
 struct csiphy_device {
 	char                           device_name[CAM_CTX_DEV_NAME_MAX_LENGTH];
@@ -297,6 +319,7 @@ struct csiphy_device {
 	struct cam_req_mgr_kmd_ops     ops;
 	struct cam_req_mgr_crm_cb     *crm_cb;
 	bool                           enable_irq_dump;
+	bool                           en_status_reg_dump;
 };
 
 /**

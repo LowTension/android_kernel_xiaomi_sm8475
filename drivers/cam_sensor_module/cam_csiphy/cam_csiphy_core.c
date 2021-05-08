@@ -98,6 +98,77 @@ void cam_csiphy_query_cap(struct csiphy_device *csiphy_dev,
 	csiphy_cap->clk_lane = csiphy_dev->clk_lane;
 }
 
+int cam_csiphy_print_status_reg(struct csiphy_device *csiphy_dev)
+{
+	struct cam_hw_soc_info *soc_info;
+	void __iomem *phybase = NULL;
+	void __iomem *lane0_offset = 0;
+	void __iomem *lane1_offset = 0;
+	void __iomem *lane2_offset = 0;
+	void __iomem *lane3_offset = 0;
+	struct csiphy_reg_parms_t *csiphy_reg;
+	struct cam_cphy_dphy_status_reg_params_t *status_regs;
+	int i = 0;
+
+	if (!csiphy_dev) {
+		CAM_ERR(CAM_CSIPHY, "Null csiphy_dev");
+		return -EINVAL;
+	}
+
+	soc_info = &csiphy_dev->soc_info;
+	if (!soc_info) {
+		CAM_ERR(CAM_CSIPHY, "Null soc_info");
+		return -EINVAL;
+	}
+
+	csiphy_reg = &csiphy_dev->ctrl_reg->csiphy_reg;
+	status_regs = csiphy_reg->status_reg_params;
+	phybase = soc_info->reg_map[0].mem_base;
+
+	if (!status_regs) {
+		CAM_ERR(CAM_CSIPHY, "2ph/3ph status offset not set");
+		return -EINVAL;
+	}
+
+	if (g_phy_data[soc_info->index].is_3phase) {
+		CAM_INFO(CAM_CSIPHY, "Dumping 3ph status regs");
+		lane0_offset = phybase + status_regs->csiphy_3ph_status0_offset;
+		lane1_offset =
+			lane0_offset + csiphy_reg->size_offset_betn_lanes;
+		lane2_offset =
+			lane1_offset + csiphy_reg->size_offset_betn_lanes;
+
+		for (i = 0; i < status_regs->csiphy_3ph_status_size; i++) {
+			CAM_INFO(CAM_CSIPHY,
+				"PHY: %d, Status%u. Ln0: 0x%x, Ln1: 0x%x, Ln2: 0x%x",
+				soc_info->index, i,
+				cam_io_r(lane0_offset + (i * 4)),
+				cam_io_r(lane1_offset + (i * 4)),
+				cam_io_r(lane2_offset + (i * 4)));
+		}
+	} else {
+		CAM_INFO(CAM_CSIPHY, "Dumping 2ph status regs");
+		lane0_offset = phybase + status_regs->csiphy_2ph_status0_offset;
+		lane1_offset =
+			lane0_offset + csiphy_reg->size_offset_betn_lanes;
+		lane2_offset =
+			lane1_offset + csiphy_reg->size_offset_betn_lanes;
+		lane3_offset =
+			lane2_offset + csiphy_reg->size_offset_betn_lanes;
+
+		for (i = 0; i < status_regs->csiphy_2ph_status_size; i++) {
+			CAM_INFO(CAM_CSIPHY,
+				"PHY: %d, Status%u. Ln0: 0x%x, Ln1: 0x%x, Ln2: 0x%x, Ln3: 0x%x",
+				soc_info->index, i,
+				cam_io_r(lane0_offset + (i * 4)),
+				cam_io_r(lane1_offset + (i * 4)),
+				cam_io_r(lane2_offset + (i * 4)),
+				cam_io_r(lane3_offset + (i * 4)));
+		}
+	}
+	return 0;
+}
+
 void cam_csiphy_reset(struct csiphy_device *csiphy_dev)
 {
 	int32_t  i;
@@ -118,6 +189,11 @@ void cam_csiphy_reset(struct csiphy_device *csiphy_dev)
 			csiphy_dev->ctrl_reg->csiphy_reset_reg[i].delay,
 			csiphy_dev->ctrl_reg->csiphy_reset_reg[i].delay
 			+ 5);
+	}
+
+	if (csiphy_dev->en_status_reg_dump) {
+		CAM_INFO(CAM_CSIPHY, "Status Reg Dump after phy reset");
+		cam_csiphy_print_status_reg(csiphy_dev);
 	}
 }
 
@@ -1642,6 +1718,12 @@ int32_t cam_csiphy_core_cfg(void *phy_dev,
 			mutex_lock(&active_csiphy_cnt_mutex);
 			active_csiphy_hw_cnt++;
 			mutex_unlock(&active_csiphy_cnt_mutex);
+		}
+
+		if (csiphy_dev->en_status_reg_dump) {
+			usleep_range(50000, 50005);
+			CAM_INFO(CAM_CSIPHY, "Status Reg Dump after config");
+			cam_csiphy_print_status_reg(csiphy_dev);
 		}
 
 		CAM_DBG(CAM_CSIPHY, "START DEV CNT: %d",
