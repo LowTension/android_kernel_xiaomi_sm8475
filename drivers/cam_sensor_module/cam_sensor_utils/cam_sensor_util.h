@@ -89,4 +89,10 @@ static inline int cam_sensor_util_aon_ops(bool get_access, uint32_t phy_idx)
 	return cam_csiphy_util_update_aon_ops(get_access, phy_idx);
 }
 
+static inline int cam_sensor_util_aon_registration(uint32_t phy_idx, bool aon_user)
+{
+	CAM_DBG(CAM_SENSOR, "Regsiter phy_idx: %u for AON operatoin: %d", phy_idx, aon_user);
+	return cam_csiphy_util_update_aon_registration(phy_idx, aon_user);
+}
+
 #endif /* _CAM_SENSOR_UTIL_H_ */
