@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CAM_CSIPHY_SOC_H_
@@ -21,7 +21,6 @@
 #include "cam_csiphy_dev.h"
 #include "cam_csiphy_core.h"
 
-#define CSI_3PHASE_HW                               1
 #define CSIPHY_VERSION_V10                        0x10
 #define CSIPHY_VERSION_V11                        0x11
 #define CSIPHY_VERSION_V12                        0x12

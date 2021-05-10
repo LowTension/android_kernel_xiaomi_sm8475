@@ -496,10 +496,15 @@ void cam_csiphy_cphy_irq_config(struct csiphy_device *csiphy_dev)
 {
 	int32_t                        i;
 	struct csiphy_reg_t           *csiphy_irq_reg;
+	uint32_t num_of_irq_status_regs = 0;
+
 	void __iomem *csiphybase =
 		csiphy_dev->soc_info.reg_map[0].mem_base;
 
-	for (i = 0; i < csiphy_dev->num_irq_registers; i++) {
+	num_of_irq_status_regs =
+		csiphy_dev->ctrl_reg->csiphy_reg.csiphy_interrupt_status_size;
+
+	for (i = 0; i < num_of_irq_status_regs; i++) {
 		csiphy_irq_reg = &csiphy_dev->ctrl_reg->csiphy_irq_reg[i];
 		cam_io_w_mb(csiphy_irq_reg->reg_data,
 			csiphybase + csiphy_irq_reg->reg_addr);
@@ -515,8 +520,12 @@ void cam_csiphy_cphy_irq_disable(struct csiphy_device *csiphy_dev)
 	int32_t i;
 	void __iomem *csiphybase =
 		csiphy_dev->soc_info.reg_map[0].mem_base;
+	uint32_t num_of_irq_status_regs = 0;
 
-	for (i = 0; i < csiphy_dev->num_irq_registers; i++)
+	num_of_irq_status_regs =
+		csiphy_dev->ctrl_reg->csiphy_reg.csiphy_interrupt_status_size;
+
+	for (i = 0; i < num_of_irq_status_regs; i++)
 		cam_io_w_mb(0x0, csiphybase +
 			csiphy_dev->ctrl_reg->csiphy_irq_reg[i].reg_addr);
 }
@@ -742,7 +751,6 @@ int32_t cam_csiphy_config_dev(struct csiphy_device *csiphy_dev,
 		"Index: %d: expected dev_hdl: 0x%x : derived dev_hdl: 0x%x",
 		index, dev_handle,
 		csiphy_dev->csiphy_info[index].hdl_data.device_hdl);
-	csiphy_dev->num_irq_registers = 11;
 
 	if (csiphy_dev->csiphy_info[index].csiphy_3phase)
 		is_3phase = true;
@@ -919,6 +927,7 @@ int32_t cam_csiphy_config_dev(struct csiphy_device *csiphy_dev,
 void cam_csiphy_shutdown(struct csiphy_device *csiphy_dev)
 {
 	struct cam_hw_soc_info *soc_info;
+	struct csiphy_reg_parms_t *csiphy_reg;
 	int32_t i = 0;
 
 	if (csiphy_dev->csiphy_state == CAM_CSIPHY_INIT)
@@ -933,6 +942,8 @@ void cam_csiphy_shutdown(struct csiphy_device *csiphy_dev)
 		csiphy_dev->acquire_count =
 			CSIPHY_MAX_INSTANCES_PER_PHY;
 	}
+
+	csiphy_reg = &csiphy_dev->ctrl_reg->csiphy_reg;
 
 	if (csiphy_dev->csiphy_state == CAM_CSIPHY_START) {
 		soc_info = &csiphy_dev->soc_info;
@@ -949,8 +960,7 @@ void cam_csiphy_shutdown(struct csiphy_device *csiphy_dev)
 			cam_csiphy_reset_phyconfig_param(csiphy_dev, i);
 		}
 
-		if (csiphy_dev->ctrl_reg->csiphy_reg
-			.prgm_cmn_reg_across_csiphy) {
+		if (csiphy_reg->prgm_cmn_reg_across_csiphy) {
 			mutex_lock(&active_csiphy_cnt_mutex);
 			active_csiphy_hw_cnt--;
 			mutex_unlock(&active_csiphy_cnt_mutex);
@@ -1179,9 +1189,9 @@ int cam_csiphy_util_update_aon_ops(
 int32_t cam_csiphy_core_cfg(void *phy_dev,
 			void *arg)
 {
-	struct csiphy_device *csiphy_dev =
-		(struct csiphy_device *)phy_dev;
 	struct cam_control   *cmd = (struct cam_control *)arg;
+	struct csiphy_device *csiphy_dev = (struct csiphy_device *)phy_dev;
+	struct csiphy_reg_parms_t *csiphy_reg;
 	int32_t              rc = 0;
 
 	if (!csiphy_dev || !cmd) {
@@ -1195,6 +1205,7 @@ int32_t cam_csiphy_core_cfg(void *phy_dev,
 		return -EINVAL;
 	}
 
+	csiphy_reg = &csiphy_dev->ctrl_reg->csiphy_reg;
 	CAM_DBG(CAM_CSIPHY, "Opcode received: %d", cmd->op_code);
 	mutex_lock(&csiphy_dev->mutex);
 	switch (cmd->op_code) {
@@ -1389,8 +1400,7 @@ int32_t cam_csiphy_core_cfg(void *phy_dev,
 
 		csiphy_dev->csiphy_info[offset].csiphy_cpas_cp_reg_mask = 0x0;
 
-		if (csiphy_dev->ctrl_reg->csiphy_reg
-			.prgm_cmn_reg_across_csiphy) {
+		if (csiphy_reg->prgm_cmn_reg_across_csiphy) {
 			mutex_lock(&active_csiphy_cnt_mutex);
 			active_csiphy_hw_cnt--;
 			mutex_unlock(&active_csiphy_cnt_mutex);
@@ -1626,8 +1636,7 @@ int32_t cam_csiphy_core_cfg(void *phy_dev,
 		}
 		csiphy_dev->start_dev_count++;
 
-		if (csiphy_dev->ctrl_reg->csiphy_reg
-			.prgm_cmn_reg_across_csiphy) {
+		if (csiphy_reg->prgm_cmn_reg_across_csiphy) {
 			cam_csiphy_prgm_cmn_data(csiphy_dev, false);
 
 			mutex_lock(&active_csiphy_cnt_mutex);

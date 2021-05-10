@@ -84,28 +84,24 @@ struct cam_csiphy_aon_sel_params_t {
 
 /**
  * struct csiphy_reg_parms_t
- * @mipi_csiphy_glbl_irq_cmd_addr: CSIPhy irq addr
- * @mipi_csiphy_interrupt_status0_addr:
- *     CSIPhy interrupt status addr
- * @mipi_csiphy_interrupt_mask0_addr:
- *     CSIPhy interrupt mask addr
- * @mipi_csiphy_interrupt_mask_val:
- *      CSIPhy interrupt mask val
- * @mipi_csiphy_interrupt_clear0_addr:
- *     CSIPhy interrupt clear addr
- * @csiphy_version: CSIPhy Version
- * @csiphy_common_array_size: CSIPhy common array size
- * @csiphy_reset_array_size: CSIPhy reset array size
- * @csiphy_2ph_config_array_size: 2ph settings size
- * @csiphy_3ph_config_array_size: 3ph settings size
- * @csiphy_cpas_cp_bits_per_phy: CP bits per phy
- * @csiphy_cpas_cp_is_interleaved: checks whether cp bits
- *      are interleaved or not
- * @csiphy_cpas_cp_2ph_offset: cp register 2ph offset
- * @csiphy_cpas_cp_3ph_offset: cp register 3ph offset
- * @csiphy_2ph_clock_lane: clock lane in 2ph
- * @csiphy_2ph_combo_ck_ln: clk lane in combo 2ph
- * @aon_sel_params: aon selection parameters
+ * @mipi_csiphy_glbl_irq_cmd_addr     : CSIPhy irq addr
+ * @mipi_csiphy_interrupt_status0_addr: CSIPhy interrupt status addr
+ * @mipi_csiphy_interrupt_mask0_addr  : CSIPhy interrupt mask addr
+ * @mipi_csiphy_interrupt_mask_val    : CSIPhy interrupt mask val
+ * @mipi_csiphy_interrupt_clear0_addr : CSIPhy interrupt clear addr
+ * @csiphy_version                    : CSIPhy Version
+ * @csiphy_common_array_size          : CSIPhy common array size
+ * @csiphy_reset_array_size           : CSIPhy reset array size
+ * @csiphy_2ph_config_array_size      : 2ph settings size
+ * @csiphy_3ph_config_array_size      : 3ph settings size
+ * @csiphy_cpas_cp_bits_per_phy       : CP bits per phy
+ * @csiphy_cpas_cp_is_interleaved     : checks whether cp bits are interleaved
+ *                                       or not
+ * @csiphy_cpas_cp_2ph_offset         : cp register 2ph offset
+ * @csiphy_cpas_cp_3ph_offset         : cp register 3ph offset
+ * @csiphy_2ph_clock_lane             : clock lane in 2ph
+ * @csiphy_2ph_combo_ck_ln            : clk lane in combo 2ph
+ * @aon_sel_params                    : aon selection parameters
  */
 struct csiphy_reg_parms_t {
 /*MIPI CSI PHY registers*/
@@ -134,8 +130,8 @@ struct csiphy_reg_parms_t {
 
 /**
  * struct csiphy_intf_params
- * @device_hdl: Device Handle
- * @session_hdl: Session Handle
+ * @device_hdl     : Device Handle
+ * @session_hdl    : Session Handle
  */
 struct csiphy_hdl_tbl {
 	int32_t device_hdl;
@@ -144,10 +140,10 @@ struct csiphy_hdl_tbl {
 
 /**
  * struct csiphy_reg_t
- * @reg_addr:          Register address
- * @reg_data:          Register data
- * @delay:             Delay in us
- * @csiphy_param_type: CSIPhy parameter type
+ * @reg_addr              : Register address
+ * @reg_data              : Register data
+ * @delay                 : Delay in us
+ * @csiphy_param_type     : CSIPhy parameter type
  */
 struct csiphy_reg_t {
 	int32_t  reg_addr;
@@ -165,9 +161,9 @@ struct csiphy_cphy_per_lane_info {
 
 /*
  * struct data_rate_reg_info_t
- * @bandwidth: max bandwidth supported by this reg settings
+ * @bandwidth               : max bandwidth supported by this reg settings
  * @data_rate_reg_array_size: number of reg value pairs in the array
- * @csiphy_data_rate_regs: array of data rate specific reg value pairs
+ * @csiphy_data_rate_regs   : array of data rate specific reg value pairs
  */
 struct data_rate_reg_info_t {
 	uint64_t bandwidth;
@@ -178,10 +174,10 @@ struct data_rate_reg_info_t {
 
 /**
  * struct data_rate_settings_t
- * @num_data_rate_settings: number of valid settings
- *                          present in the data rate settings array
- * @data_rate_settings: array of regsettings which are specific to
- *                      data rate
+ * @num_data_rate_settings: Number of valid settings
+ *                           present in the data rate settings array
+ * @data_rate_settings    : Array of regsettings which are specific to
+ *                           data rate
  */
 struct data_rate_settings_t {
 	ssize_t num_data_rate_settings;
@@ -190,21 +186,17 @@ struct data_rate_settings_t {
 
 /**
  * struct csiphy_ctrl_t
- * @csiphy_reg: Register address
- * @csiphy_common_reg: Common register set
- * @csiphy_reset_reg: Reset register set
- * @csiphy_2ph_reg: 2phase register set
- * @csiphy_2ph_combo_mode_reg:
- *     2phase combo register set
- * @csiphy_3ph_reg: 3phase register set
- * @csiphy_2ph_3ph_mode_reg:
- *     2 phase 3phase combo register set
- * @getclockvoting: function pointer which
- *      is used to find the clock voting
- *      for the sensor output data rate
- * @data_rate_settings_table:
- *      Table which maintains the resgister
- *      settings specific to data rate
+ * @csiphy_reg                : Register address
+ * @csiphy_common_reg         : Common register set
+ * @csiphy_reset_reg          : Reset register set
+ * @csiphy_2ph_reg            : 2phase register set
+ * @csiphy_2ph_combo_mode_reg : 2phase combo register set
+ * @csiphy_3ph_reg            : 3phase register set
+ * @csiphy_2ph_3ph_mode_reg   : 2 phase 3phase combo register set
+ * @getclockvoting            : function pointer which is used to find the clock
+ *                               voting for the sensor output data rate
+ * @data_rate_settings_table  : Table which maintains the resgister settings
+ *                               specific to data rate
  */
 struct csiphy_ctrl_t {
 	struct csiphy_reg_parms_t csiphy_reg;
@@ -249,66 +241,59 @@ struct cam_csiphy_param {
 
 /**
  * struct csiphy_device
- * @device_name:                Device name
- * @pdev:                       Platform device
- * @irq:                        Interrupt structure
- * @base:                       Base address
- * @hw_version:                 Hardware Version
- * @csiphy_state:               CSIPhy state
- * @ctrl_reg:                   CSIPhy control registers
- * @num_clk:                    Number of clocks
- * @csiphy_max_clk:             Max timer clock rate
- * @num_vreg:                   Number of regulators
- * @csiphy_clk:                 Clock structure
- * @csiphy_clk_info:            Clock information structure
- * @csiphy_vreg:                Regulator structure
- * @csiphy_reg_ptr:             Regulator structure
- * @csiphy_3p_clk_info:         3Phase clock information
- * @csiphy_3p_clk:              3Phase clocks structure
- * @csi_3phase:                 Is it a 3Phase mode
- * @ref_count:                  Reference count
- * @clk_lane:                   Clock lane
- * @rx_clk_src_idx:             Phy src clk index
- * @acquire_count:              Acquire device count
- * @start_dev_count:            Start count
- * @soc_info:                   SOC information
- * @cpas_handle:                CPAS handle
- * @current_data_rate:          Data rate in mbps
- * @csiphy_3phase:              To identify DPHY or CPHY at top level
- * @combo_mode:                 Info regarding combo_mode is enable / disable
- * @ops:                        KMD operations
- * @crm_cb:                     Callback API pointers
- * @enable_irq_dump:            Debugfs variable to enable hw IRQ register dump
+ * @device_name                : Device name
+ * @mutex                      : ioctl operation mutex
+ * @hw_version                 : Hardware Version
+ * @clk_lane                   : Clock lane
+ * @acquire_count              : Acquire device count
+ * @start_dev_count            : Start count
+ * @csiphy_max_clk             : Max timer clock rate
+ * @cpas_handle                : CPAS handle
+ * @session_max_device_support : Max number of devices supported in a session
+ * @combo_mode                 : Info regarding combo_mode is enable / disable
+ * @cphy_dphy_combo_mode       : Info regarding 2ph/3ph combo modes
+ * @rx_clk_src_idx             : Phy src clk index
+ * @is_divisor_32_comp         : 32 bit hw compatibility
+ * @csiphy_state               : CSIPhy state
+ * @ctrl_reg                   : CSIPhy control registers
+ * @csiphy_3p_clk_info         : 3Phase clock information
+ * @csiphy_3p_clk              : 3Phase clocks structure
+ * @ref_count                  : Reference count
+ * @v4l2_dev_str               : V4L2 related data
+ * @csiphy_info                : Sensor specific csiphy info
+ * @soc_info                   : SOC information
+ * @current_data_rate          : Data rate in mbps
+ * @csiphy_cpas_cp_reg_mask    : Secure csiphy lane mask
+ * @ops                        : KMD operations
+ * @crm_cb                     : Callback API pointers
+ * @enable_irq_dump            : Debugfs variable to enable hw IRQ register dump
  */
 struct csiphy_device {
 	char                           device_name[CAM_CTX_DEV_NAME_MAX_LENGTH];
 	struct mutex                   mutex;
 	uint32_t                       hw_version;
-	enum cam_csiphy_state          csiphy_state;
-	struct csiphy_ctrl_t          *ctrl_reg;
-	uint32_t                       csiphy_max_clk;
-	struct msm_cam_clk_info        csiphy_3p_clk_info[2];
-	struct clk                    *csiphy_3p_clk[2];
-	int32_t                        ref_count;
-	uint16_t                       lane_mask[MAX_CSIPHY];
-	uint8_t                        is_csiphy_3phase_hw;
-	uint8_t                        is_divisor_32_comp;
-	uint8_t                        num_irq_registers;
-	struct cam_subdev              v4l2_dev_str;
-	struct cam_csiphy_param        csiphy_info[
-					CSIPHY_MAX_INSTANCES_PER_PHY];
 	uint32_t                       clk_lane;
-	uint8_t                        rx_clk_src_idx;
 	uint32_t                       acquire_count;
 	uint32_t                       start_dev_count;
-	struct cam_hw_soc_info         soc_info;
+	uint32_t                       csiphy_max_clk;
 	uint32_t                       cpas_handle;
-	uint64_t                       current_data_rate;
-	uint64_t                       csiphy_cpas_cp_reg_mask[
-					CSIPHY_MAX_INSTANCES_PER_PHY];
 	uint8_t                        session_max_device_support;
 	uint8_t                        combo_mode;
 	uint8_t                        cphy_dphy_combo_mode;
+	uint8_t                        rx_clk_src_idx;
+	uint8_t                        is_divisor_32_comp;
+	enum cam_csiphy_state          csiphy_state;
+	struct csiphy_ctrl_t          *ctrl_reg;
+	struct msm_cam_clk_info        csiphy_3p_clk_info[2];
+	struct clk                    *csiphy_3p_clk[2];
+	int32_t                        ref_count;
+	struct cam_subdev              v4l2_dev_str;
+	struct cam_csiphy_param        csiphy_info[
+					CSIPHY_MAX_INSTANCES_PER_PHY];
+	struct cam_hw_soc_info         soc_info;
+	uint64_t                       current_data_rate;
+	uint64_t                       csiphy_cpas_cp_reg_mask[
+					CSIPHY_MAX_INSTANCES_PER_PHY];
 	struct cam_req_mgr_kmd_ops     ops;
 	struct cam_req_mgr_crm_cb     *crm_cb;
 	bool                           enable_irq_dump;
