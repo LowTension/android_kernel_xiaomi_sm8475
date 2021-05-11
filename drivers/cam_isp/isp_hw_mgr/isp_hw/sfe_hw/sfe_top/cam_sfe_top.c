@@ -25,6 +25,7 @@ struct cam_sfe_top_common_data {
 	struct cam_hw_soc_info                  *soc_info;
 	struct cam_hw_intf                      *hw_intf;
 	struct cam_sfe_top_common_reg_offset    *common_reg;
+	struct cam_sfe_top_common_reg_data      *common_reg_data;
 	struct cam_irq_controller               *sfe_irq_controller;
 	struct cam_sfe_top_irq_evt_payload       evt_payload[CAM_SFE_EVT_MAX];
 	struct list_head                         free_payload_list;
@@ -47,6 +48,7 @@ struct cam_sfe_top_priv {
 	struct cam_sfe_core_cfg         core_cfg;
 	uint32_t                        sfe_debug_cfg;
 	uint32_t                        sensor_sel_diag_cfg;
+	int                             error_irq_handle;
 	spinlock_t                      spin_lock;
 	struct cam_sfe_top_module_desc *module_desc;
 	struct cam_sfe_wr_client_desc  *wr_client_desc;
@@ -63,7 +65,6 @@ struct cam_sfe_path_data {
 	struct cam_sfe_path_common_reg_data      *path_reg_data;
 	struct cam_hw_soc_info                   *soc_info;
 	uint32_t                                  min_hblank_cnt;
-	int                                       error_irq_handle;
 	int                                       sof_eof_handle;
 	cam_hw_mgr_event_cb_func                  event_cb;
 };
@@ -1108,7 +1109,7 @@ int cam_sfe_top_release(void *device_priv,
 }
 
 static int cam_sfe_top_get_evt_payload(
-	struct cam_sfe_top_priv            *top_priv,
+	struct cam_sfe_top_priv                *top_priv,
 	struct cam_sfe_top_irq_evt_payload    **evt_payload)
 {
 	int rc = 0;
@@ -1165,26 +1166,18 @@ static int cam_sfe_top_handle_err_irq_top_half(
 	uint32_t irq_status = 0;
 	void __iomem *base = NULL;
 	struct cam_sfe_top_priv            *top_priv;
-	struct cam_isp_resource_node       *res;
-	struct cam_sfe_path_data           *path_data;
 	struct cam_sfe_top_irq_evt_payload *evt_payload;
 
-	res = th_payload->handler_priv;
-	path_data = res->res_priv;
-	top_priv = path_data->priv;
-
-	CAM_DBG(CAM_SFE, "Top error IRQ Received");
-
+	top_priv = th_payload->handler_priv;
 	irq_status = th_payload->evt_status_arr[0];
 
-	base = path_data->mem_base;
-	if (irq_status & path_data->common_reg_data->error_irq_mask) {
-		CAM_ERR(CAM_SFE,
-			"SFE Violation Detected irq_status: 0x%x",
-			irq_status);
+	CAM_DBG(CAM_SFE, "Top error IRQ Received: 0x%x", irq_status);
+
+	base = top_priv->common_data.soc_info->reg_map[SFE_CORE_BASE_IDX].mem_base;
+	if (irq_status & top_priv->common_data.common_reg_data->error_irq_mask) {
 		cam_irq_controller_disable_irq(
 			top_priv->common_data.sfe_irq_controller,
-			path_data->error_irq_handle);
+			top_priv->error_irq_handle);
 		cam_irq_controller_clear_and_mask(evt_id,
 			top_priv->common_data.sfe_irq_controller);
 	}
@@ -1199,7 +1192,7 @@ static int cam_sfe_top_handle_err_irq_top_half(
 
 	cam_isp_hw_get_timestamp(&evt_payload->ts);
 	evt_payload->violation_status =
-	cam_io_r(base +
+		cam_io_r(base +
 		top_priv->common_data.common_reg->violation_status);
 
 	th_payload->evt_payload_priv = evt_payload;
@@ -1296,29 +1289,28 @@ void cam_sfe_top_sel_frame_counter(
 	}
 }
 
-static int cam_sfe_top_handle_irq_bottom_half(
+
+static int cam_sfe_top_handle_err_irq_bottom_half(
 	void *handler_priv, void *evt_payload_priv)
 {
 	int i;
-	uint32_t val0, val1, frame_cnt, offset0, offset1, viol_sts;
+	uint32_t viol_sts;
 	uint32_t irq_status[CAM_SFE_IRQ_REGISTERS_MAX] = {0};
 	enum cam_sfe_hw_irq_status          ret = CAM_SFE_IRQ_STATUS_MAX;
 	struct cam_isp_hw_event_info        evt_info;
-	struct cam_isp_resource_node       *res = handler_priv;
-	struct cam_sfe_path_data           *path_data = res->res_priv;
-	struct cam_sfe_top_priv            *top_priv = path_data->top_priv;
+	struct cam_sfe_top_priv            *top_priv = handler_priv;
 	struct cam_sfe_top_irq_evt_payload *payload = evt_payload_priv;
 
 	for (i = 0; i < CAM_SFE_IRQ_REGISTERS_MAX; i++)
 		irq_status[i] = payload->irq_reg_val[i];
 
-	evt_info.hw_idx = res->hw_intf->hw_idx;
-	evt_info.res_id = res->res_id;
-	evt_info.res_type = res->res_type;
+	evt_info.hw_idx = top_priv->common_data.soc_info->index;
+	evt_info.hw_type = CAM_ISP_HW_TYPE_SFE;
+	evt_info.res_type = CAM_ISP_RESOURCE_SFE_IN;
 	evt_info.reg_val = 0;
 
 	if (irq_status[0] &
-		path_data->common_reg_data->error_irq_mask) {
+		top_priv->common_data.common_reg_data->error_irq_mask) {
 		if (irq_status[0] & 0x4000)
 			CAM_ERR(CAM_SFE, "PP VIOLATION");
 
@@ -1339,17 +1331,48 @@ static int cam_sfe_top_handle_irq_bottom_half(
 
 		evt_info.err_type = CAM_SFE_IRQ_STATUS_VIOLATION;
 		cam_sfe_top_print_debug_reg_info(top_priv);
-		if (path_data->event_cb)
-			path_data->event_cb(NULL,
-				CAM_ISP_HW_EVENT_ERROR, (void *)&evt_info);
+		for (i = 0; i < CAM_SFE_TOP_IN_PORT_MAX; i++) {
+			if (top_priv->in_rsrc[i].res_state ==
+				CAM_ISP_RESOURCE_STATE_STREAMING) {
+				struct cam_sfe_path_data *path_data;
+
+				path_data = (struct cam_sfe_path_data *)
+					top_priv->in_rsrc[i].res_priv;
+				if (path_data->event_cb) {
+					path_data->event_cb(path_data->priv,
+						CAM_ISP_HW_EVENT_ERROR, (void *)&evt_info);
+					break;
+				}
+			}
+		}
 
 		ret = CAM_SFE_IRQ_STATUS_VIOLATION;
 	}
 
+	cam_sfe_top_put_evt_payload(top_priv, &payload);
+
+	return ret;
+}
+
+static int cam_sfe_top_handle_irq_bottom_half(
+	void *handler_priv, void *evt_payload_priv)
+{
+	int i;
+	uint32_t val0, val1, frame_cnt, offset0, offset1;
+	uint32_t irq_status[CAM_SFE_IRQ_REGISTERS_MAX] = {0};
+	enum cam_sfe_hw_irq_status          ret = CAM_SFE_IRQ_STATUS_MAX;
+	struct cam_isp_resource_node       *res = handler_priv;
+	struct cam_sfe_path_data           *path_data = res->res_priv;
+	struct cam_sfe_top_priv            *top_priv = path_data->top_priv;
+	struct cam_sfe_top_irq_evt_payload *payload = evt_payload_priv;
+
+	for (i = 0; i < CAM_SFE_IRQ_REGISTERS_MAX; i++)
+		irq_status[i] = payload->irq_reg_val[i];
+
 	if (irq_status[0] & path_data->path_reg_data->subscribe_irq_mask) {
 		if (irq_status[0] & path_data->path_reg_data->sof_irq_mask) {
 			CAM_DBG(CAM_SFE, "SFE:%d Received %s SOF",
-				evt_info.hw_idx,
+				res->hw_intf->hw_idx,
 				res->res_name);
 			offset0 = path_data->common_reg->diag_sensor_status_0;
 			offset1 = path_data->common_reg->diag_sensor_status_1;
@@ -1362,7 +1385,7 @@ static int cam_sfe_top_handle_irq_bottom_half(
 					offset1);
 				CAM_INFO(CAM_SFE,
 					"SFE:%d HBI: 0x%x VBI: 0x%x NEQ_HBI: %s HBI_MIN_ERR: %s",
-					evt_info.hw_idx, (val0 & 0x3FFF), val1,
+					res->hw_intf->hw_idx, (val0 & 0x3FFF), val1,
 					(val0 & (0x4000) ? "TRUE" : "FALSE"),
 					(val0 & (0x8000) ? "TRUE" : "FALSE"));
 			}
@@ -1377,7 +1400,7 @@ static int cam_sfe_top_handle_irq_bottom_half(
 		if (irq_status[0] &
 			path_data->path_reg_data->eof_irq_mask) {
 			CAM_DBG(CAM_SFE, "SFE:%d Received %s EOF",
-				evt_info.hw_idx,
+				res->hw_intf->hw_idx,
 				res->res_name);
 		}
 		ret = CAM_SFE_IRQ_STATUS_SUCCESS;
@@ -1479,21 +1502,21 @@ int cam_sfe_top_start(
 	}
 
 	error_mask[0] = path_data->common_reg_data->error_irq_mask;
-	/* Enable error IRQ by default */
-	if (!path_data->error_irq_handle) {
-		path_data->error_irq_handle = cam_irq_controller_subscribe_irq(
+	/* Enable error IRQ by default once */
+	if (!top_priv->error_irq_handle) {
+		top_priv->error_irq_handle = cam_irq_controller_subscribe_irq(
 			top_priv->common_data.sfe_irq_controller,
 			CAM_IRQ_PRIORITY_0,
 			error_mask,
-			sfe_res,
+			top_priv,
 			cam_sfe_top_handle_err_irq_top_half,
-			cam_sfe_top_handle_irq_bottom_half,
+			cam_sfe_top_handle_err_irq_bottom_half,
 			sfe_res->tasklet_info,
 			&tasklet_bh_api);
 
-		if (path_data->error_irq_handle < 1) {
+		if (top_priv->error_irq_handle < 1) {
 			CAM_ERR(CAM_SFE, "Failed to subscribe Top IRQ");
-			path_data->error_irq_handle = 0;
+			top_priv->error_irq_handle = 0;
 			return -EFAULT;
 		}
 	}
@@ -1567,13 +1590,6 @@ int cam_sfe_top_stop(
 		}
 	}
 
-	if (path_data->error_irq_handle > 0) {
-		cam_irq_controller_unsubscribe_irq(
-			top_priv->common_data.sfe_irq_controller,
-			path_data->error_irq_handle);
-		path_data->error_irq_handle = 0;
-	}
-
 	if (path_data->sof_eof_handle > 0) {
 		cam_irq_controller_unsubscribe_irq(
 			top_priv->common_data.sfe_irq_controller,
@@ -1608,9 +1624,19 @@ int cam_sfe_top_stop(
 			path_data->common_reg->diag_config);
 	}
 
-	/* Reset clk rate when all resources are streamed off */
-	if (!start_stop_cnt)
+	/*
+	 * Reset clk rate & unsubscribe error irq
+	 * when all resources are streamed off
+	 */
+	if (!start_stop_cnt) {
 		top_priv->hw_clk_rate = 0;
+		if (top_priv->error_irq_handle > 0) {
+			cam_irq_controller_unsubscribe_irq(
+				top_priv->common_data.sfe_irq_controller,
+				top_priv->error_irq_handle);
+			top_priv->error_irq_handle = 0;
+		}
+	}
 
 	return 0;
 }
@@ -1742,6 +1768,8 @@ int cam_sfe_top_init(
 	top_priv->common_data.hw_intf = hw_intf;
 	top_priv->common_data.common_reg =
 		sfe_top_hw_info->common_reg;
+	top_priv->common_data.common_reg_data =
+		sfe_top_hw_info->common_reg_data;
 	top_priv->module_desc = sfe_top_hw_info->module_desc;
 	top_priv->wr_client_desc = sfe_top_hw_info->wr_client_desc;
 	top_priv->sfe_debug_cfg = 0;
