@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/iopoll.h>
@@ -398,7 +398,7 @@ int cam_ife_csid_is_vc_full_width(struct cam_ife_csid_cid_data *cid_data)
 		if (!p_cid->cid_cnt)
 			continue;
 
-		if (p_cid->num_vc_dt >= CAM_IFE_CSID_MULTI_VC_DT_GRP_MAX) {
+		if (p_cid->num_vc_dt > CAM_IFE_CSID_MULTI_VC_DT_GRP_MAX) {
 			CAM_ERR(CAM_ISP, "Invalid num_vc_dt:%d cid: %d",
 				p_cid->num_vc_dt, i);
 			rc = -EINVAL;
