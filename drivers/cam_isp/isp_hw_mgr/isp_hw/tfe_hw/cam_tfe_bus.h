@@ -191,6 +191,7 @@ struct cam_tfe_bus_tfe_out_hw_info {
  * @comp_buf_done_mask:    Composite buf done bits mask
  * @comp_rup_done_mask:    Reg update done mask
  * @bus_irq_error_mask:    Bus irq error mask bits
+ * @rdi_width:             RDI WM width
  * @support_consumed_addr: Indicate if bus support consumed address
  * @pdaf_rdi2_mux_en:      Indicate is PDAF is muxed with RDI2
  */
@@ -208,6 +209,7 @@ struct cam_tfe_bus_hw_info {
 	uint32_t comp_buf_done_mask;
 	uint32_t comp_rup_done_mask;
 	uint32_t bus_irq_error_mask[CAM_TFE_BUS_IRQ_REGISTERS_MAX];
+	uint32_t rdi_width;
 	bool support_consumed_addr;
 	bool pdaf_rdi2_mux_en;
 };

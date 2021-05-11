@@ -1168,6 +1168,7 @@ static struct cam_tfe_bus_hw_info  tfe640_bus_hw_info = {
 	},
 	.support_consumed_addr = true,
 	.pdaf_rdi2_mux_en = false,
+	.rdi_width = 128,
 };
 
 struct cam_tfe_hw_info cam_tfe640 = {
