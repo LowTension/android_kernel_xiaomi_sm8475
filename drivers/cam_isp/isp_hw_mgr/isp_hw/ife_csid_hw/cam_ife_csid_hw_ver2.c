@@ -929,6 +929,8 @@ static int cam_ife_csid_ver2_rx_err_bottom_half(
 	size_t                                      len = 0;
 	uint32_t                                    val = 0;
 	uint32_t                                    event_type = 0;
+	uint32_t                                    long_pkt_ftr_val;
+	uint32_t                                    total_crc;
 
 	if (!handler_priv || !evt_payload_priv) {
 		CAM_ERR(CAM_ISP, "Invalid params");
@@ -987,8 +989,11 @@ static int cam_ife_csid_ver2_rx_err_bottom_half(
 		}
 
 		if (irq_status & IFE_CSID_VER2_RX_ERROR_ECC)
-			CAM_ERR_BUF(CAM_ISP, log_buf, CAM_IFE_CSID_LOG_BUF_LEN, &len,
-				"DPHY_ERROR_ECC: Pkt hdr errors unrecoverable");
+			CAM_ERR_BUF(CAM_ISP, log_buf,
+				CAM_IFE_CSID_LOG_BUF_LEN, &len,
+				"DPHY_ERROR_ECC: Pkt hdr errors unrecoverable. ECC: 0x%x",
+				cam_io_r_mb(soc_info->reg_map[0].mem_base +
+					csi2_reg->captured_long_pkt_1_addr));
 
 		rx_irq_status |= irq_status;
 		csid_hw->flags.fatal_err_detected = true;
@@ -1003,8 +1008,8 @@ static int cam_ife_csid_ver2_rx_err_bottom_half(
 
 		if (irq_status & IFE_CSID_VER2_RX_CPHY_EOT_RECEPTION)
 			CAM_ERR_BUF(CAM_ISP, log_buf, CAM_IFE_CSID_LOG_BUF_LEN, &len,
-				"CPHY_EOT_RECEPTION: No EOT on lane/s, is_EPD: %d, PHY_Type: %s(%u) ",
-				csid_hw->rx_cfg.epd_supported,
+				"CPHY_EOT_RECEPTION: No EOT on lane/s, is_EPD: %c, PHY_Type: %s(%u)",
+				(csid_hw->rx_cfg.epd_supported & CAM_ISP_EPD_SUPPORT) ? 'Y' : 'N',
 				(csid_hw->rx_cfg.lane_type) ? "cphy" : "dphy",
 				csid_hw->rx_cfg.lane_type);
 
@@ -1012,9 +1017,33 @@ static int cam_ife_csid_ver2_rx_err_bottom_half(
 			CAM_ERR_BUF(CAM_ISP, log_buf, CAM_IFE_CSID_LOG_BUF_LEN, &len,
 				"CPHY_SOT_RECEPTION: Less SOTs on lane/s");
 
-		if (irq_status & IFE_CSID_VER2_RX_ERROR_CRC)
-			CAM_ERR_BUF(CAM_ISP, log_buf, CAM_IFE_CSID_LOG_BUF_LEN, &len,
-				"CPHY_ERROR_CRC: Long pkt payload CRC mismatch");
+		if (irq_status & IFE_CSID_VER2_RX_ERROR_CRC) {
+			long_pkt_ftr_val = cam_io_r_mb(
+				soc_info->reg_map[0].mem_base +
+				csi2_reg->captured_long_pkt_ftr_addr);
+			total_crc = cam_io_r_mb(
+				soc_info->reg_map[0].mem_base +
+				csi2_reg->total_crc_err_addr);
+
+			if (csid_hw->rx_cfg.lane_type == CAM_ISP_LANE_TYPE_CPHY) {
+				val = cam_io_r_mb(
+					soc_info->reg_map[0].mem_base +
+					csi2_reg->captured_cphy_pkt_hdr_addr);
+
+				CAM_ERR_BUF(CAM_ISP, log_buf,
+					CAM_IFE_CSID_LOG_BUF_LEN, &len,
+					"PHY_CRC_ERROR: Long pkt payload CRC mismatch. Totl CRC Errs: %u, Rcvd CRC: 0x%x Caltd CRC: 0x%x, VC:%d DT:%d WC:%d",
+					total_crc,
+					long_pkt_ftr_val & 0xffff, long_pkt_ftr_val >> 16,
+					val >> 22, (val >> 16) & 0x3F, val & 0xFFFF);
+			} else {
+				CAM_ERR_BUF(CAM_ISP, log_buf,
+					CAM_IFE_CSID_LOG_BUF_LEN, &len,
+					"PHY_CRC_ERROR: Long pkt payload CRC mismatch. Totl CRC Errs: %u, Rcvd CRC: 0x%x Caltd CRC: 0x%x",
+					total_crc,
+					long_pkt_ftr_val & 0xffff, long_pkt_ftr_val >> 16);
+			}
+		}
 
 		if (irq_status & IFE_CSID_VER2_RX_UNBOUNDED_FRAME)
 			CAM_ERR_BUF(CAM_ISP, log_buf, CAM_IFE_CSID_LOG_BUF_LEN, &len,
@@ -3277,8 +3306,7 @@ static int cam_ife_csid_ver2_enable_csi2(struct cam_ife_csid_ver2_hw *csid_hw)
 	/*Configure Rx cfg1*/
 	val = 1 << csi2_reg->misr_enable_shift_val;
 	val |= 1 << csi2_reg->ecc_correction_shift_en;
-	val |= (rx_cfg->epd_supported
-			<< csi2_reg->epd_mode_shift_en);
+	val |= (rx_cfg->epd_supported << csi2_reg->epd_mode_shift_en);
 	if (rx_cfg->dynamic_sensor_switch_en)
 		val |= 1 << csi2_reg->dyn_sensor_switch_shift_en;
 
