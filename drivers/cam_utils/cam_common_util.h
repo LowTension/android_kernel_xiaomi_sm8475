@@ -10,6 +10,8 @@
 #include <linux/kernel.h>
 
 #define CAM_BITS_MASK_SHIFT(x, mask, shift) (((x) & (mask)) >> shift)
+#define CAM_36BIT_INTF_GET_IOVA_BASE(iova) ((iova) >> 8)
+#define CAM_36BIT_INTF_GET_IOVA_OFFSET(iova) ((iova) & 0xff)
 
 #define PTR_TO_U64(ptr) ((uint64_t)(uintptr_t)ptr)
 #define U64_TO_PTR(ptr) ((void *)(uintptr_t)ptr)
