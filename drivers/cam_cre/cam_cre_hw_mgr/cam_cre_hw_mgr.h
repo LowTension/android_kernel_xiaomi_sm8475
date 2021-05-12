@@ -304,11 +304,12 @@ struct cam_cre_request {
 	uint32_t  req_idx;
 	uint32_t  state;
 	uint32_t  num_batch;
+	uint32_t  frames_done;
 	uint32_t  num_frame_bufs;
 	uint32_t  num_pass_bufs;
 	uint32_t  num_io_bufs[CRE_MAX_BATCH_SIZE];
 	uint32_t  in_resource;
-	struct    cre_reg_buffer cre_reg_buf;
+	struct    cre_reg_buffer cre_reg_buf[CRE_MAX_BATCH_SIZE];
 	struct    cre_debug_buffer cre_debug_buf;
 	struct    cre_io_buf *io_buf[CRE_MAX_BATCH_SIZE][CRE_MAX_IO_BUFS];
 	struct    cam_cre_clk_bw_request clk_info;

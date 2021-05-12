@@ -89,7 +89,7 @@ static int cam_cre_bus_wr_update(struct cam_cre_hw *cam_cre_hw_info,
 	uint32_t req_idx;
 	uint32_t temp = 0;
 	uint32_t wm_port_id;
-	uint32_t iova_base, iova_offset;
+	uint32_t iova_base;
 	struct cam_hw_prepare_update_args *prepare_args;
 	struct cam_cre_ctx *ctx_data;
 	struct cam_cre_request *cre_request;
@@ -159,19 +159,11 @@ static int cam_cre_bus_wr_update(struct cam_cre_hw *cam_cre_hw_info,
 			wr_reg->offset + wr_reg_client->client_cfg,
 			temp);
 
-		/*
-		 * As CRE have 36 Bit addressing support Image Address
-		 * register will have 32 bit MSB of 36 bit iova.
-		 * and addr_config will have 8 bit byte offset.
-		 */
-		iova_base = (io_buf->p_info[k].iova_addr & 0xffffff00) >> 8;
+		/* Image Address */
+		iova_base = io_buf->p_info[k].iova_addr;
 		update_cre_reg_set(cre_reg_buf,
 			wr_reg->offset + wr_reg_client->img_addr,
 			iova_base);
-		iova_offset = io_buf->p_info[k].iova_addr & 0xff;
-		update_cre_reg_set(cre_reg_buf,
-			wr_reg->offset + wr_reg_client->addr_cfg,
-			iova_offset);
 
 		/* Buffer size */
 		temp = 0;
@@ -236,12 +228,12 @@ static int cam_cre_bus_wr_prepare(struct cam_cre_hw *cam_cre_hw_info,
 	bus_wr_ctx = wr_info->bus_wr_ctx[ctx_id];
 
 	cre_request = ctx_data->req_list[req_idx];
-	cre_reg_buf = &cre_request->cre_reg_buf;
 
 	CAM_DBG(CAM_CRE, "req_idx = %d req_id = %lld num_io_bufs = %d",
 		req_idx, cre_request->request_id, cre_request->num_io_bufs[0]);
 
 	for (i = 0; i < cre_request->num_batch; i++) {
+		cre_reg_buf = &cre_request->cre_reg_buf[i];
 		for (j = 0; j < cre_request->num_io_bufs[i]; j++) {
 			io_buf = cre_request->io_buf[i][j];
 			CAM_DBG(CAM_CRE, "batch = %d io buf num = %d dir = %d",

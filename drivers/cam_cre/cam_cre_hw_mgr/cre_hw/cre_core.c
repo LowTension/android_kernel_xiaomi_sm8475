@@ -100,20 +100,20 @@ static int cam_cre_dev_process_init(struct cam_cre_hw *cre_hw,
 	if (rc)
 		goto top_init_fail;
 
-	rc = cam_cre_bus_rd_process(cre_hw, 0, CRE_HW_INIT, cmd_args);
-		if (rc)
-			goto bus_rd_init_fail;
-
 	rc = cam_cre_bus_wr_process(cre_hw, 0, CRE_HW_INIT, cmd_args);
 		if (rc)
 			goto bus_wr_init_fail;
 
+	rc = cam_cre_bus_rd_process(cre_hw, 0, CRE_HW_INIT, cmd_args);
+		if (rc)
+			goto bus_rd_init_fail;
+
 	return rc;
 
-bus_wr_init_fail:
-	rc = cam_cre_bus_rd_process(cre_hw, 0,
-		CRE_HW_DEINIT, NULL);
 bus_rd_init_fail:
+	rc = cam_cre_bus_wr_process(cre_hw, 0,
+		CRE_HW_DEINIT, NULL);
+bus_wr_init_fail:
 	rc = cam_cre_top_process(cre_hw, 0,
 		CRE_HW_DEINIT, NULL);
 top_init_fail:
@@ -274,10 +274,10 @@ static int cam_cre_dev_process_release(struct cam_cre_hw *cre_hw, void *cmd_args
 	rc = cam_cre_top_process(cre_hw, cre_dev_release->ctx_id,
 		CRE_HW_RELEASE, NULL);
 
-	rc |= cam_cre_bus_rd_process(cre_hw, cre_dev_release->ctx_id,
+	rc |= cam_cre_bus_wr_process(cre_hw, cre_dev_release->ctx_id,
 		CRE_HW_RELEASE, NULL);
 
-	rc |= cam_cre_bus_wr_process(cre_hw, cre_dev_release->ctx_id,
+	rc |= cam_cre_bus_rd_process(cre_hw, cre_dev_release->ctx_id,
 		CRE_HW_RELEASE, NULL);
 
 	return rc;
@@ -300,22 +300,22 @@ static int cam_cre_dev_process_acquire(struct cam_cre_hw *cre_hw, void *cmd_args
 	if (rc)
 		goto top_acquire_fail;
 
-	rc = cam_cre_bus_rd_process(cre_hw, cre_dev_acquire->ctx_id,
-		CRE_HW_ACQUIRE, cre_dev_acquire->cre_acquire);
-	if (rc)
-		goto bus_rd_acquire_fail;
-
 	rc = cam_cre_bus_wr_process(cre_hw, cre_dev_acquire->ctx_id,
 		CRE_HW_ACQUIRE, cre_dev_acquire->cre_acquire);
 	if (rc)
 		goto bus_wr_acquire_fail;
 
+	rc = cam_cre_bus_rd_process(cre_hw, cre_dev_acquire->ctx_id,
+		CRE_HW_ACQUIRE, cre_dev_acquire->cre_acquire);
+	if (rc)
+		goto bus_rd_acquire_fail;
+
 	return 0;
 
-bus_wr_acquire_fail:
-	cam_cre_bus_rd_process(cre_hw, cre_dev_acquire->ctx_id,
-		CRE_HW_RELEASE, cre_dev_acquire->cre_acquire);
 bus_rd_acquire_fail:
+	cam_cre_bus_wr_process(cre_hw, cre_dev_acquire->ctx_id,
+		CRE_HW_RELEASE, cre_dev_acquire->cre_acquire);
+bus_wr_acquire_fail:
 	cam_cre_top_process(cre_hw, cre_dev_acquire->ctx_id,
 		CRE_HW_RELEASE, cre_dev_acquire->cre_acquire);
 top_acquire_fail:
@@ -334,12 +334,12 @@ static int cam_cre_dev_process_reg_set_update(struct cam_cre_hw *cre_hw, void *c
 	if (rc)
 		goto end;
 
-	rc = cam_cre_bus_rd_process(cre_hw, 0,
+	rc = cam_cre_bus_wr_process(cre_hw, 0,
 		CRE_HW_REG_SET_UPDATE, reg_set_update);
 	if (rc)
 		goto end;
 
-	rc = cam_cre_bus_wr_process(cre_hw, 0,
+	rc = cam_cre_bus_rd_process(cre_hw, 0,
 		CRE_HW_REG_SET_UPDATE, reg_set_update);
 	if (rc)
 		goto end;
@@ -360,13 +360,13 @@ static int cam_cre_dev_process_prepare(struct cam_cre_hw *cre_hw, void *cmd_args
 	if (rc)
 		goto end;
 
-	rc = cam_cre_bus_rd_process(cre_hw,
+	rc = cam_cre_bus_wr_process(cre_hw,
 		cre_dev_prepare_req->ctx_data->ctx_id,
 		CRE_HW_PREPARE, cre_dev_prepare_req);
 	if (rc)
 		goto end;
 
-	rc = cam_cre_bus_wr_process(cre_hw,
+	rc = cam_cre_bus_rd_process(cre_hw,
 		cre_dev_prepare_req->ctx_data->ctx_id,
 		CRE_HW_PREPARE, cre_dev_prepare_req);
 	if (rc)
@@ -380,8 +380,8 @@ static int cam_cre_dev_process_probe(struct cam_cre_hw *cre_hw,
 	void *cmd_args)
 {
 	cam_cre_top_process(cre_hw, -1, CRE_HW_PROBE, NULL);
-	cam_cre_bus_rd_process(cre_hw, -1, CRE_HW_PROBE, NULL);
 	cam_cre_bus_wr_process(cre_hw, -1, CRE_HW_PROBE, NULL);
+	cam_cre_bus_rd_process(cre_hw, -1, CRE_HW_PROBE, NULL);
 
 	return 0;
 }
@@ -561,10 +561,10 @@ irqreturn_t cam_cre_irq(int irq_num, void *data)
 
 	cam_cre_top_process(cre_hw, 0, CRE_HW_ISR, &irq_data);
 
-	if (irq_data.top_irq_status & CAM_CRE_FE_IRQ)
-		cam_cre_bus_rd_process(cre_hw, 0, CRE_HW_ISR, &irq_data);
 	if (irq_data.top_irq_status & CAM_CRE_WE_IRQ)
 		cam_cre_bus_wr_process(cre_hw, 0, CRE_HW_ISR, &irq_data);
+	if (irq_data.top_irq_status & CAM_CRE_FE_IRQ)
+		cam_cre_bus_rd_process(cre_hw, 0, CRE_HW_ISR, &irq_data);
 
 	spin_lock(&cre_dev->hw_lock);
 	if (core_info->irq_cb.cre_hw_mgr_cb && core_info->irq_cb.data)

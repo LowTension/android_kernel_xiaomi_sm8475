@@ -57,7 +57,7 @@ static int cam_cre_bus_rd_update(struct cam_cre_hw *cam_cre_hw_info,
 	uint32_t req_idx, temp;
 	uint32_t rm_id;
 	uint32_t rsc_type;
-	uint32_t iova_base, iova_offset;
+	uint32_t iova_base;
 	struct cam_hw_prepare_update_args *prepare_args;
 	struct cam_cre_ctx *ctx_data;
 	struct cam_cre_request *cre_request;
@@ -131,19 +131,11 @@ static int cam_cre_bus_rd_update(struct cam_cre_hw *cam_cre_hw_info,
 			(rd_reg->offset + rd_reg_client->ccif_meta_data),
 			temp);
 
-		/*
-		 * As CRE have 36 Bit addressing support Image Address
-		 * register will have 32 bit MSB of 36 bit iova.
-		 * and addr_config will have 8 bit byte offset.
-		 */
-		iova_base = (io_buf->p_info[k].iova_addr & 0xffffff00) >> 8;
+		/* Image Address */
+		iova_base = io_buf->p_info[k].iova_addr;
 		update_cre_reg_set(cre_reg_buf,
 			rd_reg->offset + rd_reg_client->img_addr,
 			iova_base);
-		iova_offset = io_buf->p_info[k].iova_addr & 0xff;
-		update_cre_reg_set(cre_reg_buf,
-			rd_reg->offset + rd_reg_client->addr_cfg,
-			iova_offset);
 
 		/* Buffer size */
 		update_cre_reg_set(cre_reg_buf,
@@ -211,7 +203,6 @@ static int cam_cre_bus_rd_prepare(struct cam_cre_hw *cam_cre_hw_info,
 	req_idx = prepare->req_idx;
 
 	cre_request = ctx_data->req_list[req_idx];
-	cre_reg_buf = &cre_request->cre_reg_buf;
 
 	CAM_DBG(CAM_CRE, "req_idx = %d req_id = %lld",
 		req_idx, cre_request->request_id);
@@ -220,6 +211,7 @@ static int cam_cre_bus_rd_prepare(struct cam_cre_hw *cam_cre_hw_info,
 	rd_reg_val = cam_cre_hw_info->bus_rd_reg_val;
 
 	for (i = 0; i < cre_request->num_batch; i++) {
+		cre_reg_buf = &cre_request->cre_reg_buf[i];
 		for (j = 0; j < cre_request->num_io_bufs[i]; j++) {
 			io_buf = cre_request->io_buf[i][j];
 			if (io_buf->direction != CAM_BUF_INPUT)
@@ -233,15 +225,15 @@ static int cam_cre_bus_rd_prepare(struct cam_cre_hw *cam_cre_hw_info,
 			if (rc)
 				goto end;
 		}
-	}
 
-	/* Go command */
-	temp = 0;
-	temp |= rd_reg_val->go_cmd;
-	temp |= rd_reg_val->static_prg & rd_reg_val->static_prg_mask;
-	update_cre_reg_set(cre_reg_buf,
-		rd_reg->offset + rd_reg->input_if_cmd,
-		temp);
+		/* Go command */
+		temp = 0;
+		temp |= rd_reg_val->go_cmd;
+		temp |= rd_reg_val->static_prg & rd_reg_val->static_prg_mask;
+		update_cre_reg_set(cre_reg_buf,
+			rd_reg->offset + rd_reg->input_if_cmd,
+			temp);
+	}
 end:
 	return 0;
 }
