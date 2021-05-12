@@ -15,6 +15,10 @@
 
 #define CAM_ICP_UBWC_COMP_EN      BIT(1)
 
+#define HFI_MAX_POLL_TRY 5
+#define PC_POLL_DELAY_US 100
+#define PC_POLL_TIMEOUT_US 10000
+
 enum cam_icp_hw_type {
 	CAM_ICP_DEV_A5,
 	CAM_ICP_DEV_LX7,
