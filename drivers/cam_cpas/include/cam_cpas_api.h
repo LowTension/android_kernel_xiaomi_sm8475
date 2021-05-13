@@ -17,6 +17,9 @@
 /* Default AXI Bandwidth vote */
 #define CAM_CPAS_DEFAULT_AXI_BW 1024
 
+/* Default RT AXI Bandwidth vote */
+#define CAM_CPAS_DEFAULT_RT_AXI_BW 2000000000L
+
 #define CAM_CPAS_MAX_PATHS_PER_CLIENT 15
 #define CAM_CPAS_API_PATH_DATA_STD_START 512
 

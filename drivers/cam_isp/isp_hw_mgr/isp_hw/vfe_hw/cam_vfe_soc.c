@@ -259,9 +259,9 @@ int cam_vfe_enable_soc_resources(struct cam_hw_soc_info *soc_info)
 	}
 
 	axi_vote.axi_path[0].transac_type = CAM_AXI_TRANSACTION_WRITE;
-	axi_vote.axi_path[0].camnoc_bw = 10640000000L;
-	axi_vote.axi_path[0].mnoc_ab_bw = 10640000000L;
-	axi_vote.axi_path[0].mnoc_ib_bw = 10640000000L;
+	axi_vote.axi_path[0].camnoc_bw = CAM_CPAS_DEFAULT_RT_AXI_BW;
+	axi_vote.axi_path[0].mnoc_ab_bw = CAM_CPAS_DEFAULT_RT_AXI_BW;
+	axi_vote.axi_path[0].mnoc_ib_bw = CAM_CPAS_DEFAULT_RT_AXI_BW;
 
 	rc = cam_cpas_start(soc_private->cpas_handle, &ahb_vote, &axi_vote);
 	if (rc) {
@@ -271,7 +271,7 @@ int cam_vfe_enable_soc_resources(struct cam_hw_soc_info *soc_info)
 	}
 
 	rc = cam_soc_util_enable_platform_resource(soc_info, true,
-		CAM_TURBO_VOTE, true);
+		CAM_LOWSVS_VOTE, true);
 	if (rc) {
 		CAM_ERR(CAM_ISP, "Error! enable platform failed rc=%d", rc);
 		goto stop_cpas;
