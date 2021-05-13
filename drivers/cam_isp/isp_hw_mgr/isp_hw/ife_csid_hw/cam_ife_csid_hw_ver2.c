@@ -1681,7 +1681,7 @@ static int cam_ife_csid_ver2_wait_for_reset(
 	int rc = 0;
 
 	rem_jiffies = cam_common_wait_for_completion_timeout(
-		&csid_hw->irq_complete[CAM_IFE_CSID_IRQ_REG_TOP],
+		&csid_hw->hw_info->hw_complete,
 		msecs_to_jiffies(CAM_IFE_CSID_RESET_TIMEOUT_MS));
 
 	if (rem_jiffies == 0) {
@@ -1707,9 +1707,9 @@ static int cam_ife_csid_ver2_reset_irq_top_half(uint32_t    evt_id,
 
 	csid_hw = th_payload->handler_priv;
 
-	CAM_DBG(CAM_ISP, "TOP_IRQ_STATUS_0 = 0x%x",
+	CAM_DBG(CAM_ISP, "CSID[%d] TOP_IRQ_STATUS_0 = 0x%x", csid_hw->hw_intf->hw_idx,
 		th_payload->evt_status_arr[0]);
-	complete(&csid_hw->irq_complete[CAM_IFE_CSID_IRQ_REG_TOP]);
+	complete(&csid_hw->hw_info->hw_complete);
 
 	return 0;
 }
@@ -1729,7 +1729,6 @@ static int cam_ife_csid_ver2_internal_reset(
 
 	soc_info = &csid_hw->hw_info->soc_info;
 	mem_base = soc_info->reg_map[CAM_IFE_CSID_CLC_MEM_BASE_ID].mem_base;
-	reinit_completion(&csid_hw->irq_complete[CAM_IFE_CSID_IRQ_REG_TOP]);
 
 	if (csid_hw->hw_info->hw_state != CAM_HW_STATE_POWER_UP) {
 		CAM_ERR(CAM_ISP, "CSID[%d] powered down state",
@@ -1740,6 +1739,9 @@ static int cam_ife_csid_ver2_internal_reset(
 	if (csid_hw->sync_mode == CAM_ISP_HW_SYNC_SLAVE &&
 		rst_cmd == CAM_IFE_CSID_RESET_CMD_HW_RST)
 		goto wait_only;
+
+	if (rst_cmd == CAM_IFE_CSID_RESET_CMD_SW_RST)
+		reinit_completion(&csid_hw->hw_info->hw_complete);
 
 	/*Program the reset location */
 	if (rst_location == CAM_IFE_CSID_RESET_LOC_PATH_ONLY)
@@ -1780,6 +1782,7 @@ wait_only:
 			"CSID[%u] Reset failed mode %d cmd %d loc %d",
 			csid_hw->hw_intf->hw_idx,
 			rst_mode, rst_cmd, rst_location);
+	reinit_completion(&csid_hw->hw_info->hw_complete);
 	return rc;
 }
 
@@ -3561,7 +3564,7 @@ static int cam_ife_csid_ver2_enable_core(struct cam_ife_csid_ver2_hw *csid_hw)
 		goto disable_res;
 	}
 
-	reinit_completion(&csid_hw->irq_complete[CAM_IFE_CSID_IRQ_REG_TOP]);
+	reinit_completion(&csid_hw->hw_info->hw_complete);
 	cam_ife_csid_ver2_program_top(csid_hw);
 	csid_hw->hw_info->hw_state = CAM_HW_STATE_POWER_UP;
 
@@ -4786,7 +4789,6 @@ int cam_ife_csid_hw_ver2_init(struct cam_hw_intf *hw_intf,
 	bool is_custom)
 {
 	int rc = -EINVAL;
-	uint32_t i;
 	struct cam_hw_info                   *hw_info;
 	struct cam_ife_csid_ver2_hw          *csid_hw = NULL;
 
@@ -4821,9 +4823,6 @@ int cam_ife_csid_hw_ver2_init(struct cam_hw_intf *hw_intf,
 	spin_lock_init(&csid_hw->lock_state);
 	init_completion(&csid_hw->hw_info->hw_complete);
 	atomic_set(&csid_hw->discard_frame_per_path, 0);
-
-	for (i = 0; i < CAM_IFE_PIX_PATH_RES_MAX; i++)
-		init_completion(&csid_hw->irq_complete[i]);
 
 	rc = cam_ife_csid_init_soc_resources(&csid_hw->hw_info->soc_info,
 			cam_ife_csid_irq, csid_hw, is_custom);

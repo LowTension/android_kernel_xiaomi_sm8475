@@ -625,8 +625,6 @@ struct cam_ife_csid_ver2_hw {
 	struct cam_ife_csid_rx_cfg             rx_cfg;
 	struct cam_ife_csid_hw_counters        counters;
 	struct cam_ife_csid_hw_flags           flags;
-	struct completion                      irq_complete
-						    [CAM_IFE_CSID_IRQ_REG_MAX];
 	struct cam_ife_csid_debug_info         debug_info;
 	struct cam_ife_csid_timestamp          timestamp;
 	struct cam_ife_csid_ver2_evt_payload   rx_evt_payload[
