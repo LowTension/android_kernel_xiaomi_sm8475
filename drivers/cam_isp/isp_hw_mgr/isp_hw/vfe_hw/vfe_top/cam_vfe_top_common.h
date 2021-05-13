@@ -29,6 +29,10 @@ struct cam_vfe_top_priv_common {
 	uint64_t                        total_bw_applied;
 	uint32_t                        hw_version;
 	enum cam_vfe_bw_control_action  axi_vote_control[CAM_VFE_TOP_MUX_MAX];
+	struct cam_hw_soc_info         *soc_info;
+	unsigned long                   hw_clk_rate;
+	unsigned long                   req_clk_rate[CAM_VFE_TOP_MUX_MAX];
+
 };
 
 struct cam_vfe_top_reg_dump_entry {
@@ -54,6 +58,12 @@ struct cam_vfe_top_dump_data {
 	struct cam_vfe_top_lut_dump_entry
 		lut_entry[CAM_VFE_TOP_MAX_LUT_DUMP_ENTRIES];
 };
+
+int cam_vfe_top_set_hw_clk_rate(
+	struct cam_vfe_top_priv_common *top_common);
+
+int cam_vfe_top_clock_update(struct cam_vfe_top_priv_common *top_common,
+	void *cmd_args, uint32_t arg_size);
 
 int cam_vfe_top_set_axi_bw_vote(struct cam_vfe_soc_private *soc_private,
 	struct cam_vfe_top_priv_common *top_common, bool start_stop);
