@@ -640,7 +640,8 @@ err:
 }
 
 static int cam_ife_mgr_csid_start_hw(
-	struct cam_ife_hw_mgr_ctx *ctx)
+	struct cam_ife_hw_mgr_ctx *ctx,
+	uint32_t primary_rdi_csid_res)
 {
 	struct cam_isp_hw_mgr_res      *hw_mgr_res;
 	struct cam_isp_resource_node   *isp_res;
@@ -651,18 +652,21 @@ static int cam_ife_mgr_csid_start_hw(
 	int j;
 
 	for (j = ctx->num_base - 1 ; j >= 0; j--) {
-
 		cnt = 0;
 
 		if (ctx->base[j].hw_type != CAM_ISP_HW_TYPE_CSID)
 			continue;
 
 		list_for_each_entry(hw_mgr_res, &ctx->res_list_ife_csid, list) {
-
 			isp_res = hw_mgr_res->hw_res[ctx->base[j].split_id];
 
 			if (!isp_res || ctx->base[j].idx != isp_res->hw_intf->hw_idx)
 				continue;
+
+			if (primary_rdi_csid_res == hw_mgr_res->res_id) {
+				hw_mgr_res->hw_res[0]->rdi_only_ctx =
+				ctx->flags.is_rdi_only_context;
+			}
 
 			CAM_DBG(CAM_ISP, "csid[%u] res:%s res_id %d cnt %u",
 				isp_res->hw_intf->hw_idx,
@@ -6175,7 +6179,7 @@ static int cam_ife_mgr_restart_hw(void *start_hw_args)
 
 	CAM_DBG(CAM_ISP, "START CSID HW ... in ctx id:%d", ctx->ctx_index);
 	/* Start the IFE CSID HW devices */
-	cam_ife_mgr_csid_start_hw(ctx);
+	cam_ife_mgr_csid_start_hw(ctx, CAM_IFE_PIX_PATH_RES_MAX);
 
 	/* Start IFE root node: do nothing */
 	CAM_DBG(CAM_ISP, "Exit...(success)");
@@ -6508,7 +6512,7 @@ start_only:
 	CAM_DBG(CAM_ISP, "START CSID HW ... in ctx id:%d",
 		ctx->ctx_index);
 	/* Start the IFE CSID HW devices */
-	cam_ife_mgr_csid_start_hw(ctx);
+	cam_ife_mgr_csid_start_hw(ctx, primary_rdi_csid_res);
 
 	if (ctx->flags.is_tpg) {
 		CAM_DBG(CAM_ISP, "START TPG HW ... in ctx id:%d",
