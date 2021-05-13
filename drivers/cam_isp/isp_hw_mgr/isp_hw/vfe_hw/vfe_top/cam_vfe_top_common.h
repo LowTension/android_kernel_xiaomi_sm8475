@@ -31,20 +31,6 @@ struct cam_vfe_top_priv_common {
 	enum cam_vfe_bw_control_action  axi_vote_control[CAM_VFE_TOP_MUX_MAX];
 };
 
-
-struct cam_vfe_top_camnoc_reg_data {
-	uint8_t                              *desc;
-	uint32_t                              offset;
-};
-
-struct cam_vfe_top_camnoc_debug_data {
-	uint32_t                               pending_mask;
-	uint32_t                               pending_shift;
-	uint32_t                               queued_mask;
-	uint32_t                               num_reg;
-	struct cam_vfe_top_camnoc_reg_data    *camnoc_reg;
-};
-
 struct cam_vfe_top_reg_dump_entry {
 	uint32_t reg_dump_start;
 	uint32_t reg_dump_end;

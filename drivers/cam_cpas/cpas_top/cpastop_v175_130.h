@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2019, 2021, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CPASTOP_V175_130_H_
@@ -203,6 +203,7 @@ static struct cam_camnoc_specific
 	cam_cpas_v175_130_camnoc_specific[] = {
 	{
 		.port_type = CAM_CAMNOC_CDM,
+		.port_name = "CDM",
 		.enable = true,
 		.priority_lut_low = {
 			.enable = true,
@@ -248,6 +249,7 @@ static struct cam_camnoc_specific
 	},
 	{
 		.port_type = CAM_CAMNOC_IFE0123_RDI_WRITE,
+		.port_name = "IFE0123_RDI_WR",
 		.enable = true,
 		.priority_lut_low = {
 			.enable = true,
@@ -296,9 +298,17 @@ static struct cam_camnoc_specific
 			 */
 			.enable = false,
 		},
+		.maxwr_low = {
+			.enable = true,
+			.access_type = CAM_REG_TYPE_READ,
+			.masked_value = 0,
+			.offset = 0x3620, /* IFE0123_MAXWR_LOW */
+			.value = 0x0,
+		},
 	},
 	{
 		.port_type = CAM_CAMNOC_IFE0_NRDI_WRITE,
+		.port_name = "IFE0_NRDI_WR",
 		.enable = true,
 		.priority_lut_low = {
 			.enable = true,
@@ -349,10 +359,18 @@ static struct cam_camnoc_specific
 			.offset = 0x3B88, /* SPECIFIC_IFE0_ENCCTL_LOW */
 			.value = 1,
 		},
+		.maxwr_low = {
+			.enable = true,
+			.access_type = CAM_REG_TYPE_READ,
+			.masked_value = 0,
+			.offset = 0x3A20, /* IFE0_MAXWR_LOW */
+			.value = 0x0,
+		},
 	},
 	{
 		/* IFE0/1 RDI READ PATH */
 		.port_type = CAM_CAMNOC_IFE01_RDI_READ,
+		.port_name = "IFE01_RDI_RD",
 		.enable = true,
 		.priority_lut_low = {
 			.enable = true,
@@ -402,6 +420,7 @@ static struct cam_camnoc_specific
 	},
 	{
 		.port_type = CAM_CAMNOC_IFE1_NRDI_WRITE,
+		.port_name = "IFE1_NRDI_WR",
 		.enable = true,
 		.priority_lut_low = {
 			.enable = true,
@@ -453,9 +472,17 @@ static struct cam_camnoc_specific
 			.offset = 0x5588, /* SPECIFIC_IFE1_WR_ENCCTL_LOW */
 			.value = 1,
 		},
+		.maxwr_low = {
+			.enable = true,
+			.access_type = CAM_REG_TYPE_READ,
+			.masked_value = 0,
+			.offset = 0x5420, /* IFE1_MAXWR_LOW */
+			.value = 0x0,
+		},
 	},
 	{
 		.port_type = CAM_CAMNOC_IPE_BPS_LRME_READ,
+		.port_name = "IPE_BPS_LRME_RD",
 		.enable = true,
 		.priority_lut_low = {
 			.enable = true,
@@ -511,6 +538,7 @@ static struct cam_camnoc_specific
 	},
 	{
 		.port_type = CAM_CAMNOC_IPE_BPS_LRME_WRITE,
+		.port_name = "IPE_BPS_LRME_WR",
 		.enable = true,
 		.priority_lut_low = {
 			.enable = true,
@@ -563,9 +591,17 @@ static struct cam_camnoc_specific
 			.offset = 0x2B88, /* SPECIFIC_IBL_WR_ENCCTL_LOW */
 			.value = 0,
 		},
+		.maxwr_low = {
+			.enable = false,
+			.access_type = CAM_REG_TYPE_READ,
+			.masked_value = 0,
+			.offset = 0x2A20, /* IBL_WR_MAXWR_LOW */
+			.value = 0x0,
+		},
 	},
 	{
 		.port_type = CAM_CAMNOC_IPE_VID_DISP_WRITE,
+		.port_name = "IPE_VID_DISP_WR",
 		.enable = true,
 		.priority_lut_low = {
 			.enable = true,
@@ -623,10 +659,18 @@ static struct cam_camnoc_specific
 			.offset = 0x5F88, /* SPECIFIC_IBL_WR_ENCCTL_LOW */
 			.value = 1,
 		},
+		.maxwr_low = {
+			.enable = false,
+			.access_type = CAM_REG_TYPE_READ,
+			.masked_value = 0,
+			.offset = 0x5E20, /* IPE_VID_DISP_MAXWR_LOW */
+			.value = 0x0,
+		},
 	},
 
 	{
 		.port_type = CAM_CAMNOC_JPEG,
+		.port_name = "JPEG",
 		.enable = true,
 		.priority_lut_low = {
 			.enable = true,
@@ -666,9 +710,17 @@ static struct cam_camnoc_specific
 		.ubwc_ctl = {
 			.enable = false,
 		},
+		.maxwr_low = {
+			.enable = false,
+			.access_type = CAM_REG_TYPE_READ,
+			.masked_value = 0,
+			.offset = 0x2620, /* JPEG_MAXWR_LOW */
+			.value = 0x0,
+		},
 	},
 	{
 		.port_type = CAM_CAMNOC_FD,
+		.port_name = "FD",
 		.enable = true,
 		.priority_lut_low = {
 			.enable = true,
@@ -708,11 +760,18 @@ static struct cam_camnoc_specific
 		.ubwc_ctl = {
 			.enable = false,
 		},
-
+		.maxwr_low = {
+			.enable = false,
+			.access_type = CAM_REG_TYPE_READ,
+			.masked_value = 0,
+			.offset = 0x3E20, /* FD_MAXWR_LOW */
+			.value = 0x0,
+		},
 	},
 	{
 		/*SidebandManager_main_SidebandManager_FlagOutSet0_Low*/
 		.port_type = CAM_CAMNOC_ICP,
+		.port_name = "ICP",
 		.enable = true,
 		.flag_out_set0_low = {
 			.enable = true,

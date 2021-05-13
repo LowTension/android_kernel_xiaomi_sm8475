@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CAM_CPASTOP_HW_H_
@@ -200,6 +200,7 @@ enum cam_camnoc_port_type {
  * struct cam_camnoc_specific : CPAS camnoc specific settings
  *
  * @port_type: Port type
+ * @port_name: Port name
  * @enable: Whether to enable settings for this connection
  * @priority_lut_low: Priority Low LUT mapping for this connection
  * @priority_lut_high: Priority High LUT mapping for this connection
@@ -210,10 +211,12 @@ enum cam_camnoc_port_type {
  * @qosgen_mainctl: qosgen shaping control configuration for this connection
  * @qosgen_shaping_low: qosgen shaping low configuration for this connection
  * @qosgen_shaping_high: qosgen shaping high configuration for this connection
+ * @maxwr_low: maxwr low configuration for this connection
  *
  */
 struct cam_camnoc_specific {
 	enum cam_camnoc_port_type port_type;
+	const char *port_name;
 	bool enable;
 	struct cam_cpas_reg priority_lut_low;
 	struct cam_cpas_reg priority_lut_high;
@@ -225,6 +228,7 @@ struct cam_camnoc_specific {
 	struct cam_cpas_reg qosgen_mainctl;
 	struct cam_cpas_reg qosgen_shaping_low;
 	struct cam_cpas_reg qosgen_shaping_high;
+	struct cam_cpas_reg maxwr_low;
 };
 
 /**

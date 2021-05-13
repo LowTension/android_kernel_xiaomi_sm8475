@@ -137,6 +137,31 @@ const char *cam_cpas_axi_util_trans_type_to_string(
 }
 EXPORT_SYMBOL(cam_cpas_axi_util_trans_type_to_string);
 
+int cam_cpas_dump_camnoc_buff_fill_info(uint32_t client_handle)
+{
+	int rc;
+
+	if (!CAM_CPAS_INTF_INITIALIZED()) {
+		CAM_ERR(CAM_CPAS, "cpas intf not initialized");
+		return -ENODEV;
+	}
+
+	if (g_cpas_intf->hw_intf->hw_ops.process_cmd) {
+		rc = g_cpas_intf->hw_intf->hw_ops.process_cmd(
+			g_cpas_intf->hw_intf->hw_priv,
+			CAM_CPAS_HW_CMD_DUMP_BUFF_FILL_INFO, &client_handle,
+			sizeof(uint32_t));
+		if (rc)
+			CAM_ERR(CAM_CPAS, "Failed in process_cmd, rc=%d", rc);
+	} else {
+		CAM_ERR(CAM_CPAS, "Invalid process_cmd ops");
+		rc = -EINVAL;
+	}
+
+	return rc;
+}
+EXPORT_SYMBOL(cam_cpas_dump_camnoc_buff_fill_info);
+
 bool cam_cpas_is_feature_supported(uint32_t flag, uint32_t hw_map,
 	uint32_t *fuse_val)
 {

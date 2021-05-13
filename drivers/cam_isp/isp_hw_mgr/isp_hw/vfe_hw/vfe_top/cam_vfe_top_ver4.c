@@ -995,51 +995,23 @@ int cam_vfe_top_ver4_dump_timestamps(
 	return 0;
 }
 
-static void cam_vfe_top_ver4_print_camnoc_debug_info(
-	struct cam_vfe_top_ver4_priv *top_priv)
-{
-	struct cam_vfe_top_camnoc_debug_data *camnoc_debug = NULL;
-	struct cam_vfe_soc_private           *soc_private = NULL;
-	uint32_t                              i;
-	uint32_t                              val = 0;
-
-	camnoc_debug = top_priv->common_data.hw_info->camnoc_debug_data;
-
-	if (!camnoc_debug || !camnoc_debug->camnoc_reg) {
-		CAM_DBG(CAM_ISP, "No CAMNOC Info");
-		return;
-	}
-
-	soc_private = top_priv->common_data.soc_info->soc_private;
-
-	for (i = 0; i < camnoc_debug->num_reg; i++) {
-		cam_cpas_reg_read(soc_private->cpas_handle,
-			CAM_CPAS_REG_CAMNOC,
-			camnoc_debug->camnoc_reg[i].offset,
-			true, &val);
-		CAM_ERR(CAM_ISP, "CAMNOC Fill level: %s  pending %u queued %u",
-			camnoc_debug->camnoc_reg[i].desc,
-			((val & camnoc_debug->pending_mask) >>
-				camnoc_debug->pending_shift),
-			val & camnoc_debug->queued_mask);
-	}
-}
-
 static int cam_vfe_top_ver4_print_overflow_debug_info(
 	struct cam_vfe_top_ver4_priv *top_priv, void *cmd_args)
 {
 	struct cam_vfe_top_ver4_common_data *common_data;
 	struct cam_hw_soc_info              *soc_info;
-	uint32_t                             status = 0;
+	struct cam_vfe_soc_private *soc_private = NULL;
+	uint32_t                             status = 0, bus_overflow_status = 0;
 	uint32_t                             i = 0;
 	int                                  res_id;
 
 	common_data = &top_priv->common_data;
 	soc_info = common_data->soc_info;
+	soc_private = soc_info->soc_private;
 
 	status  = cam_io_r(soc_info->reg_map[VFE_CORE_BASE_IDX].mem_base +
 		    common_data->common_reg->bus_overflow_status);
-
+	bus_overflow_status = status;
 	res_id = *((int *)(cmd_args));
 	CAM_ERR_RATE_LIMIT(CAM_ISP, "VFE[%d] src_clk_rate:%luHz res: %u overflow_status 0x%x",
 		soc_info->index, soc_info->applied_src_clk_rate,
@@ -1054,7 +1026,9 @@ static int cam_vfe_top_ver4_print_overflow_debug_info(
 	}
 
 	cam_vfe_top_ver4_dump_timestamps(top_priv, res_id);
-	cam_vfe_top_ver4_print_camnoc_debug_info(top_priv);
+	cam_cpas_dump_camnoc_buff_fill_info(soc_private->cpas_handle);
+	if (bus_overflow_status)
+		cam_cpas_log_votes();
 
 	status  = cam_io_r(soc_info->reg_map[VFE_CORE_BASE_IDX].mem_base +
 		    common_data->common_reg->bus_violation_status);
@@ -1711,6 +1685,8 @@ static int cam_vfe_handle_irq_bottom_half(void *handler_priv,
 				payload->ts.mono_time.tv_nsec;
 		}
 
+		cam_cpas_notify_event("IFE SOF", evt_info.hw_idx);
+
 		if (vfe_priv->event_cb)
 			vfe_priv->event_cb(vfe_priv->priv,
 				CAM_ISP_HW_EVENT_SOF, (void *)&evt_info);
@@ -1726,6 +1702,8 @@ static int cam_vfe_handle_irq_bottom_half(void *handler_priv,
 		vfe_priv->epoch_ts.tv_nsec =
 			payload->ts.mono_time.tv_nsec;
 
+		cam_cpas_notify_event("IFE EPOCH", evt_info.hw_idx);
+
 		if (vfe_priv->event_cb)
 			vfe_priv->event_cb(vfe_priv->priv,
 				CAM_ISP_HW_EVENT_EPOCH, (void *)&evt_info);
@@ -1739,6 +1717,8 @@ static int cam_vfe_handle_irq_bottom_half(void *handler_priv,
 			payload->ts.mono_time.tv_sec;
 		vfe_priv->eof_ts.tv_nsec =
 			payload->ts.mono_time.tv_nsec;
+
+		cam_cpas_notify_event("IFE EOF", evt_info.hw_idx);
 
 		if (vfe_priv->event_cb)
 			vfe_priv->event_cb(vfe_priv->priv,

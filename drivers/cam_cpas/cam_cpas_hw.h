@@ -20,6 +20,7 @@
 #define CAM_CPAS_MAX_GRAN_PATHS_PER_CLIENT   32
 #define CAM_CPAS_PATH_DATA_MAX               40
 #define CAM_CPAS_TRANSACTION_MAX             2
+#define CAM_CAMNOC_FILL_LVL_REG_INFO_MAX     6
 
 #define CAM_CPAS_AXI_MIN_MNOC_AB_BW   (2048 * 1024)
 #define CAM_CPAS_AXI_MIN_MNOC_IB_BW   (2048 * 1024)
@@ -220,6 +221,9 @@ struct cam_cpas_axi_port_debug_info {
  *           This indicates actual current clock plan
  * @be_shub: RPMH SHUB BCM BE (back-end) status register value.
  *           This indicates actual current clock plan
+ * @num_camnoc_lvl_regs: Number of enabled camnoc fill level
+ *           monitoring registers
+ * @camnoc_port_name: Camnoc port names
  * @camnoc_fill_level: Camnoc fill level register info
  */
 struct cam_cpas_monitor {
@@ -234,7 +238,9 @@ struct cam_cpas_monitor {
 	uint32_t                            fe_mnoc;
 	uint32_t                            be_mnoc;
 	uint32_t                            be_shub;
-	uint32_t                            camnoc_fill_level[5];
+	uint32_t                            num_camnoc_lvl_regs;
+	const char                         *camnoc_port_name[CAM_CAMNOC_FILL_LVL_REG_INFO_MAX];
+	uint32_t                            camnoc_fill_level[CAM_CAMNOC_FILL_LVL_REG_INFO_MAX];
 };
 
 /**
@@ -288,6 +294,7 @@ struct cam_cpas {
 	atomic64_t  monitor_head;
 	struct cam_cpas_monitor monitor_entries[CAM_CPAS_MONITOR_MAX_ENTRIES];
 	bool full_state_dump;
+	void *camnoc_info;
 };
 
 int cam_camsstop_get_internal_ops(struct cam_cpas_internal_ops *internal_ops);

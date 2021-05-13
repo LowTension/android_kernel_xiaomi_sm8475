@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2019, 2021, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CPASTOP_V170_200_H_
@@ -203,6 +203,7 @@ static struct cam_camnoc_specific
 	cam_cpas_v170_200_camnoc_specific[] = {
 	{
 		.port_type = CAM_CAMNOC_CDM,
+		.port_name = "CDM",
 		.enable = true,
 		.priority_lut_low = {
 			.enable = true,
@@ -247,6 +248,7 @@ static struct cam_camnoc_specific
 	},
 	{
 		.port_type = CAM_CAMNOC_IFE02,
+		.port_name = "IFE02",
 		.enable = true,
 		.priority_lut_low = {
 			.enable = true,
@@ -292,9 +294,17 @@ static struct cam_camnoc_specific
 			.offset = 0x588, /* SPECIFIC_IFE02_ENCCTL_LOW */
 			.value = 1,
 		},
+		.maxwr_low = {
+			.enable = true,
+			.access_type = CAM_REG_TYPE_READ,
+			.masked_value = 0,
+			.offset = 0x2420, /* IFE02_MAXWR_LOW */
+			.value = 0x0,
+		},
 	},
 	{
 		.port_type = CAM_CAMNOC_IFE13,
+		.port_name = "IFE13",
 		.enable = true,
 		.priority_lut_low = {
 			.enable = true,
@@ -340,9 +350,17 @@ static struct cam_camnoc_specific
 			.offset = 0x988, /* SPECIFIC_IFE13_ENCCTL_LOW */
 			.value = 1,
 		},
+		.maxwr_low = {
+			.enable = true,
+			.access_type = CAM_REG_TYPE_READ,
+			.masked_value = 0,
+			.offset = 0x2620, /* IFE13_MAXWR_LOW */
+			.value = 0x0,
+		},
 	},
 	{
 		.port_type = CAM_CAMNOC_IPE_BPS_LRME_READ,
+		.port_name = "IPE_BPS_LRME_RD",
 		.enable = true,
 		.priority_lut_low = {
 			.enable = true,
@@ -393,6 +411,7 @@ static struct cam_camnoc_specific
 	},
 	{
 		.port_type = CAM_CAMNOC_IPE_BPS_LRME_WRITE,
+		.port_name = "IPE_BPS_LRME_WR",
 		.enable = true,
 		.priority_lut_low = {
 			.enable = true,
@@ -440,9 +459,17 @@ static struct cam_camnoc_specific
 			.offset = 0x1188, /* SPECIFIC_IBL_WR_ENCCTL_LOW */
 			.value = 1,
 		},
+		.maxwr_low = {
+			.enable = false,
+			.access_type = CAM_REG_TYPE_READ,
+			.masked_value = 0,
+			.offset = 0x2A20, /* IPE_BPS_LRME_MAXWR_LOW */
+			.value = 0x0,
+		},
 	},
 	{
 		.port_type = CAM_CAMNOC_JPEG,
+		.port_name = "JPEG",
 		.enable = true,
 		.priority_lut_low = {
 			.enable = true,
@@ -482,13 +509,22 @@ static struct cam_camnoc_specific
 		.ubwc_ctl = {
 			.enable = false,
 		},
+		.maxwr_low = {
+			.enable = false,
+			.access_type = CAM_REG_TYPE_READ,
+			.masked_value = 0,
+			.offset = 0x2C20, /* IPE_BPS_LRME_MAXWR_LOW */
+			.value = 0x0,
+		},
 	},
 	{
 		.port_type = CAM_CAMNOC_FD,
+		.port_name = "FD",
 		.enable = false,
 	},
 	{
 		.port_type = CAM_CAMNOC_ICP,
+		.port_name = "ICP",
 		.enable = true,
 		.flag_out_set0_low = {
 			.enable = true,
