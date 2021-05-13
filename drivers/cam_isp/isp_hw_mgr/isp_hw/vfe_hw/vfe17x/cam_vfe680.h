@@ -1457,6 +1457,7 @@ static struct cam_vfe_bus_ver3_hw_info vfe680_bus_hw_info = {
 			.source_group  = CAM_VFE_BUS_VER3_SRC_GRP_2,
 			.mid[0]        = 8,
 			.num_wm        = 1,
+			.line_based    = 1,
 			.wm_idx        = {
 				24,
 			},
@@ -1471,6 +1472,7 @@ static struct cam_vfe_bus_ver3_hw_info vfe680_bus_hw_info = {
 			.source_group  = CAM_VFE_BUS_VER3_SRC_GRP_3,
 			.mid[0]        = 9,
 			.num_wm        = 1,
+			.line_based    = 1,
 			.wm_idx        = {
 				25,
 			},
@@ -1485,6 +1487,7 @@ static struct cam_vfe_bus_ver3_hw_info vfe680_bus_hw_info = {
 			.source_group  = CAM_VFE_BUS_VER3_SRC_GRP_4,
 			.mid[0]        = 10,
 			.num_wm        = 1,
+			.line_based    = 1,
 			.wm_idx        = {
 				26,
 			},

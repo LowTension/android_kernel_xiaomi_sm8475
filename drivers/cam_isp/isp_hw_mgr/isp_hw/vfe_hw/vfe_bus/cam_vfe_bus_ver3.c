@@ -147,6 +147,7 @@ struct cam_vfe_bus_ver3_wm_resource_data {
 	uint32_t             ubwc_bandwidth_limit;
 	uint32_t             acquired_width;
 	uint32_t             acquired_height;
+	uint32_t             default_line_based;
 };
 
 struct cam_vfe_bus_ver3_comp_grp_data {
@@ -818,6 +819,146 @@ static int cam_vfe_bus_ver3_handle_rup_bottom_half(void *handler_priv,
 	return ret;
 }
 
+static int cam_vfe_bus_ver3_config_rdi_wm(
+	struct cam_vfe_bus_ver3_wm_resource_data  *rsrc_data)
+{
+	/* Force RDI to use PLAIN128 */
+	rsrc_data->pack_fmt = PACKER_FMT_VER3_PLAIN_128;
+	switch (rsrc_data->format) {
+	case CAM_FORMAT_MIPI_RAW_10:
+		if (rsrc_data->default_line_based) {
+			rsrc_data->en_cfg = 0x1;
+			rsrc_data->width =
+				ALIGNUP((rsrc_data->width * 5) / 4, 16) / 16;
+		} else {
+			rsrc_data->width = CAM_VFE_RDI_BUS_DEFAULT_WIDTH;
+			rsrc_data->height = 0;
+			rsrc_data->stride = CAM_VFE_RDI_BUS_DEFAULT_STRIDE;
+			rsrc_data->en_cfg = (0x1 << 16) | 0x1;
+		}
+		break;
+	case CAM_FORMAT_MIPI_RAW_6:
+		if (rsrc_data->default_line_based) {
+			rsrc_data->en_cfg = 0x1;
+			rsrc_data->width =
+				ALIGNUP((rsrc_data->width * 3) / 4, 16) / 16;
+		} else {
+			rsrc_data->width = CAM_VFE_RDI_BUS_DEFAULT_WIDTH;
+			rsrc_data->height = 0;
+			rsrc_data->stride = CAM_VFE_RDI_BUS_DEFAULT_STRIDE;
+			rsrc_data->en_cfg = (0x1 << 16) | 0x1;
+		}
+		break;
+	case CAM_FORMAT_MIPI_RAW_8:
+		if (rsrc_data->default_line_based) {
+			rsrc_data->en_cfg = 0x1;
+			rsrc_data->width =
+				ALIGNUP(rsrc_data->width, 16) / 16;
+		} else {
+			rsrc_data->width = CAM_VFE_RDI_BUS_DEFAULT_WIDTH;
+			rsrc_data->height = 0;
+			rsrc_data->stride = CAM_VFE_RDI_BUS_DEFAULT_STRIDE;
+			rsrc_data->en_cfg = (0x1 << 16) | 0x1;
+		}
+		break;
+	case CAM_FORMAT_MIPI_RAW_12:
+		if (rsrc_data->default_line_based) {
+			rsrc_data->en_cfg = 0x1;
+			rsrc_data->width =
+				ALIGNUP((rsrc_data->width * 3) / 2, 16) / 16;
+		} else {
+			rsrc_data->width = CAM_VFE_RDI_BUS_DEFAULT_WIDTH;
+			rsrc_data->height = 0;
+			rsrc_data->stride = CAM_VFE_RDI_BUS_DEFAULT_STRIDE;
+			rsrc_data->en_cfg = (0x1 << 16) | 0x1;
+		}
+		break;
+	case CAM_FORMAT_MIPI_RAW_14:
+		if (rsrc_data->default_line_based) {
+			rsrc_data->en_cfg = 0x1;
+			rsrc_data->width =
+				ALIGNUP((rsrc_data->width * 7) / 2, 16) / 16;
+		} else {
+			rsrc_data->width = CAM_VFE_RDI_BUS_DEFAULT_WIDTH;
+			rsrc_data->height = 0;
+			rsrc_data->stride = CAM_VFE_RDI_BUS_DEFAULT_STRIDE;
+			rsrc_data->en_cfg = (0x1 << 16) | 0x1;
+		}
+		break;
+	case CAM_FORMAT_MIPI_RAW_16:
+		if (rsrc_data->default_line_based) {
+			rsrc_data->en_cfg = 0x1;
+			rsrc_data->width =
+				ALIGNUP((rsrc_data->width * 2), 16) / 16;
+		} else {
+			rsrc_data->width = CAM_VFE_RDI_BUS_DEFAULT_WIDTH;
+			rsrc_data->height = 0;
+			rsrc_data->stride = CAM_VFE_RDI_BUS_DEFAULT_STRIDE;
+			rsrc_data->en_cfg = (0x1 << 16) | 0x1;
+		}
+		break;
+	case CAM_FORMAT_MIPI_RAW_20:
+		if (rsrc_data->default_line_based) {
+			rsrc_data->en_cfg = 0x1;
+			rsrc_data->width =
+				ALIGNUP((rsrc_data->width * 5) / 2, 16) / 16;
+		} else {
+			rsrc_data->width = CAM_VFE_RDI_BUS_DEFAULT_WIDTH;
+			rsrc_data->height = 0;
+			rsrc_data->stride = CAM_VFE_RDI_BUS_DEFAULT_STRIDE;
+			rsrc_data->en_cfg = (0x1 << 16) | 0x1;
+		}
+		break;
+	case CAM_FORMAT_PLAIN128:
+		if (rsrc_data->default_line_based) {
+			rsrc_data->en_cfg = 0x1;
+			rsrc_data->width =
+				ALIGNUP((rsrc_data->width * 16), 16) / 16;
+		} else {
+			rsrc_data->width = CAM_VFE_RDI_BUS_DEFAULT_WIDTH;
+			rsrc_data->height = 0;
+			rsrc_data->stride = CAM_VFE_RDI_BUS_DEFAULT_STRIDE;
+			rsrc_data->en_cfg = (0x1 << 16) | 0x1;
+		}
+		break;
+	case CAM_FORMAT_PLAIN32_20:
+		if (rsrc_data->default_line_based) {
+			rsrc_data->en_cfg = 0x1;
+			rsrc_data->width =
+				ALIGNUP((rsrc_data->width * 4), 16) / 16;
+		} else {
+			rsrc_data->width = CAM_VFE_RDI_BUS_DEFAULT_WIDTH;
+			rsrc_data->height = 0;
+			rsrc_data->stride = CAM_VFE_RDI_BUS_DEFAULT_STRIDE;
+			rsrc_data->en_cfg = (0x1 << 16) | 0x1;
+		}
+		break;
+	case CAM_FORMAT_PLAIN8:
+		rsrc_data->en_cfg = 0x1;
+		rsrc_data->stride = rsrc_data->width * 2;
+		break;
+	case CAM_FORMAT_PLAIN16_10:
+	case CAM_FORMAT_PLAIN16_12:
+	case CAM_FORMAT_PLAIN16_14:
+	case CAM_FORMAT_PLAIN16_16:
+		rsrc_data->width =
+			ALIGNUP(rsrc_data->width * 2, 16) / 16;
+		rsrc_data->en_cfg = 0x1;
+		break;
+	case CAM_FORMAT_PLAIN64:
+		rsrc_data->width =
+			ALIGNUP(rsrc_data->width * 8, 16) / 16;
+		rsrc_data->en_cfg = 0x1;
+		break;
+	default:
+		CAM_ERR(CAM_ISP, "Unsupported RDI format %d",
+			rsrc_data->format);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 static int cam_vfe_bus_ver3_acquire_wm(
 	struct cam_vfe_bus_ver3_priv          *ver3_bus_priv,
 	struct cam_isp_out_port_generic_info  *out_port_info,
@@ -828,7 +969,7 @@ static int cam_vfe_bus_ver3_acquire_wm(
 	uint32_t                               is_dual,
 	enum cam_vfe_bus_ver3_comp_grp_type   *comp_grp_id)
 {
-	int32_t wm_idx = 0;
+	int32_t wm_idx = 0, rc;
 	struct cam_vfe_bus_ver3_wm_resource_data  *rsrc_data = NULL;
 	char wm_mode[50];
 
@@ -858,46 +999,9 @@ static int cam_vfe_bus_ver3_acquire_wm(
 
 	if ((vfe_out_res_id >= CAM_VFE_BUS_VER3_VFE_OUT_RDI0) &&
 		(vfe_out_res_id <= CAM_VFE_BUS_VER3_VFE_OUT_RDI3)) {
-		/* Force RDI to use PLAIN128 */
-		rsrc_data->pack_fmt = PACKER_FMT_VER3_PLAIN_128;
-		switch (rsrc_data->format) {
-		case CAM_FORMAT_MIPI_RAW_6:
-		case CAM_FORMAT_MIPI_RAW_8:
-		case CAM_FORMAT_MIPI_RAW_10:
-		case CAM_FORMAT_MIPI_RAW_12:
-		case CAM_FORMAT_MIPI_RAW_14:
-		case CAM_FORMAT_MIPI_RAW_16:
-		case CAM_FORMAT_MIPI_RAW_20:
-		case CAM_FORMAT_PLAIN128:
-		case CAM_FORMAT_PLAIN32_20:
-			rsrc_data->width = CAM_VFE_RDI_BUS_DEFAULT_WIDTH;
-			rsrc_data->height = 0;
-			rsrc_data->stride = CAM_VFE_RDI_BUS_DEFAULT_STRIDE;
-			rsrc_data->en_cfg = (0x1 << 16) | 0x1;
-			break;
-		case CAM_FORMAT_PLAIN8:
-			rsrc_data->en_cfg = 0x1;
-			rsrc_data->stride = rsrc_data->width * 2;
-			break;
-		case CAM_FORMAT_PLAIN16_10:
-		case CAM_FORMAT_PLAIN16_12:
-		case CAM_FORMAT_PLAIN16_14:
-		case CAM_FORMAT_PLAIN16_16:
-			rsrc_data->width =
-				ALIGNUP(rsrc_data->width * 2, 16) / 16;
-			rsrc_data->en_cfg = 0x1;
-			break;
-		case CAM_FORMAT_PLAIN64:
-			rsrc_data->width =
-				ALIGNUP(rsrc_data->width * 8, 16) / 16;
-			rsrc_data->en_cfg = 0x1;
-			break;
-		default:
-			CAM_ERR(CAM_ISP, "Unsupported RDI format %d",
-				rsrc_data->format);
-			return -EINVAL;
-		}
-
+		rc = cam_vfe_bus_ver3_config_rdi_wm(rsrc_data);
+		if (rc)
+			return rc;
 	} else if (vfe_out_res_id == CAM_VFE_BUS_VER3_VFE_OUT_RAW_DUMP) {
 
 		rsrc_data->stride = rsrc_data->width;
@@ -1321,7 +1425,8 @@ static int cam_vfe_bus_ver3_init_wm_resource(uint32_t index,
 	struct cam_vfe_bus_ver3_priv    *ver3_bus_priv,
 	struct cam_vfe_bus_ver3_hw_info *ver3_hw_info,
 	struct cam_isp_resource_node    *wm_res,
-	uint8_t                         *wm_name)
+	uint8_t                         *wm_name,
+	uint32_t                         line_based_config)
 {
 	struct cam_vfe_bus_ver3_wm_resource_data *rsrc_data;
 
@@ -1334,6 +1439,7 @@ static int cam_vfe_bus_ver3_init_wm_resource(uint32_t index,
 	wm_res->res_priv = rsrc_data;
 
 	rsrc_data->index = index;
+	rsrc_data->default_line_based = line_based_config;
 	rsrc_data->hw_regs = &ver3_hw_info->bus_client_reg[index];
 	rsrc_data->common_data = &ver3_bus_priv->common_data;
 
@@ -2345,7 +2451,8 @@ static int cam_vfe_bus_ver3_init_vfe_out_resource(uint32_t  index,
 			ver3_hw_info->vfe_out_hw_info[index].wm_idx[i],
 			ver3_bus_priv, ver3_hw_info,
 			&rsrc_data->wm_res[i],
-			ver3_hw_info->vfe_out_hw_info[index].name[i]);
+			ver3_hw_info->vfe_out_hw_info[index].name[i],
+			ver3_hw_info->vfe_out_hw_info[index].line_based);
 		if (rc < 0) {
 			CAM_ERR(CAM_ISP, "VFE:%d init WM:%d failed rc:%d",
 				ver3_bus_priv->common_data.core_index, i, rc);
