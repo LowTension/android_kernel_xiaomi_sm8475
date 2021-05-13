@@ -13,3 +13,6 @@ ccflags-y += -DCONFIG_SPECTRA_ICP=1
 ccflags-y += -DCONFIG_SPECTRA_JPEG=1
 ccflags-y += -DCONFIG_SPECTRA_CUSTOM=1
 ccflags-y += -DCONFIG_SPECTRA_SENSOR=1
+
+# External Dependencies
+KBUILD_CPPFLAGS += -DCONFIG_MSM_MMRM=1

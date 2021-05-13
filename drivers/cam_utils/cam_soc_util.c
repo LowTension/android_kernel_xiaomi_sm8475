@@ -81,7 +81,11 @@ static LIST_HEAD(wrapper_clk_list);
 #if IS_REACHABLE(CONFIG_MSM_MMRM)
 bool cam_is_mmrm_supported_on_current_chip(void)
 {
-	return false;
+	/*
+	 * Enable on chipsets where mmrm does the resource management.
+	 * Either based on query API from mmrm or based on camera dt flag.
+	 */
+	return true;
 }
 
 int cam_mmrm_notifier_callback(
@@ -182,7 +186,6 @@ static int cam_soc_util_set_rate_through_mmrm(
 
 	client_data.num_hw_blocks = num_hw_blocks;
 	client_data.flags = 0;
-
 
 	CAM_DBG(CAM_UTIL,
 		"mmrm=%pK, nrt=%d, min_rate=%ld req_rate %ld, num_blocks=%d",
