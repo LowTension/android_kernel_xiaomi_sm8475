@@ -941,6 +941,7 @@ static int cam_cpastop_init_hw_version(struct cam_hw_info *cpas_hw,
 		break;
 	case CAM_CPAS_TITAN_680_V100:
 		camnoc_info = &cam680_cpas100_camnoc_info;
+		qchannel_info = &cam680_cpas100_qchannel_info;
 		break;
 	case CAM_CPAS_TITAN_165_V100:
 		camnoc_info = &cam165_cpas100_camnoc_info;
