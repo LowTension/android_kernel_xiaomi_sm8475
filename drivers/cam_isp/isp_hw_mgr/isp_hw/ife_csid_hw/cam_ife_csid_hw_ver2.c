@@ -1034,7 +1034,6 @@ static int cam_ife_csid_ver2_rx_err_bottom_half(
 	size_t                                      len = 0;
 	uint32_t                                    val = 0;
 	uint32_t                                    event_type = 0;
-	bool                                        fatal_err_detected = false;
 
 	if (!handler_priv || !evt_payload_priv) {
 		CAM_ERR(CAM_ISP, "Invalid params");
@@ -1097,7 +1096,7 @@ static int cam_ife_csid_ver2_rx_err_bottom_half(
 				"DPHY_ERROR_ECC: Pkt hdr errors unrecoverable");
 
 		rx_irq_status |= irq_status;
-		fatal_err_detected = true;
+		csid_hw->flags.fatal_err_detected = true;
 	}
 
 	irq_status = payload->irq_reg_val[CAM_IFE_CSID_IRQ_REG_RX] &
@@ -1127,7 +1126,6 @@ static int cam_ife_csid_ver2_rx_err_bottom_half(
 				"UNBOUNDED_FRAME: Frame started with EOF or No EOF");
 
 		rx_irq_status |= irq_status;
-		fatal_err_detected = true;
 	}
 
 	irq_status = payload->irq_reg_val[CAM_IFE_CSID_IRQ_REG_RX] &
@@ -1153,7 +1151,7 @@ static int cam_ife_csid_ver2_rx_err_bottom_half(
 			payload->irq_reg_val[CAM_IFE_CSID_IRQ_REG_RX],
 			log_buf);
 
-	if (csid_hw->flags.fatal_err_detected || fatal_err_detected) {
+	if (csid_hw->flags.fatal_err_detected) {
 		event_type |= CAM_ISP_HW_ERROR_CSID_FATAL;
 		cam_subdev_notify_message(CAM_CSIPHY_DEVICE_TYPE,
 			CAM_SUBDEV_MESSAGE_IRQ_ERR,
