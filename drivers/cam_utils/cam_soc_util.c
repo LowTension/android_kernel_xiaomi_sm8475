@@ -12,11 +12,16 @@
 #include "cam_debug_util.h"
 #include "cam_cx_ipeak.h"
 #include "cam_mem_mgr.h"
+#include "cam_presil_hw_access.h"
+
 
 #define CAM_TO_MASK(bitn)          (1 << (int)(bitn))
 #define CAM_IS_BIT_SET(mask, bit)  ((mask) & CAM_TO_MASK(bit))
 #define CAM_SET_BIT(mask, bit)     ((mask) |= CAM_TO_MASK(bit))
 #define CAM_CLEAR_BIT(mask, bit)   ((mask) &= ~CAM_TO_MASK(bit))
+
+#define CAM_SS_START_PRESIL 0x08c00000
+#define CAM_SS_START        0x0ac00000
 
 static uint skip_mmrm_set_rate;
 module_param(skip_mmrm_set_rate, uint, 0644);
@@ -1977,6 +1982,11 @@ static int cam_soc_util_get_dt_regulator_info
 	return rc;
 }
 
+#ifdef CONFIG_CAM_PRESIL
+static uint32_t next_dummy_irq_line_num = 0x000f;
+struct resource dummy_irq_line[512];
+#endif
+
 int cam_soc_util_get_dt_properties(struct cam_hw_soc_info *soc_info)
 {
 	struct device_node *of_node = NULL;
@@ -2046,10 +2056,20 @@ int cam_soc_util_get_dt_properties(struct cam_hw_soc_info *soc_info)
 			IORESOURCE_IRQ, soc_info->irq_name);
 		if (!soc_info->irq_line) {
 			CAM_ERR(CAM_UTIL, "no irq resource");
+#ifndef CONFIG_CAM_PRESIL
 			rc = -ENODEV;
 			return rc;
+#else
+			/* Pre-sil for new devices not present on old */
+			soc_info->irq_line =
+				&dummy_irq_line[next_dummy_irq_line_num++];
+			CAM_DBG(CAM_PRESIL, "interrupt line for dev %s irq name %s number %d",
+				soc_info->dev_name, soc_info->irq_name,
+				soc_info->irq_line->start);
+#endif
 		}
 	}
+
 
 	rc = of_property_read_string_index(of_node, "compatible", 0,
 		(const char **)&soc_info->compatible);
@@ -2416,6 +2436,156 @@ disable_rgltr:
 	return rc;
 }
 
+static bool cam_soc_util_is_presil_address_space(unsigned long mem_block_start)
+{
+	if(mem_block_start >= CAM_SS_START_PRESIL && mem_block_start < CAM_SS_START)
+		return true;
+
+	return false;
+}
+
+#ifndef CONFIG_CAM_PRESIL
+void __iomem * cam_soc_util_get_mem_base(
+	unsigned long mem_block_start,
+	unsigned long mem_block_size,
+	const char *mem_block_name,
+	uint32_t reserve_mem)
+{
+	void __iomem * mem_base;
+
+	if (reserve_mem) {
+		if (!request_mem_region(mem_block_start,
+			mem_block_size,
+			mem_block_name)) {
+			CAM_ERR(CAM_UTIL,
+				"Error Mem region request Failed:%s",
+				mem_block_name);
+			return NULL;
+		}
+	}
+
+	mem_base = ioremap(mem_block_start, mem_block_size);
+
+	if (!mem_base) {
+		CAM_ERR(CAM_UTIL, "get mem base failed");
+	}
+
+	return mem_base;
+}
+
+int cam_soc_util_request_irq(struct device *dev,
+	unsigned int irq_line_start,
+	irq_handler_t handler,
+	unsigned long irqflags,
+	const char *irq_name,
+	void *irq_data,
+	unsigned long mem_block_start)
+{
+	int rc;
+
+	rc = devm_request_irq(dev,
+		irq_line_start,
+		handler,
+		IRQF_TRIGGER_RISING,
+		irq_name,
+		irq_data);
+	if (rc) {
+		CAM_ERR(CAM_UTIL, "irq request fail rc %d", rc);
+		return -EBUSY;
+	}
+
+	disable_irq(irq_line_start);
+
+	return rc;
+}
+
+#else
+void __iomem * cam_soc_util_get_mem_base(
+	unsigned long mem_block_start,
+	unsigned long mem_block_size,
+	const char *mem_block_name,
+	uint32_t reserve_mem)
+{
+	void __iomem * mem_base;
+
+	if(cam_soc_util_is_presil_address_space(mem_block_start))
+		mem_base = (void __iomem *)mem_block_start;
+	else {
+		if (reserve_mem) {
+			if (!request_mem_region(mem_block_start,
+				mem_block_size,
+				mem_block_name)) {
+				CAM_ERR(CAM_UTIL,
+					"Error Mem region request Failed:%s",
+					mem_block_name);
+				return NULL;
+			}
+		}
+
+		mem_base = ioremap(mem_block_start, mem_block_size);
+	}
+
+	if (!mem_base) {
+		CAM_ERR(CAM_UTIL, "get mem base failed");
+	}
+
+	return mem_base;
+}
+
+int cam_soc_util_request_irq(struct device *dev,
+	unsigned int irq_line_start,
+	irq_handler_t handler,
+	unsigned long irqflags,
+	const char *irq_name,
+	void *irq_data,
+	unsigned long mem_block_start)
+{
+	int rc;
+
+	if(cam_soc_util_is_presil_address_space(mem_block_start)) {
+		rc = devm_request_irq(dev,
+			irq_line_start,
+			handler,
+			irqflags,
+			irq_name,
+			irq_data);
+		if (rc) {
+			CAM_ERR(CAM_UTIL, "presil irq request fail");
+			return -EBUSY;
+		}
+
+		disable_irq(irq_line_start);
+
+		rc = !(cam_presil_subscribe_device_irq(irq_line_start,
+			handler, irq_data, irq_name));
+		CAM_DBG(CAM_PRESIL, "Subscribe presil IRQ: rc=%d NUM=%d Name=%s handler=0x%x",
+			rc, irq_line_start, irq_name, handler);
+		if (rc) {
+			CAM_ERR(CAM_UTIL, "presil irq request fail");
+			return -EBUSY;
+		}
+	} else {
+		rc = devm_request_irq(dev,
+			irq_line_start,
+			handler,
+			irqflags,
+			irq_name,
+			irq_data);
+		if (rc) {
+			CAM_ERR(CAM_UTIL, "irq request fail");
+			return -EBUSY;
+		}
+		disable_irq(irq_line_start);
+		CAM_INFO(CAM_UTIL, "Subscribe for non-presil IRQ success");
+	}
+
+	CAM_INFO(CAM_UTIL, "returning IRQ for mem_block_start 0x%0x rc %d",
+		mem_block_start, rc);
+
+	return rc;
+}
+#endif
+
 int cam_soc_util_request_platform_resource(
 	struct cam_hw_soc_info *soc_info,
 	irq_handler_t handler, void *irq_data)
@@ -2428,29 +2598,24 @@ int cam_soc_util_request_platform_resource(
 	}
 
 	for (i = 0; i < soc_info->num_mem_block; i++) {
-		if (soc_info->reserve_mem) {
-			if (!request_mem_region(soc_info->mem_block[i]->start,
-				resource_size(soc_info->mem_block[i]),
-				soc_info->mem_block_name[i])){
-				CAM_ERR(CAM_UTIL,
-					"Error Mem region request Failed:%s",
-					soc_info->mem_block_name[i]);
-				rc = -ENOMEM;
-				goto unmap_base;
-			}
-		}
-		soc_info->reg_map[i].mem_base = ioremap(
+
+		soc_info->reg_map[i].mem_base = cam_soc_util_get_mem_base(
 			soc_info->mem_block[i]->start,
-			resource_size(soc_info->mem_block[i]));
+			resource_size(soc_info->mem_block[i]),
+			soc_info->mem_block_name[i],
+			soc_info->reserve_mem);
+
 		if (!soc_info->reg_map[i].mem_base) {
 			CAM_ERR(CAM_UTIL, "i= %d base NULL", i);
 			rc = -ENOMEM;
 			goto unmap_base;
 		}
+
 		soc_info->reg_map[i].mem_cam_base =
 			soc_info->mem_block_cam_base[i];
 		soc_info->reg_map[i].size =
 			resource_size(soc_info->mem_block[i]);
+
 		soc_info->num_reg_map++;
 	}
 
@@ -2468,15 +2633,18 @@ int cam_soc_util_request_platform_resource(
 	}
 
 	if (soc_info->irq_line) {
-		rc = devm_request_irq(soc_info->dev, soc_info->irq_line->start,
+
+		rc = cam_soc_util_request_irq(soc_info->dev,
+			soc_info->irq_line->start,
 			handler, IRQF_TRIGGER_RISING,
-			soc_info->irq_name, irq_data);
+			soc_info->irq_name, irq_data,
+			soc_info->mem_block[0]->start);
 		if (rc) {
 			CAM_ERR(CAM_UTIL, "irq request fail");
 			rc = -EBUSY;
 			goto put_regulator;
 		}
-		disable_irq(soc_info->irq_line->start);
+
 		soc_info->irq_data = irq_data;
 	}
 
@@ -2604,6 +2772,7 @@ unmap_base:
 int cam_soc_util_release_platform_resource(struct cam_hw_soc_info *soc_info)
 {
 	int i;
+	bool b_ret = false;
 
 	if (!soc_info || !soc_info->dev) {
 		CAM_ERR(CAM_UTIL, "Invalid parameter");
@@ -2638,6 +2807,15 @@ int cam_soc_util_release_platform_resource(struct cam_hw_soc_info *soc_info)
 	}
 
 	if (soc_info->irq_line) {
+		if (cam_presil_mode_enabled()) {
+			if (cam_soc_util_is_presil_address_space(soc_info->mem_block[0]->start)) {
+				b_ret = cam_presil_unsubscribe_device_irq(
+					soc_info->irq_line->start);
+				CAM_DBG(CAM_PRESIL, "UnSubscribe IRQ: Ret=%d NUM=%d Name=%s",
+					b_ret, soc_info->irq_line->start, soc_info->irq_name);
+			}
+		}
+
 		disable_irq(soc_info->irq_line->start);
 		devm_free_irq(soc_info->dev,
 			soc_info->irq_line->start, soc_info->irq_data);
