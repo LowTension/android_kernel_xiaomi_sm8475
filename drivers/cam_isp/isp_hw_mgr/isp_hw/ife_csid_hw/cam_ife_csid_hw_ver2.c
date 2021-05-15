@@ -3921,6 +3921,7 @@ int cam_ife_csid_ver2_stop(void *hw_priv,
 	reset.reset_type = CAM_IFE_CSID_RESET_PATH;
 	cam_ife_csid_ver2_reset(hw_priv, &reset,
 		sizeof(struct cam_csid_reset_cfg_args));
+	csid_hw->flags.device_enabled = false;
 
 	return rc;
 }
