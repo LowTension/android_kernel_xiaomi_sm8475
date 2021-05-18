@@ -853,6 +853,7 @@ static struct cam_tfe_bus_hw_info  tfe530_bus_hw_info = {
 	},
 	.support_consumed_addr = true,
 	.pdaf_rdi2_mux_en = true,
+	.rdi_width = 64,
 };
 
 struct cam_tfe_hw_info cam_tfe530 = {

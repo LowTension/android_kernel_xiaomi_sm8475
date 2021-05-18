@@ -71,6 +71,7 @@ struct cam_tfe_bus_common_data {
 	uint32_t                                    secure_mode;
 	uint32_t                                    num_sec_out;
 	uint32_t                                    comp_done_shift;
+	uint32_t                                    rdi_width;
 	bool                                        is_lite;
 	bool                                        support_consumed_addr;
 	cam_hw_mgr_event_cb_func                    event_cb;
@@ -552,12 +553,14 @@ static enum cam_tfe_bus_packer_format
 static int cam_tfe_bus_acquire_rdi_wm(
 	struct cam_tfe_bus_wm_resource_data  *rsrc_data)
 {
+	int rdi_width = rsrc_data->common_data->rdi_width;
 	switch (rsrc_data->format) {
 	case CAM_FORMAT_MIPI_RAW_6:
 		rsrc_data->pack_fmt = 0xA;
 		if (rsrc_data->mode == CAM_ISP_TFE_WM_LINE_BASED_MODE) {
 			rsrc_data->width =
-				ALIGNUP(rsrc_data->width * 6, 64) / 64;
+				ALIGNUP(rsrc_data->width * 6, rdi_width) /
+					rdi_width;
 			rsrc_data->en_cfg = 0x1;
 		} else {
 			rsrc_data->width =
@@ -573,8 +576,8 @@ static int cam_tfe_bus_acquire_rdi_wm(
 		rsrc_data->pack_fmt = 0xA;
 		if (rsrc_data->mode == CAM_ISP_TFE_WM_LINE_BASED_MODE) {
 			rsrc_data->width =
-				ALIGNUP(rsrc_data->width * 8, 64) / 64;
-
+				ALIGNUP(rsrc_data->width * 8, rdi_width) /
+					rdi_width;
 			rsrc_data->en_cfg = 0x1;
 		} else {
 			rsrc_data->width =
@@ -589,8 +592,8 @@ static int cam_tfe_bus_acquire_rdi_wm(
 		rsrc_data->pack_fmt = 0xA;
 		if (rsrc_data->mode == CAM_ISP_TFE_WM_LINE_BASED_MODE) {
 			rsrc_data->width =
-				ALIGNUP(rsrc_data->width * 10, 64) / 64;
-
+				ALIGNUP(rsrc_data->width * 10, rdi_width) /
+					rdi_width;
 			rsrc_data->en_cfg = 0x1;
 		} else {
 			rsrc_data->width =
@@ -605,8 +608,8 @@ static int cam_tfe_bus_acquire_rdi_wm(
 		rsrc_data->pack_fmt = 0xA;
 		if (rsrc_data->mode == CAM_ISP_TFE_WM_LINE_BASED_MODE) {
 			rsrc_data->width =
-				ALIGNUP(rsrc_data->width * 12, 64) / 64;
-
+				ALIGNUP(rsrc_data->width * 12, rdi_width) /
+					rdi_width;
 			rsrc_data->en_cfg = 0x1;
 		} else {
 			rsrc_data->width =
@@ -621,8 +624,8 @@ static int cam_tfe_bus_acquire_rdi_wm(
 		rsrc_data->pack_fmt = 0xA;
 		if (rsrc_data->mode == CAM_ISP_TFE_WM_LINE_BASED_MODE) {
 			rsrc_data->width =
-				ALIGNUP(rsrc_data->width * 14, 64) / 64;
-
+				ALIGNUP(rsrc_data->width * 14, rdi_width) /
+					rdi_width;
 			rsrc_data->en_cfg = 0x1;
 		} else {
 			rsrc_data->width =
@@ -641,8 +644,8 @@ static int cam_tfe_bus_acquire_rdi_wm(
 		rsrc_data->pack_fmt = 0xA;
 		if (rsrc_data->mode == CAM_ISP_TFE_WM_LINE_BASED_MODE) {
 			rsrc_data->width =
-				ALIGNUP(rsrc_data->width * 16, 64) / 64;
-
+				ALIGNUP(rsrc_data->width * 16, rdi_width) /
+					rdi_width;
 			rsrc_data->en_cfg = 0x1;
 		} else {
 			rsrc_data->width =
@@ -659,8 +662,8 @@ static int cam_tfe_bus_acquire_rdi_wm(
 		rsrc_data->pack_fmt = 0xA;
 		if (rsrc_data->mode == CAM_ISP_TFE_WM_LINE_BASED_MODE) {
 			rsrc_data->width =
-				ALIGNUP(rsrc_data->width * 64, 64) / 64;
-
+				ALIGNUP(rsrc_data->width * 64, rdi_width) /
+					rdi_width;
 			rsrc_data->en_cfg = 0x1;
 		} else {
 			rsrc_data->width =
@@ -2505,6 +2508,7 @@ int cam_tfe_bus_init(
 	bus_priv->common_data.support_consumed_addr =
 		hw_info->support_consumed_addr;
 	bus_priv->common_data.pdaf_rdi2_mux_en = hw_info->pdaf_rdi2_mux_en;
+	bus_priv->common_data.rdi_width = hw_info->rdi_width;
 
 	for (i = 0; i < CAM_TFE_BUS_IRQ_REGISTERS_MAX; i++)
 		bus_priv->bus_irq_error_mask[i] =
