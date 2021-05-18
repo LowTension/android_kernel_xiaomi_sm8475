@@ -1760,7 +1760,6 @@ static int cam_ife_csid_ver2_internal_reset(
 			csid_reg->cmn_reg->rst_mode_shift_val);
 
 	cam_io_w_mb(val, mem_base + csid_reg->cmn_reg->reset_cfg_addr);
-
 	val = 0;
 
 	/*Program the cmd */
@@ -1771,12 +1770,12 @@ static int cam_ife_csid_ver2_internal_reset(
 	else if (rst_cmd == CAM_IFE_CSID_RESET_CMD_SW_RST)
 		val = csid_reg->cmn_reg->rst_cmd_sw_reset_complete_val;
 
-	cam_io_w_mb(
-		val, mem_base + csid_reg->cmn_reg->reset_cmd_addr);
+	cam_io_w_mb(val, mem_base + csid_reg->cmn_reg->reset_cmd_addr);
 
 wait_only:
 
 	rc = cam_ife_csid_ver2_wait_for_reset(csid_hw);
+
 	if (rc)
 		CAM_ERR(CAM_ISP,
 			"CSID[%u] Reset failed mode %d cmd %d loc %d",
@@ -3754,6 +3753,12 @@ int cam_ife_csid_ver2_deinit_hw(void *hw_priv,
 	csid_hw = (struct cam_ife_csid_ver2_hw *)hw_info->core_info;
 	res = (struct cam_isp_resource_node *)deinit_args;
 
+	if (csid_hw->hw_info->hw_state == CAM_HW_STATE_POWER_DOWN) {
+		CAM_WARN(CAM_ISP, "CSID:%u already powered down",
+			csid_hw->hw_intf->hw_idx);
+		return -EINVAL;
+	}
+
 	if (res->res_type != CAM_ISP_RESOURCE_PIX_PATH) {
 		CAM_ERR(CAM_ISP, "CSID:%d Invalid Res type %d",
 			 csid_hw->hw_intf->hw_idx,
@@ -3817,6 +3822,13 @@ int cam_ife_csid_ver2_start(void *hw_priv, void *args,
 	csid_hw = (struct cam_ife_csid_ver2_hw *)hw_info->core_info;
 	start_args = (struct cam_csid_hw_start_args *)args;
 
+	if (csid_hw->hw_info->hw_state == CAM_HW_STATE_POWER_DOWN) {
+		CAM_WARN(CAM_ISP, "CSID:%u already powered down",
+			csid_hw->hw_intf->hw_idx);
+		return -EINVAL;
+	}
+
+
 	mutex_lock(&csid_hw->hw_info->hw_mutex);
 	csid_hw->flags.sof_irq_triggered = false;
 	csid_hw->counters.irq_debug_cnt = 0;
@@ -3826,9 +3838,17 @@ int cam_ife_csid_ver2_start(void *hw_priv, void *args,
 	for (i = 0; i < start_args->num_res; i++) {
 
 		res = start_args->node_res[i];
-		CAM_DBG(CAM_ISP, "CSID:%d res_type :%d res_id:%d",
+		CAM_DBG(CAM_ISP, "CSID:%d res_type :%d res[id:%d name:%s]",
 			csid_hw->hw_intf->hw_idx, res->res_type,
-			res->res_id);
+			res->res_id, res->res_name);
+
+		if (res->res_id >= CAM_IFE_PIX_PATH_RES_MAX) {
+			CAM_ERR(CAM_ISP, "CSID:%d Invalid res tpe:%d res id:%d",
+				csid_hw->hw_intf->hw_idx, res->res_type,
+				res->res_id);
+			rc = -EINVAL;
+			goto end;
+		}
 
 		switch (res->res_id) {
 		case  CAM_IFE_PIX_PATH_RES_IPP:
@@ -3860,6 +3880,7 @@ int cam_ife_csid_ver2_start(void *hw_priv, void *args,
 	}
 
 	cam_ife_csid_ver2_enable_csi2(csid_hw);
+end:
 	mutex_unlock(&csid_hw->hw_info->hw_mutex);
 	return rc;
 }
@@ -3881,6 +3902,15 @@ int cam_ife_csid_ver2_stop(void *hw_priv,
 		return -EINVAL;
 	}
 
+	hw_info = (struct cam_hw_info *)hw_priv;
+	csid_hw = (struct cam_ife_csid_ver2_hw *)hw_info->core_info;
+
+	if (csid_hw->hw_info->hw_state == CAM_HW_STATE_POWER_DOWN) {
+		CAM_WARN(CAM_ISP, "CSID:%u already powered down",
+			csid_hw->hw_intf->hw_idx);
+		return -EINVAL;
+	}
+
 	csid_stop = (struct cam_csid_hw_stop_args  *) stop_args;
 
 	if (!csid_stop->num_res) {
@@ -3888,11 +3918,7 @@ int cam_ife_csid_ver2_stop(void *hw_priv,
 		return -EINVAL;
 	}
 
-	hw_info = (struct cam_hw_info *)hw_priv;
-	csid_hw = (struct cam_ife_csid_ver2_hw *)hw_info->core_info;
-
-	CAM_DBG(CAM_ISP, "CSID:%d num_res %d",
-		csid_hw->hw_intf->hw_idx,
+	CAM_DBG(CAM_ISP, "CSID:%d num_res %d", csid_hw->hw_intf->hw_idx,
 		csid_stop->num_res);
 
 	atomic_set(&csid_hw->discard_frame_per_path, 0);
