@@ -194,6 +194,7 @@ static int cam_cpas_parse_node_tree(struct cam_cpas *cpas_core,
 	struct cam_cpas_client *curr_client = NULL;
 	const char *client_name = NULL;
 	uint32_t client_idx = 0, cell_idx = 0;
+	uint8_t niu_idx = 0;
 	int rc = 0, count = 0, i;
 
 	camera_bus_node = of_get_child_by_name(of_node, "camera-bus-nodes");
@@ -218,6 +219,9 @@ static int cam_cpas_parse_node_tree(struct cam_cpas *cpas_core,
 
 		soc_private->level_node[level_idx] = level_node;
 	}
+
+	if (soc_private->enable_smart_qos)
+		soc_private->smart_qos_info->num_rt_wr_nius = 0;
 
 	for (level_idx = (CAM_CPAS_MAX_TREE_LEVELS - 1); level_idx >= 0;
 		level_idx--) {
@@ -260,6 +264,47 @@ static int cam_cpas_parse_node_tree(struct cam_cpas *cpas_core,
 					"failed to read node-name rc=%d",
 					rc);
 				return rc;
+			}
+
+			if (soc_private->enable_smart_qos &&
+				(level_idx == 1) &&
+				of_property_read_bool(curr_node, "rt-wr-niu")) {
+
+				rc = of_property_read_u32(curr_node,
+					"priority-lut-low-offset",
+					&curr_node_ptr->pri_lut_low_offset);
+				if (rc) {
+					CAM_ERR(CAM_CPAS,
+						"Invalid priority offset rc %d",
+						rc);
+					return rc;
+				}
+
+				rc = of_property_read_u32(curr_node, "niu-size",
+					&curr_node_ptr->niu_size);
+				if (rc || !curr_node_ptr->niu_size) {
+					CAM_ERR(CAM_CPAS,
+						"Invalid niu size rc %d", rc);
+					return rc;
+				}
+
+				niu_idx = soc_private->smart_qos_info->num_rt_wr_nius;
+				if (niu_idx >= CAM_CPAS_MAX_RT_WR_NIU_NODES) {
+					CAM_ERR(CAM_CPAS,
+						"Invalid number of level1 nodes %d",
+						soc_private->smart_qos_info->num_rt_wr_nius);
+					return -EINVAL;
+				}
+
+				soc_private->smart_qos_info->rt_wr_niu_node[niu_idx] =
+					curr_node_ptr;
+				soc_private->smart_qos_info->num_rt_wr_nius++;
+
+				CAM_DBG(CAM_CPAS,
+					"level1[%d] : Node %s idx %d priority offset 0x%x, NIU size %dKB",
+					niu_idx,
+					curr_node_ptr->node_name, curr_node_ptr->cell_idx,
+					curr_node_ptr->pri_lut_low_offset, curr_node_ptr->niu_size);
 			}
 
 			curr_node_ptr->camnoc_max_needed = camnoc_max_needed;
@@ -365,6 +410,10 @@ static int cam_cpas_parse_node_tree(struct cam_cpas *cpas_core,
 					[mnoc_idx].ib_bw_voting_needed
 					= of_property_read_bool(curr_node,
 					"ib-bw-voting-needed");
+				cpas_core->axi_port
+					[mnoc_idx].is_rt
+					= of_property_read_bool(curr_node,
+					"rt-axi-port");
 				curr_node_ptr->axi_port_idx = mnoc_idx;
 				mnoc_idx++;
 				cpas_core->num_axi_ports++;
@@ -1012,10 +1061,87 @@ int cam_cpas_get_custom_dt_info(struct cam_hw_info *cpas_hw,
 		soc_private->num_vdd_ahb_mapping = count;
 	}
 
+	soc_private->enable_smart_qos = of_property_read_bool(of_node,
+			"enable-smart-qos");
+
+	if (soc_private->enable_smart_qos) {
+		uint32_t value1, value2;
+
+		soc_private->smart_qos_info = kzalloc(sizeof(struct cam_cpas_smart_qos_info),
+			GFP_KERNEL);
+		if (!soc_private->smart_qos_info) {
+			rc = -ENOMEM;
+			goto cleanup_clients;
+		}
+
+		/*
+		 * If enabled, we expect min and max priority values,
+		 * so treat as fatal error if not available.
+		 */
+		rc = of_property_read_u32(of_node, "rt-wr-priority-min",
+			&value1);
+		if (rc) {
+			CAM_ERR(CAM_CPAS, "Invalid min Qos priority rc %d", rc);
+			goto cleanup_clients;
+		}
+
+		rc = of_property_read_u32(of_node, "rt-wr-priority-max",
+			&value2);
+		if (rc) {
+			CAM_ERR(CAM_CPAS, "Invalid min Qos priority rc %d", rc);
+			goto cleanup_clients;
+		}
+
+		soc_private->smart_qos_info->rt_wr_priority_min = (uint8_t)value1;
+		soc_private->smart_qos_info->rt_wr_priority_max = (uint8_t)value2;
+
+		CAM_DBG(CAM_CPAS,
+			"SmartQoS enabled, rt_wr_priority_min=%u, rt_wr_priority_max=%u",
+			(uint32_t)soc_private->smart_qos_info->rt_wr_priority_min,
+			(uint32_t)soc_private->smart_qos_info->rt_wr_priority_max);
+	} else {
+		CAM_DBG(CAM_CPAS, "SmartQoS not enabled, use static settings");
+		soc_private->smart_qos_info = NULL;
+	}
+
 	rc = cam_cpas_parse_node_tree(cpas_core, of_node, soc_private);
 	if (rc) {
 		CAM_ERR(CAM_CPAS, "Node tree parsing failed rc: %d", rc);
 		goto cleanup_tree;
+	}
+
+	/* If SmartQoS is enabled, we expect few tags in dtsi, validate */
+	if (soc_private->enable_smart_qos) {
+		int port_idx;
+		bool rt_port_exists = false;
+
+		if ((soc_private->smart_qos_info->num_rt_wr_nius == 0) ||
+			(soc_private->smart_qos_info->num_rt_wr_nius >
+			CAM_CPAS_MAX_RT_WR_NIU_NODES)) {
+			CAM_ERR(CAM_CPAS, "Invalid number of level1 nodes %d",
+				soc_private->smart_qos_info->num_rt_wr_nius);
+			rc = -EINVAL;
+			goto cleanup_tree;
+		}
+
+		for (port_idx = 0; port_idx < cpas_core->num_axi_ports;
+			port_idx++) {
+			CAM_DBG(CAM_CPAS, "[%d] : Port[%s] is_rt=%d",
+				port_idx, cpas_core->axi_port[port_idx].axi_port_name,
+				cpas_core->axi_port[port_idx].is_rt);
+			if (cpas_core->axi_port[port_idx].is_rt) {
+				rt_port_exists = true;
+				break;
+			}
+		}
+
+		if (!rt_port_exists) {
+			CAM_ERR(CAM_CPAS,
+				"RT AXI port not tagged, num ports %d",
+				cpas_core->num_axi_ports);
+			rc = -EINVAL;
+			goto cleanup_tree;
+		}
 	}
 
 	/* Optional rpmh bcm info */
@@ -1125,6 +1251,7 @@ int cam_cpas_soc_deinit_resources(struct cam_hw_soc_info *soc_info)
 		CAM_ERR(CAM_CPAS, "release platform failed, rc=%d", rc);
 
 	kfree(soc_private->llcc_info);
+	kfree(soc_private->smart_qos_info);
 	kfree(soc_info->soc_private);
 	soc_info->soc_private = NULL;
 
