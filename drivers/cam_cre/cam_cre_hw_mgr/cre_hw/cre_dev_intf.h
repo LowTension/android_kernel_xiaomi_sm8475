@@ -10,7 +10,6 @@
 #include "cam_cpas_api.h"
 #include "cre_top.h"
 
-
 #define CRE_HW_INIT            0x1
 #define CRE_HW_DEINIT          0x2
 #define CRE_HW_ACQUIRE         0x3
@@ -122,6 +121,9 @@ struct cam_cre_dev_prepare_req {
 	struct cam_cre_ctx *ctx_data;
 	uint32_t req_idx;
 };
+
+int cam_cre_subdev_init_module(void);
+void cam_cre_subdev_exit_module(void);
 
 int cam_cre_top_process(struct cam_cre_hw *cam_cre_hw_info,
 	int32_t ctx_id, uint32_t cmd_id, void *data);

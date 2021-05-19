@@ -103,6 +103,7 @@ static int cam_cre_subdev_component_bind(struct device *dev,
 	int iommu_hdl = -1;
 	struct platform_device *pdev = to_platform_device(dev);
 
+	CAM_DBG(CAM_CRE, "CRE Subdev Component bind");
 	g_cre_dev.sd.internal_ops = &cam_cre_subdev_internal_ops;
 	rc = cam_subdev_probe(&g_cre_dev.sd, pdev, CAM_CRE_DEV_NAME,
 		CAM_CRE_DEVICE_TYPE);
@@ -191,13 +192,11 @@ static int cam_cre_subdev_probe(struct platform_device *pdev)
 {
 	int rc = 0;
 
-	CAM_DBG(CAM_CRE, "Adding CRE component");
+	CAM_DBG(CAM_CRE, "Adding CRE sub component");
 	rc = component_add(&pdev->dev, &cam_cre_subdev_component_ops);
 	if (rc)
 		CAM_ERR(CAM_CRE, "failed to add component rc: %d", rc);
-
 	return rc;
-
 }
 
 static const struct of_device_id cam_cre_subdev_dt_match[] = {
@@ -220,12 +219,12 @@ struct platform_driver cam_cre_subdev_driver = {
 
 int cam_cre_subdev_init_module(void)
 {
-	return platform_driver_register(&cam_cre_driver);
+	return platform_driver_register(&cam_cre_subdev_driver);
 }
 
 void cam_cre_subdev_exit_module(void)
 {
-	platform_driver_unregister(&cam_cre_driver);
+	platform_driver_unregister(&cam_cre_subdev_driver);
 }
 
 MODULE_DESCRIPTION("MSM CRE driver");

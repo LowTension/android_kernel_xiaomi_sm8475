@@ -95,7 +95,7 @@ struct cam_cre_hw_intf_data {
 };
 
 /**
- * struct cam_ctx_clk_info
+ * struct cam_cre_ctx_clk_info
  * @curr_fc: Context latest request frame cycles
  * @rt_flag: Flag to indicate real time request
  * @base_clk: Base clock to process the request
@@ -104,7 +104,7 @@ struct cam_cre_hw_intf_data {
  * @num_paths: Number of valid AXI paths
  * @axi_path: ctx based per path bw vote
  */
-struct cam_ctx_clk_info {
+struct cam_cre_ctx_clk_info {
 	uint32_t curr_fc;
 	uint32_t rt_flag;
 	uint32_t base_clk;
@@ -357,7 +357,7 @@ struct cam_cre_ctx {
 	uint64_t last_req_time;
 	struct cam_req_mgr_timer *req_watch_dog;
 	uint32_t req_watch_dog_reset_counter;
-	struct cam_ctx_clk_info clk_info;
+	struct cam_cre_ctx_clk_info clk_info;
 	struct cam_req_mgr_timer *clk_watch_dog;
 	struct cre_top *cre_top;
 	uint32_t clk_watch_dog_reset_counter;

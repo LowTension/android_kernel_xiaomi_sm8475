@@ -221,6 +221,9 @@ const char *cam_get_module_name(unsigned int module_id)
 	case CAM_SFE:
 		name = "CAM-SFE";
 		break;
+	case CAM_CRE:
+		name = "CAM-CRE";
+		break;
 	default:
 		name = "CAM";
 		break;
