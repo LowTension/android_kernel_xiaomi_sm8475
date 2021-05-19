@@ -1981,7 +1981,7 @@ static int cam_ife_csid_hw_ver2_config_rx(
 		reserve->in_port->lane_num;
 	csid_hw->res_type = reserve->in_port->res_type;
 	csid_hw->rx_cfg.dynamic_sensor_switch_en =
-		reserve->in_port->dynamic_sensor_switch_en;
+		(bool)reserve->in_port->dynamic_sensor_switch_en;
 	csid_hw->rx_cfg.epd_supported =
 		reserve->in_port->epd_supported;
 
@@ -3347,10 +3347,10 @@ static int cam_ife_csid_ver2_enable_csi2(struct cam_ife_csid_ver2_hw *csid_hw)
 	/*Configure Rx cfg1*/
 	val = 1 << csi2_reg->misr_enable_shift_val;
 	val |= 1 << csi2_reg->ecc_correction_shift_en;
-	val |= (rx_cfg->dynamic_sensor_switch_en
-			<< csi2_reg->dyn_sensor_switch_shift_en);
 	val |= (rx_cfg->epd_supported
 			<< csi2_reg->epd_mode_shift_en);
+	if (rx_cfg->dynamic_sensor_switch_en)
+		val |= 1 << csi2_reg->dyn_sensor_switch_shift_en;
 
 	vc_full_width = cam_ife_csid_is_vc_full_width(csid_hw->cid_data);
 
