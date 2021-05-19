@@ -598,10 +598,12 @@ static int cam_sfe_bus_acquire_wm(
 	rsrc_data->is_dual = is_dual;
 	rsrc_data->enable_caching =  false;
 
-	/* RDI0-2 line based mode by default */
+	/* RDI0-4 line based mode by default */
 	if (sfe_out_res_id == CAM_SFE_BUS_SFE_OUT_RDI0 ||
 		sfe_out_res_id == CAM_SFE_BUS_SFE_OUT_RDI1 ||
-		sfe_out_res_id == CAM_SFE_BUS_SFE_OUT_RDI2)
+		sfe_out_res_id == CAM_SFE_BUS_SFE_OUT_RDI2 ||
+		sfe_out_res_id == CAM_SFE_BUS_SFE_OUT_RDI3 ||
+		sfe_out_res_id == CAM_SFE_BUS_SFE_OUT_RDI4)
 		rsrc_data->wm_mode = CAM_SFE_WM_LINE_BASED_MODE;
 
 	/* Set WM offset value to default */
