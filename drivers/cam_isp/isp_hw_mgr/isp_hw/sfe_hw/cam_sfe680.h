@@ -923,73 +923,122 @@ static struct cam_sfe_bus_wr_hw_info sfe680_bus_wr_hw_info = {
 			.name          = "STATS_BHIST_2",
 		},
 	},
+	.num_cons_err = 29,
 	.constraint_error_list = {
 		{
-			.bitmask = 0x000001,
-			.error_description = "PPC 1x1 illegal"
+			.bitmask = BIT(0),
+			.error_description = "PPC 1x1 input not supported"
 		},
 		{
-			.bitmask = 0x000002,
-			.error_description = "PPC 1x2 illegal"
+			.bitmask = BIT(1),
+			.error_description = "PPC 1x2 input not supported"
 		},
 		{
-			.bitmask = 0x000004,
-			.error_description = "PPC 2x1 illegal"
+			.bitmask = BIT(2),
+			.error_description = "PPC 2x1 input not supported"
 		},
 		{
-			.bitmask = 0x000008,
-			.error_description = "PPC 2x2 illegal"
+			.bitmask = BIT(3),
+			.error_description = "PPC 2x2 input not supported"
 		},
 		{
-			.bitmask = 0x000010,
-			.error_description = "Pack 8 BPP illegal"
+			.bitmask = BIT(4),
+			.error_description = "Pack 8 BPP format not supported"
 		},
 		{
-			.bitmask = 0x000020,
-			.error_description = "Pack 16 BPP illegal"
+			.bitmask = BIT(5),
+			.error_description = "Pack 16 format not supported"
 		},
 		{
-			.bitmask = 0x000040,
-			.error_description = "Pack 32 BPP illegal"
+			.bitmask = BIT(6),
+			.error_description = "Pack 32 BPP format not supported"
 		},
 		{
-			.bitmask = 0x000080,
-			.error_description = "Pack 64 BPP illegal"
+			.bitmask = BIT(7),
+			.error_description = "Pack 64 BPP format not supported"
 		},
 		{
-			.bitmask = 0x000100,
-			.error_description = "Pack 128 BPP illegal"
+			.bitmask = BIT(8),
+			.error_description = "Pack MIPI 20 format not supported"
 		},
 		{
-			.bitmask = 0x000200,
-			.error_description = "Frame based illegal"
+			.bitmask = BIT(9),
+			.error_description = "Pack MIPI 14 format not supported"
 		},
 		{
-			.bitmask = 0x000400,
-			.error_description = "Index based illegal"
+			.bitmask = BIT(10),
+			.error_description = "Pack MIPI 12 format not supported"
 		},
 		{
-			.bitmask = 0x000800,
+			.bitmask = BIT(11),
+			.error_description = "Pack MIPI 10 format not supported"
+		},
+		{
+			.bitmask = BIT(12),
+			.error_description = "Pack 128 BPP format not supported"
+		},
+		{
+			.bitmask = BIT(13),
+			.error_description = "UBWC NV12 format not supported"
+		},
+		{
+			.bitmask = BIT(14),
+			.error_description = "UBWC NV12 4R format not supported"
+		},
+		{
+			.bitmask = BIT(15),
+			.error_description = "UBWC TP10 format not supported"
+		},
+		{
+			.bitmask = BIT(16),
+			.error_description = "Frame based Mode not supported"
+		},
+		{
+			.bitmask = BIT(17),
+			.error_description = "Index based Mode not supported"
+		},
+		{
+			.bitmask = BIT(18),
+			.error_description = "FIFO image addr unalign"
+		},
+		{
+			.bitmask = BIT(19),
+			.error_description = "FIFO ubwc addr unalign"
+		},
+		{
+			.bitmask = BIT(20),
+			.error_description = "FIFO frmheader addr unalign"
+		},
+		{
+			.bitmask = BIT(21),
 			.error_description = "Image address unalign"
 		},
 		{
-			.bitmask = 0x001000,
+			.bitmask = BIT(22),
+			.error_description = "UBWC address unalign"
+		},
+		{
+			.bitmask = BIT(23),
 			.error_description = "Frame Header address unalign"
 		},
 		{
-			.bitmask = 0x002000,
+			.bitmask = BIT(24),
+			.error_description = "Stride unalign"
+		},
+		{
+			.bitmask = BIT(25),
 			.error_description = "X Initialization unalign"
 		},
 		{
-			.bitmask = 0x004000,
+			.bitmask = BIT(26),
 			.error_description = "Image Width unalign"
 		},
 		{
-			.bitmask = 0x008000,
+			.bitmask = BIT(27),
 			.error_description = "Image Height unalign"
 		},
 		{
-			.bitmask = 0x010000,
+			.bitmask = BIT(28),
 			.error_description = "Meta Stride unalign"
 		},
 	},

@@ -213,6 +213,7 @@ struct cam_vfe_bus_ver3_priv {
 	int                                 error_irq_handle;
 	void                               *tasklet_info;
 	uint32_t                            max_out_res;
+	uint32_t                            num_cons_err;
 	struct cam_vfe_constraint_error_info      *constraint_error_list;
 };
 
@@ -649,10 +650,10 @@ static void cam_vfe_bus_ver3_print_constraint_errors(
 	CAM_INFO_RATE_LIMIT(CAM_ISP, "Constraint violation bitflags: 0x%X",
 		constraint_errors);
 
-	for (i = 0; i < CAM_VFE_BUS_VER3_CONS_ERR_MAX; i++) {
+	for (i = 0; i < bus_priv->num_cons_err; i++) {
 		if (bus_priv->constraint_error_list[i].bitmask &
 			constraint_errors) {
-			CAM_INFO(CAM_ISP, "WM:%s %s programming",
+			CAM_INFO(CAM_ISP, "WM:%s %s",
 				wm_name, bus_priv->constraint_error_list[i]
 				.error_description);
 		}
@@ -3947,6 +3948,7 @@ int cam_vfe_bus_ver3_init(
 		ver3_hw_info->pack_align_shift;
 	bus_priv->common_data.max_bw_counter_limit =
 		ver3_hw_info->max_bw_counter_limit;
+	bus_priv->num_cons_err = ver3_hw_info->num_cons_err;
 	bus_priv->constraint_error_list = ver3_hw_info->constraint_error_list;
 
 	if (bus_priv->num_out >= CAM_VFE_BUS_VER3_VFE_OUT_MAX) {
