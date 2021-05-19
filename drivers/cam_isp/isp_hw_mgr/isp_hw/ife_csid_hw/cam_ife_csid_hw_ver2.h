@@ -74,7 +74,7 @@
 #define IFE_CSID_VER2_CUST_NODE_IDX_1                      0x2
 #define IFE_CSID_VER2_CUST_NODE_IDX_2                      0x4
 
-#define IFE_CSID_VER2_TOP_IRQ_STATUS_BUF_DONE             BIT(13)
+#define IFE_CSID_VER2_TOP_IRQ_STATUS_BUF_DONE                    BIT(13)
 
 enum cam_ife_csid_ver2_input_core_sel {
 	CAM_IFE_CSID_INPUT_CORE_SEL_NONE,
@@ -573,6 +573,10 @@ struct cam_ife_csid_ver2_reg_info {
 		    CAM_IFE_CSID_HW_NUM_MAX];
 	const int                                         input_core_sel[
 		    CAM_IFE_CSID_HW_NUM_MAX][CAM_IFE_CSID_INPUT_CORE_SEL_MAX];
+	const struct cam_ife_csid_irq_desc               *rx_irq_desc;
+	const struct cam_ife_csid_irq_desc               *path_irq_desc;
+	const struct cam_ife_csid_top_irq_desc           *top_irq_desc;
+	const uint32_t                                    num_top_err_irqs;
 };
 
 /*
@@ -646,6 +650,7 @@ struct cam_ife_csid_ver2_hw {
 	void                                  *tasklet;
 	int                                    reset_irq_handle;
 	int                                    buf_done_irq_handle;
+	int                                    top_err_irq_handle;
 	enum cam_isp_hw_sync_mode              sync_mode;
 	uint32_t                               mup;
 	atomic_t                               discard_frame_per_path;

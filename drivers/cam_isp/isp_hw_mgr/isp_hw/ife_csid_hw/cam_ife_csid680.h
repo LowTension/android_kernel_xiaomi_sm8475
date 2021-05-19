@@ -15,6 +15,232 @@
 
 #define CAM_CSID_VERSION_V680                 0x60080000
 
+static const struct cam_ife_csid_irq_desc cam_ife_csid_680_rx_irq_desc[] = {
+	{
+		.bitmask = BIT(0),
+		.desc = "DL0_EOT",
+	},
+	{
+		.bitmask = BIT(1),
+		.desc = "DL1_EOT",
+	},
+	{
+		.bitmask = BIT(2),
+		.desc = "DL2_EOT",
+	},
+	{
+		.bitmask = BIT(3),
+		.desc = "DL3_EOT",
+	},
+	{
+		.bitmask = BIT(4),
+		.desc = "DL0_SOT",
+	},
+	{
+		.bitmask = BIT(5),
+		.desc = "DL1_SOT",
+	},
+	{
+		.bitmask = BIT(6),
+		.desc = "DL2_SOT",
+	},
+	{
+		.bitmask = BIT(7),
+		.desc = "DL3_SOT",
+	},
+	{
+		.bitmask = BIT(8),
+		.desc = "LONG_PKT",
+	},
+	{
+		.bitmask = BIT(9),
+		.desc = "SHORT_PKT",
+	},
+	{
+		.bitmask = BIT(10),
+		.desc = "CPHY_PKT_HDR",
+	},
+	{
+		.bitmask = BIT(11),
+		.desc = "ERROR_CPHY_EOT_RECEPTION",
+	},
+	{
+		.bitmask = BIT(12),
+		.desc = "ERROR_CPHY_SOT_RECEPTION",
+	},
+	{
+		.bitmask = BIT(13),
+		.desc = "ERROR_CPHY_PH_CRC",
+	},
+	{
+		.bitmask = BIT(14),
+		.desc = "WARNING_ECC",
+	},
+	{
+		.bitmask = BIT(15),
+		.desc = "ERROR_LANE0_FIFO_OVERFLOW",
+	},
+	{
+		.bitmask = BIT(16),
+		.desc = "ERROR_LANE1_FIFO_OVERFLOW",
+	},
+	{
+		.bitmask = BIT(17),
+		.desc = "ERROR_LANE2_FIFO_OVERFLOW",
+	},
+	{
+		.bitmask = BIT(18),
+		.desc = "ERROR_LANE3_FIFO_OVERFLOW",
+	},
+	{
+		.bitmask = BIT(19),
+		.desc = "ERROR_CRC",
+	},
+	{
+		.bitmask = BIT(20),
+		.desc = "ERROR_ECC",
+	},
+	{
+		.bitmask = BIT(21),
+		.desc = "ERROR_MMAPPED_VC_DT",
+	},
+	{
+		.bitmask = BIT(22),
+		.desc = "ERROR_UNMAPPED_VC_DT",
+	},
+	{
+		.bitmask = BIT(23),
+		.desc = "ERROR_STREAM_UNDERFLOW",
+	},
+	{
+		.bitmask = BIT(24),
+		.desc = "ERROR_UNBOUNDED_FRAME",
+	},
+};
+
+static const struct cam_ife_csid_irq_desc cam_ife_csid_680_path_irq_desc[] = {
+	{
+		.bitmask = BIT(0),
+		.desc = "",
+	},
+	{
+		.bitmask = BIT(1),
+		.desc = "",
+	},
+	{
+		.bitmask = BIT(2),
+		.desc = "ERROR_FIFO_OVERFLOW",
+	},
+	{
+		.bitmask = BIT(3),
+		.desc = "CAMIF_EOF",
+	},
+	{
+		.bitmask = BIT(4),
+		.desc = "CAMIF_SOF",
+	},
+	{
+		.bitmask = BIT(5),
+		.desc = "FRAME_DROP_EOF",
+	},
+	{
+		.bitmask = BIT(6),
+		.desc = "FRAME_DROP_EOL",
+	},
+	{
+		.bitmask = BIT(7),
+		.desc = "FRAME_DROP_SOL",
+	},
+	{
+		.bitmask = BIT(8),
+		.desc = "FRAME_DROP_SOF",
+	},
+	{
+		.bitmask = BIT(9),
+		.desc = "INFO_INPUT_EOF",
+	},
+	{
+		.bitmask = BIT(10),
+		.desc = "INFO_INPUT_EOL",
+	},
+	{
+		.bitmask = BIT(11),
+		.desc = "INFO_INPUT_SOL",
+	},
+	{
+		.bitmask = BIT(12),
+		.desc = "INFO_INPUT_SOF",
+	},
+	{
+		.bitmask = BIT(13),
+		.desc = "ERROR_PIX_COUNT",
+	},
+	{
+		.bitmask = BIT(14),
+		.desc = "ERROR_LINE_COUNT",
+	},
+	{
+		.bitmask = BIT(15),
+		.desc = "VCDT_GRP0_SEL",
+	},
+	{
+		.bitmask = BIT(16),
+		.desc = "VCDT_GRP1_SEL",
+	},
+	{
+		.bitmask = BIT(17),
+		.desc = "VCDT_GRP_CHANGE",
+	},
+	{
+		.bitmask = BIT(18),
+		.desc = "FRAME_DROP",
+	},
+	{
+		.bitmask = BIT(19),
+		.desc = "OVERFLOW_RECOVERY: Back pressure/output fifo ovrfl",
+	},
+	{
+		.bitmask = BIT(20),
+		.desc = "ERROR_REC_CCIF_VIOLATION From Camif",
+	},
+	{
+		.bitmask = BIT(21),
+		.desc = "CAMIF_EPOCH0",
+	},
+	{
+		.bitmask = BIT(22),
+		.desc = "CAMIF_EPOCH1",
+	},
+	{
+		.bitmask = BIT(23),
+		.desc = "RUP_DONE",
+	},
+	{
+		.bitmask = BIT(24),
+		.desc = "ILLEGAL_BATCH_ID",
+	},
+	{
+		.bitmask = BIT(25),
+		.desc = "BATCH_END_MISSING_VIOLATION",
+	},
+	{
+		.bitmask = BIT(26),
+		.desc = "HEIGHT_VIOLATION",
+	},
+	{
+		.bitmask = BIT(27),
+		.desc = "WIDTH_VIOLATION",
+	},
+	{
+		.bitmask = BIT(28),
+		.desc = "SENSOR_SWITCH_OUT_OF_SYNC_FRAME_DROP",
+	},
+	{
+		.bitmask = BIT(29),
+		.desc = "CCIF_VIOLATION: Bad frame timings",
+	},
+};
+
 static struct cam_irq_register_set cam_ife_csid_680_irq_reg_set[9] = {
 	/* Top */
 	{
@@ -916,6 +1142,7 @@ static struct cam_ife_csid_ver2_common_reg_info
 	.ipp_irq_mask_all                        = 0x7FFF,
 	.rdi_irq_mask_all                        = 0x7FFF,
 	.ppp_irq_mask_all                        = 0xFFFF,
+	.top_err_irq_mask                        = 0x0,
 	.rst_loc_path_only_val                   = 0x0,
 	.rst_loc_complete_csid_val               = 0x1,
 	.rst_mode_frame_boundary_val             = 0x0,
@@ -1006,5 +1233,7 @@ static struct cam_ife_csid_ver2_reg_info cam_ife_csid_680_reg_info = {
 	},
 	.need_top_cfg = 0x1,
 	.csid_cust_node_map = {0x1, 0x0, 0x2},
+	.rx_irq_desc        = cam_ife_csid_680_rx_irq_desc,
+	.path_irq_desc      = cam_ife_csid_680_path_irq_desc,
 };
 #endif /*_CAM_IFE_CSID_680_H_ */
