@@ -3870,6 +3870,8 @@ int cam_ife_csid_ver2_start(void *hw_priv, void *args,
 		}
 	}
 
+	cam_ife_csid_ver2_enable_csi2(csid_hw);
+
 	for (i = 0; i < start_args->num_res; i++) {
 		res = start_args->node_res[i];
 		CAM_DBG(CAM_ISP, "CSID:%d res_type :%d res_id:%d",
@@ -3878,7 +3880,6 @@ int cam_ife_csid_ver2_start(void *hw_priv, void *args,
 		cam_ife_csid_ver2_enable_path(csid_hw, res);
 	}
 
-	cam_ife_csid_ver2_enable_csi2(csid_hw);
 end:
 	mutex_unlock(&csid_hw->hw_info->hw_mutex);
 	return rc;
