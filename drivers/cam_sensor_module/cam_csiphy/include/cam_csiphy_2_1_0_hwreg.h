@@ -14,8 +14,17 @@ struct cam_csiphy_aon_sel_params_t aon_cam_select_params = {
 	.mclk_sel_mask = BIT(8),
 };
 
+struct cam_cphy_dphy_status_reg_params_t status_regs_2_1_0 = {
+	.csiphy_3ph_status0_offset = 0x340,
+	.csiphy_2ph_status0_offset = 0x00C0,
+	.csiphy_3ph_status_size = 24,
+	.csiphy_2ph_status_size = 20,
+};
+
 struct csiphy_reg_parms_t csiphy_v2_1_0 = {
 	.mipi_csiphy_interrupt_status0_addr = 0x10B0,
+	.status_reg_params = &status_regs_2_1_0,
+	.size_offset_betn_lanes = 0x400,
 	.mipi_csiphy_interrupt_clear0_addr = 0x1058,
 	.mipi_csiphy_glbl_irq_cmd_addr = 0x1028,
 	.csiphy_common_array_size = 5,
