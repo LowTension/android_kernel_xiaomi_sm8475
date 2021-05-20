@@ -319,6 +319,7 @@ static int cam_csiphy_get_lane_enable(
 	uint32_t lane_select = 0;
 
 	if (csiphy->csiphy_info[index].csiphy_3phase) {
+		CAM_DBG(CAM_CSIPHY, "LaneEnable for CPHY");
 		switch (lane_assign & 0xF) {
 		case 0x0:
 			lane_select |= CPHY_LANE_0;
@@ -337,6 +338,7 @@ static int cam_csiphy_get_lane_enable(
 			return -EINVAL;
 		}
 	} else {
+		CAM_DBG(CAM_CSIPHY, "LaneEnable for DPHY");
 		switch (lane_assign & 0xF) {
 		case 0x0:
 			lane_select |= DPHY_LANE_0;
@@ -373,8 +375,8 @@ static int cam_csiphy_get_lane_enable(
 		}
 	}
 
-	CAM_DBG(CAM_CSIPHY, "Lane_enable: 0x%x", lane_enable);
 	*lane_enable = lane_select;
+	CAM_DBG(CAM_CSIPHY, "Lane_select: 0x%x", lane_select);
 
 	return 0;
 }
