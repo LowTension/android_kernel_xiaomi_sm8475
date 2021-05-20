@@ -12,7 +12,7 @@
 
 #define CAM_VFE_BUS_VER3_680_MAX_CLIENTS     28
 
-static struct cam_vfe_top_ver4_module_desc vfe680_pp_mod_desc[] = {
+static struct cam_vfe_top_ver4_module_desc vfe680_ipp_mod_desc[] = {
 	{
 		.id = 0,
 		.desc = "CLC_DEMUX",
@@ -386,6 +386,65 @@ static struct cam_vfe_top_ver4_wr_client_desc vfe680_wr_client_desc[] = {
 	},
 };
 
+static struct cam_vfe_top_ver4_top_err_irq_desc vfe680_top_irq_err_desc[] = {
+	{
+		.bitmask = BIT(4),
+		.err_name = "PP VIOLATION",
+		.desc = "",
+	},
+	{
+		.bitmask = BIT(6),
+		.err_name = "PDAF VIOLATION",
+		.desc = "",
+	},
+	{
+		.bitmask = BIT(12),
+		.err_name = "DSP IFE PROTOCOL VIOLATION",
+		.desc = "CCIF protocol violation on the output Data",
+	},
+	{
+		.bitmask = BIT(13),
+		.err_name = "IFE DSP TX PROTOCOL VIOLATION",
+		.desc = "CCIF protocol violation on the outgoing data to the DSP interface",
+	},
+	{
+		.bitmask = BIT(14),
+		.err_name = "DSP IFE RX PROTOCOL VIOLATION",
+		.desc = "CCIF protocol violation on the incoming data from DSP before processed",
+	},
+	{
+		.bitmask = BIT(15),
+		.err_name = "DSP TX FIFO OVERFLOW",
+		.desc = "Overflow on DSP interface TX path FIFO",
+	},
+	{
+		.bitmask = BIT(16),
+		.err_name = "DSP RX FIFO OVERFLOW",
+		.desc = "Overflow on DSP interface RX path FIFO",
+	},
+	{
+		.bitmask = BIT(17),
+		.err_name = "DSP ERROR VIOLATION",
+		.desc = "When DSP sends a error signal",
+	},
+	{
+		.bitmask = BIT(18),
+		.err_name = "DIAG VIOLATION",
+		.desc = "HBI is less than the minimum required HBI",
+	},
+};
+
+static struct cam_vfe_top_ver4_pdaf_violation_desc vfe680_pdaf_violation_desc[] = {
+	{
+		.bitmask = BIT(0),
+		.desc = "Sim monitor 1 violation - SAD output",
+	},
+	{
+		.bitmask = BIT(1),
+		.desc = "Sim monitor 2 violation - pre-proc output, LSB aligned",
+	},
+};
+
 static struct cam_irq_register_set vfe680_top_irq_reg_set[3] = {
 	{
 		.mask_reg_offset   = 0x00000034,
@@ -422,7 +481,8 @@ static struct cam_vfe_top_ver4_reg_offset_common vfe680_top_common_reg = {
 	.diag_sensor_status_1     = 0x00000058,
 	.diag_frm_cnt_status_0    = 0x0000005C,
 	.diag_frm_cnt_status_1    = 0x00000060,
-	.violation_status         = 0x00000064,
+	.ipp_violation_status     = 0x00000064,
+	.pdaf_violation_status    = 0x00000404,
 	.core_cfg_3               = 0x00000068,
 	.core_cgc_ovd_0           = 0x00000018,
 	.core_cgc_ovd_1           = 0x0000001C,
@@ -472,7 +532,8 @@ static struct cam_vfe_ver4_path_reg_data vfe_pp_common_reg_data = {
 	.error_irq_mask                  = 0x7F050,
 	.enable_diagnostic_hw            = 0x1,
 	.top_debug_cfg_en                = 3,
-	.pp_violation_mask               = 0x10,
+	.ipp_violation_mask              = 0x10,
+	.pdaf_violation_mask             = 0x40,
 };
 
 static struct cam_vfe_ver4_path_reg_data vfe680_vfe_full_rdi_reg_data[3] = {
@@ -537,7 +598,7 @@ static struct cam_vfe_top_ver4_hw_info vfe680_top_hw_info = {
 	.rdi_hw_info[1] = &vfe680_rdi_hw_info_arr[1],
 	.rdi_hw_info[2] = &vfe680_rdi_hw_info_arr[2],
 	.wr_client_desc         = vfe680_wr_client_desc,
-	.module_desc            = vfe680_pp_mod_desc,
+	.ipp_module_desc        = vfe680_ipp_mod_desc,
 	.num_mux = 5,
 	.mux_type = {
 		CAM_VFE_CAMIF_VER_4_0,
@@ -550,7 +611,11 @@ static struct cam_vfe_top_ver4_hw_info vfe680_top_hw_info = {
 	.path_port_map = {
 		{CAM_ISP_HW_VFE_IN_PDLIB, CAM_ISP_IFE_OUT_RES_2PD},
 		{CAM_ISP_HW_VFE_IN_PDLIB, CAM_ISP_IFE_OUT_RES_PREPROCESS_2PD}
-	}
+	},
+	.num_top_errors                  = ARRAY_SIZE(vfe680_top_irq_err_desc),
+	.top_err_desc                    = vfe680_top_irq_err_desc,
+	.num_pdaf_violation_errors       = ARRAY_SIZE(vfe680_pdaf_violation_desc),
+	.pdaf_violation_desc             = vfe680_pdaf_violation_desc,
 };
 
 static struct cam_irq_register_set vfe680_bus_irq_reg[2] = {
