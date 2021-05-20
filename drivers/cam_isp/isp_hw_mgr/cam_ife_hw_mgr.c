@@ -495,7 +495,10 @@ static int cam_ife_hw_mgr_notify_overflow(
 			hw_if = g_ife_hw_mgr.ife_devices[evt->hw_idx]->hw_intf;
 			res_id = ife_res_id;
 		} else if (hw_mgr_ctx->base[i].hw_type == CAM_ISP_HW_TYPE_SFE) {
-			hw_if = g_ife_hw_mgr.sfe_devices[evt->hw_idx];
+			if (evt->in_core_type >= CAM_SFE_HW_NUM_MAX)
+				continue;
+
+			hw_if = g_ife_hw_mgr.sfe_devices[evt->in_core_type];
 			res_id = sfe_res_id;
 		} else {
 			continue;
