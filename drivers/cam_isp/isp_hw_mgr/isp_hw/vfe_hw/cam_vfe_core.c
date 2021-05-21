@@ -614,8 +614,8 @@ int cam_vfe_core_init(struct cam_vfe_hw_core_info  *core_info,
 		goto deinit_top;
 	}
 
-	/* Read Bus is not valid for vfe-lite */
-	if (!soc_private->is_ife_lite) {
+	/* Probe fetch engine only if it exists - 0x0 is not a valid version */
+	if (vfe_hw_info->bus_rd_version) {
 		rc = cam_vfe_bus_init(vfe_hw_info->bus_rd_version, BUS_TYPE_RD,
 			soc_info, hw_intf, vfe_hw_info->bus_rd_hw_info,
 			core_info->vfe_irq_controller, &core_info->vfe_rd_bus);
