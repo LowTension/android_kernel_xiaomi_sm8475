@@ -1360,7 +1360,7 @@ static int cam_vfe_bus_ver3_start_wm(struct cam_isp_resource_node *wm_res)
 			rsrc_data->hw_regs->mmu_prefetch_cfg);
 		cam_io_w_mb(0xFFFFFFFF, common_data->mem_base +
 			rsrc_data->hw_regs->mmu_prefetch_max_offset);
-		CAM_DBG(CAM_SFE, "VFE: %d WM: %d MMU prefetch enabled",
+		CAM_DBG(CAM_ISP, "VFE: %d WM: %d MMU prefetch enabled",
 			rsrc_data->common_data->core_index,
 			rsrc_data->index);
 	}
@@ -3737,6 +3737,7 @@ static int cam_vfe_bus_ver3_process_cmd(
 		CAM_DBG(CAM_ISP, "IFE bus WR prefetch %s",
 			bus_priv->common_data.disable_mmu_prefetch ?
 			"disabled" : "enabled");
+		rc = 0;
 		break;
 	default:
 		CAM_ERR_RATE_LIMIT(CAM_ISP, "Invalid camif process command:%d",
