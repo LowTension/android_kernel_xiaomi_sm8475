@@ -568,9 +568,40 @@ static inline void cam_ife_csid_ver2_reset_discard_frame_cfg(
 		atomic_read(&csid_hw->discard_frame_per_path));
 }
 
-static int cam_ife_csid_ver2_discard_sof_pix_top_half(
+static int cam_ife_csid_ver2_discard_sof_top_half(
 	uint32_t                                   evt_id,
 	struct cam_irq_th_payload                 *th_payload)
+{
+	struct cam_hw_info                        *hw_info;
+	struct cam_ife_csid_ver2_hw               *csid_hw = NULL;
+	struct cam_isp_resource_node              *res;
+	struct cam_ife_csid_ver2_path_cfg         *path_cfg;
+
+	res  = th_payload->handler_priv;
+
+	if (!res) {
+		CAM_ERR_RATE_LIMIT(CAM_ISP, "No private returned");
+		return -ENODEV;
+	}
+
+	hw_info = (struct cam_hw_info *)res->hw_intf->hw_priv;
+	csid_hw = (struct cam_ife_csid_ver2_hw *)hw_info->core_info;
+	path_cfg = (struct cam_ife_csid_ver2_path_cfg *)res->res_priv;
+
+	CAM_DBG(CAM_ISP, "CSID: %d status: 0x%x for res: %s",
+		csid_hw->hw_intf->hw_idx,
+		th_payload->evt_status_arr[path_cfg->irq_reg_idx],
+		res->res_name);
+
+	/* No need of payload since it's an exclusive th & bh */
+	th_payload->evt_payload_priv = NULL;
+
+	return 0;
+}
+
+static int cam_ife_csid_ver2_discard_sof_pix_bottom_half(
+	void              *handler_priv,
+	void              *evt_payload_priv)
 {
 	struct cam_hw_info                          *hw_info;
 	struct cam_ife_csid_ver2_hw                 *csid_hw = NULL;
@@ -582,13 +613,12 @@ static int cam_ife_csid_ver2_discard_sof_pix_top_half(
 	void    __iomem                             *base;
 	uint32_t                                     val;
 
-	res  = th_payload->handler_priv;
-
-	if (!res) {
-		CAM_ERR_RATE_LIMIT(CAM_ISP, "No private returned");
-		return -ENODEV;
+	if (!handler_priv) {
+		CAM_ERR(CAM_ISP, "Invalid handler_priv");
+		return -EINVAL;
 	}
 
+	res   =  handler_priv;
 	hw_info = (struct cam_hw_info *)res->hw_intf->hw_priv;
 	csid_hw = (struct cam_ife_csid_ver2_hw *)hw_info->core_info;
 	csid_reg = (struct cam_ife_csid_ver2_reg_info *)
@@ -603,7 +633,7 @@ static int cam_ife_csid_ver2_discard_sof_pix_top_half(
 		path_reg = csid_reg->ppp_reg;
 	} else {
 		CAM_WARN(CAM_ISP, "Invalid res_id: 0x%x", res->res_id);
-		return -ENODEV;
+		return -EINVAL;
 	}
 
 	/* Count SOFs */
@@ -628,12 +658,12 @@ static int cam_ife_csid_ver2_discard_sof_pix_top_half(
 		cam_ife_csid_ver2_reset_discard_frame_cfg(res->res_name, csid_hw, path_cfg);
 	}
 
-	return IRQ_HANDLED;
+	return 0;
 }
 
-static int cam_ife_csid_ver2_discard_sof_rdi_top_half(
-	uint32_t                                   evt_id,
-	struct cam_irq_th_payload                 *th_payload)
+static int cam_ife_csid_ver2_discard_sof_rdi_bottom_half(
+	void              *handler_priv,
+	void              *evt_payload_priv)
 {
 	struct cam_hw_info                          *hw_info;
 	struct cam_ife_csid_ver2_hw                 *csid_hw = NULL;
@@ -645,13 +675,12 @@ static int cam_ife_csid_ver2_discard_sof_rdi_top_half(
 	void    __iomem                             *base;
 	uint32_t                                     val;
 
-	res  = th_payload->handler_priv;
-
-	if (!res) {
-		CAM_ERR_RATE_LIMIT(CAM_ISP, "No private returned");
-		return -ENODEV;
+	if (!handler_priv) {
+		CAM_ERR(CAM_ISP, "Invalid handler_priv");
+		return -EINVAL;
 	}
 
+	res   =  handler_priv;
 	hw_info = (struct cam_hw_info *)res->hw_intf->hw_priv;
 	csid_hw = (struct cam_ife_csid_ver2_hw *)hw_info->core_info;
 	csid_reg = (struct cam_ife_csid_ver2_reg_info *)
@@ -679,7 +708,7 @@ static int cam_ife_csid_ver2_discard_sof_rdi_top_half(
 		cam_ife_csid_ver2_reset_discard_frame_cfg(res->res_name, csid_hw, path_cfg);
 	}
 
-	return IRQ_HANDLED;
+	return 0;
 }
 
 static int cam_ife_csid_ver2_stop_csi2_in_err(
@@ -2702,7 +2731,8 @@ static inline int cam_ife_csid_ver2_subscribe_sof_for_discard(
 	struct cam_ife_csid_ver2_path_cfg *path_cfg,
 	struct cam_ife_csid_ver2_hw       *csid_hw,
 	struct cam_isp_resource_node      *res,
-	CAM_IRQ_HANDLER_TOP_HALF           top_half_handler)
+	CAM_IRQ_HANDLER_TOP_HALF           top_half_handler,
+	CAM_IRQ_HANDLER_BOTTOM_HALF        bottom_half_handler)
 {
 	int rc = 0;
 	uint32_t val;
@@ -2712,13 +2742,13 @@ static inline int cam_ife_csid_ver2_subscribe_sof_for_discard(
 	irq_mask[path_cfg->irq_reg_idx] = val;
 	path_cfg->discard_irq_handle = cam_irq_controller_subscribe_irq(
 		csid_hw->csid_irq_controller,
-		CAM_IRQ_PRIORITY_1,
+		CAM_IRQ_PRIORITY_0,
 		irq_mask,
 		res,
 		top_half_handler,
-		NULL,
-		NULL,
-		NULL);
+		bottom_half_handler,
+		csid_hw->tasklet,
+		&tasklet_bh_api);
 
 	if (path_cfg->discard_irq_handle < 1) {
 		CAM_ERR(CAM_ISP,
@@ -2846,7 +2876,8 @@ static int cam_ife_csid_ver2_program_rdi_path(
 	if (path_cfg->discard_init_frames) {
 		rc = cam_ife_csid_ver2_subscribe_sof_for_discard(
 			path_cfg, csid_hw, res,
-			cam_ife_csid_ver2_discard_sof_rdi_top_half);
+			cam_ife_csid_ver2_discard_sof_top_half,
+			cam_ife_csid_ver2_discard_sof_rdi_bottom_half);
 		if (rc)
 			goto end;
 	}
@@ -2973,7 +3004,8 @@ static int cam_ife_csid_ver2_program_ipp_path(
 	if (path_cfg->discard_init_frames) {
 		rc = cam_ife_csid_ver2_subscribe_sof_for_discard(
 			path_cfg, csid_hw, res,
-			cam_ife_csid_ver2_discard_sof_pix_top_half);
+			cam_ife_csid_ver2_discard_sof_top_half,
+			cam_ife_csid_ver2_discard_sof_pix_bottom_half);
 		if (rc)
 			goto end;
 	}
@@ -3211,7 +3243,8 @@ static int cam_ife_csid_ver2_program_ppp_path(
 	if (path_cfg->discard_init_frames) {
 		rc = cam_ife_csid_ver2_subscribe_sof_for_discard(
 			path_cfg, csid_hw, res,
-			cam_ife_csid_ver2_discard_sof_pix_top_half);
+			cam_ife_csid_ver2_discard_sof_top_half,
+			cam_ife_csid_ver2_discard_sof_pix_bottom_half);
 		if (rc)
 			goto end;
 	}
