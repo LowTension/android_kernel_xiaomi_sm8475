@@ -31,6 +31,9 @@
 #define CAM_IFE_SAFE_ENABLE 1
 #define SMMU_SE_IFE 0
 
+#define CAM_FRAME_HEADER_BUFFER_SIZE      64
+#define CAM_FRAME_HEADER_ADDR_ALIGNMENT   256
+
 #define CAM_ISP_PACKET_META_MAX                     \
 	(CAM_ISP_PACKET_META_GENERIC_BLOB_COMMON + 1)
 
@@ -8621,9 +8624,10 @@ static int cam_ife_mgr_util_insert_frame_header(
 	frame_header_iova = (uint32_t)iova_addr;
 	frame_header_iova += kmd_buf->offset;
 
-	/* frame header address needs to be 16 byte aligned */
-	if (frame_header_iova % 16) {
-		padded_bytes = (uint32_t)(16 - (frame_header_iova % 16));
+	/* frame header address needs to be 256 byte aligned */
+	if (frame_header_iova % CAM_FRAME_HEADER_ADDR_ALIGNMENT) {
+		padded_bytes = (uint32_t)(CAM_FRAME_HEADER_ADDR_ALIGNMENT -
+			(frame_header_iova % CAM_FRAME_HEADER_ADDR_ALIGNMENT));
 		frame_header_iova += padded_bytes;
 	}
 
@@ -8640,7 +8644,7 @@ static int cam_ife_mgr_util_insert_frame_header(
 		padded_bytes);
 
 	/* Reserve memory for frame header */
-	kmd_buf->used_bytes += 128;
+	kmd_buf->used_bytes += (padded_bytes + CAM_FRAME_HEADER_BUFFER_SIZE);
 	kmd_buf->offset += kmd_buf->used_bytes;
 
 	return rc;
