@@ -37,6 +37,12 @@ static DEFINE_MUTEX(active_csiphy_cnt_mutex);
 static int csiphy_dump;
 module_param(csiphy_dump, int, 0644);
 
+
+static int csiphy_onthego_reg_count;
+static unsigned int csiphy_onthego_regs[150];
+module_param_array(csiphy_onthego_regs, uint, &csiphy_onthego_reg_count, 0644);
+MODULE_PARM_DESC(csiphy_onthego_regs, "Functionality to program csiphy registers on the fly");
+
 struct g_csiphy_data {
 	void __iomem *base_address;
 	uint8_t is_3phase;
@@ -1501,7 +1507,10 @@ int32_t cam_csiphy_core_cfg(void *phy_dev,
 	struct cam_control   *cmd = (struct cam_control *)arg;
 	struct csiphy_device *csiphy_dev = (struct csiphy_device *)phy_dev;
 	struct csiphy_reg_parms_t *csiphy_reg;
+	struct cam_hw_soc_info *soc_info;
+	void __iomem *csiphybase;
 	int32_t              rc = 0;
+	uint32_t             i;
 
 	if (!csiphy_dev || !cmd) {
 		CAM_ERR(CAM_CSIPHY, "Invalid input args");
@@ -1514,6 +1523,13 @@ int32_t cam_csiphy_core_cfg(void *phy_dev,
 		return -EINVAL;
 	}
 
+	soc_info = &csiphy_dev->soc_info;
+	if (!soc_info) {
+		CAM_ERR(CAM_CSIPHY, "Null Soc_info");
+		return -EINVAL;
+	}
+
+	csiphybase = soc_info->reg_map[0].mem_base;
 	csiphy_reg = &csiphy_dev->ctrl_reg->csiphy_reg;
 	CAM_DBG(CAM_CSIPHY, "Opcode received: %d", cmd->op_code);
 	mutex_lock(&csiphy_dev->mutex);
@@ -1952,6 +1968,28 @@ int32_t cam_csiphy_core_cfg(void *phy_dev,
 			mutex_lock(&active_csiphy_cnt_mutex);
 			active_csiphy_hw_cnt++;
 			mutex_unlock(&active_csiphy_cnt_mutex);
+		}
+
+		if (csiphy_onthego_reg_count) {
+			CAM_DBG(CAM_CSIPHY, "csiphy_onthego_reg_count: %d",
+				csiphy_onthego_reg_count);
+
+			if (csiphy_onthego_reg_count % 3)
+				csiphy_onthego_reg_count -= (csiphy_onthego_reg_count % 3);
+
+			for (i = 0; i < csiphy_onthego_reg_count; i += 3) {
+				cam_io_w_mb(csiphy_onthego_regs[i+1],
+					csiphybase + csiphy_onthego_regs[i]);
+
+				if (csiphy_onthego_regs[i+2])
+					usleep_range(csiphy_onthego_regs[i+2],
+						csiphy_onthego_regs[i+2] + 5);
+
+				CAM_INFO(CAM_CSIPHY, "Offset: 0x%x, Val: 0x%x Delay(us): %u",
+					csiphy_onthego_regs[i],
+					cam_io_r_mb(csiphybase + csiphy_onthego_regs[i]),
+					csiphy_onthego_regs[i+2]);
+			}
 		}
 
 		if (csiphy_dev->en_status_reg_dump) {
