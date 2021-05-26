@@ -77,12 +77,12 @@ end:
 }
 
 static int cam_cre_mgr_update_reg_set(struct cam_cre_hw_mgr *hw_mgr,
-	struct cam_cre_request *cre_req)
+	struct cam_cre_request *cre_req, int batch_index)
 {
 	struct cam_cre_dev_reg_set_update reg_set_upd_cmd;
 	int i;
 
-	reg_set_upd_cmd.cre_reg_buf = cre_req->cre_reg_buf;
+	reg_set_upd_cmd.cre_reg_buf = cre_req->cre_reg_buf[batch_index];
 
 	for (i = 0; i < cre_hw_mgr->num_cre; i++) {
 		hw_mgr->cre_dev_intf[i]->hw_ops.process_cmd(
@@ -160,15 +160,15 @@ static int cam_cre_mgr_process_cmd_io_buf_req(struct cam_cre_hw_mgr *hw_mgr,
 
 			for (k = 0; k < io_buf->num_planes; k++) {
 				is_secure = cam_mem_is_secure_buf(
-					io_cfg_ptr[i].mem_handle[k]);
+					io_cfg_ptr[j].mem_handle[k]);
 				if (is_secure)
 					rc = cam_mem_get_io_buf(
-						io_cfg_ptr[i].mem_handle[k],
+						io_cfg_ptr[j].mem_handle[k],
 						hw_mgr->iommu_sec_hdl,
 						&iova_addr, &len);
 				else
 					rc = cam_mem_get_io_buf(
-						io_cfg_ptr[i].mem_handle[k],
+						io_cfg_ptr[j].mem_handle[k],
 						hw_mgr->iommu_hdl,
 						&iova_addr, &len);
 
@@ -177,18 +177,24 @@ static int cam_cre_mgr_process_cmd_io_buf_req(struct cam_cre_hw_mgr *hw_mgr,
 						rc);
 					return -EINVAL;
 				}
-				iova_addr += io_cfg_ptr[i].offsets[k];
+				iova_addr += io_cfg_ptr[j].offsets[k];
 				plane_info = &io_buf->p_info[k];
 
-				plane_info->offset    = io_cfg_ptr[i].offsets[k];
+				plane_info->offset    = io_cfg_ptr[j].offsets[k];
 				plane_info->format    = io_buf->format;
-				plane_info->iova_addr = iova_addr;
+				/*
+				 * TODO: Confirm if the calculation for batch frame offset
+				 * is correct with some experiment in TFE.
+				 */
+				plane_info->iova_addr = iova_addr +
+					((io_cfg_ptr[j].planes[k].plane_stride *
+					  io_cfg_ptr[j].planes[k].slice_height) * i);
 				plane_info->width     =
-					io_cfg_ptr[i].planes[k].width;
+					io_cfg_ptr[j].planes[k].width;
 				plane_info->height    =
-					io_cfg_ptr[i].planes[k].height;
+					io_cfg_ptr[j].planes[k].height;
 				plane_info->stride    =
-					io_cfg_ptr[i].planes[k].plane_stride;
+					io_cfg_ptr[j].planes[k].plane_stride;
 				plane_info->len       = len;
 				plane_info->alignment = alignment;
 			}
@@ -796,9 +802,11 @@ static int cam_cre_mgr_process_cmd(void *priv, void *data)
 
 	hw_mgr = task_data->data;
 	ctx_data->active_req = cre_req;
-	cam_cre_mgr_update_reg_set(hw_mgr, cre_req);
-	cam_cre_ctx_wait_for_idle_irq(ctx_data, cre_req,
+	for (i = 0; i < cre_req->num_batch; i++) {
+		cam_cre_mgr_update_reg_set(hw_mgr, cre_req);
+		cam_cre_ctx_wait_for_idle_irq(ctx_data, cre_req,
 			active_req_idx);
+	}
 
 	mutex_unlock(&hw_mgr->hw_mgr_mutex);
 
@@ -865,10 +873,13 @@ static int32_t cam_cre_mgr_process_msg(void *priv, void *data)
 	} else if ((irq_data.top_irq_status & CAM_CRE_WE_IRQ)
 		&& (irq_data.wr_buf_done)) {
 		/* Signal Buf done */
-		evt_id = CAM_CTX_EVT_ID_SUCCESS;
-		buf_data.evt_param = CAM_SYNC_COMMON_EVENT_SUCCESS;
-		buf_data.request_id = ctx->active_req->request_id;
-		ctx->ctxt_event_cb(ctx->context_priv, evt_id, &buf_data);
+		ctx->active_req->frames_done++;
+		if (ctx->active_req->frames_done == ctx->active_req->num_batch) {
+			evt_id = CAM_CTX_EVT_ID_SUCCESS;
+			buf_data.evt_param = CAM_SYNC_COMMON_EVENT_SUCCESS;
+			buf_data.request_id = ctx->active_req->request_id;
+			ctx->ctxt_event_cb(ctx->context_priv, evt_id, &buf_data);
+		}
 	}
 	mutex_unlock(&ctx->ctx_mutex);
 	return rc;
