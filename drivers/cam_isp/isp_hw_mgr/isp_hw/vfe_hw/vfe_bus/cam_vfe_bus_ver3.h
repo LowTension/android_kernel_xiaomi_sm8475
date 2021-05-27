@@ -174,6 +174,7 @@ struct cam_vfe_bus_ver3_reg_offset_bus_client {
 	uint32_t debug_status_cfg;
 	uint32_t debug_status_0;
 	uint32_t debug_status_1;
+	uint32_t bw_limiter_addr;
 	uint32_t comp_group;
 };
 
@@ -212,6 +213,7 @@ struct cam_vfe_bus_ver3_vfe_out_hw_info {
  * @supported_irq:         Mask to indicate the IRQ supported
  * @comp_cfg_needed:       Composite group config is needed for hw
  * @pack_align_shift:      Shift value for alignment of packer format
+ * @max_bw_counter_limit:  Max BW counter limit
  */
 struct cam_vfe_bus_ver3_hw_info {
 	struct cam_vfe_bus_ver3_reg_offset_common common_reg;
@@ -231,6 +233,7 @@ struct cam_vfe_bus_ver3_hw_info {
 	uint32_t supported_irq;
 	bool comp_cfg_needed;
 	uint32_t pack_align_shift;
+	uint32_t max_bw_counter_limit;
 };
 
 /*

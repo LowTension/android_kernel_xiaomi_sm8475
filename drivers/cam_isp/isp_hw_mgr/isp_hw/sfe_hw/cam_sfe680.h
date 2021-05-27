@@ -425,6 +425,7 @@ static struct cam_sfe_bus_wr_hw_info sfe680_bus_wr_hw_info = {
 			.debug_status_1           = 0x00000A88,
 			.mmu_prefetch_cfg         = 0x00000A60,
 			.mmu_prefetch_max_offset  = 0x00000A64,
+			.bw_limiter_addr          = 0x00000A1C,
 			.comp_group               = CAM_SFE_BUS_WR_COMP_GRP_0,
 		},
 		/* BUS Client 1 LCR */
@@ -454,6 +455,7 @@ static struct cam_sfe_bus_wr_hw_info sfe680_bus_wr_hw_info = {
 			.debug_status_1           = 0x00000B88,
 			.mmu_prefetch_cfg         = 0x00000B60,
 			.mmu_prefetch_max_offset  = 0x00000B64,
+			.bw_limiter_addr          = 0x00000B1C,
 			.comp_group               = CAM_SFE_BUS_WR_COMP_GRP_1,
 		},
 		/* BUS Client 2 STATS_BE_0 */
@@ -483,6 +485,7 @@ static struct cam_sfe_bus_wr_hw_info sfe680_bus_wr_hw_info = {
 			.debug_status_1           = 0x00000C88,
 			.mmu_prefetch_cfg         = 0x00000C60,
 			.mmu_prefetch_max_offset  = 0x00000C64,
+			.bw_limiter_addr          = 0x00000C1C,
 			.comp_group               = CAM_SFE_BUS_WR_COMP_GRP_2,
 		},
 		/* BUS Client 3 STATS_BHIST_0 */
@@ -512,6 +515,7 @@ static struct cam_sfe_bus_wr_hw_info sfe680_bus_wr_hw_info = {
 			.debug_status_1           = 0x00000D88,
 			.mmu_prefetch_cfg         = 0x00000D60,
 			.mmu_prefetch_max_offset  = 0x00000D64,
+			.bw_limiter_addr          = 0x00000D1C,
 			.comp_group               = CAM_SFE_BUS_WR_COMP_GRP_2,
 		},
 		/* BUS Client 4 STATS_BE_1 */
@@ -541,6 +545,7 @@ static struct cam_sfe_bus_wr_hw_info sfe680_bus_wr_hw_info = {
 			.debug_status_1           = 0x00000E88,
 			.mmu_prefetch_cfg         = 0x00000E60,
 			.mmu_prefetch_max_offset  = 0x00000E64,
+			.bw_limiter_addr          = 0x00000E1C,
 			.comp_group               = CAM_SFE_BUS_WR_COMP_GRP_3,
 		},
 		/* BUS Client 5 STATS_BHIST_1 */
@@ -570,6 +575,7 @@ static struct cam_sfe_bus_wr_hw_info sfe680_bus_wr_hw_info = {
 			.debug_status_1           = 0x00000F88,
 			.mmu_prefetch_cfg         = 0x00000F60,
 			.mmu_prefetch_max_offset  = 0x00000F64,
+			.bw_limiter_addr          = 0x00000F1C,
 			.comp_group               = CAM_SFE_BUS_WR_COMP_GRP_3,
 		},
 		/* BUS Client 6 STATS_BE_2 */
@@ -599,6 +605,7 @@ static struct cam_sfe_bus_wr_hw_info sfe680_bus_wr_hw_info = {
 			.debug_status_1           = 0x00001088,
 			.mmu_prefetch_cfg         = 0x00001060,
 			.mmu_prefetch_max_offset  = 0x00001064,
+			.bw_limiter_addr          = 0x0000101C,
 			.comp_group               = CAM_SFE_BUS_WR_COMP_GRP_4,
 		},
 		/* BUS Client 7 STATS_BHIST_2 */
@@ -628,6 +635,7 @@ static struct cam_sfe_bus_wr_hw_info sfe680_bus_wr_hw_info = {
 			.debug_status_1           = 0x00001188,
 			.mmu_prefetch_cfg         = 0x00001160,
 			.mmu_prefetch_max_offset  = 0x00001164,
+			.bw_limiter_addr          = 0x0000111C,
 			.comp_group               = CAM_SFE_BUS_WR_COMP_GRP_4,
 		},
 		/* BUS Client 8 RDI0 */
@@ -657,6 +665,7 @@ static struct cam_sfe_bus_wr_hw_info sfe680_bus_wr_hw_info = {
 			.debug_status_1           = 0x00001288,
 			.mmu_prefetch_cfg         = 0x00001260,
 			.mmu_prefetch_max_offset  = 0x00001264,
+			.bw_limiter_addr          = 0x0000121C,
 			.comp_group               = CAM_SFE_BUS_WR_COMP_GRP_5,
 		},
 		/* BUS Client 9 RDI1 */
@@ -686,6 +695,7 @@ static struct cam_sfe_bus_wr_hw_info sfe680_bus_wr_hw_info = {
 			.debug_status_1           = 0x00001388,
 			.mmu_prefetch_cfg         = 0x00001360,
 			.mmu_prefetch_max_offset  = 0x00001364,
+			.bw_limiter_addr          = 0x0000131C,
 			.comp_group               = CAM_SFE_BUS_WR_COMP_GRP_6,
 		},
 		/* BUS Client 10 RDI2 */
@@ -715,6 +725,7 @@ static struct cam_sfe_bus_wr_hw_info sfe680_bus_wr_hw_info = {
 			.debug_status_1           = 0x00001488,
 			.mmu_prefetch_cfg         = 0x00001460,
 			.mmu_prefetch_max_offset  = 0x00001464,
+			.bw_limiter_addr          = 0x0000141C,
 			.comp_group               = CAM_SFE_BUS_WR_COMP_GRP_7,
 		},
 		/* BUS Client 11 RDI3 */
@@ -744,6 +755,7 @@ static struct cam_sfe_bus_wr_hw_info sfe680_bus_wr_hw_info = {
 			.debug_status_1           = 0x00001588,
 			.mmu_prefetch_cfg         = 0x00001560,
 			.mmu_prefetch_max_offset  = 0x00001564,
+			.bw_limiter_addr          = 0x0000151C,
 			.comp_group               = CAM_SFE_BUS_WR_COMP_GRP_8,
 		},
 		/* BUS Client 12 RDI4 */
@@ -773,6 +785,7 @@ static struct cam_sfe_bus_wr_hw_info sfe680_bus_wr_hw_info = {
 			.debug_status_1           = 0x00001688,
 			.mmu_prefetch_cfg         = 0x00001660,
 			.mmu_prefetch_max_offset  = 0x00001664,
+			.bw_limiter_addr          = 0x0000161C,
 			.comp_group               = CAM_SFE_BUS_WR_COMP_GRP_9,
 		},
 	},
@@ -980,10 +993,11 @@ static struct cam_sfe_bus_wr_hw_info sfe680_bus_wr_hw_info = {
 			.error_description = "Meta Stride unalign"
 		},
 	},
-	.num_comp_grp    = 10,
-	.comp_done_shift = 17,
-	.line_done_cfg   = 0x11,
-	.top_irq_shift   = 0x0,
+	.num_comp_grp         = 10,
+	.comp_done_shift      = 17,
+	.line_done_cfg        = 0x11,
+	.top_irq_shift        = 0x0,
+	.max_bw_counter_limit = 0xFF,
 };
 
 static struct cam_irq_register_set sfe680_top_irq_reg_set[1] = {

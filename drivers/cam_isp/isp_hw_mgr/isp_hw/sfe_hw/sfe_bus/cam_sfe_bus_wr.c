@@ -89,6 +89,7 @@ struct cam_sfe_bus_wr_common_data {
 	uint32_t                                    addr_no_sync;
 	uint32_t                                    comp_done_shift;
 	uint32_t                                    line_done_cfg;
+	uint32_t                                    max_bw_counter_limit;
 	bool                                        err_irq_subscribe;
 	cam_hw_mgr_event_cb_func                    event_cb;
 
@@ -2626,6 +2627,119 @@ static int cam_sfe_bus_wr_update_wm_config(
 	return 0;
 }
 
+static int cam_sfe_bus_wr_update_bw_limiter(
+	void *priv, void *cmd_args, uint32_t arg_size)
+{
+	struct cam_sfe_bus_wr_priv             *bus_priv;
+	struct cam_isp_hw_get_cmd_update       *wm_config_update;
+	struct cam_sfe_bus_wr_out_data         *sfe_out_data = NULL;
+	struct cam_cdm_utils_ops               *cdm_util_ops;
+	struct cam_sfe_bus_wr_wm_resource_data *wm_data = NULL;
+	struct cam_isp_wm_bw_limiter_config    *wm_bw_limit_cfg = NULL;
+	uint32_t                                counter_limit = 0, reg_val = 0;
+	uint32_t                               *reg_val_pair, num_regval_pairs = 0;
+	uint32_t                                i, j, size = 0;
+
+	bus_priv         = (struct cam_sfe_bus_wr_priv  *) priv;
+	wm_config_update = (struct cam_isp_hw_get_cmd_update *) cmd_args;
+	wm_bw_limit_cfg  = (struct cam_isp_wm_bw_limiter_config  *)
+			wm_config_update->data;
+
+	sfe_out_data = (struct cam_sfe_bus_wr_out_data *)
+		wm_config_update->res->res_priv;
+
+	cdm_util_ops = sfe_out_data->cdm_util_ops;
+
+	if (!sfe_out_data || !cdm_util_ops) {
+		CAM_ERR(CAM_SFE,
+			"Failed invalid data out_data: %pK cdm_utils_ops: %pK",
+			sfe_out_data, cdm_util_ops);
+		return -EINVAL;
+	}
+
+	reg_val_pair = &sfe_out_data->common_data->io_buf_update[0];
+	for (i = 0, j = 0; i < sfe_out_data->num_wm; i++) {
+		if (j >= (MAX_REG_VAL_PAIR_SIZE - (MAX_BUF_UPDATE_REG_NUM * 2))) {
+			CAM_ERR(CAM_SFE,
+				"reg_val_pair %d exceeds the array limit %zu for WM idx %d",
+				j, MAX_REG_VAL_PAIR_SIZE, i);
+			return -ENOMEM;
+		}
+
+		/* Num WMs needs to match max planes */
+		if (i >= CAM_PACKET_MAX_PLANES) {
+			CAM_WARN(CAM_SFE,
+				"Num of WMs: %d exceeded max planes", i);
+			goto add_reg_pair;
+		}
+
+		wm_data = (struct cam_sfe_bus_wr_wm_resource_data *)
+			sfe_out_data->wm_res[i].res_priv;
+		if (!wm_data->hw_regs->bw_limiter_addr) {
+			CAM_ERR(CAM_SFE,
+				"WM: %d %s has no support for bw limiter",
+				wm_data->index, sfe_out_data->wm_res[i].res_name);
+			return -EINVAL;
+		}
+
+		counter_limit = wm_bw_limit_cfg->counter_limit[i];
+
+		/* Validate max counter limit */
+		if (counter_limit >
+			wm_data->common_data->max_bw_counter_limit) {
+			CAM_WARN(CAM_SFE,
+				"Invalid counter limit: 0x%x capping to max: 0x%x",
+				wm_bw_limit_cfg->counter_limit[i],
+				wm_data->common_data->max_bw_counter_limit);
+			counter_limit = wm_data->common_data->max_bw_counter_limit;
+		}
+
+		if (wm_bw_limit_cfg->enable_limiter && counter_limit) {
+			reg_val = 1;
+			reg_val |= (counter_limit << 1);
+		} else {
+			reg_val = 0;
+		}
+
+		CAM_SFE_ADD_REG_VAL_PAIR(reg_val_pair, j,
+			wm_data->hw_regs->bw_limiter_addr, reg_val);
+		CAM_DBG(CAM_SFE, "WM: %d %s bw_limter: 0x%x",
+			wm_data->index, sfe_out_data->wm_res[i].res_name,
+			reg_val_pair[j-1]);
+	}
+
+add_reg_pair:
+
+	num_regval_pairs = j / 2;
+
+	if (num_regval_pairs) {
+		size = cdm_util_ops->cdm_required_size_reg_random(
+			num_regval_pairs);
+
+		/* cdm util returns dwords, need to convert to bytes */
+		if ((size * 4) > wm_config_update->cmd.size) {
+			CAM_ERR(CAM_SFE,
+				"Failed! Buf size:%d insufficient, expected size:%d",
+				wm_config_update->cmd.size, size);
+			return -ENOMEM;
+		}
+
+		cdm_util_ops->cdm_write_regrandom(
+			wm_config_update->cmd.cmd_buf_addr, num_regval_pairs,
+			reg_val_pair);
+
+		/* cdm util returns dwords, need to convert to bytes */
+		wm_config_update->cmd.used_bytes = size * 4;
+	} else {
+		CAM_DBG(CAM_SFE,
+			"No reg val pairs. num_wms: %u",
+			sfe_out_data->num_wm);
+		wm_config_update->cmd.used_bytes = 0;
+	}
+
+	return 0;
+}
+
 static int cam_sfe_bus_wr_start_hw(void *hw_priv,
 	void *start_hw_args, uint32_t arg_size)
 {
@@ -2783,6 +2897,9 @@ static int cam_sfe_bus_wr_process_cmd(
 	case CAM_ISP_HW_CMD_SET_SFE_DEBUG_CFG:
 		rc = cam_sfe_bus_wr_set_debug_cfg(priv, cmd_args);
 		break;
+	case CAM_ISP_HW_CMD_WM_BW_LIMIT_CONFIG:
+		rc = cam_sfe_bus_wr_update_bw_limiter(priv, cmd_args, arg_size);
+		break;
 	default:
 		CAM_ERR_RATE_LIMIT(CAM_SFE, "Invalid HW command type:%d",
 			cmd_type);
@@ -2832,21 +2949,22 @@ int cam_sfe_bus_wr_init(
 	}
 	sfe_bus_local->bus_priv = bus_priv;
 
-	bus_priv->num_client                     = hw_info->num_client;
-	bus_priv->num_out                        = hw_info->num_out;
-	bus_priv->num_comp_grp                   = hw_info->num_comp_grp;
-	bus_priv->top_irq_shift                  = hw_info->top_irq_shift;
-	bus_priv->common_data.num_sec_out        = 0;
-	bus_priv->common_data.secure_mode        = CAM_SECURE_MODE_NON_SECURE;
-	bus_priv->common_data.core_index         = soc_info->index;
-	bus_priv->common_data.mem_base           =
+	bus_priv->num_client                       = hw_info->num_client;
+	bus_priv->num_out                          = hw_info->num_out;
+	bus_priv->num_comp_grp                     = hw_info->num_comp_grp;
+	bus_priv->top_irq_shift                    = hw_info->top_irq_shift;
+	bus_priv->common_data.num_sec_out          = 0;
+	bus_priv->common_data.secure_mode          = CAM_SECURE_MODE_NON_SECURE;
+	bus_priv->common_data.core_index           = soc_info->index;
+	bus_priv->common_data.mem_base             =
 		CAM_SOC_GET_REG_MAP_START(soc_info, SFE_CORE_BASE_IDX);
-	bus_priv->common_data.hw_intf            = hw_intf;
-	bus_priv->common_data.common_reg         = &hw_info->common_reg;
-	bus_priv->common_data.comp_done_shift    = hw_info->comp_done_shift;
-	bus_priv->common_data.line_done_cfg      = hw_info->line_done_cfg;
-	bus_priv->common_data.err_irq_subscribe  = false;
-	bus_priv->common_data.sfe_irq_controller = sfe_irq_controller;
+	bus_priv->common_data.hw_intf              = hw_intf;
+	bus_priv->common_data.common_reg           = &hw_info->common_reg;
+	bus_priv->common_data.comp_done_shift      = hw_info->comp_done_shift;
+	bus_priv->common_data.line_done_cfg        = hw_info->line_done_cfg;
+	bus_priv->common_data.max_bw_counter_limit = hw_info->max_bw_counter_limit;
+	bus_priv->common_data.err_irq_subscribe    = false;
+	bus_priv->common_data.sfe_irq_controller   = sfe_irq_controller;
 	bus_priv->constraint_error_list = hw_info->constraint_error_list;
 	rc = cam_cpas_get_cpas_hw_version(&bus_priv->common_data.hw_version);
 	if (rc) {

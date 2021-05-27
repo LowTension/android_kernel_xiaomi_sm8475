@@ -333,6 +333,10 @@ struct cam_ubwc_plane_cfg_v1 {
  * @lossy_threshold0            UBWC lossy threshold 0
  * @lossy_threshold1            UBWC lossy threshold 1
  * @lossy_var_offset            UBWC offset variance thrshold
+ * @bandwidth_limit:            BW counter limit
+ *                              BW limiter config skipped if value is 0xFFFF or more
+ *                              If skipped here, use generic BW limiter blob to
+ *                              configure the appropriate value.
  *
  */
 struct cam_ubwc_plane_cfg_v2 {

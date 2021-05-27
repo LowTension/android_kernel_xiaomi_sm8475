@@ -8035,6 +8035,161 @@ static int cam_isp_blob_sensor_blanking_config(
 	return rc;
 }
 
+static int cam_isp_blob_bw_limit_update(
+	uint32_t                                   blob_type,
+	struct cam_isp_generic_blob_info          *blob_info,
+	struct cam_isp_out_rsrc_bw_limiter_config *bw_limit_cfg,
+	struct cam_hw_prepare_update_args         *prepare,
+	enum cam_isp_hw_type                       hw_type)
+{
+	struct cam_isp_wm_bw_limiter_config   *wm_bw_limit_cfg;
+	struct cam_kmd_buf_info               *kmd_buf_info;
+	struct cam_ife_hw_mgr_ctx             *ctx = NULL;
+	struct cam_isp_hw_mgr_res             *isp_out_res;
+	uint32_t                               res_id_out, i;
+	uint32_t                               total_used_bytes = 0;
+	uint32_t                               kmd_buf_remain_size;
+	uint32_t                              *cmd_buf_addr;
+	uint32_t                               bytes_used = 0;
+	int                                    num_ent, rc = 0;
+
+	ctx = prepare->ctxt_to_hw_map;
+
+	if ((prepare->num_hw_update_entries + 1) >=
+			prepare->max_hw_update_entries) {
+		CAM_ERR(CAM_ISP, "Insufficient HW entries: %d max: %d",
+			prepare->num_hw_update_entries,
+			prepare->max_hw_update_entries);
+		return -EINVAL;
+	}
+
+	kmd_buf_info = blob_info->kmd_buf_info;
+	for (i = 0; i < bw_limit_cfg->num_ports; i++) {
+		wm_bw_limit_cfg = &bw_limit_cfg->bw_limiter_config[i];
+		res_id_out = wm_bw_limit_cfg->res_type & 0xFF;
+
+		if ((hw_type == CAM_ISP_HW_TYPE_SFE) &&
+			!((wm_bw_limit_cfg->res_type >=
+			CAM_ISP_SFE_OUT_RES_BASE) &&
+			(wm_bw_limit_cfg->res_type <
+			CAM_ISP_SFE_OUT_RES_MAX)))
+			continue;
+
+		if ((hw_type == CAM_ISP_HW_TYPE_VFE) &&
+			!((wm_bw_limit_cfg->res_type >=
+			CAM_ISP_IFE_OUT_RES_BASE) &&
+			(wm_bw_limit_cfg->res_type <
+			(CAM_ISP_IFE_OUT_RES_BASE + max_ife_out_res))))
+			continue;
+
+		CAM_DBG(CAM_ISP, "%s BW limit config idx: %d port: 0x%x enable: %d [0x%x:0x%x]",
+			(hw_type == CAM_ISP_HW_TYPE_SFE ? "SFE" : "VFE"),
+			i, wm_bw_limit_cfg->res_type,
+			wm_bw_limit_cfg->enable_limiter,
+			wm_bw_limit_cfg->counter_limit[0],
+			wm_bw_limit_cfg->counter_limit[1]);
+
+		if ((kmd_buf_info->used_bytes
+			+ total_used_bytes) < kmd_buf_info->size) {
+			kmd_buf_remain_size = kmd_buf_info->size -
+			(kmd_buf_info->used_bytes +
+			total_used_bytes);
+		} else {
+			CAM_ERR(CAM_ISP,
+				"No free kmd memory for base idx: %d",
+				blob_info->base_info->idx);
+			rc = -ENOMEM;
+			return rc;
+		}
+
+		cmd_buf_addr = kmd_buf_info->cpu_addr +
+			(kmd_buf_info->used_bytes / 4) +
+			(total_used_bytes / 4);
+
+		if (hw_type == CAM_ISP_HW_TYPE_SFE)
+			isp_out_res = &ctx->res_list_sfe_out[res_id_out];
+		else
+			isp_out_res = &ctx->res_list_ife_out[res_id_out];
+
+		rc = cam_isp_add_cmd_buf_update(
+			isp_out_res, blob_type,
+			CAM_ISP_HW_CMD_WM_BW_LIMIT_CONFIG,
+			blob_info->base_info->idx,
+			(void *)cmd_buf_addr,
+			kmd_buf_remain_size,
+			(void *)wm_bw_limit_cfg,
+			&bytes_used);
+		if (rc < 0) {
+			CAM_ERR(CAM_ISP,
+				"Failed to update %s BW limiter config for res:0x%x enable:%d [0x%x:0x%x] base_idx:%d bytes_used:%u rc:%d",
+				((hw_type == CAM_ISP_HW_TYPE_SFE) ?
+				"SFE" : "VFE"),
+				wm_bw_limit_cfg->res_type,
+				wm_bw_limit_cfg->enable_limiter,
+				wm_bw_limit_cfg->counter_limit[0],
+				wm_bw_limit_cfg->counter_limit[1],
+				blob_info->base_info->idx, bytes_used, rc);
+			return rc;
+		}
+
+		total_used_bytes += bytes_used;
+	}
+
+	if (total_used_bytes) {
+		num_ent = prepare->num_hw_update_entries;
+		prepare->hw_update_entries[num_ent].handle =
+			kmd_buf_info->handle;
+		prepare->hw_update_entries[num_ent].len = total_used_bytes;
+		prepare->hw_update_entries[num_ent].offset =
+			kmd_buf_info->offset;
+		num_ent++;
+		kmd_buf_info->used_bytes += total_used_bytes;
+		kmd_buf_info->offset     += total_used_bytes;
+		prepare->num_hw_update_entries = num_ent;
+	}
+
+	return rc;
+}
+
+static inline int cam_isp_validate_bw_limiter_blob(
+	uint32_t blob_size,
+	struct cam_isp_out_rsrc_bw_limiter_config *bw_limit_config)
+{
+	if ((bw_limit_config->num_ports >  (max_ife_out_res +
+		g_ife_hw_mgr.isp_bus_caps.max_sfe_out_res_type)) ||
+		(bw_limit_config->num_ports == 0)) {
+		CAM_ERR(CAM_ISP,
+			"Invalid num_ports:%u in bw limit config",
+			bw_limit_config->num_ports);
+			return -EINVAL;
+	}
+
+	/* Check for integer overflow */
+	if (bw_limit_config->num_ports != 1) {
+		if (sizeof(struct cam_isp_wm_bw_limiter_config) > ((UINT_MAX -
+			sizeof(struct cam_isp_out_rsrc_bw_limiter_config)) /
+			(bw_limit_config->num_ports - 1))) {
+			CAM_ERR(CAM_ISP,
+				"Max size exceeded in bw limit config num_ports:%u size per port:%lu",
+				bw_limit_config->num_ports,
+				sizeof(struct cam_isp_wm_bw_limiter_config));
+			return -EINVAL;
+		}
+	}
+
+	if (blob_size < (sizeof(struct cam_isp_out_rsrc_bw_limiter_config) +
+		(bw_limit_config->num_ports - 1) *
+		sizeof(struct cam_isp_wm_bw_limiter_config))) {
+		CAM_ERR(CAM_ISP, "Invalid blob size %u expected %lu",
+			blob_size, sizeof(struct cam_isp_out_rsrc_bw_limiter_config)
+			+ (bw_limit_config->num_ports - 1) *
+			sizeof(struct cam_isp_wm_bw_limiter_config));
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 static int cam_isp_packet_generic_blob_handler(void *user_data,
 	uint32_t blob_type, uint32_t blob_size, uint8_t *blob_data)
 {
@@ -8586,6 +8741,32 @@ static int cam_isp_packet_generic_blob_handler(void *user_data,
 			CAM_ERR(CAM_ISP, "MUP Update Failed");
 	}
 		break;
+	case CAM_ISP_GENERIC_BLOB_TYPE_BW_LIMITER_CFG: {
+		struct cam_isp_out_rsrc_bw_limiter_config *bw_limit_config;
+
+		if (blob_size <
+			sizeof(struct cam_isp_out_rsrc_bw_limiter_config)) {
+			CAM_ERR(CAM_ISP, "Invalid blob size %u",
+				blob_size,
+				sizeof(struct cam_isp_out_rsrc_bw_limiter_config));
+			return -EINVAL;
+		}
+
+		bw_limit_config =
+			(struct cam_isp_out_rsrc_bw_limiter_config *)blob_data;
+
+		rc = cam_isp_validate_bw_limiter_blob(blob_size,
+			bw_limit_config);
+		if (rc)
+			return rc;
+
+		rc = cam_isp_blob_bw_limit_update(blob_type, blob_info,
+			bw_limit_config, prepare, CAM_ISP_HW_TYPE_VFE);
+		if (rc)
+			CAM_ERR(CAM_ISP,
+				"BW limit update failed for IFE rc: %d", rc);
+	}
+		break;
 	default:
 		CAM_WARN(CAM_ISP, "Invalid blob type %d", blob_type);
 		break;
@@ -8982,6 +9163,32 @@ static int cam_sfe_packet_generic_blob_handler(void *user_data,
 			blob_info->base_info->idx, exp_config, prepare);
 		if (rc)
 			CAM_ERR(CAM_ISP, "SFE exp order update failed");
+	}
+		break;
+	case CAM_ISP_GENERIC_BLOB_TYPE_BW_LIMITER_CFG: {
+		struct cam_isp_out_rsrc_bw_limiter_config *bw_limit_config;
+
+		if (blob_size <
+			sizeof(struct cam_isp_out_rsrc_bw_limiter_config)) {
+			CAM_ERR(CAM_ISP, "Invalid blob size %u",
+				blob_size,
+				sizeof(struct cam_isp_out_rsrc_bw_limiter_config));
+			return -EINVAL;
+		}
+
+		bw_limit_config =
+			(struct cam_isp_out_rsrc_bw_limiter_config *)blob_data;
+
+		rc = cam_isp_validate_bw_limiter_blob(blob_size,
+			bw_limit_config);
+		if (rc)
+			return rc;
+
+		rc = cam_isp_blob_bw_limit_update(blob_type, blob_info,
+			bw_limit_config, prepare, CAM_ISP_HW_TYPE_SFE);
+		if (rc)
+			CAM_ERR(CAM_ISP,
+				"BW limit update failed for SFE rc: %d", rc);
 	}
 		break;
 	case CAM_ISP_GENERIC_BLOB_TYPE_HFR_CONFIG:

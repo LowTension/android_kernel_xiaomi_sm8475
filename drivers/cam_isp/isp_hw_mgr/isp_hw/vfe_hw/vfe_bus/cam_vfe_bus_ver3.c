@@ -104,6 +104,7 @@ struct cam_vfe_bus_ver3_common_data {
 	cam_hw_mgr_event_cb_func                    event_cb;
 	int                        rup_irq_handle[CAM_VFE_BUS_VER3_SRC_GRP_MAX];
 	uint32_t                                    pack_align_shift;
+	uint32_t                                    max_bw_counter_limit;
 };
 
 struct cam_vfe_bus_ver3_wm_resource_data {
@@ -2948,7 +2949,11 @@ static int cam_vfe_bus_ver3_update_ubwc_regs(
 	CAM_DBG(CAM_ISP, "WM:%d off_lossy_var 0x%X",
 		wm_data->index, reg_val_pair[*j-1]);
 
-	if (wm_data->ubwc_bandwidth_limit) {
+	/*
+	 * If limit value >= 0xFFFF, limit configured by
+	 * generic limiter blob
+	 */
+	if (wm_data->ubwc_bandwidth_limit < 0xFFFF) {
 		CAM_VFE_ADD_REG_VAL_PAIR(reg_val_pair, *j,
 			ubwc_regs->bw_limit, wm_data->ubwc_bandwidth_limit);
 		CAM_DBG(CAM_ISP, "WM:%d ubwc bw limit 0x%X",
@@ -3540,6 +3545,120 @@ static int cam_vfe_bus_ver3_update_wm_config(
 	return 0;
 }
 
+static int cam_vfe_bus_update_bw_limiter(
+	void *priv, void *cmd_args, uint32_t arg_size)
+{
+	struct cam_vfe_bus_ver3_priv             *bus_priv;
+	struct cam_isp_hw_get_cmd_update         *wm_config_update;
+	struct cam_vfe_bus_ver3_vfe_out_data     *vfe_out_data = NULL;
+	struct cam_cdm_utils_ops                 *cdm_util_ops;
+	struct cam_vfe_bus_ver3_wm_resource_data *wm_data = NULL;
+	struct cam_isp_wm_bw_limiter_config      *wm_bw_limit_cfg = NULL;
+	uint32_t                                  counter_limit = 0, reg_val = 0;
+	uint32_t                                 *reg_val_pair, num_regval_pairs = 0;
+	uint32_t                                  i, j, size = 0;
+
+	bus_priv         = (struct cam_vfe_bus_ver3_priv  *) priv;
+	wm_config_update = (struct cam_isp_hw_get_cmd_update *) cmd_args;
+	wm_bw_limit_cfg  = (struct cam_isp_wm_bw_limiter_config  *)
+			wm_config_update->data;
+
+	vfe_out_data = (struct cam_vfe_bus_ver3_vfe_out_data *)
+		wm_config_update->res->res_priv;
+
+	cdm_util_ops = vfe_out_data->cdm_util_ops;
+
+	if (!vfe_out_data || !cdm_util_ops) {
+		CAM_ERR(CAM_ISP,
+			"Failed invalid data out_data: %pK cdm_utils_ops: %pK",
+			vfe_out_data, cdm_util_ops);
+		return -EINVAL;
+	}
+
+	reg_val_pair = &vfe_out_data->common_data->io_buf_update[0];
+	for (i = 0, j = 0; i < vfe_out_data->num_wm; i++) {
+		if (j >= (MAX_REG_VAL_PAIR_SIZE - (MAX_BUF_UPDATE_REG_NUM * 2))) {
+			CAM_ERR(CAM_ISP,
+				"reg_val_pair %d exceeds the array limit %zu for WM idx %d",
+				j, MAX_REG_VAL_PAIR_SIZE, i);
+			return -ENOMEM;
+		}
+
+		/* Num WMs needs to match max planes */
+		if (i >= CAM_PACKET_MAX_PLANES) {
+			CAM_WARN(CAM_ISP,
+				"Num of WMs: %d exceeded max planes", i);
+			goto add_reg_pair;
+		}
+
+		wm_data = (struct cam_vfe_bus_ver3_wm_resource_data *)
+			vfe_out_data->wm_res[i].res_priv;
+		if (!wm_data->hw_regs->bw_limiter_addr) {
+			CAM_ERR(CAM_ISP,
+				"WM: %d %s has no support for bw limiter",
+				wm_data->index, vfe_out_data->wm_res[i].res_name);
+			return -EINVAL;
+		}
+
+		counter_limit = wm_bw_limit_cfg->counter_limit[i];
+
+		/* Validate max counter limit */
+		if (counter_limit >
+			wm_data->common_data->max_bw_counter_limit) {
+			CAM_WARN(CAM_ISP,
+				"Invalid counter limit: 0x%x capping to max: 0x%x",
+				wm_bw_limit_cfg->counter_limit[i],
+				wm_data->common_data->max_bw_counter_limit);
+			counter_limit =
+				wm_data->common_data->max_bw_counter_limit;
+		}
+
+		if (wm_bw_limit_cfg->enable_limiter && counter_limit) {
+			reg_val = 1;
+			reg_val |= (counter_limit << 1);
+		} else {
+			reg_val = 0;
+		}
+
+		CAM_VFE_ADD_REG_VAL_PAIR(reg_val_pair, j,
+			wm_data->hw_regs->bw_limiter_addr, reg_val);
+		CAM_DBG(CAM_ISP, "WM: %d for %s bw_limter: 0x%x",
+			wm_data->index, vfe_out_data->wm_res[i].res_name,
+			reg_val_pair[j-1]);
+	}
+
+add_reg_pair:
+
+	num_regval_pairs = j / 2;
+
+	if (num_regval_pairs) {
+		size = cdm_util_ops->cdm_required_size_reg_random(
+			num_regval_pairs);
+
+		/* cdm util returns dwords, need to convert to bytes */
+		if ((size * 4) > wm_config_update->cmd.size) {
+			CAM_ERR(CAM_ISP,
+				"Failed! Buf size:%d insufficient, expected size:%d",
+				wm_config_update->cmd.size, size);
+			return -ENOMEM;
+		}
+
+		cdm_util_ops->cdm_write_regrandom(
+			wm_config_update->cmd.cmd_buf_addr, num_regval_pairs,
+			reg_val_pair);
+
+		/* cdm util returns dwords, need to convert to bytes */
+		wm_config_update->cmd.used_bytes = size * 4;
+	} else {
+		CAM_DBG(CAM_ISP,
+			"No reg val pairs. num_wms: %u",
+			vfe_out_data->num_wm);
+		wm_config_update->cmd.used_bytes = 0;
+	}
+
+	return 0;
+}
+
 static int cam_vfe_bus_ver3_start_hw(void *hw_priv,
 	void *start_hw_args, uint32_t arg_size)
 {
@@ -3739,6 +3858,9 @@ static int cam_vfe_bus_ver3_process_cmd(
 			"disabled" : "enabled");
 		rc = 0;
 		break;
+	case CAM_ISP_HW_CMD_WM_BW_LIMIT_CONFIG:
+		rc = cam_vfe_bus_update_bw_limiter(priv, cmd_args, arg_size);
+		break;
 	default:
 		CAM_ERR_RATE_LIMIT(CAM_ISP, "Invalid camif process command:%d",
 			cmd_type);
@@ -3823,6 +3945,8 @@ int cam_vfe_bus_ver3_init(
 	bus_priv->common_data.disable_mmu_prefetch = false;
 	bus_priv->common_data.pack_align_shift =
 		ver3_hw_info->pack_align_shift;
+	bus_priv->common_data.max_bw_counter_limit =
+		ver3_hw_info->max_bw_counter_limit;
 	bus_priv->constraint_error_list = ver3_hw_info->constraint_error_list;
 
 	if (bus_priv->num_out >= CAM_VFE_BUS_VER3_VFE_OUT_MAX) {

@@ -121,6 +121,7 @@
 #define CAM_ISP_GENERIC_BLOB_TYPE_SENSOR_BLANKING_CONFIG    13
 #define CAM_ISP_GENERIC_BLOB_TYPE_TPG_CORE_CONFIG           14
 #define CAM_ISP_GENERIC_BLOB_TYPE_DYNAMIC_MODE_SWITCH       15
+#define CAM_ISP_GENERIC_BLOB_TYPE_BW_LIMITER_CFG            16
 #define CAM_ISP_GENERIC_BLOB_TYPE_SFE_CLOCK_CONFIG          21
 #define CAM_ISP_GENERIC_BLOB_TYPE_SFE_CORE_CONFIG           22
 #define CAM_ISP_GENERIC_BLOB_TYPE_SFE_OUT_CONFIG            23
@@ -931,6 +932,39 @@ struct cam_isp_discard_initial_frames {
 	__u32                    num_frames;
 	__u32                    discard_params[5];
 } __attribute__((packed));
+
+/**
+ * struct cam_isp_wm_bw_limiter_config - ISP write master
+ *                                       BW limter config
+ *
+ *
+ * @res_type          : output resource type defined in file
+ *                      cam_isp_sfe.h or cam_isp_ife.h
+ * @enable_limiter    : 0 for disable else enabled
+ * @counter_limit     : Max counter value
+ * @additional_params : Params for future use
+ */
+struct cam_isp_wm_bw_limiter_config {
+	__u32         res_type;
+	__u32         enable_limiter;
+	__u32         counter_limit[CAM_PACKET_MAX_PLANES];
+	__u32         additional_params[5];
+};
+
+/**
+ * struct cam_isp_out_rsrc_bw_limiter_config - ISP out rsrc BW limiter config
+ *
+ *    Configure BW limiter for ISP WMs
+ *
+ * @num_ports        : Number of ports
+ * @reserved         : Reserved field
+ * @bw_limit_config  : WM BW limiter config
+ */
+struct cam_isp_out_rsrc_bw_limiter_config {
+	__u32                                   num_ports;
+	__u32                                   reserved;
+	struct cam_isp_wm_bw_limiter_config     bw_limiter_config[1];
+};
 
 #define CAM_ISP_ACQUIRE_COMMON_VER0         0x1000
 
