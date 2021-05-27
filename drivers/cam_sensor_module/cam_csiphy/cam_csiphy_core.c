@@ -691,9 +691,9 @@ static int cam_csiphy_cphy_data_rate_config(
 	int i = 0;
 	int lane_idx = -1;
 	int data_rate_idx = -1;
-	uint64_t phy_data_rate = 0;
+	uint64_t required_phy_data_rate = 0;
 	void __iomem *csiphybase = NULL;
-	ssize_t num_table_entries = 0;
+	ssize_t num_data_rates = 0;
 	struct data_rate_settings_t *settings_table = NULL;
 	struct csiphy_cphy_per_lane_info *per_lane = NULL;
 	uint32_t lane_enable = 0;
@@ -716,12 +716,12 @@ static int cam_csiphy_cphy_data_rate_config(
 		return 0;
 	}
 
-	phy_data_rate = csiphy_device->csiphy_info[idx].data_rate;
+	required_phy_data_rate = csiphy_device->csiphy_info[idx].data_rate;
 	csiphybase =
 		csiphy_device->soc_info.reg_map[0].mem_base;
 	settings_table =
 		csiphy_device->ctrl_reg->data_rates_settings_table;
-	num_table_entries =
+	num_data_rates =
 		settings_table->num_data_rate_settings;
 	lane_cnt = csiphy_device->csiphy_info[idx].lane_cnt;
 
@@ -730,23 +730,25 @@ static int cam_csiphy_cphy_data_rate_config(
 	settle_cnt = intermediate_var;
 	skew_cal_enable = csiphy_device->csiphy_info[idx].mipi_flags;
 
-	CAM_DBG(CAM_CSIPHY, "required data rate : %llu", phy_data_rate);
-	for (data_rate_idx = 0; data_rate_idx < num_table_entries;
+	CAM_DBG(CAM_CSIPHY, "required data rate : %llu", required_phy_data_rate);
+	for (data_rate_idx = 0; data_rate_idx < num_data_rates;
 			data_rate_idx++) {
 		struct data_rate_reg_info_t *drate_settings =
 			settings_table->data_rate_settings;
-		uint64_t bandwidth = drate_settings[data_rate_idx].bandwidth;
+		uint64_t supported_phy_bw = drate_settings[data_rate_idx].bandwidth;
 		ssize_t  num_reg_entries =
 			drate_settings[data_rate_idx].data_rate_reg_array_size;
-		if (phy_data_rate > bandwidth) {
+
+		if ((required_phy_data_rate > supported_phy_bw) &&
+			(data_rate_idx < (num_data_rates - 1))) {
 			CAM_DBG(CAM_CSIPHY,
 				"Skipping table [%d] with BW: %llu, Required data_rate: %llu",
-				data_rate_idx, bandwidth, phy_data_rate);
+				data_rate_idx, supported_phy_bw, required_phy_data_rate);
 			continue;
 		}
 
 		CAM_DBG(CAM_CSIPHY, "table[%d] BW : %llu Selected",
-			data_rate_idx, bandwidth);
+			data_rate_idx, supported_phy_bw);
 		lane_enable = csiphy_device->csiphy_info[idx].lane_enable;
 		lane_assign = csiphy_device->csiphy_info[idx].lane_assign;
 		lane_idx = -1;
