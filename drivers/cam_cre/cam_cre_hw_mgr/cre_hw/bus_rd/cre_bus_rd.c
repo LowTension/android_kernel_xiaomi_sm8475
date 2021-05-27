@@ -25,6 +25,7 @@
 #include "cre_hw.h"
 #include "cre_dev_intf.h"
 #include "cre_bus_rd.h"
+#include "cam_common_util.h"
 
 static struct cre_bus_rd *bus_rd;
 
@@ -57,7 +58,7 @@ static int cam_cre_bus_rd_update(struct cam_cre_hw *cam_cre_hw_info,
 	uint32_t req_idx, temp;
 	uint32_t rm_id;
 	uint32_t rsc_type;
-	uint32_t iova_base;
+	uint32_t iova_base, iova_offset;
 	struct cam_hw_prepare_update_args *prepare_args;
 	struct cam_cre_ctx *ctx_data;
 	struct cam_cre_request *cre_request;
@@ -131,11 +132,21 @@ static int cam_cre_bus_rd_update(struct cam_cre_hw *cam_cre_hw_info,
 			(rd_reg->offset + rd_reg_client->ccif_meta_data),
 			temp);
 
-		/* Image Address */
-		iova_base = io_buf->p_info[k].iova_addr;
+		/*
+		 * As CRE have 36 Bit addressing support Image Address
+		 * register will have 28 bit MSB of 36 bit iova.
+		 * and addr_config will have 8 bit byte offset.
+		 */
+		iova_base = CAM_36BIT_INTF_GET_IOVA_BASE(
+				io_buf->p_info[k].iova_addr);
 		update_cre_reg_set(cre_reg_buf,
 			rd_reg->offset + rd_reg_client->img_addr,
 			iova_base);
+		iova_offset = CAM_36BIT_INTF_GET_IOVA_OFFSET(
+				io_buf->p_info[k].iova_addr);
+		update_cre_reg_set(cre_reg_buf,
+			rd_reg->offset + rd_reg_client->addr_cfg,
+			iova_offset);
 
 		/* Buffer size */
 		update_cre_reg_set(cre_reg_buf,
