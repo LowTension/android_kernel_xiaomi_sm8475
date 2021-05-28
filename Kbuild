@@ -61,7 +61,6 @@ camera-y := \
 	drivers/cam_req_mgr/cam_req_mgr_timer.o \
 	drivers/cam_req_mgr/cam_req_mgr_debug.o \
 	drivers/cam_utils/cam_soc_util.o \
-	drivers/cam_utils/cam_io_util.o \
 	drivers/cam_utils/cam_packet_util.o \
 	drivers/cam_utils/cam_debug_util.o \
 	drivers/cam_utils/cam_trace.o \
@@ -88,7 +87,9 @@ camera-y := \
 
 ifeq (,$(filter $(CONFIG_CAM_PRESIL),y m))
 	camera-y += drivers/cam_presil/stub/cam_presil_hw_access_stub.o
+	camera-y += drivers/cam_utils/cam_io_util.o
 else
+	camera-y += drivers/cam_presil/presil/cam_presil_io_util.o
 	ccflags-y += -DCONFIG_CAM_PRESIL=1
 endif
 
