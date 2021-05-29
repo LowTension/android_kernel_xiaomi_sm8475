@@ -2357,15 +2357,15 @@ static int cam_vfe_bus_ver3_handle_vfe_out_done_bottom_half(
 	void                *handler_priv,
 	void                *evt_payload_priv)
 {
-	int                                   rc = -EINVAL, num_out = 0, i = 0;
-	struct cam_isp_resource_node         *vfe_out = handler_priv;
-	struct cam_vfe_bus_ver3_vfe_out_data *rsrc_data = vfe_out->res_priv;
-	struct cam_vfe_bus_irq_evt_payload   *evt_payload = evt_payload_priv;
-	struct cam_isp_hw_event_info          evt_info;
-	void                                 *ctx = NULL;
-	uint32_t                              evt_id = 0;
-	uint64_t                              comp_mask = 0;
-	uint32_t                         out_list[CAM_VFE_BUS_VER3_VFE_OUT_MAX];
+	int                                    rc = -EINVAL, num_out = 0, i = 0;
+	struct cam_isp_resource_node          *vfe_out = handler_priv;
+	struct cam_vfe_bus_ver3_vfe_out_data  *rsrc_data = vfe_out->res_priv;
+	struct cam_vfe_bus_irq_evt_payload    *evt_payload = evt_payload_priv;
+	struct cam_isp_hw_compdone_event_info  evt_info = {0};
+	void                                  *ctx = NULL;
+	uint32_t                               evt_id = 0;
+	uint64_t                               comp_mask = 0;
+	uint32_t                               out_list[CAM_VFE_BUS_VER3_VFE_OUT_MAX];
 
 	rc = cam_vfe_bus_ver3_handle_comp_done_bottom_half(
 		rsrc_data->comp_grp, evt_payload_priv, &comp_mask);
@@ -2386,16 +2386,17 @@ static int cam_vfe_bus_ver3_handle_vfe_out_done_bottom_half(
 
 		rc = cam_vfe_bus_ver3_get_comp_vfe_out_res_id_list(
 			comp_mask, out_list, &num_out);
+		evt_info.num_res = num_out;
 		for (i = 0; i < num_out; i++) {
-			evt_info.res_id = out_list[i];
-			evt_info.reg_val =
+			evt_info.res_id[i] = out_list[i];
+			evt_info.last_consumed_addr[i] =
 				cam_vfe_bus_ver3_get_last_consumed_addr(
 				rsrc_data->bus_priv,
-				evt_info.res_id);
-			if (rsrc_data->common_data->event_cb)
-				rsrc_data->common_data->event_cb(ctx, evt_id,
-					(void *)&evt_info);
+				evt_info.res_id[i]);
 		}
+		if (rsrc_data->common_data->event_cb)
+			rsrc_data->common_data->event_cb(ctx, evt_id,
+				(void *)&evt_info);
 		break;
 	default:
 		break;

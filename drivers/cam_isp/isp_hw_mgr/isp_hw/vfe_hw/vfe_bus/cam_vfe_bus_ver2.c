@@ -2419,7 +2419,7 @@ static int cam_vfe_bus_handle_vfe_out_done_bottom_half(
 	int rc = -EINVAL;
 	struct cam_isp_resource_node             *vfe_out = handler_priv;
 	struct cam_vfe_bus_ver2_vfe_out_data     *rsrc_data = vfe_out->res_priv;
-	struct cam_isp_hw_event_info              evt_info;
+	struct cam_isp_hw_compdone_event_info      evt_info = {0};
 	void                                     *ctx = NULL;
 	uint32_t                                  evt_id = 0;
 	uint32_t                                  comp_mask = 0;
@@ -2452,18 +2452,17 @@ static int cam_vfe_bus_handle_vfe_out_done_bottom_half(
 		if (rsrc_data->comp_grp) {
 			cam_vfe_bus_get_comp_vfe_out_res_id_list(
 				comp_mask, out_list, &num_out);
+			evt_info.num_res = num_out;
 			for (i = 0; i < num_out; i++) {
-				evt_info.res_id = out_list[i];
-				if (rsrc_data->common_data->event_cb)
-					rsrc_data->common_data->event_cb(ctx,
-						evt_id, (void *)&evt_info);
+				evt_info.res_id[i] = out_list[i];
 			}
 		} else {
-			evt_info.res_id = vfe_out->res_id;
-			if (rsrc_data->common_data->event_cb)
-				rsrc_data->common_data->event_cb(ctx, evt_id,
-					(void *)&evt_info);
+			evt_info.num_res = 1;
+			evt_info.res_id[0] = vfe_out->res_id;
 		}
+		if (rsrc_data->common_data->event_cb)
+			rsrc_data->common_data->event_cb(ctx,
+				evt_id, (void *)&evt_info);
 		break;
 	default:
 		break;

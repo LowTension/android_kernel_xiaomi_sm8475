@@ -13,6 +13,7 @@
 #include "cam_irq_controller.h"
 #include "cam_hw_intf.h"
 #include "cam_cdm_intf_api.h"
+#include "cam_hw_mgr_intf.h"
 
 /* Maximum length of tag while dumping */
 #define CAM_ISP_HW_DUMP_TAG_MAX_LEN 32
@@ -254,6 +255,28 @@ struct cam_isp_hw_event_info {
 	uint32_t                       reg_val;
 	uint32_t                       hw_type;
 	uint32_t                       in_core_type;
+};
+
+/**
+ * struct cam_isp_hw_compdone_event_info:
+ *
+ * @brief:              Structure to pass bufdone event details to hw mgr
+ *
+ * @res_type:           Type of IFE/SFE resource
+ * @hw_idx:             IFE/SFE hw index
+ * @num_res:            Number of valid resource IDs in this event
+ * @hw_type:            Hw Type sending the event (IFE or SFE)
+ * @res_id:             Resource IDs to report buf dones
+ * @last_consumed_addr: Last consumed addr for resource ID at that index
+ *
+ */
+struct cam_isp_hw_compdone_event_info {
+	enum cam_isp_resource_type     res_type;
+	uint32_t                       hw_idx;
+	uint32_t                       hw_type;
+	uint32_t num_res;
+	uint32_t res_id[CAM_NUM_OUT_PER_COMP_IRQ_MAX];
+	uint32_t last_consumed_addr[CAM_NUM_OUT_PER_COMP_IRQ_MAX];
 };
 
 /*
