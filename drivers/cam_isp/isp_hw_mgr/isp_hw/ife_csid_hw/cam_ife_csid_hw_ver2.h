@@ -74,18 +74,6 @@
 #define IFE_CSID_VER2_CUST_NODE_IDX_1                      0x2
 #define IFE_CSID_VER2_CUST_NODE_IDX_2                      0x4
 
-#define IFE_CSID_VER2_TOP_IRQ_STATUS_RST                  BIT(0)
-#define IFE_CSID_VER2_TOP_IRQ_STATUS_RX0                  BIT(2)
-#define IFE_CSID_VER2_TOP_IRQ_STATUS_RX1                  BIT(3)
-#define IFE_CSID_VER2_TOP_IRQ_STATUS_IPP0                 BIT(4)
-#define IFE_CSID_VER2_TOP_IRQ_STATUS_IPP1                 BIT(5)
-#define IFE_CSID_VER2_TOP_IRQ_STATUS_PPP0                 BIT(6)
-#define IFE_CSID_VER2_TOP_IRQ_STATUS_PPP1                 BIT(7)
-#define IFE_CSID_VER2_TOP_IRQ_STATUS_RDI0                 BIT(8)
-#define IFE_CSID_VER2_TOP_IRQ_STATUS_RDI1                 BIT(9)
-#define IFE_CSID_VER2_TOP_IRQ_STATUS_RDI2                 BIT(10)
-#define IFE_CSID_VER2_TOP_IRQ_STATUS_RDI3                 BIT(11)
-#define IFE_CSID_VER2_TOP_IRQ_STATUS_RDI4                 BIT(12)
 #define IFE_CSID_VER2_TOP_IRQ_STATUS_BUF_DONE             BIT(13)
 
 enum cam_ife_csid_ver2_input_core_sel {
@@ -317,8 +305,11 @@ struct cam_ife_csid_ver2_rdi_reg_info {
 	uint32_t pix_pattern_shift;
 	uint32_t camif_irq_mask;
 	uint32_t rup_aup_mask;
+	uint32_t top_irq_mask;
 	uint32_t epoch0_cfg_val;
 	uint32_t epoch1_cfg_val;
+	uint32_t epoch0_shift_val;
+	uint32_t epoch1_shift_val;
 };
 
 struct cam_ife_csid_ver2_pxl_reg_info {
@@ -423,6 +414,8 @@ struct cam_ife_csid_ver2_pxl_reg_info {
 	uint32_t pix_pattern_shift_val;
 	uint32_t epoch0_cfg_val;
 	uint32_t epoch1_cfg_val;
+	uint32_t epoch0_shift_val;
+	uint32_t epoch1_shift_val;
 	/* config Values */
 	uint32_t resume_frame_boundary;
 	uint32_t overflow_ctrl_mode_val;
@@ -435,6 +428,7 @@ struct cam_ife_csid_ver2_pxl_reg_info {
 	uint32_t non_fatal_err_mask;
 	uint32_t camif_irq_mask;
 	uint32_t rup_aup_mask;
+	uint32_t top_irq_mask;
 };
 
 struct cam_ife_csid_ver2_common_reg_info {
@@ -535,7 +529,6 @@ struct cam_ife_csid_ver2_common_reg_info {
 	uint32_t global_reset;
 	uint32_t rup_supported;
 	uint32_t only_master_rup;
-	uint32_t need_separate_base;
 	/* Masks */
 	uint32_t pxl_cnt_mask;
 	uint32_t line_cnt_mask;
@@ -559,7 +552,9 @@ struct cam_ife_csid_ver2_common_reg_info {
 	uint32_t rdi_irq_mask_all;
 	uint32_t ppp_irq_mask_all;
 	uint32_t udi_irq_mask_all;
-	uint32_t top_reset_irq_shift_val;
+	uint32_t top_err_irq_mask;
+	uint32_t top_reset_irq_mask;
+	uint32_t top_buf_done_irq_mask;
 	uint32_t epoch_div_factor;
 };
 

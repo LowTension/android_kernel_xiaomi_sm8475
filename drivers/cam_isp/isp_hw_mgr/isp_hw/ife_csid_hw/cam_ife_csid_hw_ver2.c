@@ -1690,7 +1690,6 @@ int cam_ife_csid_ver2_get_hw_caps(void *hw_priv,
 	hw_caps->global_reset_en = csid_reg->cmn_reg->global_reset;
 	hw_caps->rup_en = csid_reg->cmn_reg->rup_supported;
 	hw_caps->only_master_rup = csid_reg->cmn_reg->only_master_rup;
-	hw_caps->need_separate_base = csid_reg->cmn_reg->need_separate_base;
 	hw_caps->is_lite = soc_private->is_ife_csid_lite;
 
 	CAM_DBG(CAM_ISP,
@@ -2774,7 +2773,6 @@ static int cam_ife_csid_ver2_program_rdi_path(
 	void __iomem *mem_base;
 	uint32_t val = 0;
 	uint32_t irq_mask[CAM_IFE_CSID_IRQ_REG_MAX] = {0};
-	uint32_t top_irq_mask = 0;
 	struct cam_ife_csid_ver2_path_cfg *path_cfg;
 
 	rc = cam_ife_csid_ver2_init_config_rdi_path(
@@ -2813,7 +2811,8 @@ static int cam_ife_csid_ver2_program_rdi_path(
 			path_reg->stripe_loc_shift_val);
 
 		cam_io_w_mb(val, mem_base + path_reg->camif_frame_cfg_addr);
-		cam_io_w_mb(path_cfg->camif_data.epoch0,
+		cam_io_w_mb(path_cfg->camif_data.epoch0 <<
+			path_reg->epoch0_shift_val,
 			mem_base + path_reg->epoch_irq_cfg_addr);
 	}
 
@@ -2836,25 +2835,8 @@ static int cam_ife_csid_ver2_program_rdi_path(
 	path_cfg->irq_reg_idx =
 		cam_ife_csid_convert_res_to_irq_reg(res->res_id);
 
-	switch (res->res_id) {
-	case CAM_IFE_PIX_PATH_RES_RDI_0:
-		top_irq_mask = IFE_CSID_VER2_TOP_IRQ_STATUS_RDI0;
-		break;
-	case CAM_IFE_PIX_PATH_RES_RDI_1:
-		top_irq_mask = IFE_CSID_VER2_TOP_IRQ_STATUS_RDI1;
-		break;
-	case CAM_IFE_PIX_PATH_RES_RDI_2:
-		top_irq_mask = IFE_CSID_VER2_TOP_IRQ_STATUS_RDI2;
-		break;
-	case CAM_IFE_PIX_PATH_RES_RDI_3:
-		top_irq_mask = IFE_CSID_VER2_TOP_IRQ_STATUS_RDI3;
-		break;
-	case CAM_IFE_PIX_PATH_RES_RDI_4:
-		top_irq_mask = IFE_CSID_VER2_TOP_IRQ_STATUS_RDI4;
-		break;
-	}
+	irq_mask[CAM_IFE_CSID_IRQ_REG_TOP] = path_reg->top_irq_mask;
 
-	irq_mask[CAM_IFE_CSID_IRQ_REG_TOP] = top_irq_mask;
 	irq_mask[path_cfg->irq_reg_idx] = val;
 	path_cfg->irq_handle = cam_irq_controller_subscribe_irq(
 		csid_hw->csid_irq_controller,
@@ -2928,7 +2910,6 @@ static int cam_ife_csid_ver2_program_ipp_path(
 	void __iomem *mem_base;
 	struct cam_ife_csid_ver2_path_cfg *path_cfg;
 	uint32_t irq_mask[CAM_IFE_CSID_IRQ_REG_MAX] = {0};
-	uint32_t top_irq_mask = 0;
 
 	rc = cam_ife_csid_ver2_init_config_pxl_path(
 		csid_hw, res);
@@ -2961,14 +2942,13 @@ static int cam_ife_csid_ver2_program_ipp_path(
 			 path_reg->stripe_loc_shift_val);
 
 	cam_io_w_mb(val, mem_base + path_reg->camif_frame_cfg_addr);
-	cam_io_w_mb(path_cfg->camif_data.epoch0,
+	cam_io_w_mb(path_cfg->camif_data.epoch0 << path_reg->epoch0_shift_val,
 		mem_base + path_reg->epoch_irq_cfg_addr);
 
 	CAM_DBG(CAM_ISP, "csid[%d] frame_cfg 0x%x epoch_cfg 0x%x",
 			csid_hw->hw_intf->hw_idx,
 			val, path_cfg->camif_data.epoch0);
 
-	top_irq_mask = IFE_CSID_VER2_TOP_IRQ_STATUS_IPP0;
 	path_cfg->irq_reg_idx = cam_ife_csid_get_rt_irq_idx(
 			CAM_IFE_CSID_IRQ_REG_IPP,
 			csid_reg->cmn_reg->num_pix,
@@ -2982,7 +2962,7 @@ static int cam_ife_csid_ver2_program_ipp_path(
 		val |= path_reg->camif_irq_mask;
 	}
 
-	irq_mask[CAM_IFE_CSID_IRQ_REG_TOP] = top_irq_mask;
+	irq_mask[CAM_IFE_CSID_IRQ_REG_TOP] = path_reg->top_irq_mask;
 	irq_mask[path_cfg->irq_reg_idx] = val;
 	path_cfg->irq_handle = cam_irq_controller_subscribe_irq(
 				    csid_hw->csid_irq_controller,
@@ -3145,7 +3125,6 @@ static int cam_ife_csid_ver2_program_ppp_path(
 	uint32_t  val = 0;
 	struct cam_ife_csid_ver2_path_cfg *path_cfg;
 	uint32_t irq_mask[CAM_IFE_CSID_IRQ_REG_MAX] = {0};
-	uint32_t top_irq_mask = 0;
 	void __iomem *mem_base;
 
 	rc = cam_ife_csid_ver2_init_config_pxl_path(
@@ -3179,10 +3158,9 @@ static int cam_ife_csid_ver2_program_ppp_path(
 			 path_reg->stripe_loc_shift_val);
 
 	cam_io_w_mb(val, mem_base + path_reg->camif_frame_cfg_addr);
-	cam_io_w_mb(path_cfg->camif_data.epoch0, mem_base +
-		path_reg->epoch_irq_cfg_addr);
+	cam_io_w_mb(path_cfg->camif_data.epoch0 << path_reg->epoch0_shift_val,
+		mem_base + path_reg->epoch_irq_cfg_addr);
 
-	top_irq_mask = IFE_CSID_VER2_TOP_IRQ_STATUS_PPP0;
 	path_cfg->irq_reg_idx = cam_ife_csid_get_rt_irq_idx(
 				CAM_IFE_CSID_IRQ_REG_PPP,
 				csid_reg->cmn_reg->num_pix,
@@ -3221,8 +3199,8 @@ static int cam_ife_csid_ver2_program_ppp_path(
 	val = csid_hw->debug_info.path_mask;
 
 
-	irq_mask[CAM_IFE_CSID_IRQ_REG_TOP] = top_irq_mask;
 	irq_mask[path_cfg->irq_reg_idx] = val;
+	irq_mask[CAM_IFE_CSID_IRQ_REG_TOP] = path_reg->top_irq_mask;
 	path_cfg->irq_handle = cam_irq_controller_subscribe_irq(
 					csid_hw->csid_irq_controller,
 					CAM_IRQ_PRIORITY_1,
@@ -3398,7 +3376,7 @@ static int cam_ife_csid_ver2_enable_csi2(struct cam_ife_csid_ver2_hw *csid_hw)
 		csid_hw->hw_intf->hw_idx, val);
 	val = 0;
 
-	irq_mask[CAM_IFE_CSID_IRQ_REG_TOP] = IFE_CSID_VER2_TOP_IRQ_STATUS_RX0;
+	irq_mask[CAM_IFE_CSID_IRQ_REG_TOP] = csi2_reg->top_irq_mask;
 
 	if (csid_hw->debug_info.rx_mask) {
 		irq_mask[CAM_IFE_CSID_IRQ_REG_RX] =  csid_hw->debug_info.rx_mask;
@@ -3577,7 +3555,7 @@ static int cam_ife_csid_ver2_enable_core(struct cam_ife_csid_ver2_hw *csid_hw)
 		goto err;
 	}
 
-	irq_mask[CAM_IFE_CSID_IRQ_REG_TOP] = IFE_CSID_VER2_TOP_IRQ_STATUS_RST;
+	irq_mask[CAM_IFE_CSID_IRQ_REG_TOP] = csid_reg->cmn_reg->top_reset_irq_mask;
 
 	csid_hw->reset_irq_handle = cam_irq_controller_subscribe_irq(
 		csid_hw->csid_irq_controller,
@@ -3656,7 +3634,7 @@ static int cam_ife_csid_ver2_enable_hw(
 	val = cam_io_r_mb(mem_base + csid_reg->cmn_reg->hw_version_addr);
 
 	buf_done_irq_mask[CAM_IFE_CSID_IRQ_REG_TOP] =
-			IFE_CSID_VER2_TOP_IRQ_STATUS_BUF_DONE;
+		csid_reg->cmn_reg->top_buf_done_irq_mask;
 	csid_hw->buf_done_irq_handle = cam_irq_controller_subscribe_irq(
 		csid_hw->csid_irq_controller,
 		CAM_IRQ_PRIORITY_4,
