@@ -33,7 +33,10 @@ struct cam_jpeg_request_data {
 	uint32_t                            thumbnail_threshold_size;
 };
 
+typedef void (*cam_jpeg_mini_dump_cb)(void *priv, void *dst);
+
 int cam_jpeg_hw_mgr_init(struct device_node *of_node,
-	uint64_t *hw_mgr_hdl, int *iommu_hdl);
+	uint64_t *hw_mgr_hdl, int *iommu_hdl,
+	cam_jpeg_mini_dump_cb mini_dump_cb);
 
 #endif /* CAM_JPEG_HW_MGR_INTF_H */

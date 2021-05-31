@@ -777,6 +777,38 @@ static int __cam_lx7_update_clk_rate(
 	return rc;
 }
 
+static int __cam_lx7_fw_mini_dump(
+	struct cam_lx7_core_info       *core_info,
+	struct cam_icp_hw_dump_args    *args)
+{
+	u8                          *dest;
+	u8                          *src;
+	struct cam_icp_hw_dump_args *dump_args = args;
+
+	if (!core_info || !dump_args) {
+		CAM_ERR(CAM_ICP, "invalid params %pK %pK", core_info, dump_args);
+		return -EINVAL;
+	}
+
+	if (!core_info->fw_params.fw_kva_addr || !dump_args->cpu_addr) {
+		CAM_ERR(CAM_ICP, "invalid params %pK, 0x%zx",
+		    core_info->fw_params.fw_kva_addr, dump_args->cpu_addr);
+		return -EINVAL;
+	}
+
+	if (dump_args->buf_len < core_info->fw_params.fw_buf_len) {
+		CAM_WARN(CAM_ICP, "Insufficient Len %lu fw_len %llu",
+			dump_args->buf_len, core_info->fw_params.fw_buf_len);
+		return -ENOSPC;
+	}
+
+	dest = (u8 *)dump_args->cpu_addr;
+	src = (u8 *)core_info->fw_params.fw_kva_addr;
+	memcpy_fromio(dest, src, core_info->fw_params.fw_buf_len);
+	dump_args->offset = core_info->fw_params.fw_buf_len;
+	return 0;
+}
+
 int cam_lx7_process_cmd(void *priv, uint32_t cmd_type,
 			void *args, uint32_t arg_size)
 {
@@ -829,6 +861,10 @@ int cam_lx7_process_cmd(void *priv, uint32_t cmd_type,
 		/* Not supported for lx7 */
 		rc = 0;
 		break;
+	case CAM_ICP_CMD_HW_MINI_DUMP: {
+		rc = __cam_lx7_fw_mini_dump(lx7_info->core_info, args);
+		break;
+	}
 	default:
 		CAM_ERR(CAM_ICP, "invalid command type=%u", cmd_type);
 		break;

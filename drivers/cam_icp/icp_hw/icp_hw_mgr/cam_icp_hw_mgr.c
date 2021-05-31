@@ -3711,6 +3711,132 @@ static int cam_icp_mgr_release_ctx(struct cam_icp_hw_mgr *hw_mgr, int ctx_id)
 	return 0;
 }
 
+static unsigned long cam_icp_hw_mgr_mini_dump_cb(void *dst, unsigned long len)
+{
+	struct cam_icp_hw_mini_dump_info   *md;
+	struct cam_icp_hw_ctx_mini_dump    *ctx_md;
+	struct cam_icp_hw_ctx_data         *ctx;
+	struct cam_icp_hw_mgr              *hw_mgr;
+	struct cam_hw_mini_dump_args        hw_dump_args;
+	struct cam_icp_hw_dump_args         icp_dump_args;
+	struct cam_hw_intf                 *icp_dev_intf = NULL;
+	uint32_t                            i = 0, j = 0;
+	unsigned long                       dumped_len = 0;
+	unsigned long                       remain_len = len;
+	int                                 rc = 0;
+
+	if (!dst || len < sizeof(*md)) {
+		CAM_ERR(CAM_ICP, "Invalid params dst %pk len %lu", dst, len);
+		return 0;
+	}
+
+	md = (struct cam_icp_hw_mini_dump_info *)dst;
+	md->num_context = 0;
+	hw_mgr = &icp_hw_mgr;
+	cam_hfi_mini_dump(&md->hfi_info);
+	memcpy(&md->hfi_mem_info, &hw_mgr->hfi_mem,
+		sizeof(struct icp_hfi_mem_info));
+	md->recovery = atomic_read(&hw_mgr->recovery);
+	md->icp_booted = hw_mgr->icp_booted;
+	md->icp_resumed = hw_mgr->icp_resumed;
+	md->ipe_clk_state = hw_mgr->ipe_clk_state;
+	md->ipe_clk_state = hw_mgr->ipe_clk_state;
+	md->bps_clk_state = hw_mgr->bps_clk_state;
+	md->disable_ubwc_comp = hw_mgr->disable_ubwc_comp;
+	md->ipe0_enable = hw_mgr->ipe0_enable;
+	md->ipe1_enable = hw_mgr->ipe1_enable;
+	md->bps_enable = hw_mgr->bps_enable;
+	md->icp_pc_flag = hw_mgr->icp_pc_flag;
+	md->ipe_bps_pc_flag = hw_mgr->ipe_bps_pc_flag;
+	md->icp_use_pil = hw_mgr->icp_use_pil;
+	dumped_len += sizeof(*md);
+	remain_len = len -  dumped_len;
+	for (i = 0; i < CAM_ICP_CTX_MAX; i++) {
+		ctx = &hw_mgr->ctx_data[i];
+		if (ctx->state == CAM_ICP_CTX_STATE_FREE ||
+			ctx->state == CAM_ICP_CTX_STATE_RELEASE)
+			continue;
+
+		if (remain_len < sizeof(*ctx_md))
+			goto end;
+
+		md->num_context++;
+		ctx_md = (struct cam_icp_hw_ctx_mini_dump *)
+			    ((uint8_t *)dst + dumped_len);
+		md->ctx[i] = ctx_md;
+		ctx_md->state = ctx->state;
+		ctx_md->ctx_id = ctx->ctx_id;
+		memcpy(ctx_md->ctx_id_string, ctx->ctx_id_string,
+			strlen(ctx->ctx_id_string));
+		if (ctx->icp_dev_acquire_info) {
+			ctx_md->acquire.secure_mode =
+				ctx->icp_dev_acquire_info->secure_mode;
+			ctx_md->acquire.dev_type =
+				ctx->icp_dev_acquire_info->dev_type;
+			ctx_md->acquire.num_out_res =
+				ctx->icp_dev_acquire_info->num_out_res;
+			memcpy(&ctx_md->acquire.in_res,
+				&ctx->icp_dev_acquire_info->in_res,
+				sizeof(struct cam_icp_res_info));
+			memcpy(ctx_md->acquire.out_res,
+				ctx->icp_dev_acquire_info->out_res,
+				sizeof(ctx->icp_dev_acquire_info->out_res));
+		} else {
+			memset(&ctx_md->acquire, 0,
+				sizeof(struct cam_icp_mini_dump_acquire_info));
+		}
+
+		memcpy(ctx_md->hfi_frame.request_id, ctx->hfi_frame_process.request_id,
+			sizeof(ctx->hfi_frame_process.request_id));
+		memcpy(ctx_md->hfi_frame.in_resource, ctx->hfi_frame_process.in_resource,
+			sizeof(ctx->hfi_frame_process.in_resource));
+		memcpy(ctx_md->hfi_frame.submit_timestamp,
+			ctx->hfi_frame_process.submit_timestamp,
+			sizeof(ctx->hfi_frame_process.submit_timestamp));
+		memcpy(ctx_md->hfi_frame.num_out_res, ctx->hfi_frame_process.num_out_resources,
+			sizeof(ctx->hfi_frame_process.num_out_resources));
+		memcpy(ctx_md->hfi_frame.out_res, ctx->hfi_frame_process.out_resource,
+			sizeof(ctx->hfi_frame_process.out_resource));
+		for (j = 0; j < CAM_FRAME_CMD_MAX; j++) {
+			ctx_md->hfi_frame.fw_process_flag[j] =
+				ctx->hfi_frame_process.fw_process_flag[j];
+		}
+
+		dumped_len += sizeof(*ctx_md);
+		remain_len = len - dumped_len;
+		hw_dump_args.len = remain_len;
+		hw_dump_args.bytes_written = 0;
+		hw_dump_args.start_addr = (void *)((uint8_t *)dst + dumped_len);
+		hw_mgr->mini_dump_cb(ctx->context_priv, &hw_dump_args);
+		if (dumped_len + hw_dump_args.bytes_written >= len)
+			goto end;
+
+		ctx_md->hw_ctx = hw_dump_args.start_addr;
+		dumped_len += hw_dump_args.bytes_written;
+		remain_len = len - dumped_len;
+	}
+
+	/* Dump fw image */
+	if (!hw_mgr->icp_use_pil) {
+		icp_dump_args.cpu_addr = (uintptr_t)((uint8_t *)dst + dumped_len);
+		icp_dump_args.offset = 0;
+		icp_dump_args.buf_len = remain_len;
+		icp_dev_intf = hw_mgr->icp_dev_intf;
+		rc = icp_dev_intf->hw_ops.process_cmd(
+			icp_dev_intf->hw_priv,
+			CAM_ICP_CMD_HW_MINI_DUMP, &icp_dump_args,
+			sizeof(struct cam_icp_hw_dump_args));
+		if (rc)
+			goto end;
+
+		dumped_len += icp_dump_args.offset;
+		md->fw_img = (void *)icp_dump_args.cpu_addr;
+		remain_len = len - dumped_len;
+	}
+end:
+	return dumped_len;
+}
+
 static void cam_icp_mgr_device_deinit(struct cam_icp_hw_mgr *hw_mgr)
 {
 	struct cam_hw_intf *icp_dev_intf = NULL;
@@ -6351,7 +6477,7 @@ static int cam_icp_mgr_cmd(void *hw_mgr_priv, void *cmd_args)
 }
 
 int cam_icp_hw_mgr_init(struct device_node *of_node, uint64_t *hw_mgr_hdl,
-	int *iommu_hdl)
+	int *iommu_hdl, cam_icp_mini_dump_cb mini_dump_cb)
 {
 	int i, rc = 0;
 	struct cam_hw_mgr_intf *hw_mgr_intf;
@@ -6380,6 +6506,7 @@ int cam_icp_hw_mgr_init(struct device_node *of_node, uint64_t *hw_mgr_hdl,
 	hw_mgr_intf->hw_dump = cam_icp_mgr_hw_dump;
 
 	icp_hw_mgr.secure_mode = CAM_SECURE_MODE_NON_SECURE;
+	icp_hw_mgr.mini_dump_cb = mini_dump_cb;
 	mutex_init(&icp_hw_mgr.hw_mgr_mutex);
 	spin_lock_init(&icp_hw_mgr.hw_mgr_lock);
 
@@ -6445,6 +6572,8 @@ int cam_icp_hw_mgr_init(struct device_node *of_node, uint64_t *hw_mgr_hdl,
 		*iommu_hdl = icp_hw_mgr.iommu_hdl;
 
 	init_completion(&icp_hw_mgr.icp_complete);
+	cam_common_register_mini_dump_cb(
+		cam_icp_hw_mgr_mini_dump_cb, "cam_icp");
 	return rc;
 
 icp_wq_create_failed:
