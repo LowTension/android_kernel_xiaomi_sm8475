@@ -33,6 +33,29 @@ static void cam_mem_mgr_put_dma_heaps(void);
 static int cam_mem_mgr_get_dma_heaps(void);
 #endif
 
+static unsigned long cam_mem_mgr_mini_dump_cb(void *dst, unsigned long len)
+{
+	struct cam_mem_table_mini_dump      *md;
+
+	if (!dst) {
+		CAM_ERR(CAM_MEM, "Invalid  params");
+		return 0;
+	}
+
+	if (len < sizeof(*md)) {
+		CAM_ERR(CAM_MEM, "Insufficient length %u", len);
+		return 0;
+	}
+
+	md = (struct cam_mem_table_mini_dump *)dst;
+	memcpy(md->bufq, tbl.bufq, CAM_MEM_BUFQ_MAX * sizeof(struct cam_mem_buf_queue));
+	md->dbg_buf_idx = tbl.dbg_buf_idx;
+	md->alloc_profile_enable = tbl.alloc_profile_enable;
+	md->force_cache_allocs = tbl.force_cache_allocs;
+	md->need_shared_buffer_padding = tbl.need_shared_buffer_padding;
+	return sizeof(*md);
+}
+
 static void cam_mem_mgr_print_tbl(void)
 {
 	int i;
@@ -203,6 +226,8 @@ int cam_mem_mgr_init(void)
 	atomic_set(&cam_mem_mgr_state, CAM_MEM_MGR_INITIALIZED);
 
 	cam_mem_mgr_create_debug_fs();
+	cam_common_register_mini_dump_cb(cam_mem_mgr_mini_dump_cb,
+		"cam_mem");
 
 	return 0;
 put_heaps:

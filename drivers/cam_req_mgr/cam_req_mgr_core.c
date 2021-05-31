@@ -5253,6 +5253,106 @@ end:
 	return 0;
 }
 
+static unsigned long cam_req_mgr_core_mini_dump_cb(void *dst,
+	unsigned long len)
+{
+	struct cam_req_mgr_core_link *link;
+	struct cam_req_mgr_core_mini_dump *md;
+	struct cam_req_mgr_core_link_mini_dump *md_link;
+	struct cam_req_mgr_req_tbl   *l_tbl = NULL;
+	uint8_t *waddr;
+	unsigned long dumped_len = 0;
+	unsigned long remain_len = len;
+	uint32_t i = 0, j = 0, k = 0;
+
+	if (!dst || len < sizeof(*md)) {
+		CAM_ERR(CAM_CRM, "Insufficient received length %lu dumped len: %u",
+			len, dumped_len);
+		return 0;
+	}
+
+	md = (struct cam_req_mgr_core_mini_dump *)dst;
+	md->num_link = 0;
+	waddr = (uint8_t *)dst + sizeof(*md);
+	dumped_len += sizeof(*md);
+	remain_len -= dumped_len;
+
+	for (i = 0; i < MAXIMUM_LINKS_PER_SESSION; i++) {
+		if (remain_len < sizeof(*md_link)) {
+			CAM_ERR(CAM_CRM,
+			"Insufficent received length: %lu, dumped_len %lu",
+			len, dumped_len);
+			goto end;
+		}
+
+		if (atomic_read(&g_links[i].is_used) == 0)
+			continue;
+
+		waddr += (k * sizeof(*md_link));
+		md_link = (struct cam_req_mgr_core_link_mini_dump *)waddr;
+		md->link[k] = md_link;
+		link = &g_links[i];
+		memcpy(&md_link->sof_time, &link->sync_data.sof_time,
+			sizeof(struct cam_req_mgr_sof_time));
+		md_link->sync_link_sof_skip = link->sync_data.sync_link_sof_skip;
+		md_link->num_sync_links = link->sync_data.num_sync_link;
+		md_link->initial_sync_req = link->sync_data.initial_sync_req;
+		md_link->last_flush_id = link->last_flush_id;
+		md_link->is_used = atomic_read(&link->is_used);
+		md_link->retry_cnt = link->retry_cnt;
+		md_link->eof_event_cnt = atomic_read(&link->eof_event_cnt);
+		md_link->pd_mask = link->pd_mask;
+		md_link->link_hdl = link->link_hdl;
+		md_link->num_devs = link->num_devs;
+		md_link->max_delay = link->max_delay;
+		md_link->dual_trigger = link->dual_trigger;
+		md_link->state = link->state;
+		md_link->is_shutdown = link->is_shutdown;
+		md_link->skip_init_frame = link->skip_init_frame;
+		md_link->is_master = link->is_master;
+		md_link->initial_skip = link->initial_skip;
+		md_link->in_msync_mode = link->in_msync_mode;
+		md_link->wq_congestion = link->wq_congestion;
+		memcpy(md_link->req.apply_data, link->req.apply_data,
+			sizeof(link->req.apply_data));
+		memcpy(md_link->req.prev_apply_data, link->req.prev_apply_data,
+			sizeof(link->req.prev_apply_data));
+		memcpy(&md_link->req.in_q, link->req.in_q,
+			sizeof(struct cam_req_mgr_req_queue));
+		md_link->req.num_tbl = link->req.num_tbl;
+
+		md_link->workq.workq_scheduled_ts =
+					    link->workq->workq_scheduled_ts;
+		md_link->workq.task.pending_cnt =
+				atomic_read(&link->workq->task.pending_cnt);
+		md_link->workq.task.free_cnt =
+				atomic_read(&link->workq->task.free_cnt);
+		md_link->workq.task.num_task = link->workq->task.num_task;
+
+		l_tbl = link->req.l_tbl;
+		j = 0;
+		while(l_tbl) {
+			md_link->req.l_tbl[j].id = l_tbl->id;
+			md_link->req.l_tbl[j].pd = l_tbl->id;
+			md_link->req.l_tbl[j].dev_count = l_tbl->dev_count;
+			md_link->req.l_tbl[j].dev_mask = l_tbl->dev_mask;
+			md_link->req.l_tbl[j].skip_traverse =
+				l_tbl->skip_traverse;
+			md_link->req.l_tbl[j].pd_delta = l_tbl->pd_delta;
+			md_link->req.l_tbl[j].num_slots = l_tbl->num_slots;
+			memcpy(md_link->req.l_tbl[j].slot, l_tbl->slot,
+				sizeof(l_tbl->slot));
+			l_tbl = l_tbl->next;
+			j++;
+		}
+		md->num_link++;
+		dumped_len += sizeof(*md_link);
+		remain_len = len - dumped_len;
+	}
+end:
+	return dumped_len;
+}
+
 int cam_req_mgr_core_device_init(void)
 {
 	int i;
@@ -5278,6 +5378,9 @@ int cam_req_mgr_core_device_init(void)
 		atomic_set(&g_links[i].is_used, 0);
 		cam_req_mgr_core_link_reset(&g_links[i]);
 	}
+	cam_common_register_mini_dump_cb(cam_req_mgr_core_mini_dump_cb,
+		"CAM_CRM");
+
 	return 0;
 }
 

@@ -21,12 +21,14 @@
  *                         acquire device
  * @cb_priv:               first argument for the call back function
  *                         set during acquire device
+ * @mini_dump_cb           Callback for mini dump
  *
  */
 struct cam_isp_hw_mgr_ctx {
 	void                           *tasklet_info;
 	cam_hw_event_cb_func            event_cb;
 	void                           *cb_priv;
+	cam_ctx_mini_dump_cb_func       mini_dump_cb;
 };
 
 /**

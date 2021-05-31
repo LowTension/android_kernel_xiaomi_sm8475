@@ -4701,6 +4701,7 @@ static int cam_ife_mgr_acquire_hw(void *hw_mgr_priv, void *acquire_hw_args)
 	ife_ctx->ctx_type = CAM_IFE_CTX_TYPE_NONE;
 
 	ife_ctx->common.cb_priv = acquire_args->context_data;
+	ife_ctx->common.mini_dump_cb = acquire_args->mini_dump_cb;
 	ife_ctx->flags.internal_cdm = false;
 	ife_ctx->common.event_cb = acquire_args->event_cb;
 	ife_ctx->hw_mgr = ife_hw_mgr;
@@ -10526,7 +10527,8 @@ mid_check:
 		get_res.out_res_id, ctx->ctx_index, packet->header.request_id);
 	*resource_type = get_res.out_res_id;
 	ctx->flags.pf_mid_found = true;
-
+	ctx->pf_info.mid = get_res.mid;
+	ctx->pf_info.out_port_id = get_res.out_res_id;
 	cam_ife_mgr_pf_dump(get_res.out_res_id, ctx);
 
 outportlog:
@@ -12221,6 +12223,121 @@ static void cam_req_mgr_process_workq_cam_ife_worker(struct work_struct *w)
 	cam_req_mgr_process_workq(w);
 }
 
+static unsigned long cam_ife_hw_mgr_mini_dump_cb(void *dst, unsigned long len)
+{
+	struct cam_ife_hw_mini_dump_data   *mgr_md;
+	struct cam_ife_hw_mini_dump_ctx    *ctx_md;
+	struct cam_ife_hw_mgr_ctx          *ctx_temp;
+	struct cam_ife_hw_mgr_ctx          *ctx;
+	uint32_t                            j;
+	uint32_t                            hw_idx = 0;
+	struct cam_hw_intf                 *hw_intf = NULL;
+	struct cam_ife_hw_mgr              *hw_mgr;
+	struct cam_hw_mini_dump_args        hw_dump_args;
+	unsigned long                       bytes_written = 0;
+	unsigned long                       remain_len = len;
+	unsigned long                       dumped_len = 0;
+	uint32_t                            i = 0;
+	int                                 rc = 0;
+
+	if (len < sizeof(*mgr_md)) {
+		CAM_ERR(CAM_ISP, "Insufficent received length: %u",
+			len);
+		return 0;
+	}
+
+	mgr_md = (struct cam_ife_hw_mini_dump_data *)dst;
+	mgr_md->num_ctx = 0;
+	hw_mgr = &g_ife_hw_mgr;
+	dumped_len += sizeof(*mgr_md);
+	remain_len -= dumped_len;
+
+	list_for_each_entry_safe(ctx, ctx_temp,
+		&hw_mgr->used_ctx_list, list) {
+
+		if (remain_len < sizeof(*ctx_md)) {
+			CAM_ERR(CAM_ISP,
+			"Insufficent received length: %u, dumped_len %u",
+			len, dumped_len);
+			goto end;
+		}
+
+		ctx_md = (struct cam_ife_hw_mini_dump_ctx *)
+				((uint8_t *)dst + dumped_len);
+		mgr_md->ctx[i] = ctx_md;
+		ctx_md->ctx_index = ctx->ctx_index;
+		ctx_md->left_hw_idx = ctx->left_hw_idx;
+		ctx_md->right_hw_idx = ctx->right_hw_idx;
+		ctx_md->cdm_handle = ctx->cdm_handle;
+		ctx_md->num_base = ctx->num_base;
+		ctx_md->cdm_id = ctx->cdm_id;
+		ctx_md->last_cdm_done_req = ctx->last_cdm_done_req;
+		ctx_md->applied_req_id = ctx->applied_req_id;
+		ctx_md->ctx_type = ctx->ctx_type;
+		ctx_md->overflow_pending =
+			atomic_read(&ctx->overflow_pending);
+		ctx_md->cdm_done = atomic_read(&ctx->cdm_done);
+		memcpy(&ctx_md->pf_info, &ctx->pf_info,
+			sizeof(struct cam_ife_hw_mgr_ctx_pf_info));
+		memcpy(&ctx_md->flags, &ctx->flags,
+			sizeof(struct cam_ife_hw_mgr_ctx_flags));
+
+		dumped_len += sizeof(*ctx_md);
+
+		for (j = 0; j < ctx->num_base; j++) {
+			memcpy(&ctx_md->base[j], &ctx->base[j],
+				sizeof(struct cam_isp_ctx_base_info));
+			hw_idx = ctx->base[j].idx;
+			if (ctx->base[j].hw_type == CAM_ISP_HW_TYPE_CSID) {
+				hw_intf = hw_mgr->csid_devices[hw_idx];
+				ctx_md->csid_md[hw_idx] = (void *)((uint8_t *)dst + dumped_len);
+				memset(&hw_dump_args, 0, sizeof(hw_dump_args));
+				hw_dump_args.start_addr = ctx_md->csid_md[hw_idx];
+				hw_dump_args.len = remain_len;
+				hw_intf->hw_ops.process_cmd(hw_intf->hw_priv,
+					CAM_ISP_HW_CSID_MINI_DUMP, &hw_dump_args,
+					sizeof(hw_dump_args));
+				if (hw_dump_args.bytes_written == 0)
+					goto end;
+				dumped_len += hw_dump_args.bytes_written;
+				remain_len = len - dumped_len;
+			} else if (ctx->base[j].hw_type ==
+				CAM_ISP_HW_TYPE_VFE) {
+				hw_intf = hw_mgr->ife_devices[hw_idx]->hw_intf;
+				ctx_md->vfe_md[hw_idx] = (void *)((uint8_t *)dst + dumped_len);
+				memset(&hw_dump_args, 0, sizeof(hw_dump_args));
+				hw_dump_args.start_addr = ctx_md->vfe_md[hw_idx];
+				hw_dump_args.len = remain_len;
+				hw_intf->hw_ops.process_cmd(hw_intf->hw_priv,
+					CAM_ISP_HW_BUS_MINI_DUMP, &hw_dump_args,
+					sizeof(hw_dump_args));
+				if (hw_dump_args.bytes_written == 0)
+					goto end;
+				dumped_len += hw_dump_args.bytes_written;
+				remain_len = len - dumped_len;
+			}
+		}
+
+		if (ctx->common.mini_dump_cb) {
+			hw_dump_args.start_addr = (void *)((uint8_t *)dst + dumped_len);
+			hw_dump_args.len = remain_len;
+			hw_dump_args.bytes_written = 0;
+			rc = ctx->common.mini_dump_cb(ctx->common.cb_priv, &hw_dump_args);
+			if (rc || (hw_dump_args.bytes_written + dumped_len > len))
+				goto end;
+
+			ctx_md->ctx_priv = hw_dump_args.start_addr;
+			dumped_len += bytes_written;
+			remain_len = len - dumped_len;
+		}
+
+		i++;
+	}
+end:
+	mgr_md->num_ctx = i;
+	return dumped_len;
+}
+
 int cam_ife_hw_mgr_init(struct cam_hw_mgr_intf *hw_mgr_intf, int *iommu_hdl)
 {
 	int rc = -EFAULT;
@@ -12483,6 +12600,8 @@ int cam_ife_hw_mgr_init(struct cam_hw_mgr_intf *hw_mgr_intf, int *iommu_hdl)
 
 	cam_ife_hw_mgr_debug_register();
 	cam_ife_mgr_count_ife();
+	cam_common_register_mini_dump_cb(cam_ife_hw_mgr_mini_dump_cb,
+		"CAM_ISP");
 
 	CAM_DBG(CAM_ISP, "Exit");
 

@@ -263,6 +263,189 @@ static int __cam_isp_ctx_dump_event_record(
 	return 0;
 }
 
+static void __cam_isp_ctx_req_mini_dump(struct cam_ctx_request *req,
+	uint8_t *start_addr, uint8_t *end_addr,
+	unsigned long *bytes_updated)
+{
+	struct cam_isp_ctx_req_mini_dump *req_md;
+	struct cam_buf_io_cfg            *io_cfg;
+	struct cam_isp_ctx_req           *req_isp;
+	struct cam_packet                *packet = NULL;
+	unsigned long                     bytes_required = 0;
+
+	bytes_required = sizeof(*req_md);
+	*bytes_updated = 0;
+	if (start_addr + bytes_required > end_addr)
+		return;
+
+	req_md = (struct cam_isp_ctx_req_mini_dump *)start_addr;
+	req_isp = (struct cam_isp_ctx_req *)req->req_priv;
+	req_md->num_acked = req_isp->num_acked;
+	req_md->num_deferred_acks = req_isp->num_deferred_acks;
+	req_md->bubble_report = req_isp->bubble_report;
+	req_md->bubble_detected = req_isp->bubble_detected;
+	req_md->reapply = req_isp->reapply;
+	req_md->request_id = req->request_id;
+	*bytes_updated += bytes_required;
+
+	if (req_isp->num_fence_map_out) {
+		bytes_required = sizeof(struct cam_hw_fence_map_entry) *
+			req_isp->num_fence_map_out;
+		if (start_addr + *bytes_updated + bytes_required > end_addr)
+			return;
+
+		req_md->map_out = (struct cam_hw_fence_map_entry *)
+				((uint8_t *)start_addr + *bytes_updated);
+		memcpy(req_md->map_out, req_isp->fence_map_out, bytes_required);
+		req_md->num_fence_map_out = req_isp->num_fence_map_out;
+		*bytes_updated += bytes_required;
+	}
+
+	if (req_isp->num_fence_map_in) {
+		bytes_required = sizeof(struct cam_hw_fence_map_entry) *
+			req_isp->num_fence_map_in;
+		if (start_addr + *bytes_updated + bytes_required > end_addr)
+			return;
+
+		req_md->map_in = (struct cam_hw_fence_map_entry *)
+			((uint8_t *)start_addr + *bytes_updated);
+		memcpy(req_md->map_in, req_isp->fence_map_in, bytes_required);
+		req_md->num_fence_map_in = req_isp->num_fence_map_in;
+		*bytes_updated += bytes_required;
+	}
+
+	packet = req_isp->hw_update_data.packet;
+	if (packet && packet->num_io_configs) {
+		bytes_required = packet->num_io_configs * sizeof(struct cam_buf_io_cfg);
+		if (start_addr + *bytes_updated + bytes_required > end_addr)
+			return;
+
+		io_cfg = (struct cam_buf_io_cfg *)((uint32_t *)&packet->payload +
+			    packet->io_configs_offset / 4);
+		req_md->io_cfg = (struct cam_buf_io_cfg *)((uint8_t *)start_addr + *bytes_updated);
+		memcpy(req_md->io_cfg, io_cfg, bytes_required);
+		*bytes_updated += bytes_required;
+		req_md->num_io_cfg = packet->num_io_configs;
+	}
+}
+
+static int __cam_isp_ctx_minidump_cb(void *priv, void *args)
+{
+	struct cam_isp_ctx_mini_dump_info *md;
+	struct cam_isp_context            *ctx_isp;
+	struct cam_context                *ctx;
+	struct cam_ctx_request            *req, *req_temp;
+	struct cam_hw_mini_dump_args      *dump_args;
+	uint8_t                           *start_addr;
+	uint8_t                           *end_addr;
+	unsigned long                      total_bytes = 0;
+	unsigned long                      bytes_updated = 0;
+	uint32_t                           i;
+
+	if (!priv || !args) {
+		CAM_ERR(CAM_ISP, "invalid params");
+		return 0;
+	}
+
+	dump_args = (struct cam_hw_mini_dump_args *)args;
+	if (dump_args->len < sizeof(*md)) {
+		CAM_ERR(CAM_ISP,
+			"In sufficient size received %lu required size: %zu",
+			dump_args->len, sizeof(*md));
+		return 0;
+	}
+
+	ctx = (struct cam_context *)priv;
+	ctx_isp = (struct cam_isp_context *)ctx->ctx_priv;
+	start_addr = (uint8_t *)dump_args->start_addr;
+	end_addr = start_addr + dump_args->len;
+	md = (struct cam_isp_ctx_mini_dump_info *)dump_args->start_addr;
+
+	md->sof_timestamp_val = ctx_isp->sof_timestamp_val;
+	md->boot_timestamp = ctx_isp->boot_timestamp;
+	md->last_sof_timestamp = ctx_isp->last_sof_timestamp;
+	md->init_timestamp = ctx_isp->init_timestamp;
+	md->frame_id = ctx_isp->frame_id;
+	md->reported_req_id = ctx_isp->reported_req_id;
+	md->last_applied_req_id = ctx_isp->last_applied_req_id;
+	md->last_bufdone_err_apply_req_id =
+		ctx_isp->last_bufdone_err_apply_req_id;
+	md->frame_id_meta = ctx_isp->frame_id_meta;
+	md->substate_activated = ctx_isp->substate_activated;
+	md->ctx_id = ctx->ctx_id;
+	md->subscribe_event = ctx_isp->subscribe_event;
+	md->bubble_frame_cnt = ctx_isp->bubble_frame_cnt;
+	md->isp_device_type = ctx_isp->isp_device_type;
+	md->active_req_cnt = ctx_isp->active_req_cnt;
+	md->trigger_id = ctx_isp->trigger_id;
+	md->rdi_only_context = ctx_isp->rdi_only_context;
+	md->offline_context = ctx_isp->offline_context;
+	md->hw_acquired = ctx_isp->hw_acquired;
+	md->init_received = ctx_isp->init_received;
+	md->split_acquire = ctx_isp->split_acquire;
+	md->use_frame_header_ts = ctx_isp->use_frame_header_ts;
+	md->support_consumed_addr = ctx_isp->support_consumed_addr;
+	md->use_default_apply = ctx_isp->use_default_apply;
+	md->apply_in_progress = atomic_read(&ctx_isp->apply_in_progress);
+	md->process_bubble = atomic_read(&ctx_isp->process_bubble);
+	md->rxd_epoch = atomic_read(&ctx_isp->rxd_epoch);
+
+	for (i = 0; i < CAM_ISP_CTX_EVENT_MAX; i++) {
+		memcpy(md->event_record[i], ctx_isp->event_record[i],
+			sizeof(struct cam_isp_context_event_record) *
+			CAM_ISP_CTX_EVENT_RECORD_MAX_ENTRIES);
+	}
+
+	total_bytes += sizeof(*md);
+	if (start_addr + total_bytes >= end_addr)
+		goto end;
+
+	if (!list_empty(&ctx->active_req_list)) {
+		md->active_list = (struct cam_isp_ctx_req_mini_dump *)
+			    (start_addr + total_bytes);
+		list_for_each_entry_safe(req, req_temp, &ctx->active_req_list, list) {
+			bytes_updated = 0;
+			 __cam_isp_ctx_req_mini_dump(req,
+				(uint8_t *)&md->active_list[md->active_cnt++],
+				end_addr, &bytes_updated);
+			total_bytes +=  bytes_updated;
+			if ((start_addr + total_bytes >= end_addr))
+				goto end;
+		}
+	}
+
+	if (!list_empty(&ctx->wait_req_list)) {
+		md->wait_list = (struct cam_isp_ctx_req_mini_dump *)
+			(start_addr + total_bytes);
+		list_for_each_entry_safe(req, req_temp, &ctx->wait_req_list, list) {
+			bytes_updated = 0;
+			__cam_isp_ctx_req_mini_dump(req,
+				(uint8_t *)&md->wait_list[md->wait_cnt++],
+				end_addr, &bytes_updated);
+			total_bytes +=  bytes_updated;
+			if ((start_addr + total_bytes >= end_addr))
+				goto end;
+		}
+	}
+
+	if (!list_empty(&ctx->pending_req_list)) {
+		md->pending_list = (struct cam_isp_ctx_req_mini_dump *)
+			(start_addr + total_bytes);
+		list_for_each_entry_safe(req, req_temp, &ctx->pending_req_list, list) {
+			bytes_updated = 0;
+			__cam_isp_ctx_req_mini_dump(req,
+				(uint8_t *)&md->pending_list[md->pending_cnt++],
+				end_addr, &bytes_updated);
+			total_bytes +=  bytes_updated;
+			if ((start_addr + total_bytes >= end_addr))
+				goto end;
+		}
+	}
+end:
+	dump_args->bytes_written = total_bytes;
+	return 0;
+}
+
 static void __cam_isp_ctx_update_state_monitor_array(
 	struct cam_isp_context *ctx_isp,
 	enum cam_isp_state_change_trigger trigger_type,
@@ -5270,7 +5453,6 @@ static int __cam_isp_ctx_acquire_dev_in_available(struct cam_context *ctx,
 	ctx_isp->hw_acquired = true;
 	ctx_isp->split_acquire = false;
 	ctx->ctxt_to_hw_map = param.ctxt_to_hw_map;
-
 	atomic64_set(&ctx_isp->state_monitor_head, -1);
 	for (i = 0; i < CAM_ISP_CTX_EVENT_MAX; i++)
 		atomic64_set(&ctx_isp->event_record_head[i], -1);
@@ -5377,6 +5559,7 @@ static int __cam_isp_ctx_acquire_hw_v1(struct cam_context *ctx,
 	param.num_acq = CAM_API_COMPAT_CONSTANT;
 	param.acquire_info_size = cmd->data_size;
 	param.acquire_info = (uint64_t) acquire_hw_info;
+	param.mini_dump_cb = __cam_isp_ctx_minidump_cb;
 
 	rc = __cam_isp_ctx_allocate_mem_hw_entries(ctx,
 		&param);
@@ -5528,6 +5711,7 @@ static int __cam_isp_ctx_acquire_hw_v2(struct cam_context *ctx,
 	param.num_acq = CAM_API_COMPAT_CONSTANT;
 	param.acquire_info_size = cmd->data_size;
 	param.acquire_info = (uint64_t) acquire_hw_info;
+	param.mini_dump_cb = __cam_isp_ctx_minidump_cb;
 
 	/* call HW manager to reserve the resource */
 	rc = ctx->hw_mgr_intf->hw_acquire(ctx->hw_mgr_intf->hw_mgr_priv,

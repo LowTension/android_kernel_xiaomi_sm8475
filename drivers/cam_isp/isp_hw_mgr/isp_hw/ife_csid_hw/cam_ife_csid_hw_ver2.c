@@ -4676,6 +4676,49 @@ static int cam_ife_csid_ver2_set_csid_clock(
 	return 0;
 }
 
+static int cam_ife_csid_ver2_mini_dump(
+	struct cam_ife_csid_ver2_hw  *csid_hw,
+	void *cmd_args)
+{
+	struct cam_ife_csid_ver2_mini_dump_data *md;
+	uint32_t                                 i  = 0;
+	struct cam_ife_csid_ver2_path_cfg       *path_cfg;
+	struct cam_ife_csid_ver2_res_mini_dump  *md_res;
+	struct cam_isp_resource_node            *res;
+	struct cam_hw_mini_dump_args            *md_args;
+
+	md_args = (struct cam_hw_mini_dump_args *)cmd_args;
+	if (md_args->len < sizeof(*md)) {
+		md_args->bytes_written = 0;
+		return 0;
+	}
+
+	md  = (struct cam_ife_csid_ver2_mini_dump_data *)
+		    ((uint8_t *)md_args->start_addr);
+	md->clk_rate = csid_hw->clk_rate;
+	md->hw_state = csid_hw->hw_info->hw_state;
+
+	for (i = 0; i < CAM_IFE_PIX_PATH_RES_MAX; i++) {
+		res = &csid_hw->path_res[i];
+		path_cfg = (struct cam_ife_csid_ver2_path_cfg *)res->res_priv;
+		if (!path_cfg)
+			continue;
+
+		md_res = &md->res[i];
+		md_res->res_id = res->res_id;
+		scnprintf(md_res->res_name, CAM_ISP_RES_NAME_LEN, res->res_name);
+		memcpy(&md_res->path_cfg, path_cfg, sizeof(*path_cfg));
+	}
+
+	memcpy(&md->rx_cfg, &csid_hw->rx_cfg, sizeof(struct cam_ife_csid_rx_cfg));
+	memcpy(&md->flags, &csid_hw->flags, sizeof(struct cam_ife_csid_hw_flags));
+	memcpy(md->cid_data, csid_hw->cid_data,
+		sizeof(struct cam_ife_csid_cid_data) * CAM_IFE_CSID_CID_MAX);
+	md_args->bytes_written = sizeof(*md);
+
+	return 0;
+}
+
 static int cam_ife_csid_ver2_dual_sync_cfg(
 	struct cam_ife_csid_ver2_hw  *csid_hw,
 	void *cmd_args)
@@ -4809,6 +4852,9 @@ static int cam_ife_csid_ver2_process_cmd(void *hw_priv,
 	case CAM_IFE_CSID_SET_DUAL_SYNC_CONFIG:
 		rc = cam_ife_csid_ver2_dual_sync_cfg(csid_hw,
 			cmd_args);
+		break;
+	case CAM_ISP_HW_CSID_MINI_DUMP:
+		rc  = cam_ife_csid_ver2_mini_dump(csid_hw, cmd_args);
 		break;
 	case CAM_IFE_CSID_PROGRAM_OFFLINE_CMD:
 		rc = cam_ife_csid_ver2_program_offline_go_cmd(
