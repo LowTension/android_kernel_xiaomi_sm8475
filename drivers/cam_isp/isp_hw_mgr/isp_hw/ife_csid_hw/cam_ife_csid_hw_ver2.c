@@ -1096,6 +1096,95 @@ static int cam_ife_csid_ver2_rx_err_bottom_half(
 	return 0;
 }
 
+static void cam_ife_csid_ver2_print_illegal_programming_irq_status(
+	struct cam_ife_csid_ver2_hw *csid_hw,
+	struct cam_isp_resource_node    *res)
+{
+	struct cam_ife_csid_ver2_reg_info *csid_reg = csid_hw->core_info->csid_reg;
+	struct cam_ife_csid_ver2_path_cfg *path_cfg =
+		(struct cam_ife_csid_ver2_path_cfg *)res->res_priv;
+	struct cam_ife_csid_cid_data      *cid_data = &csid_hw->cid_data[path_cfg->cid];
+	struct cam_hw_soc_info            *soc_info = &csid_hw->hw_info->soc_info;
+	void __iomem                      *base =
+		soc_info->reg_map[CAM_IFE_CSID_CLC_MEM_BASE_ID].mem_base;
+	const struct cam_ife_csid_ver2_path_reg_info *path_reg =
+		csid_reg->path_reg[res->res_id];
+	uint32_t vcdt_cfg0 = 0, cfg0 = 0, mup_rup_cfg = 0, cfg1 = 0;
+	uint32_t decode_fmt = 0, decode_fmt1 = 0;
+	uint32_t vc, dt, vc1, dt1;
+
+	cfg0 = cam_io_r_mb(base + path_reg->cfg0_addr);
+	cfg1 = cam_io_r_mb(base + path_reg->cfg1_addr);
+	vcdt_cfg0 = cam_io_r_mb(base + path_reg->multi_vcdt_cfg0_addr);
+	mup_rup_cfg = cam_io_r_mb(base + csid_reg->cmn_reg->rup_aup_cmd_addr);
+
+	if (cid_data->vc_dt[CAM_IFE_CSID_MULTI_VC_DT_GRP_1].valid) {
+		decode_fmt = ((cfg0 >>
+			csid_reg->cmn_reg->decode_format_shift_val) &
+			csid_reg->cmn_reg->decode_format_mask);
+		decode_fmt1 = ((cfg1 >>
+			csid_reg->cmn_reg->decode_format1_shift_val) &
+			csid_reg->cmn_reg->decode_format_mask);
+		vc = ((cfg0 >> csid_reg->cmn_reg->vc_shift_val) &
+			csid_reg->cmn_reg->vc_mask);
+		dt = ((cfg0 >> csid_reg->cmn_reg->dt_shift_val) &
+			csid_reg->cmn_reg->dt_mask);
+		vc1 = ((cfg1 >> csid_reg->cmn_reg->multi_vcdt_vc1_shift_val) &
+			csid_reg->cmn_reg->vc_mask);
+		dt1 = ((cfg1 >> csid_reg->cmn_reg->multi_vcdt_dt1_shift_val) &
+			csid_reg->cmn_reg->dt_mask);
+
+		if ((decode_fmt == csid_reg->cmn_reg->decode_format_payload_only) ||
+			(decode_fmt1 == csid_reg->cmn_reg->decode_format_payload_only)) {
+			if (decode_fmt1 != decode_fmt) {
+				CAM_ERR(CAM_ISP,
+					"CSID:%d decode_fmt %d decode_fmt1 %d mismatch",
+					csid_hw->hw_intf->hw_idx,
+					decode_fmt,
+					decode_fmt1);
+			}
+		}
+
+		if ((vc == vc1) && (dt == dt1)) {
+			if (decode_fmt != decode_fmt1) {
+				CAM_ERR(CAM_ISP,
+					"CSID:%d Wrong multi VC-DT configuration",
+					csid_hw->hw_intf->hw_idx);
+				CAM_ERR(CAM_ISP,
+					"fmt %d fmt1 %d vc %d vc1 %d dt %d dt1 %d",
+					decode_fmt, decode_fmt, vc, vc1, dt, dt1);
+
+			}
+		}
+	}
+
+	if (!((mup_rup_cfg & path_reg->rup_aup_mask) &&
+		(mup_rup_cfg & csid_reg->cmn_reg->mup_shift_val))) {
+		CAM_ERR(CAM_ISP,
+			"CSID:%d MUP bit %d is programmed without RUP %d",
+			csid_hw->hw_intf->hw_idx,
+			mup_rup_cfg & path_reg->rup_aup_mask,
+			mup_rup_cfg & csid_reg->cmn_reg->mup_shift_val);
+	}
+
+	if (!(csid_hw->debug_info.debug_val &
+		    CAM_IFE_CSID_DEBUG_DISABLE_EARLY_EOF) &&
+		csid_reg->cmn_reg->early_eof_supported) {
+		if (!((cfg1 & path_reg->early_eof_en_shift_val) &&
+			(cfg1 & path_reg->crop_v_en_shift_val))) {
+			CAM_ERR(CAM_ISP,
+				"CSID:%d Early EOF %d enabled without VCROP %d",
+				csid_hw->hw_intf->hw_idx,
+				cfg1 & path_reg->early_eof_en_shift_val,
+				cfg1 & path_reg->crop_v_en_shift_val);
+
+		}
+	}
+
+	CAM_INFO(CAM_ISP, "CSID:%d Illegal Programming for res [id: %d name: %s]",
+		csid_hw->hw_intf->hw_idx, res->res_id, res->res_name);
+}
+
 static void cam_ife_csid_ver2_print_debug_reg_status(
 	struct cam_ife_csid_ver2_hw *csid_hw,
 	struct cam_isp_resource_node    *res)
@@ -1345,6 +1434,22 @@ static int cam_ife_csid_ver2_ipp_bottom_half(
 		CAM_IFE_CSID_IRQ_REG_IPP,
 		err_mask, irq_status_ipp);
 
+
+	if (irq_status_ipp & IFE_CSID_VER2_PATH_ERROR_ILLEGAL_PROGRAM) {
+		if (path_reg->fatal_err_mask &
+			IFE_CSID_VER2_PATH_ERROR_ILLEGAL_PROGRAM) {
+			CAM_ERR(CAM_ISP, "CSID[%u] Illegal Programming for IPP status:0x%x",
+				csid_hw->hw_intf->hw_idx,irq_status_ipp);
+			cam_ife_csid_ver2_print_illegal_programming_irq_status(
+				csid_hw, res);
+		} else {
+			CAM_ERR(CAM_ISP, "Illegal Programming IRQ is not supported");
+			CAM_INFO(CAM_ISP, "CSID[%u]: status:0x%x",
+				csid_hw->hw_intf->hw_idx, irq_status_ipp);
+		}
+		err_type |= CAM_ISP_HW_ERROR_CSID_FATAL;
+	}
+
 	if (irq_status_ipp & IFE_CSID_VER2_PATH_RECOVERY_OVERFLOW)
 		err_type |= CAM_ISP_HW_ERROR_RECOVERY_OVERFLOW;
 
@@ -1413,6 +1518,21 @@ static int cam_ife_csid_ver2_ppp_bottom_half(
 	cam_ife_csid_ver2_parse_path_irq_status(
 		csid_hw, CAM_IFE_CSID_IRQ_REG_PPP,
 		err_mask, irq_status_ppp);
+
+	if (irq_status_ppp & IFE_CSID_VER2_PATH_ERROR_ILLEGAL_PROGRAM) {
+		if (path_reg->fatal_err_mask &
+			IFE_CSID_VER2_PATH_ERROR_ILLEGAL_PROGRAM) {
+			CAM_ERR(CAM_ISP, "CSID[%u] Illegal Programming for PPP status:0x%x",
+				csid_hw->hw_intf->hw_idx,irq_status_ppp);
+			cam_ife_csid_ver2_print_illegal_programming_irq_status(
+				csid_hw, res);
+		} else {
+			CAM_ERR(CAM_ISP, "Illegal Programming IRQ is not supported");
+			CAM_INFO(CAM_ISP, "CSID[%u]: status:0x%x",
+				csid_hw->hw_intf->hw_idx, irq_status_ppp);
+		}
+		err_type |= CAM_ISP_HW_ERROR_CSID_FATAL;
+	}
 
 	if (irq_status_ppp & (IFE_CSID_VER2_PATH_ERROR_PIX_COUNT |
 		IFE_CSID_VER2_PATH_ERROR_LINE_COUNT)) {
@@ -1489,6 +1609,23 @@ static int cam_ife_csid_ver2_rdi_bottom_half(
 	cam_ife_csid_ver2_parse_path_irq_status(csid_hw,
 		path_cfg->irq_reg_idx,
 		err_mask, irq_status_rdi);
+
+	if (irq_status_rdi & IFE_CSID_VER2_PATH_ERROR_ILLEGAL_PROGRAM) {
+		if (rdi_reg->fatal_err_mask &
+			IFE_CSID_VER2_PATH_ERROR_ILLEGAL_PROGRAM) {
+			CAM_ERR(CAM_ISP, "CSID[%u]: Illegal Programming for RDI:%d status:0x%x",
+				csid_hw->hw_intf->hw_idx,
+				res->res_id, irq_status_rdi);
+			cam_ife_csid_ver2_print_illegal_programming_irq_status(
+				csid_hw, res);
+		} else {
+			CAM_ERR(CAM_ISP, "Illegal Programming IRQ is not supported");
+			CAM_INFO(CAM_ISP, "CSID[%u]: RDI:%d status:0x%x",
+				csid_hw->hw_intf->hw_idx,
+				res->res_id, irq_status_rdi);
+		}
+		err_type |= CAM_ISP_HW_ERROR_CSID_FATAL;
+	}
 
 	if (irq_status_rdi & IFE_CSID_VER2_PATH_RECOVERY_OVERFLOW)
 		err_type |= CAM_ISP_HW_ERROR_RECOVERY_OVERFLOW;
