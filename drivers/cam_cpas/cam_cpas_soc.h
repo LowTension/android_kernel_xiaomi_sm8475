@@ -11,7 +11,7 @@
 #include "cam_cpas_hw.h"
 
 #define CAM_REGULATOR_LEVEL_MAX 16
-#define CAM_CPAS_MAX_TREE_NODES 56
+#define CAM_CPAS_MAX_TREE_NODES 61
 #define CAM_CPAS_MAX_FUSE_FEATURE 10
 
 /**
