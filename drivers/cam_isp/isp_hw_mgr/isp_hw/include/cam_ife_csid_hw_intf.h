@@ -120,6 +120,7 @@ struct cam_isp_in_port_generic_info {
 	uint32_t                        cust_node;
 	uint32_t                        num_out_res;
 	uint32_t                        horizontal_bin;
+	uint32_t                        vertical_bin;
 	uint32_t                        qcfa_bin;
 	uint32_t                        num_bytes_out;
 	uint32_t                        ipp_count;

@@ -1932,6 +1932,7 @@ static int cam_ife_csid_hw_ver2_config_path_data(
 	path_cfg->crop_enable = reserve->crop_enable;
 	path_cfg->drop_enable = reserve->drop_enable;
 	path_cfg->horizontal_bin = reserve->in_port->horizontal_bin;
+	path_cfg->vertical_bin = reserve->in_port->vertical_bin;
 	path_cfg->qcfa_bin = reserve->in_port->qcfa_bin;
 	path_cfg->num_bytes_out = reserve->in_port->num_bytes_out;
 	path_cfg->pix_pattern = reserve->in_port->test_pattern;
