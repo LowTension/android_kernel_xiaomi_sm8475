@@ -32,9 +32,6 @@
  */
 #define MAX_PHY_MSK_PER_REG 4
 
-/* Mask to enable skew calibration registers */
-#define SKEW_CAL_MASK 0x2
-
 static DEFINE_MUTEX(active_csiphy_cnt_mutex);
 
 static int csiphy_dump;
