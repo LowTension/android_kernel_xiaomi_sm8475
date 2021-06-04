@@ -3854,7 +3854,8 @@ static int cam_vfe_bus_ver3_process_cmd(
 		bus_priv = (struct cam_vfe_bus_ver3_priv  *) priv;
 		bus_priv->common_data.disable_mmu_prefetch =
 			(*((bool *)cmd_args));
-		CAM_DBG(CAM_ISP, "IFE bus WR prefetch %s",
+		CAM_DBG(CAM_ISP, "IFE: %u bus WR prefetch %s",
+			bus_priv->common_data.core_index,
 			bus_priv->common_data.disable_mmu_prefetch ?
 			"disabled" : "enabled");
 		rc = 0;
