@@ -12,6 +12,8 @@
 #include "cam_vfe_bus_ver3.h"
 #include "cam_irq_controller.h"
 
+#define CAM_VFE_BUS_VER3_480_MAX_CLIENTS     26
+
 static struct cam_irq_register_set vfe480_top_irq_reg_set[3] = {
 	{
 		.mask_reg_offset   = 0x0000003C,
