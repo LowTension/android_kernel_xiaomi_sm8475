@@ -205,6 +205,7 @@ struct cam_ife_csid_csi2_rx_reg_info {
 	uint32_t part_fatal_err_mask;
 	uint32_t non_fatal_err_mask;
 	uint32_t debug_irq_mask;
+	uint32_t top_irq_mask;
 };
 
 /*

@@ -65,7 +65,6 @@ enum cam_ife_cid_res_id {
  * @global_reset_en:      flag to indicate if global reset is enabled
  * @rup_en:               flag to indicate if rup is on csid side
  * @only_master_rup:      flag to indicate if only master RUP
- * @need_separate_base:   flag to indicate is separate base is needed
  */
 struct cam_ife_csid_hw_caps {
 	uint32_t      num_rdis;
@@ -78,7 +77,6 @@ struct cam_ife_csid_hw_caps {
 	bool          global_reset_en;
 	bool          rup_en;
 	bool          only_master_rup;
-	bool          need_separate_base;
 };
 
 struct cam_isp_out_port_generic_info {
