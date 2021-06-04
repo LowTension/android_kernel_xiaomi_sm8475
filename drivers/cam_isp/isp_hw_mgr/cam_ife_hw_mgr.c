@@ -2266,6 +2266,55 @@ static int cam_ife_hw_mgr_acquire_sfe_rdi_for_fe(
 	return rc;
 }
 
+static int cam_ife_hw_mgr_acquire_sfe_hw(
+	struct cam_ife_hw_mgr_ctx          *ife_ctx,
+	struct cam_sfe_acquire_args        *sfe_acquire)
+{
+	int i, rc;
+	struct cam_hw_intf    *hw_intf = NULL;
+	struct cam_ife_hw_mgr *ife_hw_mgr = ife_ctx->hw_mgr;
+
+	if (ife_ctx->flags.is_fe_enabled) {
+		for (i = 0; i < CAM_SFE_HW_NUM_MAX; i++) {
+			if (!ife_hw_mgr->sfe_devices[i])
+				continue;
+
+			hw_intf = ife_hw_mgr->sfe_devices[i];
+			rc = hw_intf->hw_ops.reserve(hw_intf->hw_priv,
+					sfe_acquire,
+					sizeof(struct cam_sfe_acquire_args));
+			if (rc) {
+				CAM_DBG(CAM_ISP,
+					"Can not acquire SFE HW: %d for res: %d",
+					i, sfe_acquire->sfe_in.res_id);
+				continue;
+			} else {
+				break;
+			}
+		}
+	} else {
+		for (i = CAM_SFE_HW_NUM_MAX - 1; i >= 0; i--) {
+			if (!ife_hw_mgr->sfe_devices[i])
+				continue;
+
+			hw_intf = ife_hw_mgr->sfe_devices[i];
+			rc = hw_intf->hw_ops.reserve(hw_intf->hw_priv,
+					sfe_acquire,
+					sizeof(struct cam_sfe_acquire_args));
+			if (rc) {
+				CAM_DBG(CAM_ISP,
+					"Can not acquire SFE HW: %d for res: %d",
+					i, sfe_acquire->sfe_in.res_id);
+				continue;
+			} else {
+				break;
+			}
+		}
+	}
+
+	return rc;
+}
+
 static int cam_ife_hw_mgr_acquire_res_sfe_src(
 	struct cam_ife_hw_mgr_ctx *ife_ctx,
 	struct cam_isp_in_port_generic_info *in_port)
@@ -2274,10 +2323,6 @@ static int cam_ife_hw_mgr_acquire_res_sfe_src(
 	struct cam_sfe_acquire_args          sfe_acquire;
 	struct cam_isp_hw_mgr_res           *csid_res;
 	struct cam_isp_hw_mgr_res           *sfe_src_res;
-	struct cam_hw_intf                  *hw_intf = NULL;
-	struct cam_ife_hw_mgr               *ife_hw_mgr;
-
-	ife_hw_mgr = ife_ctx->hw_mgr;
 
 	list_for_each_entry(csid_res, &ife_ctx->res_list_ife_csid, list) {
 		if (csid_res->num_children)
@@ -2352,75 +2397,26 @@ static int cam_ife_hw_mgr_acquire_res_sfe_src(
 			}
 		}
 
-		for (i = 0; i < CAM_SFE_HW_NUM_MAX; i++) {
-			if (!ife_hw_mgr->sfe_devices[i])
-				continue;
+		for (i = sfe_src_res->is_dual_isp; i >= 0; i--) {
+			rc = cam_ife_hw_mgr_acquire_sfe_hw(ife_ctx,
+				&sfe_acquire);
 
-			hw_intf = ife_hw_mgr->sfe_devices[i];
-			rc = hw_intf->hw_ops.reserve(hw_intf->hw_priv,
-					&sfe_acquire,
-					sizeof(struct cam_sfe_acquire_args));
-			if (rc) {
-				CAM_DBG(CAM_ISP,
-					"Can not acquire SFE HW for res: %d",
-					sfe_acquire.sfe_in.res_id);
-				continue;
-			} else
-				break;
-		}
-
-		if (i == CAM_SFE_HW_NUM_MAX || rc ||
-				!sfe_acquire.sfe_in.rsrc_node) {
-			CAM_ERR(CAM_ISP,
-				"Failed to acquire SFE for res_id: 0x%x",
-				sfe_acquire.sfe_in.res_id);
-			goto err;
-		}
-
-		sfe_src_res->hw_res[CAM_ISP_HW_SPLIT_LEFT] =
-			sfe_acquire.sfe_in.rsrc_node;
-
-		CAM_DBG(CAM_ISP,
-				"acquire success LEFT SFE: %u res: %s res_type: %u res_id: %u",
-				hw_intf->hw_idx,
-				sfe_src_res->hw_res[0]->res_type,
-				sfe_src_res->hw_res[0]->res_name,
-				sfe_src_res->hw_res[0]->res_id);
-
-		if ((csid_res->is_dual_isp) &&
-			(sfe_acquire.sfe_in.res_id ==
-			CAM_ISP_HW_SFE_IN_PIX)) {
-			sfe_acquire.sfe_in.rsrc_node = NULL;
-			for (i = 0; i < CAM_SFE_HW_NUM_MAX; i++) {
-				if (!ife_hw_mgr->sfe_devices[i])
-					continue;
-
-				if (i ==
-					sfe_src_res->hw_res[0]->hw_intf->hw_idx)
-					continue;
-
-				hw_intf = ife_hw_mgr->sfe_devices[i];
-				rc = hw_intf->hw_ops.reserve(hw_intf->hw_priv,
-					&sfe_acquire,
-					sizeof(struct cam_sfe_acquire_args));
-
-				if (!rc) {
-					sfe_src_res->hw_res[1] =
-						sfe_acquire.sfe_in.rsrc_node;
-					CAM_DBG(CAM_ISP,
-						"Acquired SFE: %d for RIGHT",
-						i);
-					break;
-				}
-			}
-
-			if (i == CAM_SFE_HW_NUM_MAX ||
-				!sfe_acquire.sfe_in.rsrc_node) {
+			if (rc || !sfe_acquire.sfe_in.rsrc_node) {
 				CAM_ERR(CAM_ISP,
-					"Failed to acquire SFE for RIGHT res_id: %u",
-					sfe_acquire.sfe_in.res_id);
+					"Failed to acquire split_id: %d SFE for res_type: %u id: %u",
+					i, sfe_src_res->res_type, sfe_src_res->res_id);
 				goto err;
 			}
+
+			sfe_src_res->hw_res[i] =
+				sfe_acquire.sfe_in.rsrc_node;
+			CAM_DBG(CAM_ISP,
+				"acquire success %s SFE: %u res_name: %s res_type: %u res_id: %u",
+				((i == CAM_ISP_HW_SPLIT_LEFT) ? "LEFT" : "RIGHT"),
+				sfe_src_res->hw_res[i]->hw_intf->hw_idx,
+				sfe_src_res->hw_res[i]->res_name,
+				sfe_src_res->hw_res[i]->res_type,
+				sfe_src_res->hw_res[i]->res_id);
 		}
 		csid_res->num_children++;
 	}
