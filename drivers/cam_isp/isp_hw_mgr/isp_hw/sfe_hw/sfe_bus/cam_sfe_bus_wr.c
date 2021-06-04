@@ -194,6 +194,7 @@ struct cam_sfe_bus_wr_priv {
 	int                                 bus_irq_handle;
 	int                                 error_irq_handle;
 	void                               *tasklet_info;
+	uint32_t                            num_cons_err;
 	struct cam_sfe_constraint_error_info      *constraint_error_list;
 };
 
@@ -381,10 +382,10 @@ static void cam_sfe_bus_wr_print_constraint_errors(
 	CAM_INFO(CAM_ISP, "Constraint violation bitflags: 0x%X",
 		constraint_errors);
 
-	for (i = 0; i < CAM_SFE_BUS_CONS_ERR_MAX; i++) {
+	for (i = 0; i < bus_priv->num_cons_err; i++) {
 		if (bus_priv->constraint_error_list[i].bitmask &
 			constraint_errors) {
-			CAM_INFO(CAM_ISP, "WM: %s %s programming",
+			CAM_INFO(CAM_ISP, "WM: %s %s",
 				wm_name, bus_priv->constraint_error_list[i]
 				.error_description);
 		}
@@ -2965,6 +2966,7 @@ int cam_sfe_bus_wr_init(
 	bus_priv->common_data.max_bw_counter_limit = hw_info->max_bw_counter_limit;
 	bus_priv->common_data.err_irq_subscribe    = false;
 	bus_priv->common_data.sfe_irq_controller   = sfe_irq_controller;
+	bus_priv->num_cons_err = hw_info->num_cons_err;
 	bus_priv->constraint_error_list = hw_info->constraint_error_list;
 	rc = cam_cpas_get_cpas_hw_version(&bus_priv->common_data.hw_version);
 	if (rc) {
