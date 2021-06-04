@@ -695,8 +695,15 @@ static int cam_lx7_core_control(
 	if (core_info->use_sec_pil) {
 		rc = qcom_scm_set_remote_state(state, CAM_FW_PAS_ID);
 		if (rc)
-			CAM_ERR(CAM_ICP, "remote state set to %s failed rc=%d",
-				state == TZ_STATE_RESUME ? "resume" : "suspend", rc);
+			CAM_ERR(CAM_ICP,
+				"remote state set to %s failed rc=%d IB_status0=0x%x IB_Status1=0x%x PFault=0x%x",
+				state == TZ_STATE_RESUME ? "resume" : "suspend", rc,
+				cam_io_r_mb(lx7_info->soc_info.reg_map[LX7_CIRQ_BASE].mem_base +
+					ICP_LX7_CIRQ_IB_STATUS0),
+				cam_io_r_mb(lx7_info->soc_info.reg_map[LX7_CIRQ_BASE].mem_base +
+					ICP_LX7_CIRQ_IB_STATUS1),
+				cam_io_r_mb(lx7_info->soc_info.reg_map[LX7_CIRQ_BASE].mem_base +
+					ICP_LX7_CIRQ_PFAULT_INFO));
 	} else {
 		if (state == TZ_STATE_RESUME) {
 			rc = __cam_lx7_power_resume(lx7_info);
