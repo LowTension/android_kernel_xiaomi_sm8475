@@ -113,9 +113,6 @@ static int cam_vfe_component_bind(struct device *dev,
 		cam_vfe_hw_list[vfe_hw_intf->hw_idx].hw_pid[i] =
 			vfe_soc_priv->pid[i];
 
-	cam_vfe_init_hw(vfe_hw, NULL, 0);
-	cam_vfe_deinit_hw(vfe_hw, NULL, 0);
-
 	CAM_DBG(CAM_ISP, "VFE:%d component bound successfully",
 		vfe_hw_intf->hw_idx);
 	return rc;
