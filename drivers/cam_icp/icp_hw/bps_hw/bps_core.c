@@ -24,8 +24,7 @@
 #include "cam_cpas_api.h"
 #include "cam_debug_util.h"
 #include "hfi_reg.h"
-
-#define HFI_MAX_POLL_TRY 5
+#include "cam_common_util.h"
 
 static int cam_bps_cpas_vote(struct cam_bps_device_core_info *core_info,
 			struct cam_icp_cpas_vote *cpas_vote)
@@ -291,10 +290,11 @@ static int cam_bps_cmd_reset(struct cam_hw_soc_info *soc_info,
 	cam_io_w_mb(hw_info->cdm_rst_val,
 		soc_info->reg_map[0].mem_base + hw_info->cdm_rst_cmd);
 	while (retry_cnt < HFI_MAX_POLL_TRY) {
-		readw_poll_timeout((soc_info->reg_map[0].mem_base +
+		cam_common_read_poll_timeout((soc_info->reg_map[0].mem_base +
 			hw_info->cdm_irq_status),
-			status, ((status & BPS_RST_DONE_IRQ_STATUS_BIT) == 0x1),
-			100, 10000);
+			PC_POLL_DELAY_US, PC_POLL_TIMEOUT_US,
+			BPS_RST_DONE_IRQ_STATUS_BIT, BPS_RST_DONE_IRQ_STATUS_BIT,
+			&status);
 
 		CAM_DBG(CAM_ICP, "bps_cdm_irq_status = %u", status);
 
@@ -314,10 +314,11 @@ static int cam_bps_cmd_reset(struct cam_hw_soc_info *soc_info,
 	cam_io_w_mb((uint32_t)0x3,
 		soc_info->reg_map[0].mem_base + hw_info->top_rst_cmd);
 	while (retry_cnt < HFI_MAX_POLL_TRY) {
-		readw_poll_timeout((soc_info->reg_map[0].mem_base +
+		cam_common_read_poll_timeout((soc_info->reg_map[0].mem_base +
 			hw_info->top_irq_status),
-			status, ((status & BPS_RST_DONE_IRQ_STATUS_BIT) == 0x1),
-			100, 10000);
+			PC_POLL_DELAY_US, PC_POLL_TIMEOUT_US,
+			BPS_RST_DONE_IRQ_STATUS_BIT, BPS_RST_DONE_IRQ_STATUS_BIT,
+			&status);
 
 		CAM_DBG(CAM_ICP, "bps_top_irq_status = %u", status);
 
