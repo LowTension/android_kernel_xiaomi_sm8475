@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2016-2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2019, 2021, The Linux Foundation. All rights reserved.
  */
 
 #include "cam_req_mgr_timer.h"
 #include "cam_debug_util.h"
+#include "cam_common_util.h"
 
 extern struct kmem_cache *g_cam_req_mgr_timer_cachep;
 
@@ -12,10 +13,9 @@ void crm_timer_reset(struct cam_req_mgr_timer *crm_timer)
 {
 	if (!crm_timer)
 		return;
-	CAM_DBG(CAM_CRM, "Starting timer to fire in %d ms. (jiffies=%lu)\n",
-		crm_timer->expires, jiffies);
-	mod_timer(&crm_timer->sys_timer,
-		(jiffies + msecs_to_jiffies(crm_timer->expires)));
+
+	cam_common_modify_timer(&crm_timer->sys_timer, crm_timer->expires);
+
 }
 
 void crm_timer_callback(struct timer_list *timer_data)
