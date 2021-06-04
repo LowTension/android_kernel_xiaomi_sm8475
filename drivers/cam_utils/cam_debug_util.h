@@ -9,38 +9,39 @@
 #include <linux/platform_device.h>
 
 /* Module IDs used for debug logging */
-#define CAM_CDM        (1 << 0)
-#define CAM_CORE       (1 << 1)
-#define CAM_CPAS       (1 << 2)
-#define CAM_ISP        (1 << 3)
-#define CAM_CRM        (1 << 4)
-#define CAM_SENSOR     (1 << 5)
-#define CAM_SMMU       (1 << 6)
-#define CAM_SYNC       (1 << 7)
-#define CAM_ICP        (1 << 8)
-#define CAM_JPEG       (1 << 9)
-#define CAM_FD         (1 << 10)
-#define CAM_LRME       (1 << 11)
-#define CAM_FLASH      (1 << 12)
-#define CAM_ACTUATOR   (1 << 13)
-#define CAM_CCI        (1 << 14)
-#define CAM_CSIPHY     (1 << 15)
-#define CAM_EEPROM     (1 << 16)
-#define CAM_UTIL       (1 << 17)
-#define CAM_HFI        (1 << 18)
-#define CAM_CTXT       (1 << 19)
-#define CAM_OIS        (1 << 20)
-#define CAM_RES        (1 << 21)
-#define CAM_MEM        (1 << 22)
-#define CAM_IRQ_CTRL   (1 << 23)
-#define CAM_REQ        (1 << 24)
-#define CAM_PERF       (1 << 25)
-#define CAM_CUSTOM     (1 << 26)
-#define CAM_PRESIL     (1 << 27)
-#define CAM_OPE        (1 << 28)
-#define CAM_IO_ACCESS  (1 << 29)
-#define CAM_SFE        (1 << 30)
-#define CAM_CRE        (1 << 31)
+#define CAM_CDM           BIT_ULL(0)
+#define CAM_CORE          BIT_ULL(1)
+#define CAM_CPAS          BIT_ULL(2)
+#define CAM_ISP           BIT_ULL(3)
+#define CAM_CRM           BIT_ULL(4)
+#define CAM_SENSOR        BIT_ULL(5)
+#define CAM_SMMU          BIT_ULL(6)
+#define CAM_SYNC          BIT_ULL(7)
+#define CAM_ICP           BIT_ULL(8)
+#define CAM_JPEG          BIT_ULL(9)
+#define CAM_FD            BIT_ULL(10)
+#define CAM_LRME          BIT_ULL(11)
+#define CAM_FLASH         BIT_ULL(12)
+#define CAM_ACTUATOR      BIT_ULL(13)
+#define CAM_CCI           BIT_ULL(14)
+#define CAM_CSIPHY        BIT_ULL(15)
+#define CAM_EEPROM        BIT_ULL(16)
+#define CAM_UTIL          BIT_ULL(17)
+#define CAM_HFI           BIT_ULL(18)
+#define CAM_CTXT          BIT_ULL(19)
+#define CAM_OIS           BIT_ULL(20)
+#define CAM_RES           BIT_ULL(21)
+#define CAM_MEM           BIT_ULL(22)
+#define CAM_IRQ_CTRL      BIT_ULL(23)
+#define CAM_REQ           BIT_ULL(24)
+#define CAM_PERF          BIT_ULL(25)
+#define CAM_CUSTOM        BIT_ULL(26)
+#define CAM_PRESIL        BIT_ULL(27)
+#define CAM_OPE           BIT_ULL(28)
+#define CAM_IO_ACCESS     BIT_ULL(29)
+#define CAM_SFE           BIT_ULL(30)
+#define CAM_CRE           BIT_ULL(31)
+#define CAM_PRESIL_CORE   BIT_ULL(32)
 
 /* Log level types */
 #define CAM_TYPE_TRACE      (1 << 0)
@@ -100,7 +101,7 @@ struct camera_debug_settings {
  * @fmt       :  Formatted string which needs to be print in the log
  *
  */
-void cam_debug_log(unsigned int module_id, unsigned int priority,
+void cam_debug_log(unsigned long long module_id, unsigned int priority,
 	const char *func, const int line, const char *fmt, ...);
 
 /*
@@ -117,7 +118,7 @@ void cam_debug_log(unsigned int module_id, unsigned int priority,
  * @fmt       :  Formatted string which needs to be print in the log
  *
  */
-void cam_debug_trace(unsigned int tag, unsigned int module_id,
+void cam_debug_trace(unsigned int tag, unsigned long long module_id,
 	const char *func, const int line, const char *fmt, ...);
 
 /*
@@ -127,7 +128,7 @@ void cam_debug_trace(unsigned int tag, unsigned int module_id,
  *
  * @module_id :  Module ID which is using this function
  */
-const char *cam_get_module_name(unsigned int module_id);
+const char *cam_get_module_name(unsigned long long module_id);
 
 /*
  * CAM_TRACE
@@ -345,7 +346,7 @@ const char *cam_get_module_name(unsigned int module_id);
  * @args:          Arguments which needs to be print in log
  */
 void cam_print_to_buffer(char *buf, const size_t buf_size, size_t *len, unsigned int tag,
-	unsigned int module_id, const char *fmt, ...);
+	unsigned long long module_id, const char *fmt, ...);
 
 /**
  * CAM_[ERR/WARN/INFO]_BUF
