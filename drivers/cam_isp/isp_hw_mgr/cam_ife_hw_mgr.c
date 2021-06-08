@@ -518,6 +518,29 @@ static int cam_ife_hw_mgr_is_rdi_res(uint32_t res_id)
 	return rc;
 }
 
+static inline bool cam_ife_hw_mgr_is_ife_out_port(uint32_t res_id)
+{
+	bool is_ife_out = false;
+
+	if ((res_id >= CAM_ISP_IFE_OUT_RES_BASE) &&
+		(res_id <= (CAM_ISP_IFE_OUT_RES_BASE +
+		max_ife_out_res)))
+		is_ife_out = true;
+
+	return is_ife_out;
+}
+
+static inline bool cam_ife_hw_mgr_is_sfe_out_port(uint32_t res_id)
+{
+	bool is_sfe_out = false;
+
+	if ((res_id >= CAM_ISP_SFE_OUT_RES_BASE) &&
+		(res_id < CAM_ISP_SFE_OUT_RES_MAX))
+		is_sfe_out = true;
+
+	return is_sfe_out;
+}
+
 static int cam_ife_hw_mgr_notify_overflow(
 	struct cam_isp_hw_event_info    *evt,
 	void                            *ctx)
@@ -1818,10 +1841,7 @@ static int cam_ife_hw_mgr_acquire_res_ife_out_pixel(
 	for (i = 0; i < in_port->num_out_res; i++) {
 		out_port = &in_port->data[i];
 		/* Skip output ports for SFE */
-		if ((out_port->res_type < CAM_ISP_IFE_OUT_RES_BASE) ||
-			(out_port->res_type >
-			(CAM_ISP_IFE_OUT_RES_BASE +
-			max_ife_out_res)))
+		if (!cam_ife_hw_mgr_is_ife_out_port(out_port->res_type))
 			continue;
 
 		if (cam_ife_hw_mgr_is_rdi_res(out_port->res_type))
@@ -2013,8 +2033,7 @@ static int cam_ife_hw_mgr_acquire_res_sfe_out_pix(
 		out_port = &in_port->data[i];
 
 		/* Skip IFE ports */
-		if (out_port->res_type < CAM_ISP_SFE_OUT_RES_BASE ||
-			out_port->res_type >= CAM_ISP_SFE_OUT_RES_MAX)
+		if (!cam_ife_hw_mgr_is_sfe_out_port(out_port->res_type))
 			continue;
 
 		if (cam_ife_hw_mgr_is_sfe_rdi_res(out_port->res_type))
@@ -7091,6 +7110,7 @@ static int cam_isp_blob_sfe_scratch_buf_update(
 		port_info->height = buffer_info->height;
 		port_info->stride = buffer_info->stride;
 		port_info->slice_height = buffer_info->slice_height;
+		port_info->offset = 0;
 		CAM_DBG(CAM_ISP,
 			"res_id: 0x%x w: 0x%x h: 0x%x s: 0x%x sh: 0x%x addr: %pK",
 			port_info->res_id, port_info->width,
@@ -7904,6 +7924,86 @@ static int cam_isp_blob_sfe_clock_update(
 	return rc;
 }
 
+static int cam_isp_blob_sfe_rd_update(
+	uint32_t                               blob_type,
+	uint32_t                               kmd_buf_remain_size,
+	uint32_t                              *cmd_buf_addr,
+	uint32_t                              *total_used_bytes,
+	struct cam_ife_hw_mgr_ctx             *ctx,
+	struct cam_isp_generic_blob_info      *blob_info,
+	struct cam_isp_vfe_wm_config          *wm_config)
+{
+	int                                   rc;
+	uint32_t                              bytes_used = 0;
+	bool                                  found = false;
+	struct cam_isp_hw_mgr_res            *sfe_rd_res;
+
+	list_for_each_entry(sfe_rd_res, &ctx->res_list_ife_in_rd,
+		list) {
+		if (sfe_rd_res->res_id == wm_config->port_type) {
+			found = true;
+			break;
+		}
+	}
+
+	if (!found) {
+		CAM_ERR(CAM_ISP,
+			"Failed to find SFE rd resource: %u, check if rsrc is acquired",
+			wm_config->port_type);
+		return -EINVAL;
+	}
+
+	CAM_DBG(CAM_ISP, "SFE RM config for port: 0x%x",
+		wm_config->port_type);
+
+	rc = cam_isp_add_cmd_buf_update(
+		sfe_rd_res, blob_type,
+		CAM_ISP_HW_CMD_FE_UPDATE_BUS_RD,
+		blob_info->base_info->idx,
+		(void *)cmd_buf_addr,
+		kmd_buf_remain_size,
+		(void *)wm_config,
+		&bytes_used);
+	if (rc < 0) {
+		CAM_ERR(CAM_ISP,
+			"Failed to update SFE RM config out_type:0x%X base_idx:%d bytes_used:%u rc:%d",
+			wm_config->port_type, blob_info->base_info->idx,
+			bytes_used, rc);
+		return rc;
+	}
+
+	*total_used_bytes += bytes_used;
+	return rc;
+}
+
+static int cam_ife_hw_mgr_update_scratch_offset(
+	struct cam_ife_hw_mgr_ctx             *ctx,
+	struct cam_isp_vfe_wm_config          *wm_config)
+{
+	uint32_t res_id;
+	struct cam_sfe_scratch_buf_info       *port_info;
+
+	if (!ctx->sfe_info.scratch_config->config_done) {
+		CAM_ERR(CAM_ISP,
+			"Scratch buffers not configured on ctx: %u",
+			ctx->ctx_index);
+		return -EINVAL;
+	}
+
+	if ((wm_config->port_type - CAM_ISP_SFE_OUT_RES_RDI_0) >=
+		ctx->sfe_info.num_fetches)
+		return 0;
+
+	res_id = wm_config->port_type & 0xFF;
+	port_info = &ctx->sfe_info.scratch_config->buf_info[res_id];
+	port_info->offset = wm_config->offset;
+
+	CAM_DBG(CAM_ISP, "Scratch offset: %u updated for: %s",
+		port_info->offset, wm_config->port_type);
+
+	return 0;
+}
+
 static int cam_isp_blob_vfe_out_update(
 	uint32_t                               blob_type,
 	struct cam_isp_generic_blob_info      *blob_info,
@@ -7916,12 +8016,14 @@ static int cam_isp_blob_vfe_out_update(
 	struct cam_kmd_buf_info               *kmd_buf_info;
 	struct cam_ife_hw_mgr_ctx             *ctx = NULL;
 	struct cam_isp_hw_mgr_res             *isp_out_res;
+	enum cam_isp_hw_sfe_in                 rd_path = CAM_ISP_HW_SFE_IN_MAX;
 	uint32_t                               res_id_out, i;
 	uint32_t                               total_used_bytes = 0;
 	uint32_t                               kmd_buf_remain_size;
 	uint32_t                              *cmd_buf_addr;
 	uint32_t                               bytes_used = 0;
 	int                                    rc = 0;
+	bool                                   rm_config = false;
 
 	ctx = prepare->ctxt_to_hw_map;
 
@@ -7935,16 +8037,18 @@ static int cam_isp_blob_vfe_out_update(
 	kmd_buf_info = blob_info->kmd_buf_info;
 	for (i = 0; i < vfe_out_config->num_ports; i++) {
 		wm_config = &vfe_out_config->wm_config[i];
-		res_id_out = wm_config->port_type & 0xFF;
+		if ((hw_type == CAM_ISP_HW_TYPE_VFE) &&
+			(!cam_ife_hw_mgr_is_ife_out_port(wm_config->port_type)))
+			continue;
 
-		CAM_DBG(CAM_ISP, "%s out config idx: %d port: 0x%x",
-			(hw_type == CAM_ISP_HW_TYPE_SFE ? "SFE" : "VFE"),
-			i, wm_config->port_type);
+		if (hw_type == CAM_ISP_HW_TYPE_SFE) {
+			rd_path = cam_ife_hw_mgr_get_sfe_rd_res_id(wm_config->port_type);
+			if ((!cam_ife_hw_mgr_is_sfe_out_port(wm_config->port_type)) &&
+				(rd_path == CAM_ISP_HW_SFE_IN_MAX))
+				continue;
 
-		if (res_id_out >= size_isp_out) {
-			CAM_ERR(CAM_ISP, "Invalid out port:0x%x",
-				wm_config->port_type);
-			return -EINVAL;
+			if (rd_path != CAM_ISP_HW_SFE_IN_MAX)
+				rm_config = true;
 		}
 
 		if ((kmd_buf_info->used_bytes
@@ -7963,10 +8067,43 @@ static int cam_isp_blob_vfe_out_update(
 		cmd_buf_addr = kmd_buf_info->cpu_addr +
 			(kmd_buf_info->used_bytes / 4) +
 			(total_used_bytes / 4);
-		if (hw_type == CAM_ISP_HW_TYPE_SFE)
+
+		if (rm_config) {
+			rc = cam_isp_blob_sfe_rd_update(blob_type,
+				kmd_buf_remain_size, cmd_buf_addr,
+				&total_used_bytes, ctx, blob_info, wm_config);
+			if (rc)
+				return rc;
+
+			rm_config = false;
+			continue;
+		}
+
+		res_id_out = wm_config->port_type & 0xFF;
+
+		CAM_DBG(CAM_ISP, "%s out config idx: %d port: 0x%x",
+			(hw_type == CAM_ISP_HW_TYPE_SFE ? "SFE" : "VFE"),
+			i, wm_config->port_type);
+
+		if (res_id_out >= size_isp_out) {
+			CAM_ERR(CAM_ISP, "Invalid out port:0x%x",
+				wm_config->port_type);
+			return -EINVAL;
+		}
+
+		if (hw_type == CAM_ISP_HW_TYPE_SFE) {
+			/* Update offset for scratch to compare for buf done */
+			if ((ctx->flags.is_sfe_shdr) &&
+				(cam_ife_hw_mgr_is_sfe_rdi_for_fetch(wm_config->port_type))) {
+				rc = cam_ife_hw_mgr_update_scratch_offset(ctx, wm_config);
+				if (rc)
+					return rc;
+			}
+
 			isp_out_res = &ctx->res_list_sfe_out[res_id_out];
-		else
+		} else {
 			isp_out_res = &ctx->res_list_ife_out[res_id_out];
+		}
 
 		rc = cam_isp_add_cmd_buf_update(
 			isp_out_res, blob_type,
@@ -11505,6 +11642,7 @@ static int cam_ife_hw_mgr_check_rdi_scratch_buf_done(
 {
 	int rc = 0;
 	struct cam_sfe_scratch_buf_info *buf_info;
+	dma_addr_t final_addr;
 	uint32_t cmp_addr = 0;
 
 	if (!scratch_cfg->config_done) {
@@ -11516,9 +11654,10 @@ static int cam_ife_hw_mgr_check_rdi_scratch_buf_done(
 	case CAM_ISP_SFE_OUT_RES_RDI_0:
 	case CAM_ISP_SFE_OUT_RES_RDI_1:
 	case CAM_ISP_SFE_OUT_RES_RDI_2:
-		buf_info = &scratch_cfg->buf_info[res_id - CAM_ISP_SFE_OUT_RES_BASE];
+		buf_info = &scratch_cfg->buf_info[res_id - CAM_ISP_SFE_OUT_RES_RDI_0];
+		final_addr = buf_info->io_addr + buf_info->offset;
 		cmp_addr = cam_smmu_is_expanded_memory() ?
-			CAM_36BIT_INTF_GET_IOVA_BASE(buf_info->io_addr) : buf_info->io_addr;
+			CAM_36BIT_INTF_GET_IOVA_BASE(final_addr) : final_addr;
 		if (cmp_addr == last_consumed_addr) {
 			CAM_DBG(CAM_ISP, "SFE RDI%u buf done for scratch - skip ctx notify",
 				(res_id - CAM_ISP_SFE_OUT_RES_BASE));

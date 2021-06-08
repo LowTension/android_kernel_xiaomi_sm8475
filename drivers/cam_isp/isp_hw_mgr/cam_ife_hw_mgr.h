@@ -78,6 +78,7 @@ struct cam_ife_hw_mgr_debug {
  * @slice_height: Height in lines
  * @io_addr: Buffer address
  * @res_id: Resource type
+ * @offset: Buffer offset
  * @is_secure: secure scratch buffer
  */
 struct cam_sfe_scratch_buf_info {
@@ -87,6 +88,7 @@ struct cam_sfe_scratch_buf_info {
 	uint32_t   slice_height;
 	dma_addr_t io_addr;
 	uint32_t   res_id;
+	uint32_t   offset;
 	bool       is_secure;
 };
 

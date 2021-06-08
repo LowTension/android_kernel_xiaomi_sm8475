@@ -94,11 +94,11 @@ struct cam_sfe_bus_rd_rm_resource_data {
 	uint32_t             unpacker_cfg;
 	uint32_t             burst_len;
 	uint32_t             en_cfg;
-	dma_addr_t           img_addr;
 	uint32_t             input_if_cmd;
 	bool                 enable_caching;
 	uint32_t             cache_cfg;
 	uint32_t             current_scid;
+	uint32_t             offset;
 };
 
 struct cam_sfe_bus_rd_data {
@@ -404,6 +404,7 @@ static int cam_sfe_bus_acquire_rm(
 	rsrc_data->latency_buf_allocation =
 		BUS_RD_DEFAULT_LATENCY_BUF_ALLOC;
 	rsrc_data->enable_caching =  false;
+	rsrc_data->offset = 0;
 	/* Default register value */
 	rsrc_data->cache_cfg = 0x20;
 
@@ -438,13 +439,17 @@ static int cam_sfe_bus_release_rm(void          *bus_priv,
 
 static int cam_sfe_bus_start_rm(struct cam_isp_resource_node *rm_res)
 {
+	uint32_t width_in_bytes = 0;
 	struct cam_sfe_bus_rd_rm_resource_data  *rm_data;
 	struct cam_sfe_bus_rd_common_data       *common_data;
 
 	rm_data = rm_res->res_priv;
 	common_data = rm_data->common_data;
 
-	cam_io_w_mb(rm_data->width, common_data->mem_base +
+	cam_sfe_bus_rd_pxls_to_bytes(rm_data->width,
+		rm_data->unpacker_cfg, &width_in_bytes);
+
+	cam_io_w_mb(width_in_bytes, common_data->mem_base +
 		rm_data->hw_regs->buf_width);
 	cam_io_w_mb(rm_data->height, common_data->mem_base +
 		rm_data->hw_regs->buf_height);
@@ -459,10 +464,10 @@ static int cam_sfe_bus_start_rm(struct cam_isp_resource_node *rm_res)
 	rm_res->res_state = CAM_ISP_RESOURCE_STATE_STREAMING;
 
 	CAM_DBG(CAM_SFE,
-		"Start SFE:%d RM:%d offset:0x%X width:%d height:%d",
+		"Start SFE:%d RM:%d offset:0x%X width:%d[in bytes: %u] height:%d",
 		rm_data->common_data->core_index, rm_data->index,
 		(uint32_t) rm_data->hw_regs->cfg,
-		rm_data->width, rm_data->height);
+		rm_data->width, width_in_bytes, rm_data->height);
 	CAM_DBG(CAM_SFE, "RM:%d pk_fmt:%d stride:%d", rm_data->index,
 		rm_data->unpacker_cfg, rm_data->stride);
 
@@ -481,6 +486,7 @@ static int cam_sfe_bus_stop_rm(struct cam_isp_resource_node *rm_res)
 
 	rm_res->res_state = CAM_ISP_RESOURCE_STATE_RESERVED;
 	rsrc_data->enable_caching =  false;
+	rsrc_data->offset = 0;
 
 	CAM_DBG(CAM_SFE, "SFE:%d RM:%d stopped",
 		rsrc_data->common_data->core_index, rsrc_data->index);
@@ -1143,7 +1149,7 @@ static int cam_sfe_bus_rd_config_rm(void *priv, void *cmd_args,
 	struct cam_sfe_bus_rd_data             *sfe_bus_rd_data = NULL;
 	struct cam_sfe_bus_rd_rm_resource_data *rm_data = NULL;
 	struct cam_sfe_bus_cache_dbg_cfg       *cache_dbg_cfg = NULL;
-	uint32_t width = 0, height = 0, stride = 0;
+	uint32_t width = 0, height = 0, stride = 0, width_in_bytes = 0;
 	uint32_t  i;
 
 	bus_priv = (struct cam_sfe_bus_rd_priv  *) priv;
@@ -1173,13 +1179,19 @@ static int cam_sfe_bus_rd_config_rm(void *priv, void *cmd_args,
 		rm_data = sfe_bus_rd_data->rm_res[i]->res_priv;
 
 		stride = update_buf->rm_update->stride;
-		width = update_buf->rm_update->width;
-		height = update_buf->rm_update->height;
+		if (rm_data->width && rm_data->height) {
+			width =  rm_data->width;
+			height = rm_data->height;
+		} else {
+			width = update_buf->rm_update->width;
+			height = update_buf->rm_update->height;
+		}
 
 		/* update size register */
 		cam_sfe_bus_rd_pxls_to_bytes(width,
-			rm_data->unpacker_cfg, &rm_data->width);
+			rm_data->unpacker_cfg, &width_in_bytes);
 		rm_data->height = height;
+		rm_data->width = width;
 
 		rm_data->cache_cfg = 0x20;
 		if ((!cache_dbg_cfg->disable_for_scratch) &&
@@ -1200,17 +1212,16 @@ static int cam_sfe_bus_rd_config_rm(void *priv, void *cmd_args,
 			rm_data->common_data->core_index,
 			rm_data->index, rm_data->cache_cfg);
 
-		cam_io_w_mb(rm_data->width,
+		cam_io_w_mb(width_in_bytes,
 			rm_data->common_data->mem_base +
 			rm_data->hw_regs->buf_width);
-		cam_io_w_mb(rm_data->height,
+		cam_io_w_mb(height,
 			rm_data->common_data->mem_base +
 			rm_data->hw_regs->buf_height);
 
-		CAM_DBG(CAM_SFE, "SFE:%d RM:%d width:0x%X height:0x%X",
+		CAM_DBG(CAM_SFE, "SFE:%d RM:%d width:0x%X[in bytes: 0x%x] height:0x%X",
 			rm_data->common_data->core_index,
-			rm_data->index, rm_data->width,
-			rm_data->height);
+			rm_data->index, width, width_in_bytes, height);
 
 		rm_data->stride = stride;
 		cam_io_w_mb(stride,
@@ -1220,15 +1231,16 @@ static int cam_sfe_bus_rd_config_rm(void *priv, void *cmd_args,
 			rm_data->common_data->core_index,
 			rm_data->index, stride);
 
-		cam_io_w_mb(update_buf->rm_update->image_buf[i],
+		cam_io_w_mb(
+			(update_buf->rm_update->image_buf[i] + rm_data->offset),
 			rm_data->common_data->mem_base +
 			rm_data->hw_regs->image_addr);
-		CAM_DBG(CAM_SFE, "SFE:%d RM:%d image_address:0x%llx",
+
+		CAM_DBG(CAM_SFE, "SFE:%d RM:%d image_address:0x%X offset: 0x%x",
 			rm_data->common_data->core_index,
 			rm_data->index,
-			(update_buf->rm_update->image_buf[i]));
-		rm_data->img_addr =
-			update_buf->rm_update->image_buf[i];
+			update_buf->rm_update->image_buf[i],
+			rm_data->offset);
 	}
 
 	return 0;
@@ -1246,7 +1258,7 @@ static int cam_sfe_bus_rd_update_rm(void *priv, void *cmd_args,
 	struct cam_sfe_bus_cache_dbg_cfg       *cache_dbg_cfg = NULL;
 	uint32_t *reg_val_pair;
 	uint32_t num_regval_pairs = 0;
-	uint32_t width = 0, height = 0, stride = 0;
+	uint32_t width = 0, height = 0, stride = 0, width_in_bytes = 0;
 	uint32_t  i, j, size = 0;
 
 	bus_priv = (struct cam_sfe_bus_rd_priv  *) priv;
@@ -1295,10 +1307,17 @@ static int cam_sfe_bus_rd_update_rm(void *priv, void *cmd_args,
 			height = io_cfg->planes[i].height;
 		}
 
+		/* If width & height updated in blob, use that */
+		if (rm_data->width && rm_data->height) {
+			width =  rm_data->width;
+			height = rm_data->height;
+		}
+
 		/* update size register */
 		cam_sfe_bus_rd_pxls_to_bytes(width,
-			rm_data->unpacker_cfg, &rm_data->width);
+			rm_data->unpacker_cfg, &width_in_bytes);
 		rm_data->height = height;
+		rm_data->width = width;
 
 		rm_data->cache_cfg = 0x20;
 		if (rm_data->enable_caching) {
@@ -1337,13 +1356,13 @@ skip_cache_cfg:
 			rm_data->index, reg_val_pair[j-1]);
 
 		CAM_SFE_ADD_REG_VAL_PAIR(reg_val_pair, j,
-			rm_data->hw_regs->buf_width, rm_data->width);
+			rm_data->hw_regs->buf_width, width_in_bytes);
 		CAM_SFE_ADD_REG_VAL_PAIR(reg_val_pair, j,
-			rm_data->hw_regs->buf_height, rm_data->height);
-		CAM_DBG(CAM_SFE, "SFE:%d RM:%d width:0x%X height:0x%X",
+			rm_data->hw_regs->buf_height, height);
+		CAM_DBG(CAM_SFE, "SFE:%d RM:%d width:0x%X [in bytes: 0x%x] height:0x%X",
 			rm_data->common_data->core_index,
 			rm_data->index, rm_data->width,
-			rm_data->height);
+			width_in_bytes, rm_data->height);
 
 		rm_data->stride = stride;
 		CAM_SFE_ADD_REG_VAL_PAIR(reg_val_pair, j,
@@ -1354,11 +1373,10 @@ skip_cache_cfg:
 
 		CAM_SFE_ADD_REG_VAL_PAIR(reg_val_pair, j,
 			rm_data->hw_regs->image_addr,
-			update_buf->rm_update->image_buf[i]);
+			(update_buf->rm_update->image_buf[i] + rm_data->offset));
 		CAM_DBG(CAM_SFE, "SFE:%d RM:%d image_address:0x%X",
 			rm_data->common_data->core_index,
 			rm_data->index, reg_val_pair[j-1]);
-		rm_data->img_addr = reg_val_pair[j-1];
 	}
 
 	num_regval_pairs = j / 2;
@@ -1480,6 +1498,44 @@ static int cam_sfe_bus_deinit_hw(void *hw_priv,
 	return 0;
 }
 
+static int cam_sfe_bus_rd_config_update(
+	void *priv, void *cmd_args, uint32_t arg_size)
+{
+	int i;
+	struct cam_sfe_bus_rd_priv             *bus_priv;
+	struct cam_isp_hw_get_cmd_update       *rm_config_update;
+	struct cam_isp_vfe_wm_config           *rm_config = NULL;
+	struct cam_sfe_bus_rd_data             *sfe_bus_rd_data = NULL;
+	struct cam_sfe_bus_rd_rm_resource_data *rm_data = NULL;
+
+	bus_priv = (struct cam_sfe_bus_rd_priv  *) priv;
+	rm_config_update =  (struct cam_isp_hw_get_cmd_update *) cmd_args;
+	rm_config = (struct cam_isp_vfe_wm_config  *)
+		rm_config_update->data;
+
+	sfe_bus_rd_data = (struct cam_sfe_bus_rd_data *)
+		rm_config_update->res->res_priv;
+
+	if (!sfe_bus_rd_data) {
+		CAM_ERR(CAM_SFE, "Failed! Invalid data");
+		return -EINVAL;
+	}
+
+	for (i = 0; i < sfe_bus_rd_data->num_rm; i++) {
+		rm_data = sfe_bus_rd_data->rm_res[i]->res_priv;
+
+		rm_data->offset = rm_config->offset;
+		rm_data->width = rm_config->width;
+		rm_data->height = rm_config->height;
+		CAM_DBG(CAM_SFE,
+			"SFE: %u RM: %d offset: %u width: %u height: %u",
+			rm_data->index, rm_data->index, rm_data->offset,
+			rm_data->width, rm_data->height);
+	}
+
+	return 0;
+}
+
 static int cam_sfe_bus_rd_cache_config(void *priv, void *cmd_args,
 	uint32_t arg_size)
 {
@@ -1563,8 +1619,7 @@ static int cam_sfe_bus_rd_process_cmd(
 		rc = cam_sfe_bus_rd_get_secure_mode(priv, cmd_args, arg_size);
 		break;
 	case CAM_ISP_HW_CMD_FE_UPDATE_BUS_RD:
-		/* Currently no need of blob cfg for SFE RD */
-		rc = 0;
+		rc = cam_sfe_bus_rd_config_update(priv, cmd_args, arg_size);
 		break;
 	case CAM_ISP_HW_CMD_SET_SFE_DEBUG_CFG:
 		rc = cam_sfe_bus_rd_set_debug_cfg(priv, cmd_args);
