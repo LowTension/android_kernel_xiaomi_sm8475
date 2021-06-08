@@ -314,6 +314,8 @@ static bool cam_vfe_bus_ver3_can_be_secure(uint32_t out_type)
 	case CAM_VFE_BUS_VER3_VFE_OUT_STATS_RS:
 	case CAM_VFE_BUS_VER3_VFE_OUT_STATS_CS:
 	case CAM_VFE_BUS_VER3_VFE_OUT_STATS_IHIST:
+	case CAM_VFE_BUS_VER3_VFE_OUT_STATS_CAF:
+	case CAM_VFE_BUS_VER3_VFE_OUT_STATS_BAYER_RS:
 	default:
 		return false;
 	}
@@ -408,7 +410,6 @@ static enum cam_vfe_bus_ver3_vfe_out_type
 	case CAM_ISP_IFE_OUT_RES_STATS_AEC_BE:
 		vfe_out_type = CAM_VFE_BUS_VER3_VFE_OUT_STATS_AEC_BE;
 		break;
-
 	case CAM_ISP_IFE_OUT_RES_LTM_STATS:
 		vfe_out_type = CAM_VFE_BUS_VER3_VFE_OUT_LTM_STATS;
 		break;
@@ -421,8 +422,11 @@ static enum cam_vfe_bus_ver3_vfe_out_type
 	case CAM_ISP_IFE_LITE_OUT_RES_PREPROCESS_RAW:
 		vfe_out_type = CAM_VFE_BUS_VER3_VFE_OUT_PREPROCESS_RAW;
 		break;
-	case CAM_ISP_IFE_OUT_RES_PDAF_PARSED_DATA:
-		vfe_out_type = CAM_VFE_BUS_VER3_VFE_OUT_PDAF_PARSED;
+	case CAM_ISP_IFE_OUT_RES_STATS_CAF:
+		vfe_out_type = CAM_VFE_BUS_VER3_VFE_OUT_STATS_CAF;
+		break;
+	case CAM_ISP_IFE_OUT_RES_STATS_BAYER_RS:
+		vfe_out_type = CAM_VFE_BUS_VER3_VFE_OUT_STATS_BAYER_RS;
 		break;
 	default:
 		CAM_WARN(CAM_ISP, "Invalid isp res id: %d , assigning max",
@@ -537,8 +541,11 @@ static int cam_vfe_bus_ver3_get_comp_vfe_out_res_id_list(
 	if (comp_mask & (BIT(CAM_VFE_BUS_VER3_VFE_OUT_SPARSE_PD)))
 		out_list[count++] = CAM_ISP_IFE_OUT_RES_SPARSE_PD;
 
-	if (comp_mask & (BIT(CAM_VFE_BUS_VER3_VFE_OUT_PDAF_PARSED)))
-		out_list[count++] = CAM_VFE_BUS_VER3_VFE_OUT_PDAF_PARSED;
+	if (comp_mask & (BIT(CAM_VFE_BUS_VER3_VFE_OUT_STATS_CAF)))
+		out_list[count++] = CAM_ISP_IFE_OUT_RES_STATS_CAF;
+
+	if (comp_mask & (BIT(CAM_VFE_BUS_VER3_VFE_OUT_STATS_BAYER_RS)))
+		out_list[count++] = CAM_ISP_IFE_OUT_RES_STATS_BAYER_RS;
 
 	*num_out = count;
 	return 0;
@@ -1097,12 +1104,14 @@ static int cam_vfe_bus_ver3_acquire_wm(
 		}
 		rsrc_data->en_cfg = 0x1;
 
-	} else if (vfe_out_res_id == CAM_VFE_BUS_VER3_VFE_OUT_STATS_BF) {
+	} else if ((vfe_out_res_id == CAM_VFE_BUS_VER3_VFE_OUT_STATS_BF) ||
+		(vfe_out_res_id == CAM_VFE_BUS_VER3_VFE_OUT_STATS_CAF)) {
 
 		rsrc_data->en_cfg = (0x1 << 16) | 0x1;
 
-	} else if ((vfe_out_res_id >= CAM_VFE_BUS_VER3_VFE_OUT_STATS_HDR_BE) &&
-		(vfe_out_res_id <= CAM_VFE_BUS_VER3_VFE_OUT_STATS_IHIST)) {
+	} else if (((vfe_out_res_id >= CAM_VFE_BUS_VER3_VFE_OUT_STATS_HDR_BE) &&
+		(vfe_out_res_id <= CAM_VFE_BUS_VER3_VFE_OUT_STATS_IHIST)) ||
+		(vfe_out_res_id == CAM_VFE_BUS_VER3_VFE_OUT_STATS_BAYER_RS)) {
 
 		rsrc_data->width = 0;
 		rsrc_data->height = 0;
@@ -1242,20 +1251,6 @@ static int cam_vfe_bus_ver3_acquire_wm(
 			return -EINVAL;
 		}
 
-	} else if (vfe_out_res_id == CAM_VFE_BUS_VER3_VFE_OUT_PDAF_PARSED) {
-		switch (rsrc_data->format) {
-		case CAM_FORMAT_PLAIN16_16:
-			rsrc_data->stride = ALIGNUP(rsrc_data->width * 2, 8);
-			rsrc_data->en_cfg = 0x1;
-			/* LSB aligned */
-			rsrc_data->pack_fmt |= (1 <<
-				ver3_bus_priv->common_data.pack_align_shift);
-			break;
-		default:
-			CAM_ERR(CAM_ISP, "Invalid format %d out_type:%d",
-				rsrc_data->format, vfe_out_res_id);
-			return -EINVAL;
-		}
 	} else {
 		CAM_ERR(CAM_ISP, "Invalid out_type:%d requested",
 			vfe_out_res_id);
