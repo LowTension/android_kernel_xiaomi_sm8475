@@ -320,7 +320,7 @@ void cam_debug_trace(unsigned int tag, unsigned long long module_id,
 		va_list args;
 
 		va_start(args, fmt);
-		__cam_print_to_buffer(str_buf, STR_BUFFER_MAX_LENGTH, &len, CAM_TYPE_TRACE,
+		__cam_print_to_buffer(str_buf, STR_BUFFER_MAX_LENGTH, &len, tag,
 			module_id, func, line, true, fmt, args);
 		trace_cam_log_debug(str_buf);
 		va_end(args);
