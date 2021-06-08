@@ -429,6 +429,7 @@ int32_t cam_cmd_buf_parser(struct csiphy_device *csiphy_dev,
 	uint32_t                lane_enable = 0;
 	uint16_t                lane_assign = 0;
 	uint8_t                 lane_cnt = 0;
+	uint16_t                preamble_en = 0;
 
 	if (!cfg_dev || !csiphy_dev) {
 		CAM_ERR(CAM_CSIPHY, "Invalid Args");
@@ -502,6 +503,27 @@ int32_t cam_cmd_buf_parser(struct csiphy_device *csiphy_dev,
 		return rc;
 	}
 
+
+	preamble_en = (cam_cmd_csiphy_info->mipi_flags &
+		PREAMBLE_PATTEN_CAL_MASK);
+
+	/* Cannot support CPHY combo mode with One sensor setting
+	 * preamble enable and second/third sensor is without
+	 * preamble enable.
+	 */
+	if (csiphy_dev->preamble_enable && !preamble_en &&
+		csiphy_dev->csiphy_info[index].csiphy_3phase) {
+		CAM_ERR(CAM_CSIPHY,
+			"Cannot support CPHY combo mode with differnt preamble settings");
+		return -EINVAL;
+	} else if (preamble_en &&
+		!csiphy_dev->csiphy_info[index].csiphy_3phase) {
+		CAM_ERR(CAM_CSIPHY,
+			"Preamble pattern enablement is not supported for DPHY sensors");
+		return -EINVAL;
+	}
+
+	csiphy_dev->preamble_enable = preamble_en;
 	csiphy_dev->csiphy_info[index].lane_cnt = cam_cmd_csiphy_info->lane_cnt;
 	csiphy_dev->csiphy_info[index].lane_assign =
 		cam_cmd_csiphy_info->lane_assign;
@@ -513,7 +535,7 @@ int32_t cam_cmd_buf_parser(struct csiphy_device *csiphy_dev,
 	csiphy_dev->csiphy_info[index].secure_mode =
 		cam_cmd_csiphy_info->secure_mode;
 	csiphy_dev->csiphy_info[index].mipi_flags =
-		cam_cmd_csiphy_info->mipi_flags;
+		(cam_cmd_csiphy_info->mipi_flags & SKEW_CAL_MASK);
 
 	lane_assign = csiphy_dev->csiphy_info[index].lane_assign;
 	lane_cnt = csiphy_dev->csiphy_info[index].lane_cnt;
@@ -543,9 +565,10 @@ int32_t cam_cmd_buf_parser(struct csiphy_device *csiphy_dev,
 			index);
 
 	CAM_DBG(CAM_CSIPHY,
-		"phy version:%d, phy_idx: %d",
+		"phy version:%d, phy_idx: %d, preamble_en: %u",
 		csiphy_dev->hw_version,
-		csiphy_dev->soc_info.index);
+		csiphy_dev->soc_info.index,
+		csiphy_dev->preamble_enable);
 	CAM_DBG(CAM_CSIPHY,
 		"3phase:%d, combo mode:%d, secure mode:%d",
 		csiphy_dev->csiphy_info[index].csiphy_3phase,
@@ -705,8 +728,7 @@ static int cam_csiphy_cphy_data_rate_config(
 	intermediate_var = csiphy_device->csiphy_info[idx].settle_time;
 	do_div(intermediate_var, 200000000);
 	settle_cnt = intermediate_var;
-	skew_cal_enable =
-		csiphy_device->csiphy_info[idx].mipi_flags & SKEW_CAL_MASK;
+	skew_cal_enable = csiphy_device->csiphy_info[idx].mipi_flags;
 
 	CAM_DBG(CAM_CSIPHY, "required data rate : %llu", phy_data_rate);
 	for (data_rate_idx = 0; data_rate_idx < num_table_entries;
@@ -784,6 +806,38 @@ static int cam_csiphy_cphy_data_rate_config(
 			}
 		}
 		break;
+	}
+
+	return 0;
+}
+
+static int __cam_csiphy_prgm_bist_reg(struct csiphy_device *csiphy_dev, bool is_3phase)
+{
+	int i = 0;
+	int bist_arr_size = csiphy_dev->ctrl_reg->csiphy_bist_reg->num_data_settings;
+	struct csiphy_reg_t *csiphy_common_reg = NULL;
+	void __iomem *csiphybase = NULL;
+
+	csiphybase = csiphy_dev->soc_info.reg_map[0].mem_base;
+
+	for (i = 0; i < bist_arr_size; i++) {
+		csiphy_common_reg = &csiphy_dev->ctrl_reg->csiphy_bist_reg->bist_arry[i];
+		switch (csiphy_common_reg->csiphy_param_type) {
+		case CSIPHY_3PH_REGS:
+			if (is_3phase)
+				cam_io_w_mb(csiphy_common_reg->reg_data,
+					csiphybase + csiphy_common_reg->reg_addr);
+		break;
+		case CSIPHY_2PH_REGS:
+			if (!is_3phase)
+				cam_io_w_mb(csiphy_common_reg->reg_data,
+						csiphybase + csiphy_common_reg->reg_addr);
+		break;
+		default:
+			cam_io_w_mb(csiphy_common_reg->reg_data,
+				csiphybase + csiphy_common_reg->reg_addr);
+		break;
+		}
 	}
 
 	return 0;
@@ -939,8 +993,7 @@ int32_t cam_csiphy_config_dev(struct csiphy_device *csiphy_dev,
 	intermediate_var = csiphy_dev->csiphy_info[index].settle_time;
 	do_div(intermediate_var, 200000000);
 	settle_cnt = intermediate_var;
-	skew_cal_enable =
-		csiphy_dev->csiphy_info[index].mipi_flags & SKEW_CAL_MASK;
+	skew_cal_enable = csiphy_dev->csiphy_info[index].mipi_flags;
 
 	for (lane_pos = 0; lane_pos < max_lanes; lane_pos++) {
 		CAM_DBG(CAM_CSIPHY, "lane_pos: %d is configuring", lane_pos);
@@ -983,6 +1036,8 @@ int32_t cam_csiphy_config_dev(struct csiphy_device *csiphy_dev,
 		}
 	}
 
+	if (csiphy_dev->preamble_enable)
+		__cam_csiphy_prgm_bist_reg(csiphy_dev, is_3phase);
 	if (csiphy_dev->csiphy_info[index].csiphy_3phase) {
 		rc = cam_csiphy_cphy_data_rate_config(csiphy_dev, index);
 		if (rc) {

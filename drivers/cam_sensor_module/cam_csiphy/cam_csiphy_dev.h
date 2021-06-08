@@ -204,6 +204,11 @@ struct data_rate_settings_t {
 	struct data_rate_reg_info_t data_rate_settings[MAX_DATA_RATES];
 };
 
+struct bist_reg_settings_t {
+	ssize_t num_data_settings;
+	struct csiphy_reg_t *bist_arry;
+};
+
 /**
  * struct csiphy_ctrl_t
  * @csiphy_reg                : Register address
@@ -228,6 +233,7 @@ struct csiphy_ctrl_t {
 	struct csiphy_reg_t (*csiphy_3ph_reg)[MAX_SETTINGS_PER_LANE];
 	struct csiphy_reg_t (*csiphy_3ph_combo_reg)[MAX_SETTINGS_PER_LANE];
 	struct csiphy_reg_t (*csiphy_2ph_3ph_mode_reg)[MAX_SETTINGS_PER_LANE];
+	struct bist_reg_settings_t *csiphy_bist_reg;
 	enum   cam_vote_level (*getclockvoting)(struct csiphy_device *phy_dev,
 		int32_t index);
 	struct data_rate_settings_t *data_rates_settings_table;
@@ -288,7 +294,7 @@ struct cam_csiphy_param {
  * @crm_cb                     : Callback API pointers
  * @enable_irq_dump            : Debugfs flag to enable hw IRQ register dump
  * @en_status_reg_dump         : Debugfs flag to enable cphy/dphy specific
- *                               status register dump
+ * @preamble_enable            : To enable preamble pattern
  */
 struct csiphy_device {
 	char                           device_name[CAM_CTX_DEV_NAME_MAX_LENGTH];
@@ -320,6 +326,7 @@ struct csiphy_device {
 	struct cam_req_mgr_crm_cb     *crm_cb;
 	bool                           enable_irq_dump;
 	bool                           en_status_reg_dump;
+	uint16_t                       preamble_enable;
 };
 
 /**
