@@ -51,6 +51,10 @@
 /* Max CSI Rx irq error count threshold value */
 #define CAM_IFE_CSID_MAX_IRQ_ERROR_COUNT               100
 
+static void cam_ife_csid_ver2_print_debug_reg_status(
+	struct cam_ife_csid_ver2_hw *csid_hw,
+	struct cam_isp_resource_node    *res);
+
 static int cam_ife_csid_ver2_set_debug(
 	struct cam_ife_csid_ver2_hw *csid_hw,
 	uint32_t debug_val)
@@ -885,6 +889,7 @@ static int cam_ife_csid_ver2_handle_event_err(
 	evt.err_type = err_type;
 
 	if (res) {
+		cam_ife_csid_ver2_print_debug_reg_status(csid_hw, res);
 		path_cfg = (struct cam_ife_csid_ver2_path_cfg *)res->res_priv;
 		evt.res_id   = res->res_id;
 		CAM_ERR_RATE_LIMIT(CAM_ISP,
@@ -1341,9 +1346,6 @@ static int cam_ife_csid_ver2_ipp_bottom_half(
 			err_type,
 			res);
 
-	if (irq_status_ipp & err_mask)
-		cam_ife_csid_ver2_print_debug_reg_status(csid_hw, res);
-
 	cam_ife_csid_ver2_put_evt_payload(csid_hw, &payload,
 			&csid_hw->path_free_payload_list,
 			&csid_hw->path_payload_lock);
@@ -1429,9 +1431,6 @@ static int cam_ife_csid_ver2_ppp_bottom_half(
 			irq_status_ppp,
 			err_type,
 			res);
-
-	if (irq_status_ppp & err_mask)
-		cam_ife_csid_ver2_print_debug_reg_status(csid_hw, res);
 
 	cam_ife_csid_ver2_put_evt_payload(csid_hw, &payload,
 			&csid_hw->path_free_payload_list,
@@ -1527,10 +1526,6 @@ static int cam_ife_csid_ver2_rdi_bottom_half(
 
 		cam_ife_csid_ver2_handle_event_err(csid_hw,
 			irq_status_rdi, err_type, res);
-
-		if (irq_status_rdi & err_mask)
-			cam_ife_csid_ver2_print_debug_reg_status(
-				csid_hw, res);
 		goto end;
 	}
 
@@ -2752,6 +2747,13 @@ static int cam_ife_csid_ver2_program_rdi_path(
 
 	path_cfg->irq_reg_idx =
 		cam_ife_csid_convert_res_to_irq_reg(res->res_id);
+
+	if (path_cfg->irq_reg_idx >= CAM_IFE_CSID_IRQ_REG_MAX) {
+		CAM_ERR(CAM_ISP, "CSID[%d] Invalid irq reg id %d",
+			csid_hw->hw_intf->hw_idx, path_cfg->irq_reg_idx);
+		rc = -EINVAL;
+		goto end;
+	}
 
 	irq_mask[CAM_IFE_CSID_IRQ_REG_TOP] = path_reg->top_irq_mask;
 
