@@ -1316,7 +1316,7 @@ int cam_csiphy_util_update_aon_ops(
 	return rc;
 }
 
-static int __cam_csiphy_read_2phase_bist_debug_status(
+static void __cam_csiphy_read_2phase_bist_debug_status(
 	struct csiphy_device *csiphy_dev)
 {
 	int i = 0;
@@ -1337,10 +1337,10 @@ static int __cam_csiphy_read_2phase_bist_debug_status(
 		}
 	}
 
-	return 0;
+	return;
 }
 
-static int __cam_csiphy_poll_2phase_pattern_status(
+static void __cam_csiphy_poll_2phase_pattern_status(
 	struct csiphy_device *csiphy_dev)
 {
 	int i = 0;
@@ -1363,7 +1363,7 @@ static int __cam_csiphy_poll_2phase_pattern_status(
 			}
 
 			if (status != 0) {
-				CAM_INFO(CAM_CSIPHY, "Pattern Test is completed");
+				CAM_INFO(CAM_CSIPHY, "PN9 Pattern Test is completed");
 				break;
 			}
 		}
@@ -1381,17 +1381,15 @@ static int __cam_csiphy_poll_2phase_pattern_status(
 		}
 	}
 
-	if (status == csiphy_dev->ctrl_reg->csiphy_bist_reg->expected_status_val) {
-		CAM_INFO(CAM_CSIPHY, "Pattern is received correctly");
-		return 0;
-	} else {
+	if (status == csiphy_dev->ctrl_reg->csiphy_bist_reg->expected_status_val)
+		CAM_INFO(CAM_CSIPHY, "PN9 Pattern received successfully");
+	else
 		__cam_csiphy_read_2phase_bist_debug_status(csiphy_dev);
-	}
 
-	return 0;
+	return;
 }
 
-static int __cam_csiphy_read_3phase_bist_debug_status(
+static void __cam_csiphy_read_3phase_bist_debug_status(
 	struct csiphy_device *csiphy_dev)
 {
 	int i = 0;
@@ -1412,10 +1410,10 @@ static int __cam_csiphy_read_3phase_bist_debug_status(
 		}
 	}
 
-	return 0;
+	return;
 }
 
-static int __cam_csiphy_poll_3phase_pattern_status(
+static void __cam_csiphy_poll_3phase_pattern_status(
 	struct csiphy_device *csiphy_dev)
 {
 	int i = 0;
@@ -1437,7 +1435,7 @@ static int __cam_csiphy_poll_3phase_pattern_status(
 			break;
 			}
 			if (status1 != 0) {
-				CAM_INFO(CAM_CSIPHY, "Pattern Test is completed");
+				CAM_INFO(CAM_CSIPHY, "PN9 Pattern test is completed");
 				break;
 			}
 		}
@@ -1455,17 +1453,15 @@ static int __cam_csiphy_poll_3phase_pattern_status(
 		}
 	}
 
-	if (status1 == csiphy_dev->ctrl_reg->csiphy_bist_reg->expected_status_val) {
-		CAM_INFO(CAM_CSIPHY, "Pattern is received correctly");
-		return 0;
-	} else {
+	if (status1 == csiphy_dev->ctrl_reg->csiphy_bist_reg->expected_status_val)
+		CAM_INFO(CAM_CSIPHY, "PN9 Pattern received successfully");
+	else
 		__cam_csiphy_read_3phase_bist_debug_status(csiphy_dev);
-	}
 
-	return 0;
+	return;
 }
 
-static int __cam_csiphy_poll_preamble_status(
+static void __cam_csiphy_poll_preamble_status(
 	struct csiphy_device *csiphy_dev, int offset)
 {
 	bool is_3phase = false;
@@ -1477,7 +1473,24 @@ static int __cam_csiphy_poll_preamble_status(
 	else
 		__cam_csiphy_poll_2phase_pattern_status(csiphy_dev);
 
-	return 0;
+	return;
+}
+
+static void csiphy_work_queue_ops(struct work_struct *work)
+{
+	struct csiphy_work_queue *wq = NULL;
+	struct csiphy_device *csiphy_dev = NULL;
+	int32_t offset = -1;
+
+	wq = container_of(work, struct csiphy_work_queue, work);
+	if (wq) {
+		csiphy_dev = wq->csiphy_dev;
+		offset = wq->acquire_idx;
+
+		__cam_csiphy_poll_preamble_status(csiphy_dev, offset);
+	}
+
+	kfree(wq);
 }
 
 int32_t cam_csiphy_core_cfg(void *phy_dev,
@@ -1799,6 +1812,7 @@ int32_t cam_csiphy_core_cfg(void *phy_dev,
 	}
 	case CAM_START_DEV: {
 		struct cam_start_stop_dev_cmd config;
+		struct csiphy_work_queue *wq;
 		int32_t offset;
 		int clk_vote_level = -1;
 
@@ -1949,8 +1963,18 @@ int32_t cam_csiphy_core_cfg(void *phy_dev,
 		csiphy_dev->csiphy_state = CAM_CSIPHY_START;
 
 		if (csiphy_dev->preamble_enable) {
-			__cam_csiphy_poll_preamble_status(csiphy_dev, offset);
+			wq = kzalloc(sizeof(struct csiphy_work_queue),
+				GFP_ATOMIC);
+			if (wq) {
+				INIT_WORK((struct work_struct *)
+					&wq->work, csiphy_work_queue_ops);
+				wq->csiphy_dev = csiphy_dev;
+				wq->acquire_idx = offset;
+				queue_work(csiphy_dev->work_queue,
+					&wq->work);
+			}
 		}
+
 		CAM_INFO(CAM_CSIPHY,
 			"CAM_START_PHYDEV: CSIPHY_IDX: %d, Device_slot: %d, cp_mode: %d, Datarate: %llu, Settletime: %llu",
 			csiphy_dev->soc_info.index, offset,
