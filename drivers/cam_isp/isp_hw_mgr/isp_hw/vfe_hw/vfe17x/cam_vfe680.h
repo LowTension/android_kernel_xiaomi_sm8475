@@ -500,8 +500,8 @@ static struct cam_vfe_ver4_path_reg_data vfe680_vfe_full_rdi_reg_data[3] = {
 };
 
 static struct cam_vfe_ver4_path_reg_data vfe680_pdlib_reg_data = {
-	.sof_irq_mask                    = 0x100,
-	.eof_irq_mask                    = 0x200,
+	.sof_irq_mask                    = 0x4,
+	.eof_irq_mask                    = 0x8,
 	.error_irq_mask                  = 0x0,
 	.enable_diagnostic_hw            = 0x1,
 	.top_debug_cfg_en                = 3,
