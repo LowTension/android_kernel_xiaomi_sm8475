@@ -2202,7 +2202,7 @@ skip_cache_cfg:
 		CAM_DBG(CAM_SFE, "before stride %d", val);
 		val = ALIGNUP(val, 16);
 		if (val != stride)
-			CAM_WARN(CAM_SFE, "Warning stride %u expected %u",
+			CAM_DBG(CAM_SFE, "Warning stride %u expected %u",
 				stride, val);
 
 		if (wm_data->stride != val || !wm_data->init_cfg_done) {
