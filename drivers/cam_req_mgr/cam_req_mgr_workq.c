@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2016-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
  */
 
 #include "cam_req_mgr_workq.h"
@@ -63,6 +63,18 @@ static void cam_req_mgr_workq_put_task(struct crm_workq_task *task)
 	WORKQ_RELEASE_LOCK(workq, flags);
 }
 
+void cam_req_mgr_workq_flush(struct cam_req_mgr_core_workq *workq)
+{
+	if (!workq) {
+		CAM_ERR(CAM_CRM, "workq is null");
+		return;
+	}
+
+	atomic_set(&workq->flush, 1);
+	cancel_work_sync(&workq->work);
+	atomic_set(&workq->flush, 0);
+}
+
 /**
  * cam_req_mgr_process_task() - Process the enqueued task
  * @task: pointer to task workq thread shall process
@@ -111,7 +123,8 @@ void cam_req_mgr_process_workq(struct work_struct *w)
 			atomic_sub(1, &workq->task.pending_cnt);
 			list_del_init(&task->entry);
 			WORKQ_RELEASE_LOCK(workq, flags);
-			cam_req_mgr_process_task(task);
+			if (!unlikely(atomic_read(&workq->flush)))
+				cam_req_mgr_process_task(task);
 			CAM_DBG(CAM_CRM, "processed task %pK free_cnt %d",
 				task, atomic_read(&workq->task.free_cnt));
 			WORKQ_ACQUIRE_LOCK(workq, flags);
@@ -140,9 +153,9 @@ int cam_req_mgr_workq_enqueue_task(struct crm_workq_task *task,
 		goto end;
 	}
 
-	if (task->cancel == 1) {
+	if (task->cancel == 1 || atomic_read(&workq->flush)) {
 		cam_req_mgr_workq_put_task(task);
-		CAM_WARN(CAM_CRM, "task aborted and queued back to pool");
+		CAM_INFO(CAM_CRM, "task aborted and queued back to pool");
 		rc = 0;
 		goto end;
 	}
@@ -215,6 +228,7 @@ int cam_req_mgr_workq_create(char *name, int32_t num_tasks,
 		for (i = CRM_TASK_PRIORITY_0; i < CRM_TASK_PRIORITY_MAX; i++)
 			INIT_LIST_HEAD(&crm_workq->task.process_head[i]);
 		INIT_LIST_HEAD(&crm_workq->task.empty_head);
+		atomic_set(&crm_workq->flush, 0);
 		crm_workq->in_irq = in_irq;
 		crm_workq->task.num_task = num_tasks;
 		crm_workq->task.pool = kcalloc(crm_workq->task.num_task,

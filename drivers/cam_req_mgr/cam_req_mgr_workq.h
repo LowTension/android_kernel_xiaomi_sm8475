@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2016-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CAM_REQ_MGR_WORKQ_H_
@@ -76,6 +76,7 @@ struct crm_workq_task {
  * @job         : workqueue internal job struct
  * @lock_bh     : lock for task structs
  * @in_irq      : set true if workque can be used in irq context
+ * @flush       : used to track if flush has been called on workqueue
  * task -
  * @lock        : Current task's lock handle
  * @pending_cnt : # of tasks left in queue
@@ -92,6 +93,7 @@ struct cam_req_mgr_core_workq {
 	spinlock_t                 lock_bh;
 	uint32_t                   in_irq;
 	ktime_t                    workq_scheduled_ts;
+	atomic_t                   flush;
 
 	/* tasks */
 	struct {
@@ -165,5 +167,12 @@ void cam_req_mgr_thread_switch_delay_detect(
  */
 struct crm_workq_task *cam_req_mgr_workq_get_task(
 	struct cam_req_mgr_core_workq *workq);
+
+/**
+ * cam_req_mgr_workq_flush()
+ * @brief: Flushes the work queue. Function will sleep until any active task is complete.
+ * @workq: pointer to worker data struct
+ */
+void cam_req_mgr_workq_flush(struct cam_req_mgr_core_workq *workq);
 
 #endif

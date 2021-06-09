@@ -4734,6 +4734,38 @@ static struct cam_ctx_ops
 	},
 };
 
+static int __cam_isp_ctx_flush_dev_in_top_state(struct cam_context *ctx,
+	struct cam_flush_dev_cmd *cmd)
+{
+	struct cam_isp_context *ctx_isp = ctx->ctx_priv;
+	struct cam_req_mgr_flush_request flush_req;
+
+	if (!ctx_isp->offline_context) {
+		CAM_ERR(CAM_ISP, "flush dev only supported in offline context");
+		return -EINVAL;
+	}
+
+	flush_req.type = (cmd->flush_type == CAM_FLUSH_TYPE_ALL) ? CAM_REQ_MGR_FLUSH_TYPE_ALL :
+			CAM_REQ_MGR_FLUSH_TYPE_CANCEL_REQ;
+	flush_req.req_id = cmd->req_id;
+
+	CAM_DBG(CAM_ISP, "offline flush (type:%u, req:%lu)", flush_req.type, flush_req.req_id);
+
+	switch (ctx->state) {
+	case CAM_CTX_ACQUIRED:
+	case CAM_CTX_ACTIVATED:
+		return __cam_isp_ctx_flush_req_in_top_state(ctx, &flush_req);
+	case CAM_CTX_READY:
+		return __cam_isp_ctx_flush_req_in_ready(ctx, &flush_req);
+	default:
+		CAM_ERR(CAM_ISP, "flush dev in wrong state: %d", ctx->state);
+		return -EINVAL;
+	}
+
+	if (cmd->flush_type == CAM_FLUSH_TYPE_ALL)
+		cam_req_mgr_workq_flush(ctx_isp->workq);
+}
+
 static void __cam_isp_ctx_free_mem_hw_entries(struct cam_context *ctx)
 {
 	kfree(ctx->out_map_entries);
@@ -4800,6 +4832,7 @@ static int __cam_isp_ctx_release_hw_in_top_state(struct cam_context *ctx,
 	rc = __cam_isp_ctx_flush_req(ctx, &ctx->pending_req_list, &flush_req);
 	spin_unlock_bh(&ctx->lock);
 	__cam_isp_ctx_free_mem_hw_entries(ctx);
+	cam_req_mgr_workq_destroy(&ctx_isp->workq);
 	ctx->state = CAM_CTX_ACQUIRED;
 
 	trace_cam_context_state("ISP", ctx);
@@ -5034,11 +5067,16 @@ static int __cam_isp_ctx_config_dev_in_top_state(
 				ctx->state);
 		}
 	} else {
+		if ((ctx->state == CAM_CTX_FLUSHED) || (ctx->state < CAM_CTX_READY)) {
+			rc = -EINVAL;
+			CAM_ERR(CAM_ISP, "Received update req %lld in wrong state:%d",
+				req->request_id, ctx->state);
+			goto put_ref;
+		}
+
 		if (ctx_isp->offline_context) {
 			__cam_isp_ctx_enqueue_request_in_order(ctx, req);
-		} else if ((ctx->state != CAM_CTX_FLUSHED) &&
-			(ctx->state >= CAM_CTX_READY) &&
-			ctx->ctx_crm_intf->add_req) {
+		} else if (ctx->ctx_crm_intf->add_req) {
 			memset(&add_req, 0, sizeof(add_req));
 			add_req.link_hdl = ctx->link_hdl;
 			add_req.dev_hdl  = ctx->dev_hdl;
@@ -5052,10 +5090,8 @@ static int __cam_isp_ctx_config_dev_in_top_state(
 					ctx, req);
 			}
 		} else {
-			rc = -EINVAL;
-			CAM_ERR(CAM_ISP,
-				"Recevied update req %lld in wrong state:%d",
-				req->request_id, ctx->state);
+			CAM_ERR(CAM_ISP, "Unable to add request: req id=%llu", req->request_id);
+			rc = -ENODEV;
 		}
 	}
 	if (rc)
@@ -6033,7 +6069,7 @@ static int __cam_isp_ctx_stop_dev_in_activated_unlock(
 			"Notify CRM about device stop ctx %u link 0x%x",
 			ctx->ctx_id, ctx->link_hdl);
 		ctx->ctx_crm_intf->notify_stop(&notify);
-	} else
+	} else if (!ctx_isp->offline_context)
 		CAM_ERR(CAM_ISP, "cb not present");
 
 	while (!list_empty(&ctx->pending_req_list)) {
@@ -6460,6 +6496,7 @@ static struct cam_ctx_ops
 			.acquire_hw = __cam_isp_ctx_acquire_hw_in_acquired,
 			.release_dev = __cam_isp_ctx_release_dev_in_top_state,
 			.config_dev = __cam_isp_ctx_config_dev_in_acquired,
+			.flush_dev = __cam_isp_ctx_flush_dev_in_top_state,
 			.release_hw = __cam_isp_ctx_release_hw_in_top_state,
 		},
 		.crm_ops = {
@@ -6479,6 +6516,7 @@ static struct cam_ctx_ops
 			.start_dev = __cam_isp_ctx_start_dev_in_ready,
 			.release_dev = __cam_isp_ctx_release_dev_in_top_state,
 			.config_dev = __cam_isp_ctx_config_dev_in_top_state,
+			.flush_dev = __cam_isp_ctx_flush_dev_in_top_state,
 			.release_hw = __cam_isp_ctx_release_hw_in_top_state,
 		},
 		.crm_ops = {
@@ -6512,6 +6550,7 @@ static struct cam_ctx_ops
 			.stop_dev = __cam_isp_ctx_stop_dev_in_activated,
 			.release_dev = __cam_isp_ctx_release_dev_in_activated,
 			.config_dev = __cam_isp_ctx_config_dev_in_top_state,
+			.flush_dev = __cam_isp_ctx_flush_dev_in_top_state,
 			.release_hw = __cam_isp_ctx_release_hw_in_activated,
 		},
 		.crm_ops = {
