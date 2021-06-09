@@ -784,6 +784,89 @@ static void cam_vfe_top_ver4_check_module_status(
 	}
 }
 
+static void cam_vfe_top_ver4_print_pdaf_violation_info(
+	struct cam_vfe_mux_ver4_data *vfe_priv)
+{
+	struct cam_vfe_top_ver4_priv        *top_priv;
+	struct cam_hw_soc_info              *soc_info;
+	struct cam_vfe_top_ver4_common_data *common_data;
+	void __iomem                        *base;
+	uint32_t                             val = 0;
+	uint32_t                             i = 0;
+
+	top_priv    =  vfe_priv->top_priv;
+	common_data = &top_priv->common_data;
+	soc_info    =  top_priv->top_common.soc_info;
+	base        =  soc_info->reg_map[VFE_CORE_BASE_IDX].mem_base;
+	val         =  cam_io_r(base +
+			    common_data->common_reg->pdaf_violation_status),
+
+	CAM_INFO(CAM_ISP, "VFE[%u] PDAF HW Violation status 0x%x",
+	     soc_info->index, val);
+
+	for (i = 0; i < common_data->hw_info->num_pdaf_violation_errors; i++) {
+		if (common_data->hw_info->pdaf_violation_desc[i].bitmask &
+			val) {
+			CAM_ERR(CAM_ISP, "%s",
+				common_data->hw_info->pdaf_violation_desc[i].desc);
+
+		}
+	}
+}
+
+static void cam_vfe_top_ver4_print_ipp_violation_info(
+	struct cam_vfe_top_ver4_priv *top_priv)
+{
+	struct cam_hw_soc_info              *soc_info;
+	struct cam_vfe_top_ver4_common_data *common_data;
+	void __iomem                        *base;
+	uint32_t                             val = 0;
+
+	common_data = &top_priv->common_data;
+	soc_info    =  top_priv->top_common.soc_info;
+	base        =  soc_info->reg_map[VFE_CORE_BASE_IDX].mem_base;
+	val         =  cam_io_r(base +
+			    common_data->common_reg->ipp_violation_status),
+
+	CAM_INFO(CAM_ISP, "VFE[%u] IPP Violation status 0x%x",
+	     soc_info->index, val);
+
+	if (common_data->hw_info->ipp_module_desc)
+		CAM_ERR(CAM_ISP, "VFE[%u] IPP Violation Module id: [%u %s]",
+			soc_info->index,
+			common_data->hw_info->ipp_module_desc[val].id,
+			common_data->hw_info->ipp_module_desc[val].desc);
+
+}
+
+static void cam_vfe_top_ver4_print_top_irq_error(
+	struct cam_vfe_mux_ver4_data *vfe_priv,
+	uint32_t irq_status)
+{
+	uint32_t                                    i = 0;
+	struct cam_vfe_top_ver4_priv               *top_priv;
+	struct cam_vfe_top_ver4_common_data        *common_data;
+
+	top_priv    =  vfe_priv->top_priv;
+	common_data = &top_priv->common_data;
+
+	for (i = 0; i < common_data->hw_info->num_top_errors; i++) {
+		if (common_data->hw_info->top_err_desc[i].bitmask &
+			irq_status) {
+			CAM_ERR(CAM_ISP, "%s %s",
+				common_data->hw_info->top_err_desc[i].err_name,
+				common_data->hw_info->top_err_desc[i].desc);
+
+		}
+	}
+
+	if (irq_status & vfe_priv->reg_data->ipp_violation_mask)
+		cam_vfe_top_ver4_print_ipp_violation_info(top_priv);
+
+	if (irq_status & vfe_priv->reg_data->pdaf_violation_mask)
+		cam_vfe_top_ver4_print_pdaf_violation_info(vfe_priv);
+}
+
 static void cam_vfe_top_ver4_print_debug_reg_status(
 	struct cam_vfe_top_ver4_priv *top_priv)
 {
@@ -1207,31 +1290,6 @@ int cam_vfe_top_ver4_release(void *device_priv,
 	return 0;
 }
 
-static void cam_vfe_top_ver4_print_violation_info(
-	struct cam_vfe_top_ver4_priv *top_priv)
-{
-	struct cam_hw_soc_info              *soc_info;
-	struct cam_vfe_top_ver4_common_data *common_data;
-	void __iomem                        *base;
-	uint32_t                             val = 0;
-
-	common_data = &top_priv->common_data;
-	soc_info    =  top_priv->top_common.soc_info;
-	base        =  soc_info->reg_map[VFE_CORE_BASE_IDX].mem_base;
-	val         =  cam_io_r(base +
-			    common_data->common_reg->violation_status),
-
-	CAM_ERR(CAM_ISP, "VFE[%u] PP Violation status 0x%x",
-	     soc_info->index, val);
-
-	if (common_data->hw_info->module_desc)
-		CAM_ERR(CAM_ISP, "VFE[%u] PP Violation Module id: %u %s]",
-			soc_info->index,
-			common_data->hw_info->module_desc[val].id,
-			common_data->hw_info->module_desc[val].desc);
-
-}
-
 int cam_vfe_top_ver4_start(void *device_priv,
 	void *start_args, uint32_t arg_size)
 {
@@ -1644,10 +1702,8 @@ static int cam_vfe_handle_irq_bottom_half(void *handler_priv,
 
 		cam_vfe_top_ver4_print_debug_reg_status(vfe_priv->top_priv);
 
-		if (irq_status[CAM_IFE_IRQ_CAMIF_REG_STATUS0] &
-			vfe_priv->reg_data->pp_violation_mask)
-			cam_vfe_top_ver4_print_violation_info(
-				vfe_priv->top_priv);
+		cam_vfe_top_ver4_print_top_irq_error(vfe_priv,
+			irq_status[CAM_IFE_IRQ_CAMIF_REG_STATUS0]);
 
 		ret = CAM_VFE_IRQ_STATUS_ERR;
 	}

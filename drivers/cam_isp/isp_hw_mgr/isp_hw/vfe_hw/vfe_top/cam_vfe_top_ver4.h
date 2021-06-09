@@ -38,7 +38,8 @@ struct cam_vfe_top_ver4_reg_offset_common {
 	uint32_t period_cfg;
 	uint32_t reg_update_cmd;
 	uint32_t trigger_cdm_events;
-	uint32_t violation_status;
+	uint32_t ipp_violation_status;
+	uint32_t pdaf_violation_status;
 	uint32_t custom_frame_idx;
 	uint32_t dsp_status;
 	uint32_t diag_config;
@@ -81,6 +82,17 @@ struct cam_vfe_top_ver4_wr_client_desc {
 	uint8_t  *desc;
 };
 
+struct cam_vfe_top_ver4_top_err_irq_desc {
+	uint32_t  bitmask;
+	char     *err_name;
+	char     *desc;
+};
+
+struct cam_vfe_top_ver4_pdaf_violation_desc {
+	uint32_t  bitmask;
+	char     *desc;
+};
+
 struct cam_vfe_ver4_path_hw_info {
 	struct cam_vfe_top_ver4_reg_offset_common  *common_reg;
 	struct cam_vfe_ver4_path_reg_data          *reg_data;
@@ -95,24 +107,29 @@ struct cam_vfe_top_ver4_hw_info {
 
 	struct cam_vfe_ver4_path_reg_data          *reg_data;
 	struct cam_vfe_top_ver4_wr_client_desc     *wr_client_desc;
-	struct cam_vfe_top_ver4_module_desc        *module_desc;
+	struct cam_vfe_top_ver4_module_desc        *ipp_module_desc;
 	uint32_t                                    num_reg;
 	uint32_t                                    num_mux;
 	uint32_t                                    num_path_port_map;
 	uint32_t mux_type[CAM_VFE_TOP_MUX_MAX];
 	uint32_t path_port_map[CAM_ISP_HW_PATH_PORT_MAP_MAX][2];
+	uint32_t                                     num_top_errors;
+	struct cam_vfe_top_ver4_top_err_irq_desc    *top_err_desc;
+	uint32_t                                     num_pdaf_violation_errors;
+	struct cam_vfe_top_ver4_pdaf_violation_desc *pdaf_violation_desc;
 };
 
 struct cam_vfe_ver4_path_reg_data {
-	uint32_t     epoch_line_cfg;
-	uint32_t     sof_irq_mask;
-	uint32_t     epoch0_irq_mask;
-	uint32_t     epoch1_irq_mask;
-	uint32_t     eof_irq_mask;
-	uint32_t     error_irq_mask;
-	uint32_t     enable_diagnostic_hw;
-	uint32_t     top_debug_cfg_en;
-	uint32_t     pp_violation_mask;
+	uint32_t                                     epoch_line_cfg;
+	uint32_t                                     sof_irq_mask;
+	uint32_t                                     epoch0_irq_mask;
+	uint32_t                                     epoch1_irq_mask;
+	uint32_t                                     eof_irq_mask;
+	uint32_t                                     error_irq_mask;
+	uint32_t                                     enable_diagnostic_hw;
+	uint32_t                                     top_debug_cfg_en;
+	uint32_t                                     ipp_violation_mask;
+	uint32_t                                     pdaf_violation_mask;
 };
 
 

@@ -12,7 +12,7 @@
 #include "cam_vfe_bus_ver3.h"
 #include "cam_irq_controller.h"
 
-static struct cam_vfe_top_ver4_module_desc vfe68x_pp_mod_desc[] = {
+static struct cam_vfe_top_ver4_module_desc vfe68x_ipp_mod_desc[] = {
 	{
 		.id = 0,
 		.desc = "CLC_BLS",
@@ -83,7 +83,7 @@ static struct cam_vfe_top_ver4_reg_offset_common vfe68x_top_common_reg = {
 	.diag_config              = 0x00001040,
 	.diag_sensor_status_0     = 0x00001044,
 	.diag_sensor_status_1     = 0x00001048,
-	.violation_status         = 0x00001054,
+	.ipp_violation_status     = 0x00001054,
 	.bus_violation_status     = 0x00001264,
 	.bus_overflow_status      = 0x00001268,
 	.top_debug_cfg            = 0x00001074,
@@ -104,7 +104,7 @@ static struct cam_vfe_ver4_path_reg_data vfe68x_ipp_reg_data =
 	.error_irq_mask                  = 0x2,
 	.enable_diagnostic_hw            = 0x1,
 	.top_debug_cfg_en                = 0x3,
-	.pp_violation_mask               = 0x10,
+	.ipp_violation_mask              = 0x10,
 };
 
 static struct cam_vfe_ver4_path_reg_data vfe68x_rdi_reg_data[4] = {
@@ -170,7 +170,7 @@ static struct cam_vfe_top_ver4_hw_info vfe68x_top_hw_info = {
 		.common_reg     = &vfe68x_top_common_reg,
 		.reg_data       = &vfe68x_ipp_reg_data,
 	},
-	.module_desc            = vfe68x_pp_mod_desc,
+	.ipp_module_desc        = vfe68x_ipp_mod_desc,
 	.wr_client_desc         = vfe680x_wr_client_desc,
 	.num_mux = 5,
 	.mux_type = {
