@@ -94,10 +94,26 @@ enum cam_ife_csid_irq_reg {
 /*
  * struct cam_ife_csid_irq_desc: Structure to hold IRQ description
  *
+ * @bitmask  :       Bitmask of the IRQ
  * @irq_desc:        String to describe the IRQ bit
  */
 struct cam_ife_csid_irq_desc {
+	uint32_t    bitmask;
 	uint8_t    *desc;
+};
+
+/*
+ * struct cam_ife_csid_top_irq_desc: Structure to hold IRQ bitmask and description
+ *
+ * @bitmask  :        Bitmask of the IRQ
+ * @err_name :        IRQ name
+ * @desc     :        String to describe about the IRQ
+ */
+struct cam_ife_csid_top_irq_desc {
+	uint32_t    bitmask;
+	uint32_t    err_type;
+	char       *err_name;
+	char       *desc;
 };
 
 /*
