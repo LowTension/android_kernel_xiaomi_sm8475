@@ -233,6 +233,36 @@ static int cam_ife_mgr_handle_reg_dump(struct cam_ife_hw_mgr_ctx *ctx,
 	return rc;
 }
 
+static inline void cam_ife_mgr_update_hw_entries_util(
+	enum cam_isp_cdm_bl_type               cdm_bl_type,
+	uint32_t                               total_used_bytes,
+	struct cam_kmd_buf_info               *kmd_buf_info,
+	struct cam_hw_prepare_update_args     *prepare)
+{
+	uint32_t num_ent;
+
+	num_ent = prepare->num_hw_update_entries;
+	prepare->hw_update_entries[num_ent].handle =
+		kmd_buf_info->handle;
+	prepare->hw_update_entries[num_ent].len =
+		total_used_bytes;
+	prepare->hw_update_entries[num_ent].offset =
+		kmd_buf_info->offset;
+	prepare->hw_update_entries[num_ent].flags = cdm_bl_type;
+
+	num_ent++;
+	kmd_buf_info->used_bytes += total_used_bytes;
+	kmd_buf_info->offset     += total_used_bytes;
+	prepare->num_hw_update_entries = num_ent;
+
+	CAM_DBG(CAM_ISP, "Handle: 0x%x len: %u offset: %u flags: %u num_ent: %u",
+		prepare->hw_update_entries[num_ent - 1].handle,
+		prepare->hw_update_entries[num_ent - 1].len,
+		prepare->hw_update_entries[num_ent - 1].offset,
+		prepare->hw_update_entries[num_ent - 1].flags,
+		num_ent);
+}
+
 static inline int cam_ife_mgr_allocate_cdm_cmd(
 	bool is_sfe_en,
 	struct cam_cdm_bl_request **cdm_cmd)
@@ -2212,7 +2242,7 @@ static int cam_ife_hw_mgr_acquire_sfe_hw(
 	struct cam_ife_hw_mgr_ctx          *ife_ctx,
 	struct cam_sfe_acquire_args        *sfe_acquire)
 {
-	int i, rc;
+	int i, rc = -EINVAL;
 	struct cam_hw_intf    *hw_intf = NULL;
 	struct cam_ife_hw_mgr *ife_hw_mgr = ife_ctx->hw_mgr;
 
@@ -6708,7 +6738,7 @@ static int cam_isp_blob_ubwc_update(
 	uint32_t                               kmd_buf_remain_size;
 	uint32_t                              *cmd_buf_addr;
 	uint32_t                               bytes_used = 0;
-	int                                    num_ent, rc = 0;
+	int                                    rc = 0;
 
 	ctx = prepare->ctxt_to_hw_map;
 	if (!ctx) {
@@ -6790,21 +6820,9 @@ static int cam_isp_blob_ubwc_update(
 			total_used_bytes += bytes_used;
 		}
 
-		if (total_used_bytes) {
-			/* Update the HW entries */
-			num_ent = prepare->num_hw_update_entries;
-			prepare->hw_update_entries[num_ent].handle =
-				kmd_buf_info->handle;
-			prepare->hw_update_entries[num_ent].len =
-				total_used_bytes;
-			prepare->hw_update_entries[num_ent].offset =
-				kmd_buf_info->offset;
-			num_ent++;
-
-			kmd_buf_info->used_bytes += total_used_bytes;
-			kmd_buf_info->offset     += total_used_bytes;
-			prepare->num_hw_update_entries = num_ent;
-		}
+		if (total_used_bytes)
+			cam_ife_mgr_update_hw_entries_util(
+				CAM_ISP_UNUSED_BL, total_used_bytes, kmd_buf_info, prepare);
 		break;
 	default:
 		CAM_ERR(CAM_ISP, "Invalid UBWC API Version %d",
@@ -6879,7 +6897,7 @@ static int cam_isp_blob_ubwc_update_v2(
 	uint32_t                               kmd_buf_remain_size;
 	uint32_t                              *cmd_buf_addr;
 	uint32_t                               bytes_used = 0;
-	int                                    num_ent, rc = 0;
+	int                                    rc = 0;
 	struct cam_vfe_generic_ubwc_config     generic_ubwc_cfg;
 
 	ctx = prepare->ctxt_to_hw_map;
@@ -6963,20 +6981,10 @@ static int cam_isp_blob_ubwc_update_v2(
 		total_used_bytes += bytes_used;
 	}
 
-	if (total_used_bytes) {
-		/* Update the HW entries */
-		num_ent = prepare->num_hw_update_entries;
-		prepare->hw_update_entries[num_ent].handle =
-			kmd_buf_info->handle;
-		prepare->hw_update_entries[num_ent].len = total_used_bytes;
-		prepare->hw_update_entries[num_ent].offset =
-			kmd_buf_info->offset;
-		num_ent++;
+	if (total_used_bytes)
+		cam_ife_mgr_update_hw_entries_util(
+			CAM_ISP_UNUSED_BL, total_used_bytes, kmd_buf_info, prepare);
 
-		kmd_buf_info->used_bytes += total_used_bytes;
-		kmd_buf_info->offset     += total_used_bytes;
-		prepare->num_hw_update_entries = num_ent;
-	}
 end:
 	return rc;
 }
@@ -7226,7 +7234,7 @@ static int cam_isp_blob_hfr_update(
 	uint32_t                               kmd_buf_remain_size;
 	uint32_t                              *cmd_buf_addr;
 	uint32_t                               bytes_used = 0;
-	int                                    num_ent, rc = 0;
+	int                                    rc = 0;
 
 	ctx = prepare->ctxt_to_hw_map;
 	CAM_DBG(CAM_ISP, "num_ports= %d",
@@ -7295,19 +7303,9 @@ static int cam_isp_blob_hfr_update(
 		total_used_bytes += bytes_used;
 	}
 
-	if (total_used_bytes) {
-		/* Update the HW entries */
-		num_ent = prepare->num_hw_update_entries;
-		prepare->hw_update_entries[num_ent].handle =
-			kmd_buf_info->handle;
-		prepare->hw_update_entries[num_ent].len = total_used_bytes;
-		prepare->hw_update_entries[num_ent].offset =
-			kmd_buf_info->offset;
-		num_ent++;
-		kmd_buf_info->used_bytes += total_used_bytes;
-		kmd_buf_info->offset     += total_used_bytes;
-		prepare->num_hw_update_entries = num_ent;
-	}
+	if (total_used_bytes)
+		cam_ife_mgr_update_hw_entries_util(
+			CAM_ISP_IQ_BL, total_used_bytes, kmd_buf_info, prepare);
 
 	return rc;
 }
@@ -7847,7 +7845,7 @@ static int cam_isp_blob_vfe_out_update(
 	uint32_t                               kmd_buf_remain_size;
 	uint32_t                              *cmd_buf_addr;
 	uint32_t                               bytes_used = 0;
-	int                                    num_ent, rc = 0;
+	int                                    rc = 0;
 
 	ctx = prepare->ctxt_to_hw_map;
 
@@ -7915,18 +7913,9 @@ static int cam_isp_blob_vfe_out_update(
 		total_used_bytes += bytes_used;
 	}
 
-	if (total_used_bytes) {
-		num_ent = prepare->num_hw_update_entries;
-		prepare->hw_update_entries[num_ent].handle =
-			kmd_buf_info->handle;
-		prepare->hw_update_entries[num_ent].len = total_used_bytes;
-		prepare->hw_update_entries[num_ent].offset =
-			kmd_buf_info->offset;
-		num_ent++;
-		kmd_buf_info->used_bytes += total_used_bytes;
-		kmd_buf_info->offset     += total_used_bytes;
-		prepare->num_hw_update_entries = num_ent;
-	}
+	if (total_used_bytes)
+		cam_ife_mgr_update_hw_entries_util(
+			CAM_ISP_UNUSED_BL, total_used_bytes, kmd_buf_info, prepare);
 
 	return rc;
 }
@@ -7994,7 +7983,7 @@ static int cam_isp_blob_bw_limit_update(
 	uint32_t                               kmd_buf_remain_size;
 	uint32_t                              *cmd_buf_addr;
 	uint32_t                               bytes_used = 0;
-	int                                    num_ent, rc = 0;
+	int                                    rc = 0;
 
 	ctx = prepare->ctxt_to_hw_map;
 
@@ -8078,18 +8067,9 @@ static int cam_isp_blob_bw_limit_update(
 		total_used_bytes += bytes_used;
 	}
 
-	if (total_used_bytes) {
-		num_ent = prepare->num_hw_update_entries;
-		prepare->hw_update_entries[num_ent].handle =
-			kmd_buf_info->handle;
-		prepare->hw_update_entries[num_ent].len = total_used_bytes;
-		prepare->hw_update_entries[num_ent].offset =
-			kmd_buf_info->offset;
-		num_ent++;
-		kmd_buf_info->used_bytes += total_used_bytes;
-		kmd_buf_info->offset     += total_used_bytes;
-		prepare->num_hw_update_entries = num_ent;
-	}
+	if (total_used_bytes)
+		cam_ife_mgr_update_hw_entries_util(
+			CAM_ISP_IQ_BL, total_used_bytes, kmd_buf_info, prepare);
 
 	return rc;
 }
@@ -9243,7 +9223,7 @@ static int cam_isp_sfe_add_scratch_buffer_cfg(
 {
 	int i, j, res_id, rc = 0;
 	uint32_t used_bytes = 0, remain_size = 0;
-	uint32_t io_cfg_used_bytes, num_ent;
+	uint32_t io_cfg_used_bytes;
 	uint32_t *cpu_addr = NULL;
 	struct cam_sfe_scratch_buf_info   *buf_info;
 	struct cam_isp_hw_mgr_res         *hw_mgr_res;
@@ -9390,28 +9370,9 @@ static int cam_isp_sfe_add_scratch_buffer_cfg(
 		}
 	}
 
-	if (io_cfg_used_bytes) {
-		/* Update the HW entries */
-		num_ent = prepare->num_hw_update_entries;
-		prepare->hw_update_entries[num_ent].handle =
-			kmd_buf_info->handle;
-		prepare->hw_update_entries[num_ent].len =
-			io_cfg_used_bytes;
-		prepare->hw_update_entries[num_ent].offset =
-			kmd_buf_info->offset;
-		prepare->hw_update_entries[num_ent].flags = CAM_ISP_IOCFG_BL;
-		CAM_DBG(CAM_ISP,
-			"num_ent: %d handle: 0x%x len: %u offset: %u",
-			num_ent,
-			prepare->hw_update_entries[num_ent].handle,
-			prepare->hw_update_entries[num_ent].len,
-			prepare->hw_update_entries[num_ent].offset);
-		num_ent++;
-
-		kmd_buf_info->used_bytes += io_cfg_used_bytes;
-		kmd_buf_info->offset     += io_cfg_used_bytes;
-		prepare->num_hw_update_entries = num_ent;
-	}
+	if (io_cfg_used_bytes)
+		cam_ife_mgr_update_hw_entries_util(
+			CAM_ISP_IOCFG_BL, io_cfg_used_bytes, kmd_buf_info, prepare);
 
 	return rc;
 }

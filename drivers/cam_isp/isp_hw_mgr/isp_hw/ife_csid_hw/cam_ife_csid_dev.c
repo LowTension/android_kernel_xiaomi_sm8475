@@ -150,6 +150,11 @@ int cam_ife_csid_hw_init(struct cam_hw_intf **ife_csid_hw,
 {
 	int rc = 0;
 
+	if (hw_idx >= CAM_IFE_CSID_HW_NUM_MAX) {
+		*ife_csid_hw = NULL;
+		return -EINVAL;
+	}
+
 	if (cam_ife_csid_hw_list[hw_idx]) {
 		*ife_csid_hw = cam_ife_csid_hw_list[hw_idx];
 	} else {
