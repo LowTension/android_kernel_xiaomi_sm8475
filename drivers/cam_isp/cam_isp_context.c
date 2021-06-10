@@ -957,6 +957,18 @@ static int __cam_isp_ctx_handle_buf_done_for_req_list(
 		list_add_tail(&req->list, &ctx->free_req_list);
 		req_isp->reapply = false;
 		req_isp->cdm_reset_before_apply = false;
+		req_isp->num_acked = 0;
+		req_isp->num_deferred_acks = 0;
+		req_isp->bubble_detected = false;
+		/*
+		 * Only update the process_bubble and bubble_frame_cnt
+		 * when bubble is detected on this req, in case the other
+		 * request is processing bubble.
+		 */
+		if (req_isp->bubble_detected) {
+			atomic_set(&ctx_isp->process_bubble, 0);
+			ctx_isp->bubble_frame_cnt = 0;
+		}
 
 		CAM_DBG(CAM_REQ,
 			"Move active request %lld to free list(cnt = %d) [all fences done], ctx %u",
@@ -2233,6 +2245,7 @@ static int __cam_isp_ctx_epoch_in_applied(struct cam_isp_context *ctx_isp,
 					ctx_isp->frame_id, ctx->ctx_id);
 			}
 		}
+		atomic_set(&ctx_isp->process_bubble, 1);
 	}
 
 	/*
@@ -2475,6 +2488,7 @@ static int __cam_isp_ctx_epoch_in_bubble_applied(
 					ctx_isp->frame_id, ctx->ctx_id);
 			}
 		}
+		atomic_set(&ctx_isp->process_bubble, 1);
 	}
 
 	/*
