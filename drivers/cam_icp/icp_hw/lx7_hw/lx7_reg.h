@@ -30,7 +30,10 @@
 #define ICP_LX7_CIRQ_OB_IRQ_CMD 0x10
 #define LX7_IRQ_CLEAR_CMD       (1 << 1)
 
-#define ICP_LX7_CIRQ_HOST2ICPINT 0x124
+#define ICP_LX7_CIRQ_IB_STATUS0   0x70
+#define ICP_LX7_CIRQ_IB_STATUS1   0x74
+#define ICP_LX7_CIRQ_HOST2ICPINT  0x124
+#define ICP_LX7_CIRQ_PFAULT_INFO  0x128
 #define LX7_HOST2ICPINT          (1 << 0)
 
 #endif /* _CAM_LX7_REG_H_ */

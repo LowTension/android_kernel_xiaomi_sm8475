@@ -214,6 +214,9 @@ int hfi_write_cmd(void *cmd_ptr)
 	 */
 	wmb();
 	hfi_irq_raise(g_hfi);
+
+	/* Ensure HOST2ICP trigger is received by FW */
+	wmb();
 err:
 	mutex_unlock(&hfi_cmd_q_mutex);
 	return rc;
