@@ -459,9 +459,9 @@ static int cam_sfe_bus_start_rm(struct cam_isp_resource_node *rm_res)
 	rm_res->res_state = CAM_ISP_RESOURCE_STATE_STREAMING;
 
 	CAM_DBG(CAM_SFE,
-		"Start SFE:%d RM:%d offset:0x%X en_cfg:0x%X width:%d height:%d",
+		"Start SFE:%d RM:%d offset:0x%X width:%d height:%d",
 		rm_data->common_data->core_index, rm_data->index,
-		(uint32_t) rm_data->hw_regs->cfg, rm_data->en_cfg,
+		(uint32_t) rm_data->hw_regs->cfg,
 		rm_data->width, rm_data->height);
 	CAM_DBG(CAM_SFE, "RM:%d pk_fmt:%d stride:%d", rm_data->index,
 		rm_data->unpacker_cfg, rm_data->stride);
@@ -1392,6 +1392,84 @@ skip_cache_cfg:
 	return 0;
 }
 
+static int cam_sfe_bus_rd_update_rm_core_cfg(
+	void *priv, void *cmd_args, uint32_t arg_size)
+{
+	struct cam_sfe_bus_rd_priv             *bus_priv;
+	struct cam_isp_hw_get_cmd_update       *cmd_update;
+	struct cam_sfe_bus_rd_data             *sfe_bus_rd_data = NULL;
+	struct cam_sfe_bus_rd_rm_resource_data *rm_data = NULL;
+	struct cam_cdm_utils_ops               *cdm_util_ops;
+	bool      enable_disable = false;
+	uint32_t *reg_val_pair;
+	uint32_t  num_regval_pairs = 0, i, j, size = 0;
+
+	bus_priv   = (struct cam_sfe_bus_rd_priv  *) priv;
+	cmd_update =  (struct cam_isp_hw_get_cmd_update *) cmd_args;
+	enable_disable = *(bool *)cmd_update->data;
+
+	sfe_bus_rd_data = (struct cam_sfe_bus_rd_data *)
+		cmd_update->res->res_priv;
+
+	if (!sfe_bus_rd_data) {
+		CAM_ERR(CAM_SFE, "Invalid SFE rd data: %pK",
+			sfe_bus_rd_data);
+		return -EINVAL;
+	}
+
+	cdm_util_ops = sfe_bus_rd_data->cdm_util_ops;
+	if (!cdm_util_ops) {
+		CAM_ERR(CAM_SFE, "Invalid cdm ops: %pK",
+			cdm_util_ops);
+		return -EINVAL;
+	}
+
+	reg_val_pair = &sfe_bus_rd_data->common_data->io_buf_update[0];
+	for (i = 0, j = 0; i < sfe_bus_rd_data->num_rm; i++) {
+		if (j >= (MAX_REG_VAL_PAIR_SIZE - MAX_BUF_UPDATE_REG_NUM * 2)) {
+			CAM_ERR(CAM_SFE,
+				"reg_val_pair %d exceeds the array limit %lu",
+				j, MAX_REG_VAL_PAIR_SIZE);
+			return -ENOMEM;
+		}
+
+		rm_data = sfe_bus_rd_data->rm_res[i]->res_priv;
+		CAM_SFE_ADD_REG_VAL_PAIR(reg_val_pair, j,
+			rm_data->hw_regs->cfg, enable_disable);
+		CAM_DBG(CAM_SFE, "SFE:%d RM:%d cfg:0x%x",
+			rm_data->common_data->core_index,
+			rm_data->index, reg_val_pair[j-1]);
+	}
+
+	num_regval_pairs = j / 2;
+	if (num_regval_pairs) {
+		size = cdm_util_ops->cdm_required_size_reg_random(
+			num_regval_pairs);
+
+		/* cdm util returns dwords, need to convert to bytes */
+		if ((size * 4) > cmd_update->cmd.size) {
+			CAM_ERR(CAM_SFE,
+				"Failed! Buf size:%d insufficient, expected size:%d",
+				cmd_update->cmd.size, size);
+			return -ENOMEM;
+		}
+
+		cdm_util_ops->cdm_write_regrandom(
+			cmd_update->cmd.cmd_buf_addr, num_regval_pairs,
+			reg_val_pair);
+
+		/* cdm util returns dwords, need to convert to bytes */
+		cmd_update->cmd.used_bytes = size * 4;
+	} else {
+		cmd_update->cmd.used_bytes = 0;
+		CAM_DBG(CAM_SFE,
+			"No reg val pairs. num_rms: %u",
+			sfe_bus_rd_data->num_rm);
+	}
+
+	return 0;
+}
+
 static int cam_sfe_bus_init_hw(void *hw_priv,
 	void *init_hw_args, uint32_t arg_size)
 {
@@ -1494,6 +1572,9 @@ static int cam_sfe_bus_rd_process_cmd(
 		break;
 	case CAM_ISP_HW_SFE_SYS_CACHE_RM_CONFIG:
 		rc = cam_sfe_bus_rd_cache_config(priv, cmd_args, arg_size);
+		break;
+	case CAM_ISP_HW_CMD_RM_ENABLE_DISABLE:
+		rc = cam_sfe_bus_rd_update_rm_core_cfg(priv, cmd_args, arg_size);
 		break;
 	default:
 		CAM_ERR_RATE_LIMIT(CAM_SFE,

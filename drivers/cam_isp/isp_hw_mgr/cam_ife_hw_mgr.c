@@ -7217,6 +7217,93 @@ end:
 	return 0;
 }
 
+static int cam_isp_blob_sfe_update_fetch_core_cfg(
+	uint32_t                               blob_type,
+	struct cam_isp_generic_blob_info      *blob_info,
+	struct cam_hw_prepare_update_args     *prepare)
+{
+	int                                rc;
+	uint32_t                           used_bytes = 0, total_used_bytes = 0;
+	uint32_t                           remain_size, res_id;
+	uint32_t                          *cpu_addr = NULL;
+	bool                               enable = true;
+	struct cam_isp_hw_mgr_res         *hw_mgr_res;
+	struct cam_kmd_buf_info           *kmd_buf_info;
+	struct cam_ife_hw_mgr_ctx         *ctx = NULL;
+
+	ctx = prepare->ctxt_to_hw_map;
+	if (prepare->num_hw_update_entries + 1 >=
+		prepare->max_hw_update_entries) {
+		CAM_ERR(CAM_ISP, "Insufficient HW entries :%d",
+			prepare->num_hw_update_entries);
+		return -EINVAL;
+	}
+
+	kmd_buf_info = blob_info->kmd_buf_info;
+	list_for_each_entry(hw_mgr_res,  &ctx->res_list_ife_in_rd, list) {
+		if ((kmd_buf_info->used_bytes
+			+ total_used_bytes) < kmd_buf_info->size) {
+			remain_size = kmd_buf_info->size -
+				(kmd_buf_info->used_bytes +
+				total_used_bytes);
+		} else {
+			CAM_ERR(CAM_ISP,
+				"No free kmd memory for base idx: %d",
+				blob_info->base_info->idx);
+				rc = -ENOMEM;
+				return rc;
+		}
+
+		cpu_addr = kmd_buf_info->cpu_addr +
+			(kmd_buf_info->used_bytes / 4) +
+			(total_used_bytes / 4);
+
+		res_id = hw_mgr_res->res_id;
+
+		/* check for active fetches */
+		if ((ctx->ctx_config &
+			CAM_IFE_CTX_CFG_DYNAMIC_SWITCH_ON) &&
+			((res_id - CAM_ISP_SFE_IN_RD_0) >=
+			ctx->sfe_info.scratch_config->curr_num_exp))
+			enable = false;
+		else
+			enable = true;
+
+		cpu_addr = kmd_buf_info->cpu_addr +
+			kmd_buf_info->used_bytes  / 4 +
+			total_used_bytes / 4;
+
+		CAM_DBG(CAM_ISP,
+			"SFE:%u RM: %u res_id: 0x%x enable: %u num_exp: %u",
+			blob_info->base_info->idx,
+			(res_id - CAM_ISP_SFE_IN_RD_0), res_id, enable,
+			ctx->sfe_info.scratch_config->curr_num_exp);
+
+		rc = cam_isp_add_cmd_buf_update(
+			hw_mgr_res, blob_type,
+			CAM_ISP_HW_CMD_RM_ENABLE_DISABLE,
+			blob_info->base_info->idx,
+			(void *)cpu_addr, remain_size,
+			(void *)&enable, &used_bytes);
+		if (rc < 0) {
+			CAM_ERR(CAM_ISP,
+				"Failed to dynamically %s SFE: %u RM: %u bytes_used: %u rc: %d",
+				(enable ? "enable" : "disable"),
+				blob_info->base_info->idx, res_id,
+				used_bytes, rc);
+			return rc;
+		}
+
+		total_used_bytes += used_bytes;
+	}
+
+	if (total_used_bytes)
+		cam_ife_mgr_update_hw_entries_util(
+			false, total_used_bytes, kmd_buf_info, prepare);
+
+	return 0;
+}
+
 static int cam_isp_blob_hfr_update(
 	uint32_t                               blob_type,
 	struct cam_isp_generic_blob_info      *blob_info,
@@ -9042,8 +9129,16 @@ static int cam_sfe_packet_generic_blob_handler(void *user_data,
 		}
 
 		mup_config = (struct cam_isp_mode_switch_info *)blob_data;
-		ife_mgr_ctx->sfe_info.scratch_config->curr_num_exp =
-			mup_config->num_expoures;
+		if (ife_mgr_ctx->flags.is_sfe_shdr) {
+			ife_mgr_ctx->sfe_info.scratch_config->curr_num_exp =
+				mup_config->num_expoures;
+
+			rc = cam_isp_blob_sfe_update_fetch_core_cfg(
+				blob_type, blob_info, prepare);
+			if (rc)
+				CAM_ERR(CAM_ISP,
+					"SFE dynamic enable/disable for fetch failed");
+		}
 	}
 		break;
 	case CAM_ISP_GENERIC_BLOB_TYPE_SFE_EXP_ORDER_CFG: {
