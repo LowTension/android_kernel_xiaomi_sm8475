@@ -122,6 +122,7 @@
 #define CAM_ISP_GENERIC_BLOB_TYPE_TPG_CORE_CONFIG           14
 #define CAM_ISP_GENERIC_BLOB_TYPE_DYNAMIC_MODE_SWITCH       15
 #define CAM_ISP_GENERIC_BLOB_TYPE_BW_LIMITER_CFG            16
+#define CAM_ISP_GENERIC_BLOB_TYPE_FPS_CONFIG                17
 #define CAM_ISP_GENERIC_BLOB_TYPE_SFE_CLOCK_CONFIG          21
 #define CAM_ISP_GENERIC_BLOB_TYPE_SFE_CORE_CONFIG           22
 #define CAM_ISP_GENERIC_BLOB_TYPE_SFE_OUT_CONFIG            23
@@ -821,6 +822,18 @@ struct cam_isp_acquire_hw_info {
 	__u32             input_info_offset;
 	__u64             data;
 };
+
+/**
+ * struct cam_fps_config - FPS info per request
+ *
+ * @fps                 : Fps value
+ * @reserved:           : Reserved field for alignment
+ *
+ */
+struct cam_fps_config {
+	__u32             fps;
+	__u32             reserved_params[3];
+} __attribute__((packed));
 
 /**
  * struct cam_isp_vfe_wm_config  -  VFE write master config per port

@@ -8763,6 +8763,27 @@ static int cam_isp_packet_generic_blob_handler(void *user_data,
 				"BW limit update failed for IFE rc: %d", rc);
 	}
 		break;
+	case CAM_ISP_GENERIC_BLOB_TYPE_FPS_CONFIG: {
+		struct cam_fps_config *fps_config;
+		struct cam_isp_prepare_hw_update_data   *prepare_hw_data;
+
+		if (blob_size < sizeof(struct cam_fps_config)) {
+			CAM_ERR(CAM_ISP, "Invalid fps blob size %u expected %u",
+				blob_size, sizeof(struct cam_fps_config));
+			return -EINVAL;
+		}
+
+		fps_config = (struct cam_fps_config *)blob_data;
+
+		prepare_hw_data = (struct cam_isp_prepare_hw_update_data *)
+				prepare->priv;
+		if (fps_config->fps) {
+			prepare_hw_data->fps = fps_config->fps;
+			CAM_DBG(CAM_ISP, "FPS value %u", fps_config->fps);
+		} else
+			CAM_WARN(CAM_ISP, "FPS value 0");
+	}
+		break;
 	default:
 		CAM_WARN(CAM_ISP, "Invalid blob type %d", blob_type);
 		break;
@@ -9201,6 +9222,7 @@ static int cam_sfe_packet_generic_blob_handler(void *user_data,
 	case CAM_ISP_GENERIC_BLOB_TYPE_SENSOR_BLANKING_CONFIG:
 	case CAM_ISP_GENERIC_BLOB_TYPE_TPG_CORE_CONFIG:
 	case CAM_ISP_GENERIC_BLOB_TYPE_DISCARD_INITIAL_FRAMES:
+	case CAM_ISP_GENERIC_BLOB_TYPE_FPS_CONFIG:
 		break;
 	default:
 		CAM_WARN(CAM_ISP, "Invalid blob type: %u", blob_type);

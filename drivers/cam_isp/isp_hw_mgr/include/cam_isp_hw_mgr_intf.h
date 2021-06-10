@@ -155,6 +155,7 @@ struct cam_isp_bw_config_internal {
  * @num_reg_dump_buf:      Count of descriptors in reg_dump_buf_desc
  * @packet                 CSL packet from user mode driver
  * @mup_en                 Flag if dynamic sensor switch is enabled
+ * @fps:                   Fps vaue associated with this packet/request
  *
  */
 struct cam_isp_prepare_hw_update_data {
@@ -172,6 +173,7 @@ struct cam_isp_prepare_hw_update_data {
 	uint32_t                              num_reg_dump_buf;
 	struct cam_packet                     *packet;
 	bool                                  mup_en;
+	int32_t                               fps;
 };
 
 

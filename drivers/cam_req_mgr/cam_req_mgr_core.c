@@ -18,7 +18,10 @@
 #include "cam_req_mgr_debug.h"
 #include "cam_common_util.h"
 
-#define THRESHOLD_FACTOR 3
+#define THRESHOLD_FACTOR_3 3
+#define THRESHOLD_FACTOR_2 2
+#define MILLI_SECOND_CONVERSION_FACTOR 1000000
+#define CAM_REQ_MGR_DEFAULT_FPS 30
 
 static struct cam_req_mgr_core_device *g_crm_core_dev;
 static struct cam_req_mgr_core_link g_links[MAXIMUM_LINKS_PER_SESSION];
@@ -69,6 +72,9 @@ void cam_req_mgr_core_link_reset(struct cam_req_mgr_core_link *link)
 	link->sync_frame_id = 0;
 	link->is_sync_req = true;
 	link->skip_sync_apply = false;
+	link->fps = CAM_REQ_MGR_DEFAULT_FPS;
+	link->num_isp_dev = 0;
+	link->retry_threshold = 0;
 	atomic_set(&link->eof_event_cnt, 0);
 
 	for (pd = 0; pd < CAM_PIPELINE_DELAY_MAX; pd++) {
@@ -611,6 +617,7 @@ static void __cam_req_mgr_flush_req_slot(
 	atomic_set(&link->eof_event_cnt, 0);
 	in_q->wr_idx = 0;
 	in_q->rd_idx = 0;
+	link->sync_frame_id = 0;
 	link->trigger_cnt[0][0] = 0;
 	link->trigger_cnt[0][1] = 0;
 	link->trigger_cnt[1][0] = 0;
@@ -898,6 +905,7 @@ static int __cam_req_mgr_send_req(struct cam_req_mgr_core_link *link,
 	struct cam_req_mgr_link_evt_data     evt_data;
 	struct cam_req_mgr_tbl_slot          *slot = NULL;
 	struct cam_req_mgr_apply             *apply_data = NULL;
+	struct cam_req_mgr_slot              *in_q_slot = NULL;
 
 	apply_req.link_hdl = link->link_hdl;
 	apply_req.report_if_bubble = 0;
@@ -1083,6 +1091,10 @@ static int __cam_req_mgr_send_req(struct cam_req_mgr_core_link *link,
 				continue;
 
 			apply_req.trigger_point = trigger;
+			in_q_slot = &link->req.in_q->slot[idx];
+			apply_req.is_sync_mode =
+				(in_q_slot->sync_mode == CAM_REQ_MGR_SYNC_MODE_SYNC) ? true : false;
+
 			CAM_DBG(CAM_REQ,
 				"SEND: link_hdl %x dev %s pd %d req_id %lld",
 				link->link_hdl, dev->dev_info.name,
@@ -1522,7 +1534,8 @@ static int __cam_req_mgr_process_req(struct cam_req_mgr_core_link *link,
 	}
 
 	if (link->num_sync_link &&
-		(link->initial_sync_req == slot->req_id)) {
+		((link->initial_sync_req == slot->req_id) ||
+		((link->initial_sync_req < slot->req_id) && link->sync_frame_id == 0))) {
 		link->sync_frame_id = trigger_data->frame_id;
 		CAM_DBG(CAM_CRM, "link %x sync frame %lld",
 			link->link_hdl, link->sync_frame_id);
@@ -2795,12 +2808,6 @@ int cam_req_mgr_process_error(void *priv, void *data)
 			__cam_req_mgr_tbl_set_all_skip_cnt(&link->req.l_tbl);
 			in_q->rd_idx = idx;
 			in_q->slot[idx].status = CRM_SLOT_STATUS_REQ_ADDED;
-			if (link->sync_link[0]) {
-				in_q->slot[idx].sync_mode = 0;
-				__cam_req_mgr_inc_idx(&idx, 1,
-					link->req.l_tbl->num_slots);
-				in_q->slot[idx].sync_mode = 0;
-			}
 
 			/* The next req may also be applied */
 			idx = in_q->rd_idx;
@@ -3081,6 +3088,44 @@ end:
 	return rc;
 }
 
+static int cam_req_mgr_cb_notify_rup(
+	struct cam_req_mgr_notify_rup *rup_info)
+{
+	int                                  i, j, rc = 0;
+	struct cam_req_mgr_core_link        *link = NULL;
+	struct cam_req_mgr_connected_device *dev = NULL;
+	struct cam_req_mgr_signal_info       set_signal_flag;
+
+	link = (struct cam_req_mgr_core_link *)
+		cam_get_device_priv(rup_info->link_hdl);
+	if (!link) {
+		CAM_DBG(CAM_CRM, "link ptr NULL %x", rup_info->link_hdl);
+		rc = -EINVAL;
+		goto end;
+	}
+
+	if (link->is_master) {
+		for (i = 0; i < link->num_sync_link; i++) {
+			for (j = 0; j < link->sync_link[i]->num_devs; j++) {
+				dev = &link->sync_link[i]->l_dev[j];
+				if (dev->ops->signal_buf_done) {
+					set_signal_flag.link_hdl = link->sync_link[i]->link_hdl;
+					set_signal_flag.dev_hdl = dev->dev_hdl;
+					set_signal_flag.req_id = rup_info->req_id;
+					set_signal_flag.state = SIGNAL_SYNC_BUF_DONE;
+					dev->ops->signal_buf_done(&set_signal_flag);
+				}
+			}
+		}
+		rup_info->state = SIGNAL_SYNC_BUF_DONE;
+	} else {
+		rup_info->state = INIT_BUF_DONE;
+	}
+
+end:
+	return rc;
+}
+
 /**
  * cam_req_mgr_cb_notify_err()
  *
@@ -3096,7 +3141,7 @@ static bool cam_req_mgr_cb_notify_err(
 {
 	bool                             rc = false;
 	int                              i, j;
-	uint32_t                         idx;
+	int32_t                          idx;
 	struct crm_workq_task           *task = NULL;
 	struct cam_req_mgr_core_link    *link = NULL;
 	struct cam_req_mgr_error_notify *notify_err;
@@ -3164,6 +3209,7 @@ static bool cam_req_mgr_cb_notify_err(
 		tmp_slot->sync_mode == CAM_REQ_MGR_SYNC_MODE_SYNC) &&
 		!link->is_master) {
 		crm_timer_reset(link->watchdog);
+		link->frame_id = err_info->frame_id;
 		CAM_DBG(CAM_CRM, "Not processing bubble as it is slave link %x",
 			link->link_hdl);
 		return true;
@@ -3220,6 +3266,7 @@ static bool cam_req_mgr_cb_notify_err(
 						link->sync_link[i]->link_hdl;
 					notify_err->dev_hdl = dev->dev_hdl;
 					notify_err->error = err_info->error;
+					notify_err->trigger = err_info->trigger;
 					task->process_cb =
 						&cam_req_mgr_process_error;
 					cam_req_mgr_workq_enqueue_task(
@@ -3555,6 +3602,12 @@ static int cam_req_mgr_cb_notify_trigger(
 	if (trigger_data->trigger == CAM_TRIGGER_POINT_SOF)
 		crm_timer_reset(link->watchdog);
 
+	if (link->sof_timestamp == trigger_data->sof_timestamp_val) {
+		CAM_DBG(CAM_CRM,
+			"Irq delay, skipping apply");
+		return 0;
+	}
+
 	link->prev_sof_timestamp = link->sof_timestamp;
 	link->sof_timestamp = trigger_data->sof_timestamp_val;
 	link->frame_id = trigger_data->frame_id;
@@ -3581,7 +3634,6 @@ static int cam_req_mgr_cb_notify_trigger(
 			"E link %x req %lld idx %d state %d",
 			link->link_hdl, slot->req_id, sync_id, slot->status);
 	}
-
 
 	CAM_DBG(CAM_CRM,
 		"link %x req %lld slot mode %d tmp slot mode %d init sync %lld",
@@ -3617,13 +3669,14 @@ static int cam_req_mgr_cb_notify_trigger(
 
 			frame_duration =
 				(curr_boot_timestamp - link->sof_boottime) * 2;
+
 			CAM_DBG(CAM_CRM,
 				"[Master %x] epoch time %lld sof boottime %lld frame id %lld frame duration %d ms  open cnt %d req id %lld",
 				link->link_hdl,
 				curr_boot_timestamp,
 				link->sof_boottime,
 				trigger_data->frame_id,
-				frame_duration/1000000,
+				frame_duration / MILLI_SECOND_CONVERSION_FACTOR,
 				link->open_req_cnt,
 				slot->req_id);
 
@@ -3721,21 +3774,74 @@ static int cam_req_mgr_cb_notify_trigger(
 					dev_data.timestamp - link->sof_timestamp :
 					link->sof_timestamp - dev_data.timestamp;
 
-				threshold = frame_duration / THRESHOLD_FACTOR;
 
 				/* Checking if master and sync links are in
 				 * same frame duration considering master frame
 				 * duration in calculating threshold value
 				 */
+
+				if (trigger_data->fps == 0) {
+					frame_duration =
+						link->fps * MILLI_SECOND_CONVERSION_FACTOR;
+					if (link->retry_threshold) {
+						/* Increase threshold value by dividing frame
+						 * duration with 2, so that sync logic get chance
+						 * to reduce sof time difference in next 3 requests.
+						 */
+						link->retry_threshold -= 1;
+						threshold = frame_duration / THRESHOLD_FACTOR_2;
+					} else {
+						/* Normal threshold calculation by dividing frame
+						 * duration with 3
+						 */
+						threshold = frame_duration / THRESHOLD_FACTOR_3;
+					}
+				} else if (trigger_data->fps == -1) {
+					//Frame duration based on epoch-sof calculation
+					if (link->retry_threshold) {
+						/*  Increase threshold value by dividing frame
+						 * duration with 2
+						 */
+						link->retry_threshold -= 1;
+						threshold = frame_duration / THRESHOLD_FACTOR_2;
+					} else {
+						/* Normal threshold calculation by dividing frame
+						 * duration with 3
+						 */
+						threshold = frame_duration / THRESHOLD_FACTOR_3;
+					}
+				} else {
+					link->fps = trigger_data->fps;
+					frame_duration =
+						trigger_data->fps * MILLI_SECOND_CONVERSION_FACTOR;
+					if (link->retry_threshold) {
+						/* Increase threshold value by dividing frame
+						 * duration with 2
+						 */
+						link->retry_threshold -= 1;
+						threshold = frame_duration / THRESHOLD_FACTOR_2;
+					} else {
+						/* Normal threshold calculation by dividing frame
+						 * duration with 3
+						 */
+						threshold = frame_duration / THRESHOLD_FACTOR_3;
+					}
+				}
+
 				if (curr_sync_time > threshold) {
 					struct cam_req_mgr_dump_link_data
 						dump_info;
-					CAM_DBG(CAM_CRM,
-						"Master %x and slave %x are not in same time frame time diff %lld threshold %lld",
+
+					link->retry_threshold = 3;
+					CAM_INFO_RATE_LIMIT(CAM_CRM,
+						"Master %x and slave %x sof diff is more than threshold: time diff %lld threshold %lld fps %d bootime %lld",
 						link->link_hdl,
 						link->sync_link[i]->link_hdl,
-						curr_sync_time/1000000,
-						threshold/1000000);
+						curr_sync_time / MILLI_SECOND_CONVERSION_FACTOR,
+						threshold / MILLI_SECOND_CONVERSION_FACTOR,
+						trigger_data->fps,
+						(curr_boot_timestamp /
+						MILLI_SECOND_CONVERSION_FACTOR));
 
 					dump_info.m_link = link;
 					dump_info.s_link = link->sync_link[i];
@@ -3780,7 +3886,7 @@ static int cam_req_mgr_cb_notify_trigger(
 					struct cam_req_mgr_dump_link_data
 						dump_info;
 
-					CAM_DBG(CAM_CRM,
+					CAM_INFO_RATE_LIMIT(CAM_CRM,
 						"Req diff %lld Master link %x req %lld slave link %x req %lld",
 						req_diff,
 						link->link_hdl,
@@ -4003,7 +4109,7 @@ slave:
 		tmp_slot->real_sync_mode != CAM_REQ_MGR_SYNC_MODE_SYNC)) {
 
 		CAM_DBG(CAM_CRM,
-			"In sync mode req %lld tmp mode % real mode %d sync mode %d link %x ",
+			"In sync mode req %lld tmp mode %d real mode %d sync mode %d link %x ",
 			slot->req_id, tmp_slot->sync_mode,
 			tmp_slot->real_sync_mode,
 			slot->sync_mode, link->link_hdl);
@@ -4062,6 +4168,7 @@ static struct cam_req_mgr_crm_cb cam_req_mgr_ops = {
 	.add_req        = cam_req_mgr_cb_add_req,
 	.notify_timer   = cam_req_mgr_cb_notify_timer,
 	.notify_stop    = cam_req_mgr_cb_notify_stop,
+	.notify_rup     = cam_req_mgr_cb_notify_rup,
 };
 
 /**
@@ -4770,43 +4877,47 @@ static void __cam_req_mgr_set_master_link(
 	int32_t num_of_links)
 {
 	int i = 0, j = 0, k = 0;
-	int idx = -1;
-
-	idx = find_first_bit(g_crm_core_dev->bitmap,
-		MAXIMUM_LINKS_PER_SESSION);
+	int master_link_idx = 0;
+	int max_isp = -1, min_isp = MAX_LINKS_PER_SESSION + 1;
+	int min_isp_link_idx = 0, max_isp_link_idx = 0;
+	struct cam_req_mgr_connected_device *dev = NULL;
 
 	for (i = 0; i < num_of_links; i++) {
-
-		CAM_DBG(CAM_CRM, "idx %d, link%d 0x%x active seq %d",
-				idx, i, link[i]->link_hdl,
-				link[i]->activate_seq);
-
-		if (link[i]->activate_seq == idx) {
-
-			link[i]->is_master = true;
-			CAM_DBG(CAM_CRM, "Master link 0x%x num of links %d ",
-				link[i]->link_hdl, num_of_links);
-
-			for (j = 0, k = 0; j < num_of_links; j++) {
-				if (link[i]->link_hdl !=
-					link[j]->link_hdl) {
-
-					link[i]->sync_link[k] = link[j];
-					link[i]->num_sync_link++;
-
-					link[j]->sync_link[0] = link[i];
-					link[j]->num_sync_link = 1;
-					link[j]->is_master = false;
-
-					k++;
-				}
-			}
+		for (j = 0; j < link[i]->num_devs; j++) {
+			dev = &link[i]->l_dev[j];
+			if (strcmp("cam-isp", dev->dev_info.name) == 0)
+				link[i]->num_isp_dev++;
 		}
 
+		if (max_isp < link[i]->num_isp_dev) {
+			max_isp = link[i]->num_isp_dev;
+			max_isp_link_idx = i;
+		}
+		if (min_isp > link[i]->num_isp_dev) {
+			min_isp = link[i]->num_isp_dev;
+			min_isp_link_idx = i;
+		}
+
+		if (link[master_link_idx]->activate_seq > link[i]->activate_seq)
+			master_link_idx = i;
+	}
+
+	if (max_isp != min_isp)
+		master_link_idx = min_isp_link_idx;
+
+	link[master_link_idx]->is_master = true;
+	CAM_DBG(CAM_CRM, "Master link %x ", link[master_link_idx]->link_hdl);
+
+	for (i = 0; i < num_of_links; i++) {
+		if (i != master_link_idx) {
+			link[i]->is_master = false;
+			link[i]->sync_link[0] = link[master_link_idx];
+			link[i]->num_sync_link = 1;
+			link[master_link_idx]->sync_link[k++] = link[i];
+			link[master_link_idx]->num_sync_link++;
+		}
 		link[i]->initial_skip =
 			g_crm_core_dev->max_delay - link[i]->max_delay;
-		CAM_DBG(CAM_CRM, "link %x initial skip %d",
-			link[i]->link_hdl, link[i]->initial_skip);
 	}
 }
 
