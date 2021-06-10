@@ -47,6 +47,7 @@ struct cam_sfe_bus_rd_reg_offset_bus_client {
 	uint32_t unpacker_cfg;
 	uint32_t latency_buf_allocation;
 	uint32_t system_cache_cfg;
+	uint32_t addr_cfg;
 };
 
 /*

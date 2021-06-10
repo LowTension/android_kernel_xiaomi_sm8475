@@ -9,7 +9,7 @@
 
 #include "cam_sfe_bus.h"
 
-#define CAM_SFE_BUS_WR_MAX_CLIENTS     13
+#define CAM_SFE_BUS_WR_MAX_CLIENTS     16
 #define CAM_SFE_BUS_WR_MAX_SUB_GRPS    6
 #define CAM_SFE_BUS_CONS_ERR_MAX       32
 
@@ -51,6 +51,10 @@ enum cam_sfe_bus_sfe_out_type {
 	CAM_SFE_BUS_SFE_OUT_BHIST_1,
 	CAM_SFE_BUS_SFE_OUT_BE_2,
 	CAM_SFE_BUS_SFE_OUT_BHIST_2,
+	CAM_SFE_BUS_SFE_OUT_BAYER_RS_0,
+	CAM_SFE_BUS_SFE_OUT_BAYER_RS_1,
+	CAM_SFE_BUS_SFE_OUT_BAYER_RS_2,
+	CAM_SFE_BUS_SFE_OUT_IR,
 	CAM_SFE_BUS_SFE_OUT_MAX,
 };
 
@@ -107,6 +111,7 @@ struct cam_sfe_bus_reg_offset_bus_client {
 	uint32_t framedrop_period;
 	uint32_t framedrop_pattern;
 	uint32_t system_cache_cfg;
+	uint32_t addr_cfg;
 	uint32_t addr_status_0;
 	uint32_t addr_status_1;
 	uint32_t addr_status_2;

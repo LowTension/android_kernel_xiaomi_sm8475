@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only WITH Linux-syscall-note */
 /*
- * Copyright (c) 2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
  */
 
 #ifndef __UAPI_CAM_ISP_SFE_H__
@@ -22,8 +22,12 @@
 #define CAM_ISP_SFE_OUT_BHIST_STATS_2         (CAM_ISP_SFE_OUT_RES_BASE + 10)
 #define CAM_ISP_SFE_OUT_RES_LCR               (CAM_ISP_SFE_OUT_RES_BASE + 11)
 #define CAM_ISP_SFE_OUT_RES_RAW_DUMP          (CAM_ISP_SFE_OUT_RES_BASE + 12)
+#define CAM_ISP_SFE_OUT_RES_IR                (CAM_ISP_SFE_OUT_RES_BASE + 13)
+#define CAM_ISP_SFE_OUT_BAYER_RS_STATS_0      (CAM_ISP_SFE_OUT_RES_BASE + 14)
+#define CAM_ISP_SFE_OUT_BAYER_RS_STATS_1      (CAM_ISP_SFE_OUT_RES_BASE + 15)
+#define CAM_ISP_SFE_OUT_BAYER_RS_STATS_2      (CAM_ISP_SFE_OUT_RES_BASE + 16)
 
-#define CAM_ISP_SFE_OUT_RES_MAX               (CAM_ISP_SFE_OUT_RES_BASE + 13)
+#define CAM_ISP_SFE_OUT_RES_MAX               (CAM_ISP_SFE_OUT_RES_BASE + 17)
 
 /* SFE input port resource type */
 #define CAM_ISP_SFE_IN_RES_BASE               0x5000

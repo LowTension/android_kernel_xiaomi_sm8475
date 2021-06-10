@@ -196,6 +196,7 @@ struct cam_sfe_bus_wr_priv {
 	void                               *tasklet_info;
 	uint32_t                            num_cons_err;
 	struct cam_sfe_constraint_error_info      *constraint_error_list;
+	struct cam_sfe_bus_sfe_out_hw_info        *sfe_out_hw_info;
 };
 
 static int cam_sfe_bus_wr_process_cmd(
@@ -215,6 +216,7 @@ static bool cam_sfe_bus_can_be_secure(uint32_t out_type)
 	case CAM_SFE_BUS_SFE_OUT_RDI2:
 	case CAM_SFE_BUS_SFE_OUT_RDI3:
 	case CAM_SFE_BUS_SFE_OUT_RDI4:
+	case CAM_SFE_BUS_SFE_OUT_IR:
 		return true;
 	case CAM_SFE_BUS_SFE_OUT_LCR:
 	case CAM_SFE_BUS_SFE_OUT_BE_0:
@@ -223,6 +225,9 @@ static bool cam_sfe_bus_can_be_secure(uint32_t out_type)
 	case CAM_SFE_BUS_SFE_OUT_BHIST_1:
 	case CAM_SFE_BUS_SFE_OUT_BE_2:
 	case CAM_SFE_BUS_SFE_OUT_BHIST_2:
+	case CAM_SFE_BUS_SFE_OUT_BAYER_RS_0:
+	case CAM_SFE_BUS_SFE_OUT_BAYER_RS_1:
+	case CAM_SFE_BUS_SFE_OUT_BAYER_RS_2:
 	default:
 		return false;
 	}
@@ -258,6 +263,14 @@ static enum cam_sfe_bus_sfe_out_type
 		return CAM_SFE_BUS_SFE_OUT_BHIST_2;
 	case CAM_ISP_SFE_OUT_RES_LCR:
 		return CAM_SFE_BUS_SFE_OUT_LCR;
+	case CAM_ISP_SFE_OUT_RES_IR:
+		return CAM_SFE_BUS_SFE_OUT_IR;
+	case CAM_ISP_SFE_OUT_BAYER_RS_STATS_0:
+		return CAM_SFE_BUS_SFE_OUT_BAYER_RS_0;
+	case CAM_ISP_SFE_OUT_BAYER_RS_STATS_1:
+		return CAM_SFE_BUS_SFE_OUT_BAYER_RS_1;
+	case CAM_ISP_SFE_OUT_BAYER_RS_STATS_2:
+		return CAM_SFE_BUS_SFE_OUT_BAYER_RS_2;
 	default:
 		return CAM_SFE_BUS_SFE_OUT_MAX;
 	}
@@ -268,52 +281,90 @@ static int cam_sfe_bus_get_comp_sfe_out_res_id_list(
 {
 	int count = 0;
 
-	if (comp_mask & (1 << CAM_SFE_BUS_SFE_OUT_RDI0))
+	if (comp_mask & (BIT(CAM_SFE_BUS_SFE_OUT_RDI0)))
 		out_list[count++] = CAM_ISP_SFE_OUT_RES_RDI_0;
 
-	if (comp_mask & (1 << CAM_SFE_BUS_SFE_OUT_RDI1))
+	if (comp_mask & (BIT(CAM_SFE_BUS_SFE_OUT_RDI1)))
 		out_list[count++] = CAM_ISP_SFE_OUT_RES_RDI_1;
 
-	if (comp_mask & (1 << CAM_SFE_BUS_SFE_OUT_RDI2))
+	if (comp_mask & (BIT(CAM_SFE_BUS_SFE_OUT_RDI2)))
 		out_list[count++] = CAM_ISP_SFE_OUT_RES_RDI_2;
 
-	if (comp_mask & (1 << CAM_SFE_BUS_SFE_OUT_RDI3))
+	if (comp_mask & (BIT(CAM_SFE_BUS_SFE_OUT_RDI3)))
 		out_list[count++] = CAM_ISP_SFE_OUT_RES_RDI_3;
 
-	if (comp_mask & (1 << CAM_SFE_BUS_SFE_OUT_RDI4))
+	if (comp_mask & (BIT(CAM_SFE_BUS_SFE_OUT_RDI4)))
 		out_list[count++] = CAM_ISP_SFE_OUT_RES_RDI_4;
 
-	if (comp_mask & (1 << CAM_SFE_BUS_SFE_OUT_RAW_DUMP))
+	if (comp_mask & (BIT(CAM_SFE_BUS_SFE_OUT_RAW_DUMP)))
 		out_list[count++] = CAM_ISP_SFE_OUT_RES_RAW_DUMP;
 
-	if (comp_mask & (1 << CAM_SFE_BUS_SFE_OUT_BE_0))
+	if (comp_mask & (BIT(CAM_SFE_BUS_SFE_OUT_BE_0)))
 		out_list[count++] = CAM_ISP_SFE_OUT_BE_STATS_0;
 
-	if (comp_mask & (1 << CAM_SFE_BUS_SFE_OUT_BHIST_0))
+	if (comp_mask & (BIT(CAM_SFE_BUS_SFE_OUT_BHIST_0)))
 		out_list[count++] = CAM_ISP_SFE_OUT_BHIST_STATS_0;
 
-	if (comp_mask & (1 << CAM_SFE_BUS_SFE_OUT_BE_1))
+	if (comp_mask & (BIT(CAM_SFE_BUS_SFE_OUT_BE_1)))
 		out_list[count++] = CAM_ISP_SFE_OUT_BE_STATS_1;
 
-	if (comp_mask & (1 << CAM_SFE_BUS_SFE_OUT_BHIST_1))
+	if (comp_mask & (BIT(CAM_SFE_BUS_SFE_OUT_BHIST_1)))
 		out_list[count++] = CAM_ISP_SFE_OUT_BHIST_STATS_1;
 
-	if (comp_mask & (1 << CAM_SFE_BUS_SFE_OUT_BE_2))
+	if (comp_mask & (BIT(CAM_SFE_BUS_SFE_OUT_BE_2)))
 		out_list[count++] = CAM_ISP_SFE_OUT_BE_STATS_2;
 
-	if (comp_mask & (1 << CAM_SFE_BUS_SFE_OUT_BHIST_2))
+	if (comp_mask & (BIT(CAM_SFE_BUS_SFE_OUT_BHIST_2)))
 		out_list[count++] = CAM_ISP_SFE_OUT_BHIST_STATS_2;
 
-	if (comp_mask & (1 << CAM_SFE_BUS_SFE_OUT_LCR))
+	if (comp_mask & (BIT(CAM_SFE_BUS_SFE_OUT_LCR)))
 		out_list[count++] = CAM_ISP_SFE_OUT_RES_LCR;
+
+	if (comp_mask & (BIT(CAM_SFE_BUS_SFE_OUT_IR)))
+		out_list[count++] = CAM_ISP_SFE_OUT_RES_IR;
+
+	if (comp_mask & (BIT(CAM_SFE_BUS_SFE_OUT_BAYER_RS_0)))
+		out_list[count++] = CAM_ISP_SFE_OUT_BAYER_RS_STATS_0;
+
+	if (comp_mask & (BIT(CAM_SFE_BUS_SFE_OUT_BAYER_RS_1)))
+		out_list[count++] = CAM_ISP_SFE_OUT_BAYER_RS_STATS_1;
+
+	if (comp_mask & (BIT(CAM_SFE_BUS_SFE_OUT_BAYER_RS_2)))
+		out_list[count++] = CAM_ISP_SFE_OUT_BAYER_RS_STATS_2;
 
 	*num_out = count;
 	return 0;
 }
 
-static enum cam_sfe_bus_wr_packer_format
-	cam_sfe_bus_get_packer_fmt(uint32_t out_fmt, int wm_index)
+bool cam_sfe_is_mipi_pcking_needed(
+	struct cam_sfe_bus_wr_priv *bus_priv,
+	int wm_index)
 {
+	int i;
+
+	for(i = 0; i < bus_priv->num_out; i++)
+	{
+		if (((wm_index == bus_priv->sfe_out_hw_info[i].wm_idx) &&
+			(bus_priv->sfe_out_hw_info[i].sfe_out_type ==
+				CAM_SFE_BUS_SFE_OUT_RAW_DUMP)) ||
+			((wm_index == bus_priv->sfe_out_hw_info[i].wm_idx) &&
+				(bus_priv->sfe_out_hw_info[i].sfe_out_type ==
+					CAM_SFE_BUS_SFE_OUT_IR)))
+		       return true;
+	}
+
+	return false;
+}
+
+static enum cam_sfe_bus_wr_packer_format
+	cam_sfe_bus_get_packer_fmt(
+	struct cam_sfe_bus_wr_priv *bus_priv,
+	uint32_t out_fmt,
+	int wm_index)
+{
+	bool is_mipi_packing =
+		cam_sfe_is_mipi_pcking_needed(bus_priv, wm_index);
+
 	switch (out_fmt) {
 	case CAM_FORMAT_MIPI_RAW_6:
 	case CAM_FORMAT_MIPI_RAW_8:
@@ -323,22 +374,22 @@ static enum cam_sfe_bus_wr_packer_format
 	case CAM_FORMAT_PD8:
 		return PACKER_FMT_PLAIN_128;
 	case CAM_FORMAT_MIPI_RAW_10:
-		if (wm_index == 0)
+		if (is_mipi_packing)
 			return PACKER_FMT_MIPI10;
 		else
 			return PACKER_FMT_PLAIN_128;
 	case CAM_FORMAT_MIPI_RAW_12:
-		if (wm_index == 0)
+		if (is_mipi_packing)
 			return PACKER_FMT_MIPI12;
 		else
 			return PACKER_FMT_PLAIN_128;
 	case CAM_FORMAT_MIPI_RAW_14:
-		if (wm_index == 0)
+		if (is_mipi_packing)
 			return PACKER_FMT_MIPI14;
 		else
 			return PACKER_FMT_PLAIN_128;
 	case CAM_FORMAT_MIPI_RAW_20:
-		if (wm_index == 0)
+		if (is_mipi_packing)
 			return PACKER_FMT_MIPI20;
 		else
 			return PACKER_FMT_PLAIN_128;
@@ -604,8 +655,8 @@ static int cam_sfe_bus_acquire_wm(
 	rsrc_data = wm_res->res_priv;
 	wm_idx = rsrc_data->index;
 	rsrc_data->format = out_port_info->format;
-	rsrc_data->pack_fmt = cam_sfe_bus_get_packer_fmt(rsrc_data->format,
-		wm_idx);
+	rsrc_data->pack_fmt = cam_sfe_bus_get_packer_fmt(bus_priv,
+		rsrc_data->format, wm_idx);
 
 	rsrc_data->width = out_port_info->width;
 	rsrc_data->height = out_port_info->height;
@@ -647,8 +698,22 @@ static int cam_sfe_bus_acquire_wm(
 		default:
 			break;
 		}
+	} else if (sfe_out_res_id == CAM_SFE_BUS_SFE_OUT_IR) {
+		rsrc_data->stride = rsrc_data->width;
+		rsrc_data->en_cfg = 0x1;
+		switch (rsrc_data->format) {
+		case CAM_FORMAT_PLAIN16_10:
+		case CAM_FORMAT_PLAIN16_12:
+		case CAM_FORMAT_PLAIN16_14:
+		case CAM_FORMAT_PLAIN16_16:
+			/* LSB aligned */
+			rsrc_data->pack_fmt |= 0x20;
+			break;
+		default:
+			break;
+		}
 	} else if ((sfe_out_res_id >= CAM_SFE_BUS_SFE_OUT_BE_0) &&
-		(sfe_out_res_id <= CAM_SFE_BUS_SFE_OUT_BHIST_2)) {
+		(sfe_out_res_id <= CAM_SFE_BUS_SFE_OUT_BAYER_RS_2)) {
 		rsrc_data->width = 0;
 		rsrc_data->height = 0;
 		rsrc_data->stride = 1;
@@ -3001,6 +3066,7 @@ int cam_sfe_bus_wr_init(
 	bus_priv->common_data.sfe_irq_controller   = sfe_irq_controller;
 	bus_priv->num_cons_err = hw_info->num_cons_err;
 	bus_priv->constraint_error_list = hw_info->constraint_error_list;
+	bus_priv->sfe_out_hw_info = hw_info->sfe_out_hw_info;
 	rc = cam_cpas_get_cpas_hw_version(&bus_priv->common_data.hw_version);
 	if (rc) {
 		CAM_ERR(CAM_SFE, "Failed to get hw_version rc:%d", rc);
