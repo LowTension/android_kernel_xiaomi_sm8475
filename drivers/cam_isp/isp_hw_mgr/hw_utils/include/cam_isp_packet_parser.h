@@ -51,12 +51,14 @@ struct cam_isp_frame_header_info {
 /*
  * struct cam_isp_check_sfe_fe_io_cfg
  *
- * @sfe_fe_enabled  : True if SFE fetch engine is enabled
- * @sfe_rdi_cfg_mask: To indicate IO buf cfg for RDIs
+ * @sfe_fe_enabled     : True if SFE fetch engine is enabled
+ * @num_active_fe_rdis : To indicate active RMs/RDIs
+ * @sfe_rdi_cfg_mask   : To indicate IO buf cfg for RDIs
  *
  */
 struct cam_isp_check_sfe_fe_io_cfg {
 	bool                     sfe_fe_enabled;
+	uint32_t                 num_active_fe_rdis;
 	uint32_t                 sfe_rdi_cfg_mask;
 };
 

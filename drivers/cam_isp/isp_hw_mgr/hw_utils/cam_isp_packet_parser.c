@@ -752,7 +752,7 @@ int cam_isp_add_io_buffers(
 			res_id_out = io_cfg[i].resource_type & 0xFF;
 			if (check_sfe_fe_cfg->sfe_fe_enabled &&
 				(res_id_out < ((out_base & 0xFF) +
-				CAM_SFE_FE_RDI_NUM_MAX))) {
+				 check_sfe_fe_cfg->num_active_fe_rdis))) {
 				CAM_DBG(CAM_ISP,
 					"SFE Write/Fetch engine cfg skip scratch buffer for res 0x%x",
 					io_cfg[i].resource_type);
@@ -813,16 +813,6 @@ int cam_isp_add_io_buffers(
 			if (!found) {
 				CAM_ERR(CAM_ISP, "No Read resource");
 				return -EINVAL;
-			}
-
-			if (check_sfe_fe_cfg->sfe_fe_enabled &&
-				((res_id_in & 0xFF) < ((out_base & 0xFF) +
-				CAM_SFE_FE_RDI_NUM_MAX))) {
-				CAM_DBG(CAM_ISP,
-					"SFE Write/Fetch engine cfg skip scratch buffer for res 0x%x",
-					io_cfg[i].resource_type);
-				check_sfe_fe_cfg->sfe_rdi_cfg_mask |=
-					(1 << (res_id_in & 0xFF));
 			}
 
 			CAM_DBG(CAM_ISP,
