@@ -4520,7 +4520,8 @@ static int cam_ife_mgr_acquire_get_unified_structure_v2(
 	in_port->fe_unpacker_fmt          =  in->format;
 	in_port->hbi_cnt                  =  in->hbi_cnt;
 	in_port->cust_node                =  in->cust_node;
-	in_port->horizontal_bin           =  in->horizontal_bin;
+	in_port->horizontal_bin           =  (in->bidirectional_bin & 0xFFFF);
+	in_port->vertical_bin             =  (in->bidirectional_bin >> 16);
 	in_port->qcfa_bin                 =  in->qcfa_bin;
 	in_port->num_out_res              =  in->num_out_res;
 	in_port->sfe_in_path_type         =  (in->sfe_in_path_type & 0xFFFF);

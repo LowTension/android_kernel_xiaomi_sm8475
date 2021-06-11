@@ -364,7 +364,8 @@ struct cam_isp_in_port_info {
  * @hbi_cnt:                    HBI count for the camif input
  * @cust_node:                  if any custom HW block is present before IFE
  * @num_out_res:                number of the output resource associated
- * @horizontal_bin:             Horizontal Binning info
+ * @bidirectional_bin:          [0  : 15] - Set 1 for Horizontal binning
+ *                              [16 : 31] - Set 1 for Vertical binning
  * @qcfa_bin:                   Quadra Binning info
  * @sfe_in_path_type:           SFE input path type
  *                              0:15 - refer to cam_isp_sfe.h for SFE paths
@@ -406,7 +407,7 @@ struct cam_isp_in_port_info_v2 {
 	__u32                           cust_node;
 	__u32                           num_out_res;
 	__u32                           offline_mode;
-	__u32                           horizontal_bin;
+	__u32                           bidirectional_bin;
 	__u32                           qcfa_bin;
 	__u32                           sfe_in_path_type;
 	__u32                           feature_flag;
