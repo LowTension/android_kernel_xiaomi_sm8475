@@ -2660,15 +2660,17 @@ static int __cam_isp_ctx_handle_error(struct cam_isp_context *ctx_isp,
 		&ctx->active_req_list, list) {
 		req_isp = (struct cam_isp_ctx_req *) req->req_priv;
 		if (!req_isp->bubble_report) {
+			CAM_ERR(CAM_ISP, "signalled error for req %llu",
+				req->request_id);
 			for (i = 0; i < req_isp->num_fence_map_out; i++) {
 				fence_map_out =
 					&req_isp->fence_map_out[i];
-				CAM_ERR(CAM_ISP,
-					"req %llu, Sync fd 0x%x ctx %u",
-					req->request_id,
-					req_isp->fence_map_out[i].sync_id,
-					ctx->ctx_id);
 				if (req_isp->fence_map_out[i].sync_id != -1) {
+					CAM_DBG(CAM_ISP,
+						"req %llu, Sync fd 0x%x ctx %u",
+						req->request_id,
+						req_isp->fence_map_out[i].sync_id,
+						ctx->ctx_id);
 					rc = cam_sync_signal(
 						fence_map_out->sync_id,
 						CAM_SYNC_STATE_SIGNALED_ERROR,
@@ -2692,15 +2694,17 @@ static int __cam_isp_ctx_handle_error(struct cam_isp_context *ctx_isp,
 		&ctx->wait_req_list, list) {
 		req_isp = (struct cam_isp_ctx_req *) req->req_priv;
 		if (!req_isp->bubble_report) {
+			CAM_ERR(CAM_ISP, "signalled error for req %llu",
+				req->request_id);
 			for (i = 0; i < req_isp->num_fence_map_out; i++) {
 				fence_map_out =
 					&req_isp->fence_map_out[i];
-				CAM_ERR(CAM_ISP,
-					"req %llu, Sync fd 0x%x ctx %u",
-					req->request_id,
-					req_isp->fence_map_out[i].sync_id,
-					ctx->ctx_id);
 				if (req_isp->fence_map_out[i].sync_id != -1) {
+					CAM_DBG(CAM_ISP,
+						"req %llu, Sync fd 0x%x ctx %u",
+						req->request_id,
+						req_isp->fence_map_out[i].sync_id,
+						ctx->ctx_id);
 					rc = cam_sync_signal(
 						fence_map_out->sync_id,
 						CAM_SYNC_STATE_SIGNALED_ERROR,
@@ -2710,7 +2714,6 @@ static int __cam_isp_ctx_handle_error(struct cam_isp_context *ctx_isp,
 			}
 			list_del_init(&req->list);
 			list_add_tail(&req->list, &ctx->free_req_list);
-			ctx_isp->active_req_cnt--;
 		} else {
 			found = 1;
 			break;
@@ -2741,7 +2744,6 @@ move_to_pending:
 			req_isp = (struct cam_isp_ctx_req *) req->req_priv;
 			list_del_init(&req->list);
 			list_add(&req->list, &ctx->pending_req_list);
-			ctx_isp->active_req_cnt--;
 		}
 	}
 
@@ -4881,9 +4883,7 @@ static int __cam_isp_ctx_config_dev_in_top_state(
 	int rc = 0, i;
 	struct cam_ctx_request           *req = NULL;
 	struct cam_isp_ctx_req           *req_isp;
-	uintptr_t                         packet_addr;
 	struct cam_packet                *packet;
-	size_t                            len = 0;
 	size_t                            remain_len = 0;
 	struct cam_hw_prepare_update_args cfg = {0};
 	struct cam_req_mgr_add_request    add_req;
@@ -4911,34 +4911,11 @@ static int __cam_isp_ctx_config_dev_in_top_state(
 
 	req_isp = (struct cam_isp_ctx_req *) req->req_priv;
 
-	/* for config dev, only memory handle is supported */
-	/* map packet from the memhandle */
-	rc = cam_mem_get_cpu_buf((int32_t) cmd->packet_handle,
-		&packet_addr, &len);
-	if (rc != 0) {
-		CAM_ERR(CAM_ISP, "Can not get packet address");
-		rc = -EINVAL;
+	remain_len = cam_context_parse_config_cmd(ctx, cmd, &packet);
+	if (IS_ERR(packet)) {
+		rc = PTR_ERR(packet);
 		goto free_req;
 	}
-
-	remain_len = len;
-	if ((len < sizeof(struct cam_packet)) ||
-		((size_t)cmd->offset >= len - sizeof(struct cam_packet))) {
-		CAM_ERR(CAM_ISP, "invalid buff length: %zu or offset", len);
-		rc = -EINVAL;
-		goto free_req;
-	}
-
-	remain_len -= (size_t)cmd->offset;
-	packet = (struct cam_packet *)(packet_addr + (uint32_t)cmd->offset);
-	CAM_DBG(CAM_ISP, "pack_handle %llx", cmd->packet_handle);
-	CAM_DBG(CAM_ISP, "packet address is 0x%zx", packet_addr);
-	CAM_DBG(CAM_ISP, "packet with length %zu, offset 0x%llx",
-		len, cmd->offset);
-	CAM_DBG(CAM_ISP, "Packet request id %lld",
-		packet->header.request_id);
-	CAM_DBG(CAM_ISP, "Packet size 0x%x", packet->header.size);
-	CAM_DBG(CAM_ISP, "packet op %d", packet->header.op_code);
 
 	/* Query the packet opcode */
 	hw_cmd_args.ctxt_to_hw_map = ctx_isp->hw_ctx;
@@ -4954,8 +4931,6 @@ static int __cam_isp_ctx_config_dev_in_top_state(
 	}
 
 	packet_opcode = isp_hw_cmd_args.u.packet_op_code;
-	CAM_DBG(CAM_ISP, "packet op %d", packet_opcode);
-
 	if ((packet_opcode == CAM_ISP_PACKET_UPDATE_DEV)
 		&& (packet->header.request_id <= ctx->last_flush_req)) {
 		CAM_INFO(CAM_ISP,
@@ -4981,8 +4956,6 @@ static int __cam_isp_ctx_config_dev_in_top_state(
 	memset(&req_isp->hw_update_data, 0, sizeof(req_isp->hw_update_data));
 	req_isp->hw_update_data.fps = -1;
 	req_isp->hw_update_data.packet = packet;
-
-	CAM_DBG(CAM_ISP, "try to prepare config packet......");
 
 	rc = ctx->hw_mgr_intf->hw_prepare_update(
 		ctx->hw_mgr_intf->hw_mgr_priv, &cfg);
@@ -5010,16 +4983,13 @@ static int __cam_isp_ctx_config_dev_in_top_state(
 		}
 	}
 
-	CAM_DBG(CAM_ISP, "num_entry: %d, num fence out: %d, num fence in: %d",
-		req_isp->num_cfg, req_isp->num_fence_map_out,
-		req_isp->num_fence_map_in);
+	CAM_DBG(CAM_ISP,
+		"packet req-id:%lld, opcode:%d, num_entry:%d, num_fence_out: %d, num_fence_in: %d",
+		packet->header.request_id, req_isp->hw_update_data.packet_opcode_type,
+		req_isp->num_cfg, req_isp->num_fence_map_out, req_isp->num_fence_map_in);
 
 	req->request_id = packet->header.request_id;
 	req->status = 1;
-
-	CAM_DBG(CAM_ISP, "Packet request id %lld packet opcode:%d",
-		packet->header.request_id,
-		req_isp->hw_update_data.packet_opcode_type);
 
 	if (req_isp->hw_update_data.packet_opcode_type ==
 		CAM_ISP_PACKET_INIT_DEV) {

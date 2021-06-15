@@ -1152,9 +1152,7 @@ static int __cam_custom_ctx_config_dev(struct cam_context *ctx,
 	int rc = 0, i;
 	struct cam_ctx_request           *req = NULL;
 	struct cam_custom_dev_ctx_req    *req_custom;
-	uintptr_t                         packet_addr;
 	struct cam_packet                *packet;
-	size_t                            len = 0;
 	struct cam_hw_prepare_update_args cfg;
 	struct cam_req_mgr_add_request    add_req;
 	struct cam_custom_context        *ctx_custom =
@@ -1176,25 +1174,11 @@ static int __cam_custom_ctx_config_dev(struct cam_context *ctx,
 
 	req_custom = (struct cam_custom_dev_ctx_req *) req->req_priv;
 
-	/* for config dev, only memory handle is supported */
-	/* map packet from the memhandle */
-	rc = cam_mem_get_cpu_buf((int32_t) cmd->packet_handle,
-		&packet_addr, &len);
-	if (rc != 0) {
-		CAM_ERR(CAM_CUSTOM, "Can not get packet address");
-		rc = -EINVAL;
+	cam_context_parse_config_cmd(ctx, cmd, &packet);
+	if (IS_ERR(packet)) {
+		rc = PTR_ERR(packet);
 		goto free_req;
 	}
-
-	packet = (struct cam_packet *)(packet_addr + (uint32_t)cmd->offset);
-	CAM_DBG(CAM_CUSTOM, "pack_handle %llx", cmd->packet_handle);
-	CAM_DBG(CAM_CUSTOM, "packet address is 0x%zx", packet_addr);
-	CAM_DBG(CAM_CUSTOM, "packet with length %zu, offset 0x%llx",
-		len, cmd->offset);
-	CAM_DBG(CAM_CUSTOM, "Packet request id %lld",
-		packet->header.request_id);
-	CAM_DBG(CAM_CUSTOM, "Packet size 0x%x", packet->header.size);
-	CAM_DBG(CAM_CUSTOM, "packet op %d", packet->header.op_code);
 
 	if ((((packet->header.op_code) & 0xF) ==
 		CAM_CUSTOM_PACKET_UPDATE_DEV)
