@@ -3002,14 +3002,12 @@ static int cam_vfe_bus_ver3_update_wm(void *priv, void *cmd_args,
 
 	vfe_out_data = (struct cam_vfe_bus_ver3_vfe_out_data *)
 		update_buf->res->res_priv;
-
-	cdm_util_ops = vfe_out_data->cdm_util_ops;
-
-	if (!vfe_out_data || !cdm_util_ops) {
-		CAM_ERR(CAM_ISP, "Failed! Invalid data");
+	if (!vfe_out_data || !vfe_out_data->cdm_util_ops) {
+		CAM_ERR(CAM_ISP, "Invalid data");
 		return -EINVAL;
 	}
 
+	cdm_util_ops = vfe_out_data->cdm_util_ops;
 	if (update_buf->wm_update->num_buf != vfe_out_data->num_wm) {
 		CAM_ERR(CAM_ISP,
 			"Failed! Invalid number buffers:%d required:%d",
@@ -3226,12 +3224,12 @@ static int cam_vfe_bus_ver3_update_hfr(void *priv, void *cmd_args,
 	vfe_out_data = (struct cam_vfe_bus_ver3_vfe_out_data *)
 		update_hfr->res->res_priv;
 
-	cdm_util_ops = vfe_out_data->cdm_util_ops;
-	if (!vfe_out_data || !cdm_util_ops) {
-		CAM_ERR(CAM_ISP, "Failed! Invalid data");
+	if (!vfe_out_data || !vfe_out_data->cdm_util_ops) {
+		CAM_ERR(CAM_ISP, "Invalid data");
 		return -EINVAL;
 	}
 
+	cdm_util_ops = vfe_out_data->cdm_util_ops;
 	reg_val_pair = &vfe_out_data->common_data->io_buf_update[0];
 	hfr_cfg = (struct cam_isp_port_hfr_config *)update_hfr->data;
 
@@ -3582,16 +3580,12 @@ static int cam_vfe_bus_update_bw_limiter(
 
 	vfe_out_data = (struct cam_vfe_bus_ver3_vfe_out_data *)
 		wm_config_update->res->res_priv;
-
-	cdm_util_ops = vfe_out_data->cdm_util_ops;
-
-	if (!vfe_out_data || !cdm_util_ops) {
-		CAM_ERR(CAM_ISP,
-			"Failed invalid data out_data: %pK cdm_utils_ops: %pK",
-			vfe_out_data, cdm_util_ops);
+	if (!vfe_out_data || !vfe_out_data->cdm_util_ops) {
+		CAM_ERR(CAM_ISP, "Invalid data");
 		return -EINVAL;
 	}
 
+	cdm_util_ops = vfe_out_data->cdm_util_ops;
 	reg_val_pair = &vfe_out_data->common_data->io_buf_update[0];
 	for (i = 0, j = 0; i < vfe_out_data->num_wm; i++) {
 		if (j >= (MAX_REG_VAL_PAIR_SIZE - (MAX_BUF_UPDATE_REG_NUM * 2))) {
