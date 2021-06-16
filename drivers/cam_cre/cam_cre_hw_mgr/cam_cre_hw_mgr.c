@@ -2,12 +2,6 @@
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
  */
-#include <linux/uaccess.h>
-#include <linux/slab.h>
-#include <linux/of.h>
-#include <linux/io.h>
-#include <linux/of_platform.h>
-#include <linux/platform_device.h>
 #include <linux/mutex.h>
 #include <linux/spinlock.h>
 #include <linux/workqueue.h>
@@ -36,9 +30,6 @@
 #include "cam_common_util.h"
 #include "cre_dev_intf.h"
 #include "cam_compat.h"
-
-#define CAM_CRE_FE_IRQ 0x4
-#define CAM_CRE_WE_IRQ 0x2
 
 static struct cam_cre_hw_mgr *cre_hw_mgr;
 
@@ -131,6 +122,7 @@ static int cam_cre_mgr_process_cmd_io_buf_req(struct cam_cre_hw_mgr *hw_mgr,
 
 	cre_request = ctx_data->req_list[req_idx];
 	cre_request->num_batch = ctx_data->cre_acquire.batch_size;
+	CAM_DBG(CAM_CRE, "num_io_configs %d", packet->num_io_configs);
 
 	for (i = 0; i < cre_request->num_batch; i++) {
 		for (j = 0; j < packet->num_io_configs; j++) {
@@ -154,9 +146,15 @@ static int cam_cre_mgr_process_cmd_io_buf_req(struct cam_cre_hw_mgr *hw_mgr,
 			io_buf->num_planes = acq_io_buf->num_planes;
 			io_buf->resource_type = acq_io_buf->res_id;
 			io_buf->direction = acq_io_buf->direction;
-			io_buf->fence = acq_io_buf->fence;
 			io_buf->format = acq_io_buf->format;
+
 			alignment = acq_io_buf->alignment;
+			io_buf->fence = io_cfg_ptr[j].fence;
+
+			CAM_DBG(CAM_CRE,
+				"i %d j %d Number of planes %d res_type %d dir %d, fence %d format %d align %d",
+				i, j, io_buf->num_planes, io_buf->resource_type,
+				io_buf->direction, io_buf->fence, io_buf->format, alignment);
 
 			for (k = 0; k < io_buf->num_planes; k++) {
 				is_secure = cam_mem_is_secure_buf(
@@ -180,21 +178,27 @@ static int cam_cre_mgr_process_cmd_io_buf_req(struct cam_cre_hw_mgr *hw_mgr,
 				iova_addr += io_cfg_ptr[j].offsets[k];
 				plane_info = &io_buf->p_info[k];
 
-				plane_info->offset    = io_cfg_ptr[j].offsets[k];
-				plane_info->format    = io_buf->format;
-				/*
-				 * TODO: Confirm if the calculation for batch frame offset
-				 * is correct with some experiment in TFE.
-				 */
+				plane_info->offset = io_cfg_ptr[j].offsets[k];
+				plane_info->format = acq_io_buf->format;
 				plane_info->iova_addr = iova_addr +
 					((io_cfg_ptr[j].planes[k].plane_stride *
-					  io_cfg_ptr[j].planes[k].slice_height) * i);
-				plane_info->width     =
-					io_cfg_ptr[j].planes[k].width;
-				plane_info->height    =
-					io_cfg_ptr[j].planes[k].height;
+					  io_cfg_ptr[j].planes[k].slice_height) * k);
+
 				plane_info->stride    =
 					io_cfg_ptr[j].planes[k].plane_stride;
+
+				/* Width for WE has to be updated in number of pixels */
+				if (acq_io_buf->direction == CAM_BUF_OUTPUT) {
+					/* PLAIN 128/8 = 16 Bytes per pixel */
+					plane_info->width =
+						io_cfg_ptr[j].planes[k].plane_stride/16;
+				} else {
+					/* FE width should be in bytes */
+					plane_info->width     =
+						io_cfg_ptr[j].planes[k].plane_stride;
+				}
+				plane_info->height    =
+					io_cfg_ptr[j].planes[k].height;
 				plane_info->len       = len;
 				plane_info->alignment = alignment;
 			}
@@ -233,46 +237,26 @@ static int cam_cre_mgr_reset_hw(void)
 }
 
 
-static void cam_cre_ctx_wait_for_idle_irq(struct cam_cre_ctx *ctx,
-		struct cam_cre_request *cre_req, uint32_t cookie)
+static void cam_cre_ctx_wait_for_idle_irq(struct cam_cre_ctx *ctx)
 {
 	int rc;
 
 	if (ctx->ctx_state != CRE_CTX_STATE_ACQUIRED) {
 		CAM_ERR(CAM_CRE, "ctx %u is in %d state",
 			ctx->ctx_id, ctx->ctx_state);
-		mutex_unlock(&ctx->ctx_mutex);
 		return;
 	}
 
-	rc = wait_for_completion_timeout(
-		&ctx->cre_top->idle_done, msecs_to_jiffies(30000));
+	rc = cam_common_wait_for_completion_timeout(
+		&ctx->cre_top->idle_done,
+		msecs_to_jiffies(CAM_CRE_RESPONSE_TIME_THRESHOLD));
 	if (!rc) {
 		cam_cre_device_timer_reset(cre_hw_mgr);
 	} else {
-		CAM_INFO(CAM_CRE, "After reset of CRE, reapply req");
-		rc = cam_cre_mgr_reset_hw();
+		CAM_DBG(CAM_CRE, "IDLE done for req idx %d",
+			ctx->last_req_idx);
 	}
-
-	if (!test_bit(cookie, ctx->bitmap)) {
-		CAM_ERR(CAM_CRE, "Req not present reqIdx = %d for ctx_id = %d",
-			cookie, ctx->ctx_id);
-		goto end;
-	}
-	CAM_DBG(CAM_REQ, "req_id= %llu ctx_id= %d lcb=%llu",
-		cre_req->request_id, ctx->ctx_id);
-
-	ctx->req_cnt--;
-
-	cre_req->request_id = 0;
-	cam_cre_free_io_config(ctx->req_list[cookie]);
-	cam_free_clear((void *)ctx->req_list[cookie]);
-	ctx->req_list[cookie] = NULL;
-	clear_bit(cookie, ctx->bitmap);
-end:
-	mutex_unlock(&ctx->ctx_mutex);
 }
-
 
 static int cam_cre_mgr_create_cre_reg_buf(struct cam_cre_hw_mgr *hw_mgr,
 	struct cam_packet *packet,
@@ -570,16 +554,16 @@ static int cam_cre_mgr_handle_config_err(
 	struct cam_hw_config_args *config_args,
 	struct cam_cre_ctx *ctx_data)
 {
-	struct cam_hw_done_event_data buf_data;
+	struct cam_hw_done_event_data err_data;
 	struct cam_cre_request *cre_req;
 	uint32_t req_idx;
 
 	cre_req = config_args->priv;
 
-	buf_data.request_id = cre_req->request_id;
-	buf_data.evt_param = CAM_SYNC_CRE_EVENT_CONFIG_ERR;
+	err_data.request_id = cre_req->request_id;
+	err_data.evt_param = CAM_SYNC_CRE_EVENT_CONFIG_ERR;
 	ctx_data->ctxt_event_cb(ctx_data->context_priv, CAM_CTX_EVT_ID_ERROR,
-		&buf_data);
+		&err_data);
 
 	req_idx = cre_req->req_idx;
 	cre_req->request_id = 0;
@@ -684,7 +668,7 @@ static int32_t cam_cre_deinit_idle_clk(void *priv, void *data)
 
 	CAM_DBG(CAM_CRE, "Disable %d", clk_info->hw_type);
 
-	dev_intf->hw_ops.process_cmd(dev_intf->hw_priv, id,	NULL, 0);
+	dev_intf->hw_ops.process_cmd(dev_intf->hw_priv, id, NULL, 0);
 
 done:
 	mutex_unlock(&hw_mgr->hw_mgr_mutex);
@@ -719,19 +703,14 @@ static void cam_cre_device_timer_cb(struct timer_list *timer_data)
 static int cam_cre_device_timer_start(struct cam_cre_hw_mgr *hw_mgr)
 {
 	int rc = 0;
-	int i;
 
-	for (i = 0; i < CLK_HW_MAX; i++)  {
-		if (!hw_mgr->clk_info.watch_dog) {
-			rc = crm_timer_init(&hw_mgr->clk_info.watch_dog,
-				CRE_DEVICE_IDLE_TIMEOUT, &hw_mgr->clk_info,
-				&cam_cre_device_timer_cb);
-
-			if (rc)
-				CAM_ERR(CAM_CRE, "Failed to start timer %d", i);
-
-			hw_mgr->clk_info.watch_dog_reset_counter = 0;
-		}
+	if (!hw_mgr->clk_info.watch_dog) {
+		rc = crm_timer_init(&hw_mgr->clk_info.watch_dog,
+			CRE_DEVICE_IDLE_TIMEOUT, &hw_mgr->clk_info,
+			&cam_cre_device_timer_cb);
+		if (rc)
+			CAM_ERR(CAM_CRE, "Failed to start timer");
+		hw_mgr->clk_info.watch_dog_reset_counter = 0;
 	}
 
 	return rc;
@@ -753,7 +732,7 @@ static int cam_cre_mgr_process_cmd(void *priv, void *data)
 	struct cam_cre_ctx *ctx_data;
 	struct cam_cre_request *cre_req;
 	struct cam_cre_hw_mgr *hw_mgr = cre_hw_mgr;
-	uint32_t active_req_idx;
+	uint32_t num_batch;
 
 	if (!data || !priv) {
 		CAM_ERR(CAM_CRE, "Invalid params%pK %pK", data, priv);
@@ -772,12 +751,10 @@ static int cam_cre_mgr_process_cmd(void *priv, void *data)
 		return -EINVAL;
 	}
 
-	active_req_idx = task_data->req_idx;
-
-	if (active_req_idx >= CAM_CTX_REQ_MAX) {
+	if (task_data->req_idx >= CAM_CTX_REQ_MAX) {
 		mutex_unlock(&hw_mgr->hw_mgr_mutex);
 		CAM_ERR(CAM_CRE, "Invalid reqIdx = %llu",
-				active_req_idx);
+				task_data->req_idx);
 		return -EINVAL;
 	}
 
@@ -799,15 +776,34 @@ static int cam_cre_mgr_process_cmd(void *priv, void *data)
 		mutex_unlock(&hw_mgr->hw_mgr_mutex);
 		return -EINVAL;
 	}
-
 	hw_mgr = task_data->data;
-	ctx_data->active_req = cre_req;
-	for (i = 0; i < cre_req->num_batch; i++) {
-		cam_cre_mgr_update_reg_set(hw_mgr, cre_req);
-		cam_cre_ctx_wait_for_idle_irq(ctx_data, cre_req,
-			active_req_idx);
-	}
+	num_batch = cre_req->num_batch;
 
+	CAM_DBG(CAM_CRE,
+		"Going to configure cre for req %d, req_idx %d num_batch %d",
+		cre_req->request_id, cre_req->req_idx, num_batch);
+
+	for (i = 0; i < num_batch; i++) {
+		if (i != 0) {
+			rc = cam_common_wait_for_completion_timeout(
+					&ctx_data->cre_top->bufdone,
+					msecs_to_jiffies(100));
+			if (!rc) {
+				cam_cre_device_timer_reset(cre_hw_mgr);
+				CAM_ERR(CAM_CRE,
+					"Timedout waiting for bufdone on last frame");
+				return -ETIMEDOUT;
+			} else {
+				reinit_completion(&ctx_data->cre_top->bufdone);
+				CAM_INFO(CAM_CRE,
+					"done for frame %d in batch of %d",
+					i-1, num_batch);
+			}
+		}
+
+		cam_cre_mgr_update_reg_set(hw_mgr, cre_req, i);
+		cam_cre_ctx_wait_for_idle_irq(ctx_data);
+	}
 	mutex_unlock(&hw_mgr->hw_mgr_mutex);
 
 	return rc;
@@ -835,9 +831,11 @@ static int32_t cam_cre_mgr_process_msg(void *priv, void *data)
 	struct cam_hw_done_event_data buf_data;
 	struct cam_cre_hw_mgr *hw_mgr;
 	struct cam_cre_ctx *ctx;
+	struct cam_cre_request *active_req;
 	struct cam_cre_irq_data irq_data;
 	int32_t ctx_id;
 	uint32_t evt_id;
+	uint32_t active_req_idx;
 	int rc = 0;
 
 	if (!data || !priv) {
@@ -864,31 +862,325 @@ static int32_t cam_cre_mgr_process_msg(void *priv, void *data)
 		return -EINVAL;
 	}
 
+	active_req_idx = find_next_bit(ctx->bitmap, ctx->bits, ctx->last_done_req_idx);
+	CAM_DBG(CAM_CRE, "active_req_idx %d last_done_req_idx %d",
+		active_req_idx, ctx->last_done_req_idx);
+
+	active_req = ctx->req_list[active_req_idx];
+	if (!active_req)
+		CAM_ERR(CAM_CRE, "Active req cannot be null");
+
 	if (irq_data.error) {
 		evt_id = CAM_CTX_EVT_ID_ERROR;
 		buf_data.evt_param = CAM_SYNC_CRE_EVENT_HW_ERR;
-		buf_data.request_id = ctx->active_req->request_id;
+		buf_data.request_id = active_req->request_id;
 		ctx->ctxt_event_cb(ctx->context_priv, evt_id, &buf_data);
 		rc = cam_cre_mgr_reset_hw();
-	} else if ((irq_data.top_irq_status & CAM_CRE_WE_IRQ)
-		&& (irq_data.wr_buf_done)) {
+		clear_bit(active_req_idx, ctx->bitmap);
+		cam_cre_free_io_config(active_req);
+		cam_free_clear((void *)active_req);
+		ctx->req_cnt--;
+		ctx->req_list[active_req_idx] = NULL;
+	} else if (irq_data.wr_buf_done) {
 		/* Signal Buf done */
-		ctx->active_req->frames_done++;
-		if (ctx->active_req->frames_done == ctx->active_req->num_batch) {
+		active_req->frames_done++;
+		CAM_DBG(CAM_CRE, "Received frames_done %d num_batch %d req id %d",
+			active_req->frames_done, active_req->num_batch,
+			active_req->request_id);
+		complete(&ctx->cre_top->bufdone);
+		if (active_req->frames_done == active_req->num_batch) {
+			ctx->last_done_req_idx = active_req_idx;
+			CAM_DBG(CAM_CRE, "signaling buff done for req %d",
+				active_req->request_id);
 			evt_id = CAM_CTX_EVT_ID_SUCCESS;
 			buf_data.evt_param = CAM_SYNC_COMMON_EVENT_SUCCESS;
-			buf_data.request_id = ctx->active_req->request_id;
+			buf_data.request_id = active_req->request_id;
 			ctx->ctxt_event_cb(ctx->context_priv, evt_id, &buf_data);
+			clear_bit(active_req_idx, ctx->bitmap);
+			cam_cre_free_io_config(active_req);
+			cam_free_clear((void *)active_req);
+			ctx->req_cnt--;
+			ctx->req_list[active_req_idx] = NULL;
 		}
 	}
 	mutex_unlock(&ctx->ctx_mutex);
 	return rc;
 }
 
+static int cam_cre_get_actual_clk_rate_idx(
+	struct cam_cre_ctx *ctx_data, uint32_t base_clk)
+{
+	int i;
+
+	for (i = 0; i < CAM_MAX_VOTE; i++)
+		if (ctx_data->clk_info.clk_rate[i] >= base_clk)
+			return i;
+
+	/*
+	 * Caller has to ensure returned index is within array
+	 * size bounds while accessing that index.
+	 */
+
+	return i;
+}
+
+static bool cam_cre_is_over_clk(struct cam_cre_hw_mgr *hw_mgr,
+	struct cam_cre_ctx *ctx_data,
+	struct cam_cre_clk_info *hw_mgr_clk_info)
+{
+	int base_clk_idx;
+	int curr_clk_idx;
+
+	base_clk_idx = cam_cre_get_actual_clk_rate_idx(ctx_data,
+		hw_mgr_clk_info->base_clk);
+
+	curr_clk_idx = cam_cre_get_actual_clk_rate_idx(ctx_data,
+		hw_mgr_clk_info->curr_clk);
+
+	CAM_DBG(CAM_CRE, "bc_idx = %d cc_idx = %d %d %d",
+		base_clk_idx, curr_clk_idx, hw_mgr_clk_info->base_clk,
+		hw_mgr_clk_info->curr_clk);
+
+	if (curr_clk_idx > base_clk_idx)
+		return true;
+
+	return false;
+}
+
+static int cam_cre_get_lower_clk_rate(struct cam_cre_hw_mgr *hw_mgr,
+	struct cam_cre_ctx *ctx_data, uint32_t base_clk)
+{
+	int i;
+
+	i = cam_cre_get_actual_clk_rate_idx(ctx_data, base_clk);
+
+	while (i > 0) {
+		if (ctx_data->clk_info.clk_rate[i - 1])
+			return ctx_data->clk_info.clk_rate[i - 1];
+		i--;
+	}
+
+	CAM_DBG(CAM_CRE, "Already clk at lower level");
+
+	return base_clk;
+}
+
+static int cam_cre_get_next_clk_rate(struct cam_cre_hw_mgr *hw_mgr,
+	struct cam_cre_ctx *ctx_data, uint32_t base_clk)
+{
+	int i;
+
+	i = cam_cre_get_actual_clk_rate_idx(ctx_data, base_clk);
+
+	while (i < CAM_MAX_VOTE - 1) {
+		if (ctx_data->clk_info.clk_rate[i + 1])
+			return ctx_data->clk_info.clk_rate[i + 1];
+		i++;
+	}
+
+	CAM_DBG(CAM_CRE, "Already clk at higher level");
+	return base_clk;
+}
+
+static bool cam_cre_update_clk_overclk_free(struct cam_cre_hw_mgr *hw_mgr,
+	struct cam_cre_ctx *ctx_data,
+	struct cam_cre_clk_info *hw_mgr_clk_info,
+	struct cam_cre_clk_bw_request *clk_info,
+	uint32_t base_clk)
+{
+	int rc = false;
+
+	/*
+	 * In caseof no pending packets case
+	 *    1. In caseof overclk cnt is less than threshold, increase
+	 *       overclk count and no update in the clock rate
+	 *    2. In caseof overclk cnt is greater than or equal to threshold
+	 *       then lower clock rate by one level and update hw_mgr current
+	 *       clock value.
+	 *        a. In case of new clock rate greater than sum of clock
+	 *           rates, reset overclk count value to zero if it is
+	 *           overclock
+	 *        b. if it is less than sum of base clocks then go to next
+	 *           level of clock and make overclk count to zero
+	 *        c. if it is same as sum of base clock rates update overclock
+	 *           cnt to 0
+	 */
+	if (hw_mgr_clk_info->over_clked < hw_mgr_clk_info->threshold) {
+		hw_mgr_clk_info->over_clked++;
+		rc = false;
+	} else {
+		hw_mgr_clk_info->curr_clk =
+			cam_cre_get_lower_clk_rate(hw_mgr, ctx_data,
+			hw_mgr_clk_info->curr_clk);
+		if (hw_mgr_clk_info->curr_clk > hw_mgr_clk_info->base_clk) {
+			if (cam_cre_is_over_clk(hw_mgr, ctx_data,
+				hw_mgr_clk_info))
+				hw_mgr_clk_info->over_clked = 0;
+		} else if (hw_mgr_clk_info->curr_clk <
+			hw_mgr_clk_info->base_clk) {
+			hw_mgr_clk_info->curr_clk =
+			cam_cre_get_next_clk_rate(hw_mgr, ctx_data,
+				hw_mgr_clk_info->curr_clk);
+				hw_mgr_clk_info->over_clked = 0;
+		} else if (hw_mgr_clk_info->curr_clk ==
+			hw_mgr_clk_info->base_clk) {
+			hw_mgr_clk_info->over_clked = 0;
+		}
+		rc = true;
+	}
+
+	return rc;
+}
+
+static int cam_cre_calc_total_clk(struct cam_cre_hw_mgr *hw_mgr,
+	struct cam_cre_clk_info *hw_mgr_clk_info, uint32_t dev_type)
+{
+	int i;
+	struct cam_cre_ctx *ctx_data;
+
+	hw_mgr_clk_info->base_clk = 0;
+	for (i = 0; i < CRE_CTX_MAX; i++) {
+		ctx_data = &hw_mgr->ctx[i];
+		if (ctx_data->ctx_state == CRE_CTX_STATE_ACQUIRED)
+			hw_mgr_clk_info->base_clk +=
+				ctx_data->clk_info.base_clk;
+	}
+
+	return 0;
+}
+
+static int cam_cre_get_actual_clk_rate(struct cam_cre_hw_mgr *hw_mgr,
+	struct cam_cre_ctx *ctx_data, uint32_t base_clk)
+{
+	int i;
+
+	for (i = 0; i < CAM_MAX_VOTE; i++)
+		if (ctx_data->clk_info.clk_rate[i] >= base_clk)
+			return ctx_data->clk_info.clk_rate[i];
+
+	return base_clk;
+}
+
+static bool cam_cre_update_clk_busy(struct cam_cre_hw_mgr *hw_mgr,
+	struct cam_cre_ctx *ctx_data,
+	struct cam_cre_clk_info *hw_mgr_clk_info,
+	struct cam_cre_clk_bw_request *clk_info,
+	uint32_t base_clk)
+{
+	uint32_t next_clk_level;
+	uint32_t actual_clk;
+	bool rc = false;
+
+	/* 1. if current request frame cycles(fc) are more than previous
+	 *      frame fc
+	 *      Calculate the new base clock.
+	 *      if sum of base clocks are more than next available clk level
+	 *       Update clock rate, change curr_clk_rate to sum of base clock
+	 *       rates and make over_clked to zero
+	 *      else
+	 *       Update clock rate to next level, update curr_clk_rate and make
+	 *       overclked cnt to zero
+	 * 2. if current fc is less than or equal to previous  frame fc
+	 *      Still Bump up the clock to next available level
+	 *      if it is available, then update clock, make overclk cnt to
+	 *      zero. If the clock is already at highest clock rate then
+	 *      no need to update the clock
+	 */
+	ctx_data->clk_info.base_clk = base_clk;
+	hw_mgr_clk_info->over_clked = 0;
+	if (clk_info->frame_cycles > ctx_data->clk_info.curr_fc) {
+		cam_cre_calc_total_clk(hw_mgr, hw_mgr_clk_info,
+			ctx_data->cre_acquire.dev_type);
+		actual_clk = cam_cre_get_actual_clk_rate(hw_mgr,
+			ctx_data, base_clk);
+		if (hw_mgr_clk_info->base_clk > actual_clk) {
+			hw_mgr_clk_info->curr_clk = hw_mgr_clk_info->base_clk;
+		} else {
+			next_clk_level = cam_cre_get_next_clk_rate(hw_mgr,
+				ctx_data, hw_mgr_clk_info->curr_clk);
+			hw_mgr_clk_info->curr_clk = next_clk_level;
+		}
+		rc = true;
+	} else {
+		next_clk_level =
+			cam_cre_get_next_clk_rate(hw_mgr, ctx_data,
+				hw_mgr_clk_info->curr_clk);
+		if (hw_mgr_clk_info->curr_clk < next_clk_level) {
+			hw_mgr_clk_info->curr_clk = next_clk_level;
+			rc = true;
+		}
+	}
+	ctx_data->clk_info.curr_fc = clk_info->frame_cycles;
+
+	return rc;
+}
+
+static bool cam_cre_update_clk_free(struct cam_cre_hw_mgr *hw_mgr,
+	struct cam_cre_ctx *ctx_data,
+	struct cam_cre_clk_info *hw_mgr_clk_info,
+	struct cam_cre_clk_bw_request *clk_info,
+	uint32_t base_clk)
+{
+	int rc = false;
+	bool over_clocked = false;
+
+	ctx_data->clk_info.curr_fc = clk_info->frame_cycles;
+	ctx_data->clk_info.base_clk = base_clk;
+	cam_cre_calc_total_clk(hw_mgr, hw_mgr_clk_info,
+		ctx_data->cre_acquire.dev_type);
+
+	/*
+	 * Current clock is not always sum of base clocks, due to
+	 * clock scales update to next higher or lower levels, it
+	 * equals to one of discrete clock values supported by hardware.
+	 * So even current clock is higher than sum of base clocks, we
+	 * can not consider it is over clocked. if it is greater than
+	 * discrete clock level then only it is considered as over clock.
+	 * 1. Handle over clock case
+	 * 2. If current clock is less than sum of base clocks
+	 *    update current clock
+	 * 3. If current clock is same as sum of base clocks no action
+	 */
+
+	over_clocked = cam_cre_is_over_clk(hw_mgr, ctx_data,
+		hw_mgr_clk_info);
+
+	if (hw_mgr_clk_info->curr_clk > hw_mgr_clk_info->base_clk &&
+		over_clocked) {
+		rc = cam_cre_update_clk_overclk_free(hw_mgr, ctx_data,
+			hw_mgr_clk_info, clk_info, base_clk);
+	} else if (hw_mgr_clk_info->curr_clk > hw_mgr_clk_info->base_clk) {
+		hw_mgr_clk_info->over_clked = 0;
+		rc = false;
+	}  else if (hw_mgr_clk_info->curr_clk < hw_mgr_clk_info->base_clk) {
+		hw_mgr_clk_info->curr_clk = cam_cre_get_actual_clk_rate(hw_mgr,
+			ctx_data, hw_mgr_clk_info->base_clk);
+		rc = true;
+	}
+
+	return rc;
+}
+
+static uint32_t cam_cre_mgr_calc_base_clk(uint32_t frame_cycles,
+	uint64_t budget)
+{
+	uint64_t mul = 1000000000;
+	uint64_t base_clk = frame_cycles * mul;
+
+	do_div(base_clk, budget);
+
+	CAM_DBG(CAM_CRE, "budget = %lld fc = %d ib = %lld base_clk = %lld",
+		budget, frame_cycles,
+		(long long)(frame_cycles * mul), base_clk);
+
+	return base_clk;
+}
+
 static bool cam_cre_check_clk_update(struct cam_cre_hw_mgr *hw_mgr,
 	struct cam_cre_ctx *ctx_data, int idx)
 {
-	bool rc = false;
+	bool busy = false, rc = false;
+	uint64_t base_clk;
 	struct cam_cre_clk_bw_request *clk_info;
 	uint64_t req_id;
 	struct cam_cre_clk_info *hw_mgr_clk_info;
@@ -896,13 +1188,28 @@ static bool cam_cre_check_clk_update(struct cam_cre_hw_mgr *hw_mgr,
 	cam_cre_device_timer_reset(hw_mgr);
 	hw_mgr_clk_info = &hw_mgr->clk_info;
 	req_id = ctx_data->req_list[idx]->request_id;
+	if (ctx_data->req_cnt > 1)
+		busy = true;
 
-	CAM_DBG(CAM_CRE, "req_id = %lld", req_id);
+	CAM_DBG(CAM_CRE, "busy = %d req_id = %lld", busy, req_id);
 
 	clk_info = &ctx_data->req_list[idx]->clk_info;
 
 	/* Calculate base clk rate */
+	base_clk = cam_cre_mgr_calc_base_clk(
+		clk_info->frame_cycles, clk_info->budget_ns);
 	ctx_data->clk_info.rt_flag = clk_info->rt_flag;
+
+	if (busy)
+		rc = cam_cre_update_clk_busy(hw_mgr, ctx_data,
+			hw_mgr_clk_info, clk_info, base_clk);
+	else
+		rc = cam_cre_update_clk_free(hw_mgr, ctx_data,
+			hw_mgr_clk_info, clk_info, base_clk);
+
+	CAM_DBG(CAM_CRE, "bc = %d cc = %d busy = %d overclk = %d uc = %d",
+		hw_mgr_clk_info->base_clk, hw_mgr_clk_info->curr_clk,
+		busy, hw_mgr_clk_info->over_clked, rc);
 
 	return rc;
 }
@@ -1020,7 +1327,8 @@ static int cam_cre_mgr_process_io_cfg(struct cam_cre_hw_mgr *hw_mgr,
 	prep_arg->num_out_map_entries = 0;
 	prep_arg->num_in_map_entries = 0;
 
-	CAM_DBG(CAM_CRE, "E: req_idx = %u %x", req_idx, packet);
+	CAM_DBG(CAM_CRE, "E: req_idx = %u %x num batch%d",
+			req_idx, packet, cre_request->num_batch);
 
 	for (i = 0; i < cre_request->num_batch; i++) {
 		for (l = 0; l < cre_request->num_io_bufs[i]; l++) {
@@ -1050,13 +1358,10 @@ static int cam_cre_mgr_process_io_cfg(struct cam_cre_hw_mgr *hw_mgr,
 					prep_arg->num_out_map_entries++;
 				}
 			}
-			CAM_DBG(CAM_REQ,
+			CAM_DBG(CAM_CRE,
 				"ctx_id: %u req_id: %llu dir[%d] %u, fence: %d",
 				ctx_data->ctx_id, packet->header.request_id, i,
 				io_buf->direction, io_buf->fence);
-			CAM_DBG(CAM_REQ, "rsc_type = %u fmt = %d",
-				io_buf->resource_type,
-				io_buf->format);
 		}
 	}
 
@@ -1080,16 +1385,16 @@ static int cam_cre_mgr_process_io_cfg(struct cam_cre_hw_mgr *hw_mgr,
 
 		prep_arg->in_map_entries[0].sync_id = merged_sync_in_obj;
 		prep_arg->num_in_map_entries = 1;
-		CAM_DBG(CAM_REQ, "ctx_id: %u req_id: %llu Merged Sync obj: %d",
+		CAM_DBG(CAM_CRE, "ctx_id: %u req_id: %llu Merged Sync obj: %d",
 			ctx_data->ctx_id, packet->header.request_id,
 			merged_sync_in_obj);
 	} else if (prep_arg->num_in_map_entries == 1) {
 		prep_arg->in_map_entries[0].sync_id = sync_in_obj[0];
 		prep_arg->num_in_map_entries = 1;
 		cre_request->in_resource = 0;
-		CAM_DBG(CAM_CRE, "fence = %d", sync_in_obj[0]);
 	} else {
-		CAM_DBG(CAM_CRE, "Invalid count of input fences, count: %d",
+		CAM_ERR(CAM_CRE,
+			"Invalid count of input fences, count: %d",
 			prep_arg->num_in_map_entries);
 		prep_arg->num_in_map_entries = 0;
 		cre_request->in_resource = 0;
@@ -1203,48 +1508,42 @@ static int cam_cre_validate_acquire_res_info(
 		return -EINVAL;
 	}
 
-	if (cre_acquire->dev_type >= CRE_DEV_MAX) {
+	if (cre_acquire->dev_type >= CAM_CRE_DEV_TYPE_MAX) {
 		CAM_ERR(CAM_CRE, "Invalid device type: %d",
 			cre_acquire->dev_type);
-		return -EFAULT;
+		return -EINVAL;
 	}
 
-	/*
-	 * TODO: Confirm this with CRE HW folks
-	 * Reffering CRE HPG supported input formats are
-	 * CAM_FORMAT_MIPI_RAW_10
-	 * CAM_FORMAT_MIPI_RAW_12
-	 * CAM_FORMAT_MIPI_RAW_14
-	 * CAM_FORMAT_MIPI_RAW_16
-	 * CAM_FORMAT_MIPI_RAW_20
-	 */
 	for (i = 0; i < cre_acquire->num_in_res; i++) {
-		if ((cre_acquire->in_res[i].format <
-			CAM_FORMAT_MIPI_RAW_10) ||
-			(cre_acquire->in_res[i].format >
-			 CAM_FORMAT_MIPI_RAW_20)) {
-			CAM_ERR(CAM_CRE, "Invalid Input format");
-			return -EINVAL;
+		switch (cre_acquire->in_res[i].format) {
+			case CAM_FORMAT_MIPI_RAW_10:
+			case CAM_FORMAT_MIPI_RAW_12:
+			case CAM_FORMAT_MIPI_RAW_14:
+			case CAM_FORMAT_MIPI_RAW_20:
+			case CAM_FORMAT_PLAIN1128:
+				break;
+			default:
+				CAM_ERR(CAM_CRE, "Invalid input format %d",
+					cre_acquire->in_res[i].format);
+				return -EINVAL;
 		}
 	}
 
-	/*
-	 * TODO: Confirm this with CRE HW folks
-	 * Reffering CRE HPG supported output formats are
-	 * CAM_FORMAT_PLAIN16_8
-	 * CAM_FORMAT_PLAIN16_10
-	 * CAM_FORMAT_PLAIN16_12
-	 * CAM_FORMAT_PLAIN16_14
-	 * CAM_FORMAT_PLAIN16_16
-	 * CAM_FORMAT_PLAIN32_20
-	 */
 	for (i = 0; i < cre_acquire->num_out_res; i++) {
-		if ((cre_acquire->out_res[i].format <
-			CAM_FORMAT_PLAIN16_8) ||
-			(cre_acquire->out_res[i].format >
-			 CAM_FORMAT_PLAIN32_20)) {
-			CAM_ERR(CAM_CRE, "Invalid output format");
-			return -EINVAL;
+		switch (cre_acquire->out_res[i].format) {
+			case CAM_FORMAT_PLAIN16_8:
+			case CAM_FORMAT_PLAIN16_10:
+			case CAM_FORMAT_PLAIN16_12:
+			case CAM_FORMAT_PLAIN16_14:
+			case CAM_FORMAT_PLAIN16_16:
+			case CAM_FORMAT_PLAIN32_20:
+			case CAM_FORMAT_PLAIN32:
+			case CAM_FORMAT_PLAIN1128:
+				break;
+			default:
+				CAM_ERR(CAM_CRE, "Invalid output format %d",
+					cre_acquire->out_res[i].format);
+				return -EINVAL;
 		}
 	}
 
@@ -1270,9 +1569,6 @@ static int cam_cre_get_acquire_info(struct cam_cre_hw_mgr *hw_mgr,
 		return -EFAULT;
 	}
 
-	if (cam_cre_validate_acquire_res_info(&ctx->cre_acquire))
-		return -EINVAL;
-
 	CAM_DBG(CAM_CRE, "top: %u %s %u %u %u",
 		ctx->cre_acquire.dev_type,
 		ctx->cre_acquire.dev_name,
@@ -1294,6 +1590,9 @@ static int cam_cre_get_acquire_info(struct cam_cre_hw_mgr *hw_mgr,
 		ctx->cre_acquire.out_res[i].height,
 		ctx->cre_acquire.out_res[i].format);
 	}
+
+	if (cam_cre_validate_acquire_res_info(&ctx->cre_acquire))
+		return -EINVAL;
 
 	return 0;
 }
@@ -1626,6 +1925,8 @@ static int cam_cre_mgr_release_ctx(struct cam_cre_hw_mgr *hw_mgr, int ctx_id)
 
 	hw_mgr->ctx[ctx_id].req_cnt = 0;
 	hw_mgr->ctx[ctx_id].last_flush_req = 0;
+	hw_mgr->ctx[ctx_id].last_req_idx = 0;
+	hw_mgr->ctx[ctx_id].last_done_req_idx = 0;
 	cam_cre_put_free_ctx(hw_mgr, ctx_id);
 
 	rc = cam_cre_mgr_cre_clk_remove(hw_mgr, ctx_id);
@@ -1888,12 +2189,16 @@ static int cam_cre_mgr_prepare_hw_update(void *hw_priv,
 		return rc;
 	}
 
-	request_idx  = find_first_zero_bit(ctx_data->bitmap, ctx_data->bits);
+	request_idx  = find_next_zero_bit(ctx_data->bitmap,
+			ctx_data->bits, ctx_data->last_req_idx);
 	if (request_idx >= CAM_CTX_REQ_MAX || request_idx < 0) {
 		mutex_unlock(&ctx_data->ctx_mutex);
 		CAM_ERR(CAM_CRE, "Invalid ctx req slot = %d", request_idx);
 		return -EINVAL;
 	}
+	CAM_DBG(CAM_CRE, "req_idx %d last_req_idx %d bitmap size in bits %d",
+		request_idx, ctx_data->last_req_idx, ctx_data->bits);
+	ctx_data->last_req_idx = request_idx;
 
 	ctx_data->req_list[request_idx] =
 		kzalloc(sizeof(struct cam_cre_request), GFP_KERNEL);
@@ -1903,8 +2208,13 @@ static int cam_cre_mgr_prepare_hw_update(void *hw_priv,
 		rc = -ENOMEM;
 		goto req_mem_alloc_failed;
 	}
+	memset(ctx_data->req_list[request_idx], 0,
+			sizeof(struct cam_cre_request));
 
 	cre_req = ctx_data->req_list[request_idx];
+	cre_req->request_id = packet->header.request_id;
+	cre_req->frames_done = 0;
+	cre_req->req_idx = request_idx;
 
 	rc = cam_cre_mgr_process_io_cfg(hw_mgr, packet, ctx_data,
 			request_idx, prepare_args);
@@ -1987,8 +2297,13 @@ static int cam_cre_mgr_enqueue_config(struct cam_cre_hw_mgr *hw_mgr,
 	task_data->req_idx = cre_req->req_idx;
 	task_data->type = CRE_WORKQ_TASK_CMD_TYPE;
 	task->process_cb = cam_cre_mgr_process_cmd;
-	rc = cam_req_mgr_workq_enqueue_task(task, ctx_data,
-		CRM_TASK_PRIORITY_0);
+
+	if (ctx_data->cre_acquire.dev_type == CAM_CRE_DEV_TYPE_RT)
+		rc = cam_req_mgr_workq_enqueue_task(task, ctx_data,
+			CRM_TASK_PRIORITY_0);
+	else
+		rc = cam_req_mgr_workq_enqueue_task(task, ctx_data,
+			CRM_TASK_PRIORITY_1);
 
 	return rc;
 }
@@ -2057,7 +2372,7 @@ static void cam_cre_mgr_print_io_bufs(struct cam_packet *packet,
 	int32_t iommu_hdl, int32_t sec_mmu_hdl, uint32_t pf_buf_info,
 	bool *mem_found)
 {
-	dma_addr_t   iova_addr;
+	dma_addr_t iova_addr;
 	size_t     src_buf_size;
 	int        i;
 	int        j;
@@ -2158,6 +2473,8 @@ static int cam_cre_mgr_flush_req(struct cam_cre_ctx *ctx_data,
 {
 	int idx;
 	int64_t request_id;
+	uint32_t evt_id;
+	struct cam_hw_done_event_data buf_data;
 
 	request_id = *(int64_t *)flush_args->flush_req_pending[0];
 	for (idx = 0; idx < CAM_CTX_REQ_MAX; idx++) {
@@ -2167,6 +2484,10 @@ static int cam_cre_mgr_flush_req(struct cam_cre_ctx *ctx_data,
 		if (ctx_data->req_list[idx]->request_id != request_id)
 			continue;
 
+		evt_id = CAM_CTX_EVT_ID_ERROR;
+		buf_data.evt_param = CAM_SYNC_CRE_EVENT_HW_ERR;
+		buf_data.request_id = ctx_data->req_list[idx]->request_id;
+		ctx_data->ctxt_event_cb(ctx_data->context_priv, evt_id, &buf_data);
 		ctx_data->req_list[idx]->request_id = 0;
 		cam_cre_free_io_config(ctx_data->req_list[idx]);
 		cam_free_clear(ctx_data->req_list[idx]);
@@ -2181,6 +2502,8 @@ static int cam_cre_mgr_flush_all(struct cam_cre_ctx *ctx_data,
 	struct cam_hw_flush_args *flush_args)
 {
 	int i, rc;
+	uint32_t evt_id;
+	struct cam_hw_done_event_data buf_data;
 
 	mutex_lock(&ctx_data->ctx_mutex);
 	rc = cam_cre_mgr_reset_hw();
@@ -2189,6 +2512,10 @@ static int cam_cre_mgr_flush_all(struct cam_cre_ctx *ctx_data,
 		if (!ctx_data->req_list[i])
 			continue;
 
+		evt_id = CAM_CTX_EVT_ID_ERROR;
+		buf_data.evt_param = CAM_SYNC_CRE_EVENT_HW_ERR;
+		buf_data.request_id = ctx_data->req_list[i]->request_id;
+		ctx_data->ctxt_event_cb(ctx_data->context_priv, evt_id, &buf_data);
 		ctx_data->req_list[i]->request_id = 0;
 		cam_cre_free_io_config(ctx_data->req_list[i]);
 		cam_free_clear(ctx_data->req_list[i]);
@@ -2533,15 +2860,6 @@ static int cam_cre_create_debug_fs(void)
 		return -ENOMEM;
 	}
 
-	if (!debugfs_create_bool("frame_dump_enable",
-		0644,
-		cre_hw_mgr->dentry,
-		&cre_hw_mgr->frame_dump_enable)) {
-		CAM_ERR(CAM_CRE,
-			"failed to create dump_enable_debug");
-		goto err;
-	}
-
 	if (!debugfs_create_bool("dump_req_data_enable",
 		0644,
 		cre_hw_mgr->dentry,
@@ -2557,18 +2875,18 @@ err:
 	return -ENOMEM;
 }
 
-int cam_cre_hw_mgr_init(struct device_node *of_node, uint64_t *hw_mgr_hdl,
+int cam_cre_hw_mgr_init(struct device_node *of_node, void *hw_mgr,
 	int *iommu_hdl)
 {
 	int i, rc = 0, j;
 	struct cam_hw_mgr_intf *hw_mgr_intf;
 
-	if (!of_node || !hw_mgr_hdl) {
+	if (!of_node || !hw_mgr) {
 		CAM_ERR(CAM_CRE, "Invalid args of_node %pK hw_mgr %pK",
-			of_node, hw_mgr_hdl);
+			of_node, hw_mgr);
 		return -EINVAL;
 	}
-	hw_mgr_intf = (struct cam_hw_mgr_intf *)hw_mgr_hdl;
+	hw_mgr_intf = (struct cam_hw_mgr_intf *)hw_mgr;
 
 	cre_hw_mgr = kzalloc(sizeof(struct cam_cre_hw_mgr), GFP_KERNEL);
 	if (!cre_hw_mgr) {

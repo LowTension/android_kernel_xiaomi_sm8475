@@ -2,16 +2,9 @@
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
  */
-
-#include <linux/of.h>
-#include <linux/debugfs.h>
-#include <linux/videodev2.h>
-#include <linux/uaccess.h>
 #include <linux/platform_device.h>
-#include <linux/firmware.h>
 #include <linux/delay.h>
 #include <linux/timer.h>
-#include <linux/iopoll.h>
 #include <linux/completion.h>
 #include <media/cam_cre.h>
 #include "cam_io_util.h"
@@ -21,7 +14,6 @@
 #include "cre_soc.h"
 #include "cam_soc_util.h"
 #include "cam_io_util.h"
-#include "cam_cpas_api.h"
 #include "cam_debug_util.h"
 #include "cre_hw.h"
 #include "cre_dev_intf.h"
@@ -155,6 +147,7 @@ static int cam_cre_top_init(struct cam_cre_hw *cre_hw_info,
 	/* CRE SW RESET */
 	init_completion(&cre_top_info.reset_complete);
 	init_completion(&cre_top_info.idle_done);
+	init_completion(&cre_top_info.bufdone);
 
 	/* enable interrupt mask */
 	cam_io_w_mb(top_reg_val->irq_mask,

@@ -238,36 +238,34 @@ static struct cam_ctx_ops
 };
 
 int cam_cre_context_init(struct cam_cre_context *ctx,
-	struct cam_context *ctx_base,
 	struct cam_hw_mgr_intf *hw_intf,
 	uint32_t ctx_id)
 {
 	int rc;
 	int i;
 
-	if (!ctx || !ctx_base) {
+	if (!ctx || !ctx->base) {
 		CAM_ERR(CAM_CRE, "Invalid Context");
 		rc = -EFAULT;
 		goto err;
 	}
 
-	memset(ctx, 0, sizeof(*ctx));
-
-	ctx->base = ctx_base;
-
 	for (i = 0; i < CAM_CTX_REQ_MAX; i++)
 		ctx->req_base[i].req_priv = ctx;
 
-	rc = cam_context_init(ctx_base, cre_dev_name, CAM_CRE, ctx_id,
+	rc = cam_context_init(ctx->base, cre_dev_name, CAM_CRE, ctx_id,
 		NULL, hw_intf, ctx->req_base, CAM_CTX_REQ_MAX);
 	if (rc) {
 		CAM_ERR(CAM_CRE, "Camera Context Base init failed");
 		goto err;
 	}
 
-	ctx_base->state_machine = cam_cre_ctx_state_machine;
-	ctx_base->ctx_priv = ctx;
+	ctx->base->state_machine = cam_cre_ctx_state_machine;
+	ctx->base->ctx_priv = ctx;
 
+	ctx->base->max_hw_update_entries = CAM_CTX_CFG_MAX;
+	ctx->base->max_in_map_entries = CAM_CTX_CFG_MAX;
+	ctx->base->max_out_map_entries = CAM_CTX_CFG_MAX;
 err:
 	return rc;
 }

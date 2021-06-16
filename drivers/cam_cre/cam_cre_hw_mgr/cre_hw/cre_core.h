@@ -16,6 +16,11 @@
 #include "cre_hw.h"
 #include "cam_cre_hw_intf.h"
 
+#define CAM_CRE_IDLE_IRQ  0x8
+#define CAM_CRE_FE_IRQ 0x4
+#define CAM_CRE_WE_IRQ 0x2
+#define CAM_CRE_RESET_IRQ 0x1
+
 /**
  * struct cam_cre_cpas_vote
  * @ahb_vote: AHB vote info

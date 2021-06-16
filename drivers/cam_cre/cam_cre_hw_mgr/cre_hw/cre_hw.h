@@ -14,11 +14,10 @@
 #define MAX_CRE_RD_CLIENTS   1
 #define MAX_CRE_WR_CLIENTS   1
 
-#define CRE_TOP_BASE     0x1
-#define CRE_QOS_BASE     0x2
-#define CRE_BUS_RD       0x3
-#define CRE_BUS_WR       0x4
-#define CRE_BASE_MAX     0x5
+#define CRE_TOP_BASE     0x0
+#define CRE_BUS_RD       0x1
+#define CRE_BUS_WR       0x2
+#define CRE_BASE_MAX     0x3
 
 #define CRE_WAIT_BUS_WR_RUP    0x1
 #define CRE_WAIT_BUS_WR_DONE   0x2
@@ -133,9 +132,9 @@ struct cam_cre_bus_rd_client_reg_val {
 	uint32_t alignment;
 	uint32_t alignment_mask;
 	uint32_t alignment_shift;
-	uint32_t mode;
-	uint32_t mode_mask;
-	uint32_t mode_shift;
+	uint32_t format;
+	uint32_t format_mask;
+	uint32_t format_shift;
 	uint32_t latency_buf_size;
 	uint32_t latency_buf_size_mask;
 	uint32_t misr_cfg_en;
@@ -258,6 +257,7 @@ struct cam_cre_bus_wr_client_reg_val {
 	uint32_t x_init_mask;
 	uint32_t stride;
 	uint32_t stride_mask;
+	uint32_t client_buf_done;
 	uint32_t format;
 	uint32_t format_mask;
 	uint32_t format_shift;
@@ -291,7 +291,6 @@ struct cam_cre_bus_wr_reg_val {
 	uint32_t irq_status_1;
 	uint32_t irq_cmd_set;
 	uint32_t irq_cmd_clear;
-	uint32_t client_buf_done;
 	uint32_t frame_header_cfg_0;
 	uint32_t local_frame_header_cfg_0;
 	uint32_t iso_en;

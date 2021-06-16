@@ -19,20 +19,12 @@
 #include "cre_top.h"
 
 #define CRE_CTX_MAX                  32
-#define CAM_FRAME_CMD_MAX            20
 
-#define CRE_WORKQ_NUM_TASK           100
+#define CRE_WORKQ_NUM_TASK           64
 #define CRE_WORKQ_TASK_CMD_TYPE      1
 #define CRE_WORKQ_TASK_MSG_TYPE      2
 
-#define CRE_PACKET_SIZE              0
-#define CRE_PACKET_TYPE              1
-#define CRE_PACKET_OPCODE            2
-
-#define CRE_PACKET_MAX_CMD_BUFS      4
-
-#define CRE_FRAME_PROCESS_SUCCESS    0
-#define CRE_FRAME_PROCESS_FAILURE    1
+#define CRE_PACKET_MAX_CMD_BUFS      1
 
 #define CRE_CTX_STATE_FREE           0
 #define CRE_CTX_STATE_IN_USE         1
@@ -46,22 +38,18 @@
 #define CAM_CRE_BW_CONFIG_UNKNOWN    0
 #define CAM_CRE_BW_CONFIG_V2         2
 
-#define CRE_DEV_MAX                  1
-#define CLK_HW_CRE                   0x0
-#define CLK_HW_MAX                   0x1
-
 #define CRE_DEVICE_IDLE_TIMEOUT      400
 #define CRE_REQUEST_TIMEOUT          200
 
-#define CAM_CRE_HW_CFG_Q_MAX         50
-
 #define CAM_CRE_MAX_PER_PATH_VOTES   6
 #define CAM_CRE_MAX_REG_SET          32
+
+#define CAM_CRE_MAX_ACTIVE           8
 /*
  * Response time threshold in ms beyond which a request is not expected
  * to be with CRE hw
  */
-#define CAM_CRE_RESPONSE_TIME_THRESHOLD   100000
+#define CAM_CRE_RESPONSE_TIME_THRESHOLD   300
 
 /*
  * struct cam_cre_irq_data
@@ -187,23 +175,6 @@ struct cre_clk_work_data {
 	void *data;
 };
 
-/**
- * struct cre_debug_buffer
- *
- * @cpu_addr:         CPU address
- * @iova_addr:        IOVA address
- * @len:              Buffer length
- * @size:             Buffer Size
- * @offset:	      buffer offset
- */
-struct cre_debug_buffer {
-	uintptr_t cpu_addr;
-	dma_addr_t iova_addr;
-	size_t len;
-	uint32_t size;
-	uint32_t offset;
-};
-
 struct plane_info {
 	uintptr_t  cpu_addr;
 	dma_addr_t iova_addr;
@@ -213,7 +184,6 @@ struct plane_info {
 	uint32_t   format;
 	uint32_t   alignment;
 	uint32_t   offset;
-	uint32_t   x_init;
 	size_t     len;
 };
 
@@ -222,9 +192,10 @@ struct plane_info {
  *
  * @direction:     Direction of a buffer
  * @resource_type: Resource type of IO Buffer
- * @format:        Format
+ * @format:     Format
  * @fence:         Fence
  * @num_planes:    Number of planes
+ * p_info:         per plane info
  */
 struct cre_io_buf {
 	uint32_t direction;
@@ -310,7 +281,6 @@ struct cam_cre_request {
 	uint32_t  num_io_bufs[CRE_MAX_BATCH_SIZE];
 	uint32_t  in_resource;
 	struct    cre_reg_buffer cre_reg_buf[CRE_MAX_BATCH_SIZE];
-	struct    cre_debug_buffer cre_debug_buf;
 	struct    cre_io_buf *io_buf[CRE_MAX_BATCH_SIZE][CRE_MAX_IO_BUFS];
 	struct    cam_cre_clk_bw_request clk_info;
 	struct    cam_cre_clk_bw_req_internal_v2 clk_info_v2;
@@ -321,54 +291,54 @@ struct cam_cre_request {
 /**
  * struct cam_cre_ctx
  *
- * @context_priv:    Private data of context
- * @bitmap:          Context bit map
- * @bitmap_size:     Context bit map size
- * @bits:            Context bit map bits
- * @ctx_id:          Context ID
- * @ctx_state:       State of a context
- * @req_cnt:         Requests count
- * @ctx_mutex:       Mutex for context
- * @acquire_dev_cmd: Cam acquire command
- * @cre_acquire:     CRE acquire command
- * @ctxt_event_cb:   Callback of a context
- * @req_list:        Request List
- * @last_req_time:   Timestamp of last request
- * @req_watch_dog:   Watchdog for requests
- * @req_watch_dog_reset_counter: Request reset counter
- * @clk_info:        CRE Ctx clock info
- * @clk_watch_dog:   Clock watchdog
- * @clk_watch_dog_reset_counter: Reset counter
- * @last_flush_req: last flush req for this ctx
+ * @ctx_id:            Context ID
+ * @ctx_state:         State of a context
+ * @req_cnt:           Requests count
+ * @last_flush_req:    last flush req for this ctx
+ * @last_req_time:     Timestamp of last request
+ * @last_req_idx:      Last submitted req index
+ * @last_done_req_idx: Last done req index
+ * @bitmap:            Context bit map
+ * @bitmap_size:       Context bit map size
+ * @bits:              Context bit map bits
+ * @context_priv:      Private data of context
+ * @iommu_hdl:         smmu handle
+ * @ctx_mutex:         Mutex for context
+ * @acquire_dev_cmd:   Cam acquire command
+ * @cre_acquire:       CRE acquire command
+ * @clk_info:          CRE Ctx clock info
+ * @packet:            Current packet to process
+ * @cre_top:           Pointer to CRE top data structure
+ * @req_list:          Request List
+ * @ctxt_event_cb:     Callback of a context
  */
 struct cam_cre_ctx {
-	void *context_priv;
-	size_t bitmap_size;
-	void *bitmap;
-	size_t bits;
 	uint32_t ctx_id;
 	uint32_t ctx_state;
 	uint32_t req_cnt;
-	struct mutex ctx_mutex;
-	struct cam_acquire_dev_cmd acquire_dev_cmd;
-	struct cam_cre_acquire_dev_info cre_acquire;
-	cam_hw_event_cb_func ctxt_event_cb;
-	struct cam_cre_request *req_list[CAM_CTX_REQ_MAX];
-	struct cam_cre_request *active_req;
-	uint64_t last_req_time;
-	struct cam_req_mgr_timer *req_watch_dog;
-	uint32_t req_watch_dog_reset_counter;
-	struct cam_cre_ctx_clk_info clk_info;
-	struct cam_req_mgr_timer *clk_watch_dog;
-	struct cre_top *cre_top;
-	uint32_t clk_watch_dog_reset_counter;
 	uint64_t last_flush_req;
+	uint64_t last_req_time;
+	uint64_t last_req_idx;
+	uint64_t last_done_req_idx;
+	void    *bitmap;
+	size_t   bitmap_size;
+	size_t   bits;
+	void    *context_priv;
+	int      iommu_hdl;
+
+	struct mutex                     ctx_mutex;
+	struct cam_acquire_dev_cmd       acquire_dev_cmd;
+	struct cam_cre_acquire_dev_info  cre_acquire;
+	struct cam_cre_ctx_clk_info      clk_info;
+	struct cre_top                  *cre_top;
+	struct cam_packet               *packet;
+	struct cam_cre_request          *req_list[CAM_CTX_REQ_MAX];
+	cam_hw_event_cb_func ctxt_event_cb;
 };
 
 /**
  * struct cam_cre_hw_mgr
  *
- * @cren_cnt:          CRE device cren count
  * @cre_ctx_cnt:       Open context count
  * @hw_mgr_mutex:      Mutex for HW manager
  * @hw_mgr_lock:       Spinlock for HW manager
@@ -391,11 +361,9 @@ struct cam_cre_ctx {
  * @cre_dev_intf:      CRE device interface
  * @clk_info:          CRE clock Info for HW manager
  * @dentry:            Pointer to CRE debugfs directory
- * @frame_dump_enable: CRE frame setting dump enablement
  * @dump_req_data_enable: CRE hang dump enablement
  */
 struct cam_cre_hw_mgr {
-	int32_t       cren_cnt;
 	uint32_t      cre_ctx_cnt;
 	struct mutex  hw_mgr_mutex;
 	spinlock_t    hw_mgr_lock;
@@ -420,7 +388,6 @@ struct cam_cre_hw_mgr {
 	struct cam_soc_reg_map *reg_map[CRE_DEV_MAX][CRE_BASE_MAX];
 	struct cam_cre_clk_info clk_info;
 	struct dentry *dentry;
-	bool   frame_dump_enable;
 	bool   dump_req_data_enable;
 };
 
