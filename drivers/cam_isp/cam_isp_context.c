@@ -581,6 +581,7 @@ static int __cam_isp_ctx_enqueue_init_request(
 				req_isp_new->hw_update_data.frame_header_res_id;
 			req_isp_old->hw_update_data.frame_header_cpu_addr =
 				hw_update_data->frame_header_cpu_addr;
+			req_isp_old->hw_update_data.fps = req_isp_new->hw_update_data.fps;
 
 			req_old->request_id = req->request_id;
 
@@ -1118,10 +1119,8 @@ static int __cam_isp_ctx_handle_buf_done_for_request(
 		CAM_DBG(CAM_ISP, "req %lld, reset sync id 0x%x ctx %u",
 			req->request_id,
 			req_isp->fence_map_out[j].sync_id, ctx->ctx_id);
-		if (!rc) {
+		if (!rc)
 			req_isp->num_acked++;
-			req_isp->fence_map_out[j].sync_id = -1;
-		}
 
 		if ((ctx_isp->use_frame_header_ts) &&
 			(req_isp->hw_update_data.frame_header_res_id ==
@@ -1975,14 +1974,14 @@ notify_only:
 				req = list_first_entry(&ctx->active_req_list,
 					struct cam_ctx_request, list);
 				req_isp = (struct cam_isp_ctx_req *) req->req_priv;
-				notify.fps = req_isp->hw_update_data.fps;
-			} else {
-				notify.fps = 0;
+				if (req_isp->hw_update_data.fps != -1)
+					ctx_isp->fps = req_isp->hw_update_data.fps;
 			}
 
+			notify.fps = ctx_isp->fps;
 			ctx->ctx_crm_intf->notify_trigger(&notify);
-			CAM_DBG(CAM_ISP, "Notify CRM  SOF frame %lld ctx %u",
-				ctx_isp->frame_id, ctx->ctx_id);
+			CAM_DBG(CAM_ISP, "Notify CRM  SOF frame %lld ctx %u fps %d",
+				ctx_isp->frame_id, ctx->ctx_id, ctx_isp->fps);
 		}
 
 		list_for_each_entry(req, &ctx->active_req_list, list) {
@@ -2212,8 +2211,6 @@ static int __cam_isp_ctx_epoch_in_applied(struct cam_isp_context *ctx_isp,
 		trace_cam_log_event("Bubble", "Rcvd epoch in applied state",
 			req->request_id, ctx->ctx_id);
 		rc = ctx->ctx_crm_intf->notify_err(&notify);
-
-		CAM_DBG(CAM_CRM, "Need bubble recovery %d", rc);
 
 		if (rc) {
 			req_isp->bubble_detected = false;
@@ -4043,6 +4040,7 @@ static struct cam_ctx_ops
 			.notify_frame_skip =
 				__cam_isp_ctx_apply_default_req_settings,
 			.change_state = __cam_isp_ctx_change_substate,
+			.signal_buf_done = __cam_isp_ctx_signal_buf_done,
 		},
 		.irq_ops = NULL,
 	},
@@ -4979,6 +4977,7 @@ static int __cam_isp_ctx_config_dev_in_top_state(
 	cfg.num_out_map_entries = 0;
 	cfg.num_in_map_entries = 0;
 	req_isp->hw_update_data.fps = -1;
+	req_isp->hw_update_data.packet = packet;
 
 	CAM_DBG(CAM_ISP, "try to prepare config packet......");
 
@@ -4997,7 +4996,6 @@ static int __cam_isp_ctx_config_dev_in_top_state(
 	req_isp->num_deferred_acks = 0;
 	req_isp->bubble_detected = false;
 	req_isp->cdm_reset_before_apply = false;
-	req_isp->hw_update_data.packet = packet;
 	atomic_set(&req_isp->buf_done_ready, INIT_BUF_DONE);
 
 	for (i = 0; i < req_isp->num_fence_map_out; i++) {
@@ -5908,6 +5906,7 @@ static int __cam_isp_ctx_start_dev_in_ready(struct cam_context *ctx,
 	ctx_isp->active_req_cnt = 0;
 	ctx_isp->reported_req_id = 0;
 	ctx_isp->bubble_frame_cnt = 0;
+	ctx_isp->fps = req_isp->hw_update_data.fps;
 	ctx_isp->substate_activated = ctx_isp->rdi_only_context ?
 		CAM_ISP_CTX_ACTIVATED_APPLIED :
 		(req_isp->num_fence_map_out) ? CAM_ISP_CTX_ACTIVATED_EPOCH :
@@ -6089,6 +6088,7 @@ static int __cam_isp_ctx_stop_dev_in_activated_unlock(
 	ctx_isp->last_applied_req_id = 0;
 	ctx_isp->req_info.last_bufdone_req_id = 0;
 	ctx_isp->bubble_frame_cnt = 0;
+	ctx_isp->fps = -1;
 	atomic_set(&ctx_isp->process_bubble, 0);
 	atomic_set(&ctx_isp->rxd_epoch, 0);
 	atomic64_set(&ctx_isp->state_monitor_head, -1);

@@ -254,7 +254,7 @@ struct cam_req_mgr_trigger_notify {
 	uint64_t sof_boottime;
 	uint64_t req_id;
 	int32_t  trigger_id;
-	uint32_t fps;
+	int32_t  fps;
 };
 
 /**

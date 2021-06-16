@@ -8815,11 +8815,12 @@ static int cam_isp_packet_generic_blob_handler(void *user_data,
 
 		prepare_hw_data = (struct cam_isp_prepare_hw_update_data *)
 				prepare->priv;
-		if (fps_config->fps) {
+		if (fps_config->fps)
 			prepare_hw_data->fps = fps_config->fps;
-			CAM_DBG(CAM_ISP, "FPS value %u", fps_config->fps);
-		} else
-			CAM_WARN(CAM_ISP, "FPS value 0");
+		CAM_DBG(CAM_ISP, "FPS value %u ctx %d req id %lld",
+			fps_config->fps, ife_mgr_ctx->ctx_index,
+			prepare_hw_data->packet->header.request_id);
+
 	}
 		break;
 	default:
