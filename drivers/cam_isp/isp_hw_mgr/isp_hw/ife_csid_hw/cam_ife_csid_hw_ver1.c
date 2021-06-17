@@ -1093,7 +1093,7 @@ static int cam_ife_csid_hw_ver1_path_cfg(
 {
 
 	path_cfg->cid = cid;
-	path_cfg->in_format = reserve->in_port->format;
+	path_cfg->in_format = reserve->in_port->format[CAM_IFE_CSID_MULTI_VC_DT_GRP_0];
 	path_cfg->out_format = reserve->out_port->format;
 	path_cfg->sync_mode = reserve->sync_mode;
 	path_cfg->height  = reserve->in_port->height;
@@ -1237,7 +1237,7 @@ static int cam_ife_csid_ver1_tpg_config(
 		return -EINVAL;
 	}
 
-	switch (reserve->in_port->format) {
+	switch (reserve->in_port->format[CAM_IFE_CSID_MULTI_VC_DT_GRP_0]) {
 	case CAM_FORMAT_MIPI_RAW_8:
 		csid_hw->tpg_cfg.encode_format = CAM_IFE_CSID_TPG_ENCODE_RAW8;
 		break;

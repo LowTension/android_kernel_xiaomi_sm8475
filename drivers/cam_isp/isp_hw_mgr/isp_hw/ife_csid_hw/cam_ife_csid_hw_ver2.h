@@ -131,7 +131,9 @@ struct cam_ife_csid_ver2_camif_data {
  * @camif_data:             CAMIF data
  * @error_ts:               Error timestamp
  * @cid:                    cid value for path
- * @in_format:              input format
+ * @path_format:            Array of Path format which contains format
+ *                          info i.e Decode format, Packing format etc
+ * @in_format:              Array of input format which contains format type
  * @out_format:             output format
  * @start_pixel:            start pixel for horizontal crop
  * @end_pixel:              end pixel for horizontal  crop
@@ -169,8 +171,9 @@ struct cam_ife_csid_ver2_camif_data {
 struct cam_ife_csid_ver2_path_cfg {
 	struct cam_ife_csid_ver2_camif_data camif_data;
 	struct timespec64                   error_ts;
+	struct cam_ife_csid_path_format     path_format[CAM_ISP_VC_DT_CFG];
 	uint32_t                            cid;
-	uint32_t                            in_format;
+	uint32_t                            in_format[CAM_ISP_VC_DT_CFG];
 	uint32_t                            out_format;
 	uint32_t                            start_pixel;
 	uint32_t                            end_pixel;
@@ -373,6 +376,8 @@ struct cam_ife_csid_ver2_common_reg_info {
 	uint32_t frame_id_decode_en_shift_val;
 	uint32_t vfr_en_shift_val;
 	uint32_t decode_format_shift_val;
+	uint32_t decode_format1_shift_val;
+	bool     decode_format1_supported;
 	uint32_t start_mode_shift_val;
 	uint32_t start_cmd_shift_val;
 	uint32_t path_en_shift_val;
@@ -469,6 +474,7 @@ struct cam_ife_csid_ver2_common_reg_info {
 	uint32_t top_reset_irq_mask;
 	uint32_t top_buf_done_irq_mask;
 	uint32_t epoch_div_factor;
+	uint32_t decode_format_payload_only;
 };
 
 struct cam_ife_csid_ver2_reg_info {

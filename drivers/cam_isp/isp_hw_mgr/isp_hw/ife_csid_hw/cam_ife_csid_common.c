@@ -516,9 +516,11 @@ int cam_ife_csid_check_in_port_args(
 	if ((reserve->res_id ==  CAM_IFE_PIX_PATH_RES_IPP ||
 		reserve->res_id == CAM_IFE_PIX_PATH_RES_PPP) &&
 		(cam_ife_csid_is_pix_res_format_supported(
-			reserve->in_port->format))) {
+			reserve->in_port->format[CAM_IFE_CSID_MULTI_VC_DT_GRP_0]))) {
 		CAM_ERR(CAM_ISP, "CSID %d, res_id %d, unsupported format %d",
-			hw_idx, reserve->res_id, reserve->in_port->format);
+			hw_idx,
+			reserve->res_id,
+			reserve->in_port->format[CAM_IFE_CSID_MULTI_VC_DT_GRP_0]);
 		return -EINVAL;
 	}
 

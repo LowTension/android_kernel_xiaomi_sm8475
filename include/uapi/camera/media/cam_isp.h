@@ -183,6 +183,15 @@
 #define CAM_ISP_PARAM_CORE_CFG_HDR_MUX_SEL BIT(0)
 #define CAM_ISP_PARAM_CORE_CFG_PP_FORMAT   BIT(16)
 
+/**
+ * Decode format1 Support for multi VCDT use case.
+ * Format type is packed in 8 bits. BIT(0-7) is
+ * format and BIT(8-15) is format1 type in the format
+ * variable
+ */
+#define CAM_IFE_DECODE_FORMAT_MASK      0xFF
+#define CAM_IFE_DECODE_FORMAT_SHIFT_VAL 8
+
 /* Query devices */
 /**
  * struct cam_isp_dev_cap_info - A cap info for particular hw type
