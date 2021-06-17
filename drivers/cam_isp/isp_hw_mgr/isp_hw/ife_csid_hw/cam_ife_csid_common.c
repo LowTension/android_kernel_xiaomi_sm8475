@@ -587,7 +587,7 @@ int cam_ife_csid_convert_res_to_irq_reg(uint32_t res_id)
 	case CAM_IFE_PIX_PATH_RES_UDI_2:
 		return CAM_IFE_CSID_IRQ_REG_UDI_2;
 	default:
-		return -EINVAL;
+		return CAM_IFE_CSID_IRQ_REG_MAX;
 	}
 }
 
