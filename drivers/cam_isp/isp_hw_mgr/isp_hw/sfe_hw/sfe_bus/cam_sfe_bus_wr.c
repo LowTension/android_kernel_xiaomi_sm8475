@@ -24,6 +24,7 @@
 #include "cam_debug_util.h"
 #include "cam_cpas_api.h"
 #include "cam_trace.h"
+#include "cam_common_util.h"
 
 static const char drv_name[] = "sfe_bus_wr";
 
@@ -2188,13 +2189,14 @@ static int cam_sfe_bus_wr_update_wm(void *priv, void *cmd_args,
 	struct cam_sfe_bus_wr_wm_resource_data *wm_data = NULL;
 	struct cam_sfe_bus_cache_dbg_cfg       *cache_dbg_cfg = NULL;
 	uint32_t *reg_val_pair;
+	uint32_t img_addr = 0, img_offset = 0;
 	uint32_t num_regval_pairs = 0;
-	uint32_t  i, j, k, size = 0;
-	uint32_t  frame_inc = 0, val;
+	uint32_t i, j, k, size = 0;
+	uint32_t frame_inc = 0, val;
 	uint32_t loop_size = 0, stride = 0, slice_h = 0;
 
-	bus_priv = (struct cam_sfe_bus_wr_priv  *) priv;
-	update_buf =  (struct cam_isp_hw_get_cmd_update *) cmd_args;
+	bus_priv = (struct cam_sfe_bus_wr_priv *) priv;
+	update_buf = (struct cam_isp_hw_get_cmd_update *) cmd_args;
 	cache_dbg_cfg = &bus_priv->common_data.cache_dbg_cfg;
 
 	sfe_out_data = (struct cam_sfe_bus_wr_out_data *)
@@ -2313,15 +2315,26 @@ skip_cache_cfg:
 
 		/* WM Image address */
 		for (k = 0; k < loop_size; k++) {
-			CAM_SFE_ADD_REG_VAL_PAIR(reg_val_pair, j,
-				wm_data->hw_regs->image_addr,
-				(update_buf->wm_update->image_buf[i] +
-				wm_data->offset + k * frame_inc));
+			img_addr = (update_buf->wm_update->image_buf[i] +
+				wm_data->offset + k * frame_inc);
 			update_buf->wm_update->image_buf_offset[i] =
 				wm_data->offset;
 
-			CAM_DBG(CAM_SFE, "WM:%d image address 0x%X offset: 0x%x",
-				wm_data->index, reg_val_pair[j-1], wm_data->offset);
+			if (cam_smmu_is_expanded_memory()) {
+				img_offset = CAM_36BIT_INTF_GET_IOVA_OFFSET(img_addr);
+				img_addr = CAM_36BIT_INTF_GET_IOVA_BASE(img_addr);
+
+				/* Only write to offset register in 36-bit enabled HW */
+				CAM_SFE_ADD_REG_VAL_PAIR(reg_val_pair, j,
+					wm_data->hw_regs->addr_cfg, img_offset);
+				CAM_DBG(CAM_SFE, "WM:%d image offset 0x%X",
+					wm_data->index, img_offset);
+			}
+			CAM_SFE_ADD_REG_VAL_PAIR(reg_val_pair, j,
+				wm_data->hw_regs->image_addr, img_addr);
+
+			CAM_DBG(CAM_SFE, "WM:%d image address 0x%X",
+				wm_data->index, img_addr);
 		}
 
 		CAM_SFE_ADD_REG_VAL_PAIR(reg_val_pair, j,
@@ -2381,8 +2394,8 @@ static int cam_sfe_bus_wr_config_wm(void *priv, void *cmd_args,
 	struct cam_sfe_bus_wr_out_data         *sfe_out_data = NULL;
 	struct cam_sfe_bus_wr_wm_resource_data *wm_data = NULL;
 	struct cam_sfe_bus_cache_dbg_cfg       *cache_dbg_cfg = NULL;
-	uint32_t  i, k;
-	uint32_t  frame_inc = 0, val;
+	uint32_t i, k;
+	uint32_t frame_inc = 0, val, img_addr = 0, img_offset = 0;
 	uint32_t loop_size = 0, stride = 0, slice_h = 0;
 
 	bus_priv = (struct cam_sfe_bus_wr_priv  *) priv;
@@ -2453,13 +2466,23 @@ static int cam_sfe_bus_wr_config_wm(void *priv, void *cmd_args,
 
 		/* WM Image address */
 		for (k = 0; k < loop_size; k++) {
-			cam_io_w_mb((update_buf->wm_update->image_buf[i] +
-				wm_data->offset + k * frame_inc),
-				wm_data->common_data->mem_base +
-				wm_data->hw_regs->image_addr);
-			CAM_DBG(CAM_SFE, "WM:%d image address: 0x%x offset: 0x%x",
-				wm_data->index, update_buf->wm_update->image_buf[i],
-				wm_data->offset);
+			img_addr = update_buf->wm_update->image_buf[i] +
+				wm_data->offset + k * frame_inc;
+
+			if (cam_smmu_is_expanded_memory()) {
+				img_offset = CAM_36BIT_INTF_GET_IOVA_OFFSET(img_addr);
+				img_addr = CAM_36BIT_INTF_GET_IOVA_BASE(img_addr);
+
+				CAM_DBG(CAM_SFE, "WM:%d image address offset: 0x%x",
+					wm_data->index, img_offset);
+				cam_io_w_mb(img_offset,
+					wm_data->common_data->mem_base + wm_data->hw_regs->addr_cfg);
+			}
+
+			CAM_DBG(CAM_SFE, "WM:%d image address: 0x%x, offset: 0x%x",
+				wm_data->index, img_addr, wm_data->offset);
+			cam_io_w_mb(img_addr,
+				wm_data->common_data->mem_base + wm_data->hw_regs->image_addr);
 		}
 
 		cam_io_w_mb(frame_inc,

@@ -19,6 +19,7 @@
 #include "cam_sfe_core.h"
 #include "cam_debug_util.h"
 #include "cam_cpas_api.h"
+#include "cam_common_util.h"
 
 static const char drv_name[] = "sfe_bus_rd";
 
@@ -1150,10 +1151,10 @@ static int cam_sfe_bus_rd_config_rm(void *priv, void *cmd_args,
 	struct cam_sfe_bus_rd_rm_resource_data *rm_data = NULL;
 	struct cam_sfe_bus_cache_dbg_cfg       *cache_dbg_cfg = NULL;
 	uint32_t width = 0, height = 0, stride = 0, width_in_bytes = 0;
-	uint32_t  i;
+	uint32_t i, img_addr = 0, img_offset = 0;
 
 	bus_priv = (struct cam_sfe_bus_rd_priv  *) priv;
-	update_buf =  (struct cam_isp_hw_get_cmd_update *) cmd_args;
+	update_buf = (struct cam_isp_hw_get_cmd_update *) cmd_args;
 	cache_dbg_cfg = &bus_priv->common_data.cache_dbg_cfg;
 
 	sfe_bus_rd_data = (struct cam_sfe_bus_rd_data *)
@@ -1179,12 +1180,19 @@ static int cam_sfe_bus_rd_config_rm(void *priv, void *cmd_args,
 		rm_data = sfe_bus_rd_data->rm_res[i]->res_priv;
 
 		stride = update_buf->rm_update->stride;
-		if (rm_data->width && rm_data->height) {
+		img_addr = update_buf->rm_update->image_buf[i] + rm_data->offset;
+		if (rm_data->width && rm_data->height)
+		{
 			width =  rm_data->width;
 			height = rm_data->height;
 		} else {
 			width = update_buf->rm_update->width;
 			height = update_buf->rm_update->height;
+		}
+
+		if (cam_smmu_is_expanded_memory()) {
+			img_offset = CAM_36BIT_INTF_GET_IOVA_OFFSET(img_addr);
+			img_addr = CAM_36BIT_INTF_GET_IOVA_BASE(img_addr);
 		}
 
 		/* update size register */
@@ -1232,7 +1240,7 @@ static int cam_sfe_bus_rd_config_rm(void *priv, void *cmd_args,
 			rm_data->index, stride);
 
 		cam_io_w_mb(
-			(update_buf->rm_update->image_buf[i] + rm_data->offset),
+			img_addr,
 			rm_data->common_data->mem_base +
 			rm_data->hw_regs->image_addr);
 
@@ -1241,6 +1249,14 @@ static int cam_sfe_bus_rd_config_rm(void *priv, void *cmd_args,
 			rm_data->index,
 			update_buf->rm_update->image_buf[i],
 			rm_data->offset);
+		if (cam_smmu_is_expanded_memory())
+			CAM_DBG(CAM_SFE, "SFE:%d RM:%d image address offset: 0x%x",
+				rm_data->common_data->core_index,
+				rm_data->index,
+				img_offset);
+			cam_io_w_mb(img_offset,
+				rm_data->common_data->mem_base +
+				rm_data->hw_regs->addr_cfg);
 	}
 
 	return 0;
@@ -1259,10 +1275,10 @@ static int cam_sfe_bus_rd_update_rm(void *priv, void *cmd_args,
 	uint32_t *reg_val_pair;
 	uint32_t num_regval_pairs = 0;
 	uint32_t width = 0, height = 0, stride = 0, width_in_bytes = 0;
-	uint32_t  i, j, size = 0;
+	uint32_t i, j, size = 0, img_addr = 0, img_offset = 0;
 
 	bus_priv = (struct cam_sfe_bus_rd_priv  *) priv;
-	update_buf =  (struct cam_isp_hw_get_cmd_update *) cmd_args;
+	update_buf = (struct cam_isp_hw_get_cmd_update *) cmd_args;
 	cache_dbg_cfg = &bus_priv->common_data.cache_dbg_cfg;
 
 	sfe_bus_rd_data = (struct cam_sfe_bus_rd_data *)
@@ -1311,6 +1327,12 @@ static int cam_sfe_bus_rd_update_rm(void *priv, void *cmd_args,
 		if (rm_data->width && rm_data->height) {
 			width =  rm_data->width;
 			height = rm_data->height;
+		}
+
+		img_addr = update_buf->rm_update->image_buf[i] + rm_data->offset;
+		if (cam_smmu_is_expanded_memory()) {
+			img_offset = CAM_36BIT_INTF_GET_IOVA_OFFSET(img_addr);
+			img_addr = CAM_36BIT_INTF_GET_IOVA_BASE(img_addr);
 		}
 
 		/* update size register */
@@ -1372,11 +1394,13 @@ skip_cache_cfg:
 			rm_data->index, reg_val_pair[j-1]);
 
 		CAM_SFE_ADD_REG_VAL_PAIR(reg_val_pair, j,
-			rm_data->hw_regs->image_addr,
-			(update_buf->rm_update->image_buf[i] + rm_data->offset));
-		CAM_DBG(CAM_SFE, "SFE:%d RM:%d image_address:0x%X",
+			rm_data->hw_regs->image_addr, img_addr);
+		if (cam_smmu_is_expanded_memory())
+			CAM_SFE_ADD_REG_VAL_PAIR(reg_val_pair, j,
+				rm_data->hw_regs->addr_cfg, img_offset);
+		CAM_DBG(CAM_SFE, "SFE:%d RM:%d image_address:0x%X image_offset:0x%X",
 			rm_data->common_data->core_index,
-			rm_data->index, reg_val_pair[j-1]);
+			rm_data->index, img_addr, img_offset);
 	}
 
 	num_regval_pairs = j / 2;
