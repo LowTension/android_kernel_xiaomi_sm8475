@@ -78,6 +78,13 @@ enum camera_sensor_wait_op_code {
 	CAMERA_SENSOR_WAIT_OP_MAX,
 };
 
+enum cam_tpg_packet_opcodes {
+	CAM_TPG_PACKET_OPCODE_INVALID = 0,
+	CAM_TPG_PACKET_OPCODE_INITIAL_CONFIG,
+	CAM_TPG_PACKET_OPCODE_NOP,
+	CAM_TPG_PACKET_OPCODE_MAX,
+};
+
 enum cam_sensor_packet_opcodes {
 	CAM_SENSOR_PACKET_OPCODE_SENSOR_STREAMON,
 	CAM_SENSOR_PACKET_OPCODE_SENSOR_UPDATE,
@@ -89,6 +96,78 @@ enum cam_sensor_packet_opcodes {
 	CAM_SENSOR_PACKET_OPCODE_SENSOR_FRAME_SKIP_UPDATE,
 	CAM_SENSOR_PACKET_OPCODE_SENSOR_PROBE_V2,
 	CAM_SENSOR_PACKET_OPCODE_SENSOR_NOP = 127
+};
+
+enum tpg_command_type_t {
+	TPG_CMD_TYPE_INVALID = 0,
+	TPG_CMD_TYPE_GLOBAL_CONFIG,
+	TPG_CMD_TYPE_STREAM_CONFIG,
+	TPG_CMD_TYPE_ILLUMINATION_CONFIG,
+	TPG_CMD_TYPE_MAX,
+};
+
+enum tpg_pattern_t {
+	TPG_PATTERN_INVALID = 0,
+	TPG_PATTERN_REAL_IMAGE,
+	TPG_PATTERN_RANDOM_PIXL,
+	TPG_PATTERN_RANDOM_INCREMENTING_PIXEL,
+	TPG_PATTERN_COLOR_BAR,
+	TPG_PATTERN_ALTERNATING_55_AA,
+	TPG_PATTERN_ALTERNATING_USER_DEFINED,
+	TPG_PATTERN_MAX,
+};
+
+enum tpg_color_bar_mode_t {
+	TPG_COLOR_BAR_MODE_INVALID = 0,
+	TPG_COLOR_BAR_MODE_NORMAL,
+	TPG_COLOR_BAR_MODE_SPLIT,
+	TPG_COLOR_BAR_MODE_ROTATING,
+	TPG_COLOR_BAR_MODE_MAX,
+};
+
+enum tpg_image_format_t {
+	TPG_IMAGE_FORMAT_INVALID = 0,
+	TPG_IMAGE_FORMAT_BAYER,
+	TPG_IMAGE_FORMAT_QCFA,
+	TPG_IMAGE_FORMAT_YUV,
+	TPG_IMAGE_FORMAT_JPEG,
+	TPG_IMAGE_FORMAT_MAX,
+};
+
+enum tpg_phy_type_t {
+	TPG_PHY_TYPE_INVALID = 0,
+	TPG_PHY_TYPE_DPHY,
+	TPG_PHY_TYPE_CPHY,
+	TPG_PHY_TYPE_MAX,
+};
+
+enum tpg_interleaving_format_t {
+	TPG_INTERLEAVING_FORMAT_INVALID = 0,
+	TPG_INTERLEAVING_FORMAT_FRAME,
+	TPG_INTERLEAVING_FORMAT_LINE,
+	TPG_INTERLEAVING_FORMAT_SHDR,
+	TPG_INTERLEAVING_FORMAT_SPARSE_PD,
+	TPG_INTERLEAVING_FORMAT_MAX,
+};
+
+enum tpg_shutter_t {
+	TPG_SHUTTER_TYPE_INVALID = 0,
+	TPG_SHUTTER_TYPE_ROLLING,
+	TPG_SHUTTER_TYPE_GLOBAL,
+	TPG_SHUTTER_TYPE_MAX,
+};
+
+enum tpg_stream_t {
+	TPG_STREAM_TYPE_INVALID = 0,
+	TPG_STREAM_TYPE_IMAGE,
+	TPG_STREAM_TYPE_PDAF,
+	TPG_STREAM_TYPE_META,
+	TPG_STREAM_TYPE_MAX,
+};
+
+enum tpg_cfa_arrangement_t {
+	TPG_CFA_ARRANGEMENT_TYPE_INVALID = 0,
+	TPG_CFA_ARRANGEMENT_TYPE_MAX,
 };
 
 /**
@@ -167,6 +246,24 @@ struct cam_ois_query_cap_t {
 	__u32            slot_info;
 	__u16            reserved;
 } __attribute__((packed));
+
+/**
+ * struct cam_tpg_query_cap - capabilities info for tpg
+ *
+ * @slot_info        :  Indicates about the slotId or cell Index
+ * @version          :  TPG version , in msb
+ * @reserved         :  Reserved for future Use
+ * @secure_camera    :  Camera is in secure/Non-secure mode
+ * @csiphy_slot_id   :  CSIphy slot id which connected to sensor
+ */
+struct cam_tpg_query_cap {
+	__u32        slot_info;
+	__u32        version;
+	__u32        secure_camera;
+	__u32        csiphy_slot_id;
+	__u32        reserved[2];
+} __attribute__((packed));
+
 
 /**
  * struct cam_cmd_i2c_info - Contains slave I2C related info
@@ -487,6 +584,23 @@ struct cam_sensor_acquire_dev {
 } __attribute__((packed));
 
 /**
+ * cam_tpg_acquire_dev : Updates tpg acuire cmd
+ * @device_handle  :    Updates device handle
+ * @session_handle :    Session handle for acquiring device
+ * @handle_type    :    Resource handle type
+ * @reserved
+ * @info_handle    :    Handle to additional info
+ *                      needed for sensor sub modules
+ */
+struct cam_tpg_acquire_dev {
+	__u32    session_handle;
+	__u32    device_handle;
+	__u32    handle_type;
+	__u32    reserved;
+	__u64    info_handle;
+} __attribute__((packed));
+
+/**
  * cam_sensor_streamon_dev : StreamOn command for the sensor
  * @session_handle :    Session handle for acquiring device
  * @device_handle  :    Updates device handle
@@ -501,6 +615,131 @@ struct cam_sensor_streamon_dev {
 	__u32    handle_type;
 	__u32    reserved;
 	__u64    info_handle;
+} __attribute__((packed));
+
+
+/**
+ * stream_dimension : Stream dimension
+ *
+ * @left   : left pixel locaiton of stream
+ * @top    : top  pixel location of stream
+ * @width  : width of the image stream
+ * @height : Height of the image stream
+ */
+struct stream_dimension {
+	uint32_t left;
+	uint32_t top;
+	uint32_t width;
+	uint32_t height;
+};
+
+/**
+ * tpg_command_header_t : tpg command common header
+ *
+ * @cmd_type    : command type
+ * @size        : size of the command including header
+ * @cmd_version : version of the command associated
+ */
+struct tpg_command_header_t {
+	__u32 cmd_type;
+	ssize_t  size;
+	uint32_t cmd_version;
+} __attribute__((packed));
+
+/**
+ * tpg_global_config_t : global configuration command structure
+ *
+ * @header              : common header
+ * @phy_type            : phy type , cpy , dphy
+ * @lane_count          : number of lanes used
+ * @interleaving_format : interleaving format used
+ * @phy_mode            : phy mode of operation
+ * @shutter_type        : shutter type
+ * @mode                : if any specific mode needs to configured
+ * @hbi                 : horizontal blanking intervel
+ * @vbi                 : vertical blanking intervel
+ * @skip_pattern        : frame skip pattern
+ * @tpg_clock           : tpg clock
+ * @reserved            : reserved for future use
+ */
+struct tpg_global_config_t {
+	struct tpg_command_header_t header;
+	enum tpg_phy_type_t phy_type;
+	uint8_t lane_count;
+	enum tpg_interleaving_format_t interleaving_format;
+	uint8_t phy_mode;
+	enum tpg_shutter_t shutter_type;
+	uint32_t mode;
+	uint32_t hbi;
+	uint32_t vbi;
+	uint32_t skip_pattern;
+	uint64_t tpg_clock;
+	uint32_t reserved[4];
+} __attribute__((packed));
+
+/**
+ * tpg_stream_config_t : stream configuration command
+ *
+ * @header:  common tpg command header
+ * @pattern_type     : tpg pattern type used in this stream
+ * @cb_mode          : tpg color bar mode used in this stream
+ * @frame_count      : frame count in case of trigger burst mode
+ * @stream_type      : type of stream like image pdaf etc
+ * @stream_dimension : Dimension of the stream
+ * @pixel_depth      : bits per each pixel
+ * @cfa_arrangement  : color filter arragement
+ * @output_format    : output image format
+ * @hbi              : horizontal blanking intervel
+ * @vbi              : vertical   blanking intervel
+ * @vc               : virtual channel of this stream
+ * @dt               : data type of this stream
+ * @skip_pattern     : skip pattern for this stream
+ * @reserved         : reserved for future use
+ */
+struct tpg_stream_config_t {
+	struct tpg_command_header_t header;
+	enum tpg_pattern_t pattern_type;
+	enum tpg_color_bar_mode_t cb_mode;
+	uint32_t frame_count;
+	enum tpg_stream_t stream_type;
+	struct stream_dimension stream_dimension;
+	uint8_t pixel_depth;
+	enum tpg_cfa_arrangement_t cfa_arrangement;
+	enum tpg_image_format_t output_format;
+	uint32_t hbi;
+	uint32_t vbi;
+	uint16_t vc;
+	uint16_t dt;
+	uint32_t skip_pattern;
+	uint32_t rotate_period;
+	uint32_t reserved[4];
+} __attribute__((packed));
+
+/**
+ * tpg_illumination_control : illumianation control command
+ *
+ * @header         : common header for tpg command
+ * @vc             : virtual channel to identify the stream
+ * @dt             : dt to identify the stream
+ * @exposure_short : short exposure time
+ * @exposure_mid   : mid exposure time
+ * @exposure_long  : long exposure time
+ * @r_gain         : r channel gain
+ * @g_gain         : g channel gain
+ * @b_gain         : b channel gain
+ * @reserved       : reserved for future use
+ */
+struct tpg_illumination_control {
+	struct tpg_command_header_t header;
+	uint16_t vc;
+	uint16_t dt;
+	uint32_t exposure_short;
+	uint32_t exposure_mid;
+	uint32_t exposure_long;
+	uint16_t r_gain;
+	uint16_t g_gain;
+	uint16_t b_gain;
+	uint32_t reserved[4];
 } __attribute__((packed));
 
 /**

@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CAM_SENSOR_CMN_HEADER_
@@ -27,6 +27,7 @@
 #define CAM_FLASH_NAME     "cam-flash"
 #define CAM_EEPROM_NAME    "cam-eeprom"
 #define CAM_OIS_NAME       "cam-ois"
+#define CAM_TPG_NAME       "cam-tpg"
 
 #define MAX_SYSTEM_PIPELINE_DELAY 2
 

@@ -23,6 +23,7 @@
 #include "cam_csiphy_dev.h"
 #include "cam_eeprom_dev.h"
 #include "cam_ois_dev.h"
+#include "cam_tpg_dev.h"
 
 #if IS_REACHABLE(CONFIG_LEDS_QPNP_FLASH_V2) || \
 	IS_REACHABLE(CONFIG_LEDS_QTI_FLASH)
@@ -105,6 +106,7 @@ static const struct camera_submodule_component camera_sensor[] = {
 	{&cam_res_mgr_init, &cam_res_mgr_exit},
 	{&cam_cci_init_module, &cam_cci_exit_module},
 	{&cam_csiphy_init_module, &cam_csiphy_exit_module},
+	{&cam_tpg_init_module, &cam_tpg_exit_module},
 	{&cam_actuator_driver_init, &cam_actuator_driver_exit},
 	{&cam_sensor_driver_init, &cam_sensor_driver_exit},
 	{&cam_eeprom_driver_init, &cam_eeprom_driver_exit},
