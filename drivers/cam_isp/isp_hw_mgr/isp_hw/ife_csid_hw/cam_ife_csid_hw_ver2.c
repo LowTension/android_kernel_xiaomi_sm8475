@@ -1320,9 +1320,9 @@ static int cam_ife_csid_ver2_ipp_bottom_half(
 	if (irq_status_ipp & (IFE_CSID_VER2_PATH_ERROR_PIX_COUNT |
 		IFE_CSID_VER2_PATH_ERROR_LINE_COUNT)) {
 
-		expected_frame = cam_io_r_mb(base +
-				csid_reg->ipp_reg->format_measure0_addr);
 		actual_frame = cam_io_r_mb(base +
+				csid_reg->ipp_reg->format_measure0_addr);
+		expected_frame = cam_io_r_mb(base +
 				csid_reg->ipp_reg->format_measure_cfg1_addr);
 
 		CAM_ERR_RATE_LIMIT(CAM_ISP, "CSID[%d] IPP Frame Size Error Expected[h: %u w: %u] Actual[h: %u w: %u]",
@@ -1403,9 +1403,9 @@ static int cam_ife_csid_ver2_ppp_bottom_half(
 		IFE_CSID_VER2_PATH_ERROR_LINE_COUNT)) {
 		soc_info = &csid_hw->hw_info->soc_info;
 
-		expected_frame = cam_io_r_mb(base +
-				csid_reg->ppp_reg->format_measure0_addr);
 		actual_frame = cam_io_r_mb(base +
+				csid_reg->ppp_reg->format_measure0_addr);
+		expected_frame = cam_io_r_mb(base +
 				csid_reg->ppp_reg->format_measure_cfg1_addr);
 
 		CAM_ERR_RATE_LIMIT(CAM_ISP, "CSID[%d] PPP Frame Size Error Expected[h: %u w: %u] Actual[h: %u w: %u]",
@@ -1501,9 +1501,9 @@ static int cam_ife_csid_ver2_rdi_bottom_half(
 				IFE_CSID_VER2_PATH_ERROR_LINE_COUNT)) {
 		soc_info = &csid_hw->hw_info->soc_info;
 
-		expected_frame = cam_io_r_mb(base +
-				rdi_reg->format_measure0_addr);
 		actual_frame = cam_io_r_mb(base +
+				rdi_reg->format_measure0_addr);
+		expected_frame = cam_io_r_mb(base +
 				rdi_reg->format_measure_cfg1_addr);
 
 		CAM_ERR_RATE_LIMIT(CAM_ISP,
