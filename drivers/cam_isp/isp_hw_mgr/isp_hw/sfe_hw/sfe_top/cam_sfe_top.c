@@ -765,8 +765,12 @@ static int cam_sfe_top_set_hw_clk_rate(
 			max_clk_rate = top_priv->req_clk_rate[i];
 	}
 
-	if (max_clk_rate == top_priv->hw_clk_rate)
+	if (max_clk_rate == top_priv->hw_clk_rate) {
+		CAM_DBG(CAM_SFE,
+			"Requested rate: %u same as current rate: %u",
+			max_clk_rate, top_priv->hw_clk_rate);
 		return 0;
+	}
 
 	soc_private = (struct cam_sfe_soc_private *)
 		soc_info->soc_private;
@@ -1603,6 +1607,10 @@ int cam_sfe_top_stop(
 			path_data->mem_base +
 			path_data->common_reg->diag_config);
 	}
+
+	/* Reset clk rate when all resources are streamed off */
+	if (!start_stop_cnt)
+		top_priv->hw_clk_rate = 0;
 
 	return 0;
 }
