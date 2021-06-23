@@ -843,6 +843,7 @@ static struct cam_tfe_bus_hw_info  tfe530_bus_hw_info = {
 		},
 	},
 	.num_comp_grp             = 8,
+	.max_wm_per_comp_grp      = 2,
 	.comp_done_shift          = 8,
 	.top_bus_wr_irq_shift     = 1,
 	.comp_buf_done_mask = 0xFF00,

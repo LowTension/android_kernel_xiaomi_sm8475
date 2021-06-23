@@ -22,7 +22,6 @@
 #include "cam_cpas_api.h"
 #include "cam_tfe_csid_hw_intf.h"
 
-
 static const char drv_name[] = "tfe_bus";
 
 #define CAM_TFE_BUS_IRQ_REG0                0
@@ -30,10 +29,8 @@ static const char drv_name[] = "tfe_bus";
 
 #define CAM_TFE_BUS_PAYLOAD_MAX             256
 
-#define CAM_TFE_RDI_BUS_DEFAULT_WIDTH               0xFFFF
-#define CAM_TFE_RDI_BUS_DEFAULT_STRIDE              0xFFFF
-
-#define CAM_TFE_MAX_OUT_RES_PER_COMP_GRP    2
+#define CAM_TFE_RDI_BUS_DEFAULT_WIDTH       0xFFFF
+#define CAM_TFE_RDI_BUS_DEFAULT_STRIDE      0xFFFF
 
 #define MAX_BUF_UPDATE_REG_NUM   \
 	(sizeof(struct cam_tfe_bus_reg_offset_bus_client) / 4)
@@ -119,9 +116,9 @@ struct cam_tfe_bus_comp_grp_data {
 
 	uint32_t                                acquire_dev_cnt;
 	uint32_t                                source_grp;
+	uint32_t                                max_wm_per_comp_grp;
 
-	struct cam_isp_resource_node
-		*out_rsrc[CAM_TFE_MAX_OUT_RES_PER_COMP_GRP];
+	struct cam_isp_resource_node           **out_rsrc;
 };
 
 struct cam_tfe_bus_tfe_out_data {
@@ -156,6 +153,7 @@ struct cam_tfe_bus_priv {
 	uint32_t                            num_client;
 	uint32_t                            num_out;
 	uint32_t                            num_comp_grp;
+	uint32_t                            max_wm_per_comp_grp;
 	uint32_t                            top_bus_wr_irq_shift;
 
 	struct cam_isp_resource_node  bus_client[CAM_TFE_BUS_MAX_CLIENTS];
@@ -340,6 +338,7 @@ static int cam_tfe_bus_get_num_wm(
 	case CAM_TFE_BUS_TFE_OUT_STATS_RS:
 		switch (format) {
 		case CAM_FORMAT_PLAIN32:
+		case CAM_FORMAT_PLAIN32_20:
 			return 1;
 		default:
 			break;
@@ -741,7 +740,7 @@ static int cam_tfe_bus_acquire_wm(
 	/* Set WM offset value to default */
 	rsrc_data->offset  = 0;
 
-	if ((rsrc_data->index > 6) &&
+	if (((rsrc_data->index >= 7) && (rsrc_data->index <= 9)) &&
 		(tfe_out_res_id != CAM_TFE_BUS_TFE_OUT_PDAF)) {
 		/* WM 7-9 refers to RDI 0/ RDI 1/RDI 2 */
 		rc = cam_tfe_bus_acquire_rdi_wm(rsrc_data);
@@ -749,8 +748,9 @@ static int cam_tfe_bus_acquire_wm(
 			return rc;
 
 	} else if (rsrc_data->index == 0 || rsrc_data->index == 1 ||
-		(tfe_out_res_id == CAM_TFE_BUS_TFE_OUT_PDAF)) {
-	/*  WM 0 FULL_OUT WM 1 IDEAL RAW WM9 for pdaf */
+		(tfe_out_res_id == CAM_TFE_BUS_TFE_OUT_PDAF) ||
+		(rsrc_data->index  >= 11 && rsrc_data->index <= 14)) {
+	/*  WM 0 FULL_OUT WM 1 IDEAL RAW, CAM_TFE_BUS_TFE_OUT_PDAF for pdaf */
 		switch (rsrc_data->format) {
 		case CAM_FORMAT_MIPI_RAW_8:
 			rsrc_data->pack_fmt = 0x1;
@@ -772,15 +772,35 @@ static int cam_tfe_bus_acquire_wm(
 			rsrc_data->pack_fmt = 0x6;
 			rsrc_data->pack_fmt |= 0x10;
 			break;
+		case CAM_FORMAT_PD10:
+			rsrc_data->pack_fmt = 0x0;
+			rsrc_data->width /= 4;
+			rsrc_data->height /= 2;
+			break;
+		case CAM_FORMAT_NV21:
+		case CAM_FORMAT_NV12:
+		case CAM_FORMAT_Y_ONLY:
+			rsrc_data->pack_fmt = 0x1;
+			switch (plane) {
+			case PLANE_C:
+				rsrc_data->height /= 2;
+				break;
+			case PLANE_Y:
+				break;
+			default:
+				CAM_ERR(CAM_ISP, "Invalid plane %d", plane);
+				return -EINVAL;
+			}
+			break;
 		default:
 			CAM_ERR(CAM_ISP, "Invalid format %d",
 				rsrc_data->format);
 			return -EINVAL;
 		}
-
 		rsrc_data->en_cfg = 0x1;
-	} else if (rsrc_data->index  >= 2 && rsrc_data->index <= 6) {
-		/* WM 2-6 stats */
+	} else if ((rsrc_data->index  >= 2 && rsrc_data->index <= 6) ||
+		(rsrc_data->index == 15)) {
+		/* WM 2-6 and 15 are stats */
 		rsrc_data->width = 0;
 		rsrc_data->height = 0;
 		rsrc_data->stride = 1;
@@ -950,7 +970,10 @@ static void cam_tfe_bus_add_wm_to_comp_grp(
 {
 	struct cam_tfe_bus_comp_grp_data  *rsrc_data = comp_grp->res_priv;
 
-	rsrc_data->composite_mask |= composite_mask;
+	if (rsrc_data)
+		rsrc_data->composite_mask |= composite_mask;
+	else
+		CAM_ERR(CAM_ISP, "Invalid rsrc data");
 }
 
 static bool cam_tfe_bus_match_comp_grp(
@@ -1005,7 +1028,7 @@ static int cam_tfe_bus_acquire_comp_grp(
 	bool previously_acquired  = false;
 
 	if (comp_grp_id >= CAM_TFE_BUS_COMP_GRP_0 &&
-		comp_grp_id <= CAM_TFE_BUS_COMP_GRP_7) {
+		comp_grp_id < CAM_TFE_BUS_COMP_GRP_MAX) {
 		/* Check if matching comp_grp has already been acquired */
 		previously_acquired = cam_tfe_bus_match_comp_grp(
 			bus_priv, &comp_grp_local, comp_grp_id);
@@ -1017,7 +1040,7 @@ static int cam_tfe_bus_acquire_comp_grp(
 	}
 
 	rsrc_data = comp_grp_local->res_priv;
-	if (rsrc_data->acquire_dev_cnt > CAM_TFE_MAX_OUT_RES_PER_COMP_GRP) {
+	if (rsrc_data->acquire_dev_cnt >= rsrc_data->max_wm_per_comp_grp) {
 		CAM_ERR(CAM_ISP, "Many acquires comp_grp_id:%d", comp_grp_id);
 		return -ENODEV;
 	}
@@ -1045,11 +1068,12 @@ static int cam_tfe_bus_acquire_comp_grp(
 		}
 	}
 
-	CAM_DBG(CAM_ISP, "Acquire comp_grp id:%u", rsrc_data->comp_grp_id);
+	CAM_DBG(CAM_ISP, "rsrc_data %x acquire_dev_cnt %d", rsrc_data, rsrc_data->acquire_dev_cnt);
 	rsrc_data->source_grp = source_group;
 	rsrc_data->out_rsrc[rsrc_data->acquire_dev_cnt] = out_rsrc;
 	rsrc_data->acquire_dev_cnt++;
 	*comp_grp = comp_grp_local;
+	CAM_DBG(CAM_ISP, "Acquire comp_grp id:%u", rsrc_data->comp_grp_id);
 
 	return rc;
 }
@@ -1226,7 +1250,14 @@ static int cam_tfe_bus_init_comp_grp(uint32_t index,
 
 	comp_grp->res_id = index;
 	rsrc_data->comp_grp_id   = index;
-	rsrc_data->common_data     = &bus_priv->common_data;
+	rsrc_data->common_data   = &bus_priv->common_data;
+	rsrc_data->max_wm_per_comp_grp =
+		bus_priv->max_wm_per_comp_grp;
+
+	rsrc_data->out_rsrc = kzalloc(sizeof(struct cam_isp_resource_node *) *
+			rsrc_data->max_wm_per_comp_grp, GFP_KERNEL);
+	if (!rsrc_data->out_rsrc)
+		return -ENOMEM;
 
 	list_add_tail(&comp_grp->list, &bus_priv->free_comp_grp);
 
@@ -1256,6 +1287,7 @@ static int cam_tfe_bus_deinit_comp_grp(
 		CAM_ERR(CAM_ISP, "comp_grp_priv is NULL");
 		return -ENODEV;
 	}
+	kfree(rsrc_data->out_rsrc);
 	kfree(rsrc_data);
 
 	return 0;
@@ -1370,8 +1402,7 @@ static int cam_tfe_bus_acquire_tfe_out(void *priv, void *acquire_args,
 			&rsrc_data->wm_res[i],
 			acq_args->tasklet,
 			tfe_out_res_id,
-			i,
-			&client_done_mask,
+			i, &client_done_mask,
 			out_acquire_args->is_dual,
 			&comp_grp_id);
 		if (rc) {
@@ -2492,6 +2523,7 @@ int cam_tfe_bus_init(
 	bus_priv->num_client                   = hw_info->num_client;
 	bus_priv->num_out                      = hw_info->num_out;
 	bus_priv->num_comp_grp                 = hw_info->num_comp_grp;
+	bus_priv->max_wm_per_comp_grp          = hw_info->max_wm_per_comp_grp;
 	bus_priv->top_bus_wr_irq_shift         = hw_info->top_bus_wr_irq_shift;
 	bus_priv->common_data.comp_done_shift  = hw_info->comp_done_shift;
 
