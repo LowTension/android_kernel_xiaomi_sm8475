@@ -197,6 +197,7 @@ enum cam_isp_hw_cmd_type {
 	CAM_ISP_HW_CMD_WM_BW_LIMIT_CONFIG,
 	CAM_ISP_HW_CMD_RM_ENABLE_DISABLE,
 	CAM_ISP_HW_CMD_APPLY_CLK_BW_UPDATE,
+	CAM_ISP_HW_CMD_INIT_CONFIG_UPDATE,
 	CAM_ISP_HW_CMD_MAX,
 };
 
@@ -270,19 +271,21 @@ struct cam_isp_blanking_config {
 /*
  * struct cam_isp_hw_event_info:
  *
- * @Brief:          Structure to pass event details to hw mgr
+ * @Brief:             Structure to pass event details to hw mgr
  *
- * @res_type:       Type of IFE resource
- * @res_id:         Unique resource ID
- * @hw_idx:         IFE hw index
- * @err_type:       Error type if any
- * @reg_val:        Any critical register value captured during irq handling
- * @hw_type:        Hw Type sending the event
- * @in_core_idx:   Input core type if CSID error evt
+ * @res_type:          Type of IFE resource
+ * @is_secondary_evt:  Indicates if event was requested by hw mgr
+ * @res_id:            Unique resource ID
+ * @hw_idx:            IFE hw index
+ * @err_type:          Error type if any
+ * @reg_val:           Any critical register value captured during irq handling
+ * @hw_type:           Hw Type sending the event
+ * @in_core_idx:       Input core type if CSID error evt
  *
  */
 struct cam_isp_hw_event_info {
 	enum cam_isp_resource_type     res_type;
+	bool                           is_secondary_evt;
 	uint32_t                       res_id;
 	uint32_t                       hw_idx;
 	uint32_t                       err_type;
@@ -500,6 +503,20 @@ struct cam_isp_hw_bus_cap {
 struct cam_isp_hw_path_port_map {
 	uint32_t                num_entries;
 	uint32_t                entry[CAM_ISP_HW_PATH_PORT_MAP_MAX][2];
+};
+
+
+/**
+ * struct cam_isp_hw_init_config_update:
+ *
+ * @Brief:         Init config params for CSID/SFE/IFE resources
+ *
+ * @node_res:      HW Resource
+ * @init_config:   Init config params from userspace
+ */
+struct cam_isp_hw_init_config_update {
+	struct cam_isp_resource_node   *node_res;
+	struct cam_isp_init_config     *init_config;
 };
 
 #endif /* _CAM_ISP_HW_H_ */

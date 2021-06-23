@@ -5579,6 +5579,8 @@ static int __cam_isp_ctx_acquire_hw_v2(struct cam_context *ctx,
 		(param.op_flags & CAM_IFE_CTX_APPLY_DEFAULT_CFG);
 	ctx_isp->support_consumed_addr =
 		(param.op_flags & CAM_IFE_CTX_CONSUME_ADDR_EN);
+	ctx_isp->aeb_enabled =
+		(param.op_flags & CAM_IFE_CTX_AEB_EN);
 
 	/* Query the context has rdi only resource */
 	hw_cmd_args.ctxt_to_hw_map = param.ctxt_to_hw_map;
@@ -6387,6 +6389,28 @@ static int __cam_isp_ctx_handle_irq_in_activated(void *context,
 		(struct cam_isp_context *)ctx->ctx_priv;
 
 	spin_lock(&ctx->lock);
+	/*
+	 * In case of custom AEB ensure first exposure frame has
+	 * not moved forward with its settings without second/third
+	 * expoure frame coming in. If this scenario occurs flag as error,
+	 * and recover
+	 */
+	if ((ctx_isp->aeb_enabled) && (evt_id == CAM_ISP_HW_EVENT_SOF)) {
+		bool is_secondary_evt =
+			((struct cam_isp_hw_sof_event_data *)evt_data)->is_secondary_evt;
+
+		if (is_secondary_evt) {
+			if ((ctx_isp->substate_activated ==
+				CAM_ISP_CTX_ACTIVATED_APPLIED) ||
+				(ctx_isp->substate_activated ==
+				CAM_ISP_CTX_ACTIVATED_BUBBLE_APPLIED)) {
+				CAM_ERR(CAM_ISP,
+					"AEB settings mismatch between exposures - needs a reset");
+				rc = -EAGAIN;
+			}
+			goto end;
+		}
+	}
 
 	trace_cam_isp_activated_irq(ctx, ctx_isp->substate_activated, evt_id,
 		__cam_isp_ctx_get_event_ts(evt_id, evt_data));
@@ -6408,6 +6432,7 @@ static int __cam_isp_ctx_handle_irq_in_activated(void *context,
 	CAM_DBG(CAM_ISP, "Exit: State %d Substate[%s]",
 		ctx->state, __cam_isp_ctx_substate_val_to_type(
 		ctx_isp->substate_activated));
+end:
 	spin_unlock(&ctx->lock);
 	return rc;
 }

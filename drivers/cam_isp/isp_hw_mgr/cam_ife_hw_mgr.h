@@ -141,6 +141,7 @@ struct cam_ife_hw_mgr_sfe_info {
  * @is_sfe_fs:           indicate if stream is for inline SFE FS
  * @dump_on_flush:       Set if reg dump triggered on flush
  * @dump_on_error:       Set if reg dump triggered on error
+ * @custom_aeb_mode:     Set if custom AEB stream
  * @sys_cache_usage:     Per context sys cache usage
  *                       The corresponding index will be set
  *                       for the cache type
@@ -162,6 +163,7 @@ struct cam_ife_hw_mgr_ctx_flags {
 	bool   is_sfe_fs;
 	bool   dump_on_flush;
 	bool   dump_on_error;
+	bool   is_aeb_mode;
 	bool   sys_cache_usage[CAM_LLCC_MAX];
 };
 

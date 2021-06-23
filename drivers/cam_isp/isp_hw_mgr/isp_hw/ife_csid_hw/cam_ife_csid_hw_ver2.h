@@ -157,6 +157,8 @@ struct cam_ife_csid_ver2_camif_data {
  * @crop_enable:         flag to indicate crop enable
  * @drop_enable:         flag to indicate drop enable
  * @discard_init_frames: discard initial frames
+ * @en_secondary_evt:    Enable secondary evt for this path, to notify
+ *                       hw manager
  *
  */
 struct cam_ife_csid_ver2_path_cfg {
@@ -191,6 +193,7 @@ struct cam_ife_csid_ver2_path_cfg {
 	bool                                drop_enable;
 	bool                                handle_camif_irq;
 	bool                                discard_init_frames;
+	bool                                en_secondary_evt;
 };
 
 struct cam_ife_csid_ver2_top_reg_info {

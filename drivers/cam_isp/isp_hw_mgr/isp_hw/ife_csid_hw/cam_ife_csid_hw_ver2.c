@@ -1495,6 +1495,7 @@ static int cam_ife_csid_ver2_rdi_bottom_half(
 	uint32_t                                     err_type = 0;
 	uint32_t                                     expected_frame = 0;
 	uint32_t                                     actual_frame = 0;
+	bool                                         skip_sof_notify = false;
 	struct cam_isp_hw_event_info                 evt_info;
 
 	if (!handler_priv || !evt_payload_priv) {
@@ -1567,9 +1568,6 @@ static int cam_ife_csid_ver2_rdi_bottom_half(
 		goto end;
 	}
 
-	if (!path_cfg->handle_camif_irq)
-		goto end;
-
 	if (!csid_hw->event_cb) {
 		CAM_DBG(CAM_ISP, "CSID[%u] no cb registered",
 				csid_hw->hw_intf->hw_idx);
@@ -1578,13 +1576,30 @@ static int cam_ife_csid_ver2_rdi_bottom_half(
 
 	evt_info.res_id = res->res_id;
 	evt_info.reg_val = irq_status_rdi;
+	evt_info.hw_type = CAM_ISP_HW_TYPE_CSID;
+
+	/* Check for secondary evt */
+	if ((path_cfg->en_secondary_evt) &&
+		(irq_status_rdi & IFE_CSID_VER2_PATH_INFO_INPUT_SOF)) {
+		evt_info.is_secondary_evt = true;
+		CAM_DBG(CAM_ISP,
+			"CSID[%u] RDI:%u notify CAMIF SOF as secondary evt",
+			csid_hw->hw_intf->hw_idx, res->res_id);
+
+		csid_hw->event_cb(csid_hw->token,
+			CAM_ISP_HW_EVENT_SOF, (void *)&evt_info);
+		skip_sof_notify = true;
+	}
+
+	if (!path_cfg->handle_camif_irq)
+		goto end;
 
 	if (irq_status_rdi & IFE_CSID_VER2_PATH_CAMIF_EOF)
 		csid_hw->event_cb(csid_hw->token,
 				CAM_ISP_HW_EVENT_EOF,
 				(void *)&evt_info);
 
-	if (irq_status_rdi & IFE_CSID_VER2_PATH_CAMIF_SOF)
+	if (!skip_sof_notify && (irq_status_rdi & IFE_CSID_VER2_PATH_CAMIF_SOF))
 		csid_hw->event_cb(csid_hw->token,
 				CAM_ISP_HW_EVENT_SOF,
 				(void *)&evt_info);
@@ -1885,6 +1900,8 @@ static int cam_ife_csid_hw_ver2_config_path_data(
 	path_cfg->vertical_bin = reserve->in_port->vertical_bin;
 	path_cfg->qcfa_bin = reserve->in_port->qcfa_bin;
 	path_cfg->num_bytes_out = reserve->in_port->num_bytes_out;
+	path_cfg->en_secondary_evt = reserve->en_secondary_evt;
+
 	if (reserve->sync_mode == CAM_ISP_HW_SYNC_MASTER) {
 		path_cfg->start_pixel = reserve->in_port->left_start;
 		path_cfg->end_pixel = reserve->in_port->left_stop;
@@ -1958,9 +1975,9 @@ static int cam_ife_csid_hw_ver2_config_rx(
 		reserve->in_port->lane_num;
 	csid_hw->res_type = reserve->in_port->res_type;
 	csid_hw->rx_cfg.dynamic_sensor_switch_en =
-		(bool)reserve->in_port->dynamic_sensor_switch_en;
-	csid_hw->rx_cfg.epd_supported =
-		reserve->in_port->epd_supported;
+		reserve->in_port->dynamic_sensor_switch_en;
+	if (reserve->in_port->epd_supported)
+		csid_hw->rx_cfg.epd_supported = 1;
 
 	switch (reserve->in_port->res_type) {
 	case CAM_ISP_IFE_IN_RES_TPG:
@@ -2767,6 +2784,14 @@ static int cam_ife_csid_ver2_program_rdi_path(
 		(res->res_id == CAM_IFE_PIX_PATH_RES_RDI_0)) {
 		val |= path_reg->camif_irq_mask;
 		path_cfg->handle_camif_irq = true;
+	}
+
+	/* Currently CAMIF SOF is the secondary evt enabled for HW mgr */
+	if (path_cfg->en_secondary_evt) {
+		val |= IFE_CSID_VER2_PATH_CAMIF_SOF;
+		CAM_DBG(CAM_ISP,
+			"Enable camif SOF irq for res: %s",
+			res->res_name);
 	}
 
 	res->res_state = CAM_ISP_RESOURCE_STATE_STREAMING;
