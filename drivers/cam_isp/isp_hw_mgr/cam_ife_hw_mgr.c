@@ -9268,6 +9268,22 @@ static int cam_sfe_packet_generic_blob_handler(void *user_data,
 	return rc;
 }
 
+static inline bool cam_isp_sfe_validate_for_scratch_buf_config(
+	uint32_t res_idx, struct cam_ife_hw_mgr_ctx  *ctx)
+{
+	/* check for num exposures for static mode but using RDI1-2 without RD1-2 */
+	if (res_idx >= ctx->sfe_info.num_fetches)
+		return true;
+
+	/* check for num exposures for dynamic mode */
+	if ((ctx->ctx_config &
+		CAM_IFE_CTX_CFG_DYNAMIC_SWITCH_ON) &&
+		(res_idx >= ctx->sfe_info.scratch_config->curr_num_exp))
+		return true;
+
+	return false;
+}
+
 static int cam_isp_sfe_send_scratch_buf_upd(
 	uint32_t                         remaining_size,
 	enum cam_isp_hw_cmd_type         cmd_type,
@@ -9380,20 +9396,12 @@ static int cam_isp_sfe_add_scratch_buffer_cfg(
 
 			res_id = hw_mgr_res->hw_res[j]->res_id;
 
-			/* check for num exposures for static mode but using RDI1-2 without RD1-2 */
-			if ((res_id - CAM_ISP_SFE_OUT_RES_RDI_0) >=
-				ctx->sfe_info.num_fetches)
+			if (cam_isp_sfe_validate_for_scratch_buf_config(
+				(res_id - CAM_ISP_SFE_OUT_RES_RDI_0), ctx))
 				continue;
 
 			/* check if buffer provided for this RDI is from userspace */
 			if (sfe_rdi_cfg_mask & (1 << (res_id - CAM_ISP_SFE_OUT_RES_RDI_0)))
-				continue;
-
-			/* check for num exposures for dynamic mode */
-			if ((ctx->ctx_config &
-				CAM_IFE_CTX_CFG_DYNAMIC_SWITCH_ON) &&
-				((res_id - CAM_ISP_SFE_OUT_RES_RDI_0) >=
-				ctx->sfe_info.scratch_config->curr_num_exp))
 				continue;
 
 			cpu_addr = kmd_buf_info->cpu_addr +
@@ -9442,19 +9450,12 @@ static int cam_isp_sfe_add_scratch_buffer_cfg(
 
 			res_id = hw_mgr_res->hw_res[j]->res_id;
 
-			if ((res_id - CAM_ISP_HW_SFE_IN_RD0) >=
-				ctx->sfe_info.num_fetches)
+			if (cam_isp_sfe_validate_for_scratch_buf_config(
+				(res_id - CAM_ISP_HW_SFE_IN_RD0), ctx))
 				continue;
 
 			/* check if buffer provided for this RM is from userspace */
 			if (sfe_rdi_cfg_mask & (1 << (res_id - CAM_ISP_HW_SFE_IN_RD0)))
-				continue;
-
-			/* check for num exposures */
-			if ((ctx->ctx_config &
-				CAM_IFE_CTX_CFG_DYNAMIC_SWITCH_ON) &&
-				((res_id - CAM_ISP_HW_SFE_IN_RD0) >=
-				ctx->sfe_info.scratch_config->curr_num_exp))
 				continue;
 
 			cpu_addr = kmd_buf_info->cpu_addr +
@@ -10364,16 +10365,8 @@ static int cam_ife_mgr_prog_default_settings(
 
 			res_id = hw_mgr_res->hw_res[j]->res_id;
 
-			/* check for num exposures for static mode but using RDI1-2 without RD1-2 */
-			if ((res_id - CAM_ISP_SFE_OUT_RES_RDI_0) >=
-				ctx->sfe_info.num_fetches)
-				continue;
-
-			/* check for num exposures */
-			if ((ctx->ctx_config &
-				CAM_IFE_CTX_CFG_DYNAMIC_SWITCH_ON) &&
-				((res_id - CAM_ISP_SFE_OUT_RES_RDI_0) >=
-				ctx->sfe_info.scratch_config->curr_num_exp))
+			if (cam_isp_sfe_validate_for_scratch_buf_config(
+				(res_id - CAM_ISP_SFE_OUT_RES_RDI_0), ctx))
 				continue;
 
 			buf_info = &ctx->sfe_info.scratch_config->buf_info[
@@ -10402,16 +10395,8 @@ static int cam_ife_mgr_prog_default_settings(
 
 			res_id = hw_mgr_res->hw_res[j]->res_id;
 
-			/* check for num exposures for static mode but using RDI1-2 without RD1-2 */
-			if ((res_id - CAM_ISP_HW_SFE_IN_RD0) >=
-				ctx->sfe_info.num_fetches)
-				continue;
-
-			/* check for num exposures */
-			if ((ctx->ctx_config &
-				CAM_IFE_CTX_CFG_DYNAMIC_SWITCH_ON) &&
-				((res_id - CAM_ISP_HW_SFE_IN_RD0) >=
-				ctx->sfe_info.scratch_config->curr_num_exp))
+			if (cam_isp_sfe_validate_for_scratch_buf_config(
+				(res_id - CAM_ISP_HW_SFE_IN_RD0), ctx))
 				continue;
 
 			buf_info = &ctx->sfe_info.scratch_config->buf_info
