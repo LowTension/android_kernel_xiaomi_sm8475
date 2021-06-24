@@ -2242,6 +2242,7 @@ static int cam_convert_res_id_to_hw_path(int res_id)
 }
 
 static int cam_ife_hw_mgr_acquire_sfe_hw(
+	bool                                use_lower_idx,
 	struct cam_ife_hw_mgr_ctx          *ife_ctx,
 	struct cam_sfe_acquire_args        *sfe_acquire)
 {
@@ -2249,7 +2250,8 @@ static int cam_ife_hw_mgr_acquire_sfe_hw(
 	struct cam_hw_intf    *hw_intf = NULL;
 	struct cam_ife_hw_mgr *ife_hw_mgr = ife_ctx->hw_mgr;
 
-	if (ife_ctx->flags.is_fe_enabled) {
+	/* Use lower index for RDIs in case of dual */
+	if ((ife_ctx->flags.is_fe_enabled) || (use_lower_idx)) {
 		for (i = 0; i < CAM_SFE_HW_NUM_MAX; i++) {
 			if (!ife_hw_mgr->sfe_devices[i])
 				continue;
@@ -2295,6 +2297,7 @@ static int cam_ife_hw_mgr_acquire_res_sfe_src(
 	struct cam_isp_in_port_generic_info *in_port)
 {
 	int rc = -1, i;
+	bool is_rdi = false;
 	struct cam_sfe_acquire_args          sfe_acquire;
 	struct cam_isp_hw_mgr_res           *csid_res;
 	struct cam_isp_hw_mgr_res           *sfe_src_res;
@@ -2316,6 +2319,7 @@ static int cam_ife_hw_mgr_acquire_res_sfe_src(
 		cam_ife_hw_mgr_put_res(&ife_ctx->res_list_sfe_src,
 			&sfe_src_res);
 
+		is_rdi = false;
 		sfe_acquire.rsrc_type = CAM_ISP_RESOURCE_SFE_IN;
 		sfe_acquire.tasklet = ife_ctx->common.tasklet_info;
 		sfe_acquire.sfe_in.cdm_ops = ife_ctx->cdm_ops;
@@ -2333,18 +2337,23 @@ static int cam_ife_hw_mgr_acquire_res_sfe_src(
 			break;
 		case CAM_IFE_PIX_PATH_RES_RDI_0:
 			sfe_acquire.sfe_in.res_id = CAM_ISP_HW_SFE_IN_RDI0;
+			is_rdi = true;
 			break;
 		case CAM_IFE_PIX_PATH_RES_RDI_1:
 			sfe_acquire.sfe_in.res_id = CAM_ISP_HW_SFE_IN_RDI1;
+			is_rdi = true;
 			break;
 		case CAM_IFE_PIX_PATH_RES_RDI_2:
 			sfe_acquire.sfe_in.res_id = CAM_ISP_HW_SFE_IN_RDI2;
+			is_rdi = true;
 			break;
 		case CAM_IFE_PIX_PATH_RES_RDI_3:
 			sfe_acquire.sfe_in.res_id = CAM_ISP_HW_SFE_IN_RDI3;
+			is_rdi = true;
 			break;
 		case CAM_IFE_PIX_PATH_RES_RDI_4:
 			sfe_acquire.sfe_in.res_id = CAM_ISP_HW_SFE_IN_RDI4;
+			is_rdi = true;
 			break;
 		default:
 			CAM_ERR(CAM_ISP,
@@ -2356,10 +2365,11 @@ static int cam_ife_hw_mgr_acquire_res_sfe_src(
 		sfe_src_res->res_type = sfe_acquire.rsrc_type;
 		sfe_src_res->res_id = sfe_acquire.sfe_in.res_id;
 		sfe_src_res->is_dual_isp = csid_res->is_dual_isp;
-
 		for (i = sfe_src_res->is_dual_isp; i >= 0; i--) {
-			rc = cam_ife_hw_mgr_acquire_sfe_hw(ife_ctx,
-				&sfe_acquire);
+			rc = cam_ife_hw_mgr_acquire_sfe_hw(
+				((is_rdi) && (!sfe_src_res->is_dual_isp) &&
+				(ife_ctx->flags.is_dual)),
+				ife_ctx, &sfe_acquire);
 
 			if (rc || !sfe_acquire.sfe_in.rsrc_node) {
 				CAM_ERR(CAM_ISP,
