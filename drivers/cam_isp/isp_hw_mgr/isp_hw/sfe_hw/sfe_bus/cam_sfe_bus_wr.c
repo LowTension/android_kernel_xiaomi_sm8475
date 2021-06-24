@@ -1587,7 +1587,8 @@ static int cam_sfe_bus_start_sfe_out(
 		sfe_out->top_half_handler,
 		sfe_out->bottom_half_handler,
 		sfe_out->tasklet_info,
-		&tasklet_bh_api);
+		&tasklet_bh_api,
+		CAM_IRQ_EVT_GROUP_0);
 	if (sfe_out->irq_handle < 1) {
 		CAM_ERR(CAM_SFE, "Subscribe IRQ failed for sfe out_res: %d",
 			sfe_out->res_id);
@@ -1657,6 +1658,9 @@ static int cam_sfe_bus_stop_sfe_out(
 			if (rc)
 				CAM_WARN(CAM_SFE, "failed to unsubscribe top irq");
 			bus_priv->bus_irq_handle = 0;
+			cam_irq_controller_unregister_dependent(
+				bus_priv->common_data.sfe_irq_controller,
+				bus_priv->common_data.bus_irq_controller);
 		}
 
 		bus_priv->common_data.err_irq_subscribe = false;
@@ -2015,7 +2019,7 @@ static int cam_sfe_bus_wr_handle_bus_irq(uint32_t    evt_id,
 
 	bus_priv = th_payload->handler_priv;
 	rc = cam_irq_controller_handle_irq(evt_id,
-		bus_priv->common_data.bus_irq_controller);
+		bus_priv->common_data.bus_irq_controller, CAM_IRQ_EVT_GROUP_0);
 	return (rc == IRQ_HANDLED) ? 0 : -EINVAL;
 }
 
@@ -2176,13 +2180,17 @@ static int cam_sfe_bus_subscribe_error_irq(
 		cam_sfe_bus_wr_handle_bus_irq,
 		NULL,
 		NULL,
-		NULL);
+		NULL,
+		CAM_IRQ_EVT_GROUP_0);
 
 	if (bus_priv->bus_irq_handle < 1) {
 		CAM_ERR(CAM_SFE, "Failed to subscribe BUS TOP IRQ");
 		bus_priv->bus_irq_handle = 0;
 		return -EFAULT;
 	}
+
+	cam_irq_controller_register_dependent(bus_priv->common_data.sfe_irq_controller,
+		bus_priv->common_data.bus_irq_controller, top_irq_reg_mask);
 
 	if (bus_priv->tasklet_info != NULL) {
 		bus_priv->error_irq_handle = cam_irq_controller_subscribe_irq(
@@ -2193,7 +2201,8 @@ static int cam_sfe_bus_subscribe_error_irq(
 			cam_sfe_bus_wr_err_irq_top_half,
 			cam_sfe_bus_wr_irq_bottom_half,
 			bus_priv->tasklet_info,
-			&tasklet_bh_api);
+			&tasklet_bh_api,
+			CAM_IRQ_EVT_GROUP_0);
 
 		if (bus_priv->error_irq_handle < 1) {
 			CAM_ERR(CAM_SFE, "Failed to subscribe BUS Error IRQ");
@@ -3178,8 +3187,7 @@ int cam_sfe_bus_wr_init(
 	rc = cam_irq_controller_init(drv_name,
 		bus_priv->common_data.mem_base,
 		&hw_info->common_reg.irq_reg_info,
-		&bus_priv->common_data.bus_irq_controller,
-		false);
+		&bus_priv->common_data.bus_irq_controller);
 	if (rc) {
 		CAM_ERR(CAM_SFE, "Init bus_irq_controller failed");
 		goto free_sfe_out;

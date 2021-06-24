@@ -438,6 +438,7 @@ static struct cam_sfe_bus_rd_hw_info sfe680_bus_rd_hw_info = {
 			.irq_reg_set          = sfe680_bus_rd_irq_reg,
 			.global_clear_offset  = 0x0000040C,
 			.global_clear_bitmask = 0x00000001,
+			.clear_all_bitmask = 0xFFFFFFFF,
 		},
 	},
 	.num_client = 3,
@@ -534,6 +535,7 @@ static struct cam_sfe_bus_wr_hw_info sfe680_bus_wr_hw_info = {
 			.irq_reg_set          = sfe680_bus_wr_irq_reg,
 			.global_clear_offset  = 0x00000830,
 			.global_clear_bitmask = 0x00000001,
+			.clear_all_bitmask = 0xFFFFFFFF,
 		},
 	},
 	.num_client = 13,
@@ -1203,6 +1205,7 @@ static struct cam_irq_controller_reg_info sfe680_top_irq_reg_info = {
 	.irq_reg_set = sfe680_top_irq_reg_set,
 	.global_clear_offset  = 0x0000001C,
 	.global_clear_bitmask = 0x00000001,
+	.clear_all_bitmask = 0xFFFFFFFF,
 };
 
 struct cam_sfe_hw_info cam_sfe680_hw_info = {

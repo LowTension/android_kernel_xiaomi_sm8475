@@ -37,6 +37,7 @@ static struct cam_irq_controller_reg_info vfe480_top_irq_reg_info = {
 	.irq_reg_set = vfe480_top_irq_reg_set,
 	.global_clear_offset  = 0x00000038,
 	.global_clear_bitmask = 0x00000001,
+	.clear_all_bitmask = 0xFFFFFFFF,
 };
 
 static struct cam_vfe_camif_ver3_pp_clc_reg vfe480_camif_reg = {
@@ -1630,6 +1631,7 @@ static struct cam_vfe_bus_rd_ver1_hw_info vfe480_bus_rd_hw_info = {
 			.irq_reg_set          = vfe480_bus_rd_irq_reg,
 			.global_clear_offset  = 0x0000A818,
 			.global_clear_bitmask = 0x00000001,
+			.clear_all_bitmask = 0xFFFFFFFF,
 		},
 	},
 	.num_client = 1,
