@@ -667,6 +667,10 @@ static const char *__cam_isp_resource_handle_id_to_type(
 		return "PREPROCESS_RAW";
 	case CAM_ISP_IFE_OUT_RES_SPARSE_PD:
 		return "SPARSE_PD";
+	case CAM_ISP_IFE_OUT_RES_STATS_CAF:
+		return "STATS_CAF";
+	case CAM_ISP_IFE_OUT_RES_STATS_BAYER_RS:
+		return "STATS_BAYER_RS";
 	default:
 		return "CAM_ISP_Invalid_Resource_Type";
 	}
