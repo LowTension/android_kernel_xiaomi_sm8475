@@ -43,7 +43,7 @@ int msm_camera_pinctrl_init
 int32_t cam_sensor_util_get_current_qtimer_ns(uint64_t *qtime_ns);
 
 int32_t cam_sensor_util_write_qtimer_to_io_buffer(
-	struct cam_buf_io_cfg *io_cfg);
+	uint64_t qtime_ns, struct cam_buf_io_cfg *io_cfg);
 
 int cam_sensor_i2c_command_parser(struct camera_io_master *io_master,
 	struct i2c_settings_array *i2c_reg_settings,
