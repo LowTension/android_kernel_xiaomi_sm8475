@@ -2196,6 +2196,23 @@ static int cam_convert_rdi_out_res_id_to_src(int res_id)
 	return CAM_ISP_HW_VFE_IN_MAX;
 }
 
+static int cam_convert_csid_res_to_path(int res_id)
+{
+	if (res_id == CAM_IFE_PIX_PATH_RES_IPP)
+		return CAM_ISP_PXL_PATH;
+	else if (res_id == CAM_IFE_PIX_PATH_RES_PPP)
+		return CAM_ISP_PPP_PATH;
+	else if (res_id == CAM_IFE_PIX_PATH_RES_RDI_0)
+		return CAM_ISP_RDI0_PATH;
+	else if (res_id == CAM_IFE_PIX_PATH_RES_RDI_1)
+		return CAM_ISP_RDI1_PATH;
+	else if (res_id == CAM_IFE_PIX_PATH_RES_RDI_2)
+		return CAM_ISP_RDI2_PATH;
+	else if (res_id == CAM_IFE_PIX_PATH_RES_RDI_3)
+		return CAM_ISP_RDI3_PATH;
+	return 0;
+}
+
 static int cam_convert_res_id_to_hw_path(int res_id)
 {
 	if (res_id == CAM_ISP_HW_VFE_IN_LCR)
@@ -3273,7 +3290,8 @@ static enum cam_ife_pix_path_res_id
 
 static int cam_ife_hw_mgr_acquire_res_ife_csid_rdi(
 	struct cam_ife_hw_mgr_ctx           *ife_ctx,
-	struct cam_isp_in_port_generic_info *in_port)
+	struct cam_isp_in_port_generic_info *in_port,
+	uint32_t                            *acquired_hw_path)
 {
 	int rc = -EINVAL;
 	int i;
@@ -3362,6 +3380,9 @@ static int cam_ife_hw_mgr_acquire_res_ife_csid_rdi(
 			ife_ctx->left_hw_idx =
 				csid_res->hw_res[0]->hw_intf->hw_idx;
 		}
+		if (ife_ctx->flags.is_sfe_shdr)
+			*acquired_hw_path |= cam_convert_csid_res_to_path(
+					csid_res->res_id);
 		cam_ife_hw_mgr_put_res(&ife_ctx->res_list_ife_csid, &csid_res);
 	}
 
@@ -4161,7 +4182,8 @@ skip_csid_pxl:
 
 	if (in_port->rdi_count) {
 		/* get ife csid RDI resource */
-		rc = cam_ife_hw_mgr_acquire_res_ife_csid_rdi(ife_ctx, in_port);
+		rc = cam_ife_hw_mgr_acquire_res_ife_csid_rdi(ife_ctx, in_port,
+			acquired_hw_path);
 		if (rc) {
 			CAM_ERR(CAM_ISP,
 				"Acquire IFE CSID RDI resource Failed");
