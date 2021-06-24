@@ -91,7 +91,7 @@ static int cam_fd_dev_close_internal(struct v4l2_subdev *sd,
 static int cam_fd_dev_close(struct v4l2_subdev *sd,
 	struct v4l2_subdev_fh *fh)
 {
-	bool crm_active = cam_req_mgr_is_open(CAM_FD);
+	bool crm_active = cam_req_mgr_is_open();
 
 	if (crm_active) {
 		CAM_DBG(CAM_FD, "CRM is ACTIVE, close should be from CRM");
@@ -151,6 +151,7 @@ static int cam_fd_dev_component_bind(struct device *dev,
 		goto deinit_ctx;
 	}
 
+	node->sd_handler = cam_fd_dev_close_internal;
 	mutex_init(&g_fd_dev.lock);
 	g_fd_dev.probe_done = true;
 	CAM_DBG(CAM_FD, "Component bound successfully");

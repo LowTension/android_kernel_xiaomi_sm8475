@@ -27,21 +27,25 @@
  * @ctx_size:              Context list size
  * @hw_mgr_intf:           Interface for cam_node to HW
  * @crm_node_intf:         Interface for the CRM to cam_node
+ * @sd_handler:            Shutdown handler for this subdev
  *
  */
 struct cam_node {
-	char                         name[CAM_CTX_DEV_NAME_MAX_LENGTH];
-	uint32_t                     state;
+	char                              name[CAM_CTX_DEV_NAME_MAX_LENGTH];
+	uint32_t                          state;
 
 	/* context pool */
-	struct mutex                 list_mutex;
-	struct list_head             free_ctx_list;
-	struct cam_context          *ctx_list;
-	uint32_t                     ctx_size;
+	struct mutex                      list_mutex;
+	struct list_head                  free_ctx_list;
+	struct cam_context               *ctx_list;
+	uint32_t                          ctx_size;
 
 	/* interfaces */
-	struct cam_hw_mgr_intf       hw_mgr_intf;
-	struct cam_req_mgr_kmd_ops   crm_node_intf;
+	struct cam_hw_mgr_intf            hw_mgr_intf;
+	struct cam_req_mgr_kmd_ops        crm_node_intf;
+
+	int (*sd_handler)(struct v4l2_subdev *sd,
+		struct v4l2_subdev_fh *fh);
 };
 
 /**
@@ -112,18 +116,5 @@ void cam_node_put_ctxt_to_free_list(struct kref *ref);
  */
 int32_t cam_get_dev_handle_info(uint64_t handle,
 	struct cam_context **ctx, int32_t dev_index);
-
-/**
- * cam_node_handle_shutdown_dev()
- *
- * @brief:       Shutdowns all the active devices.
- *
- * @node:        pointer to struct node
- * @cmd:         pointer to struct cmd
- * @fh:          pointer to struct v4l2_subdev_fh
- *
- */
-int cam_node_handle_shutdown_dev(struct cam_node *node,
-	struct cam_control *cmd, struct v4l2_subdev_fh *fh);
 
 #endif /* _CAM_NODE_H_ */

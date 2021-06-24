@@ -72,7 +72,7 @@ static int cam_lrme_dev_open(struct v4l2_subdev *sd,
 	return 0;
 }
 
-int cam_lrme_dev_close_internal(struct v4l2_subdev *sd,
+static int cam_lrme_dev_close_internal(struct v4l2_subdev *sd,
 	struct v4l2_subdev_fh *fh)
 {
 	int rc = 0;
@@ -109,7 +109,7 @@ end:
 static int cam_lrme_dev_close(struct v4l2_subdev *sd,
 	struct v4l2_subdev_fh *fh)
 {
-	bool crm_active = cam_req_mgr_is_open(CAM_LRME);
+	bool crm_active = cam_req_mgr_is_open();
 
 	if (crm_active) {
 		CAM_DBG(CAM_LRME, "CRM is ACTIVE, close should be from CRM");
@@ -173,6 +173,7 @@ static int cam_lrme_component_bind(struct device *dev,
 		goto deinit_ctx;
 	}
 
+	node->sd_handler = cam_lrme_dev_close_internal;
 	CAM_DBG(CAM_LRME, "Component bound successfully");
 
 	return 0;
