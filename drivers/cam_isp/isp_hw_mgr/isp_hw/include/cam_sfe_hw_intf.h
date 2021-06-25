@@ -158,12 +158,18 @@ struct cam_sfe_core_config_args {
  * @Brief:         Based on exp order rxved from userland
  *                 configure sys cache for SFE WMs & RMs
  *
+ * @wr_enabled:    Output param to indicate if SFE
+ *                 bus WR accepted these settings
+ * @rd_enabled:    Output param to indicate if SFE
+ *                 bus RD accepted these settings
  * @res:           SFE WM/RM Resource node
  * @use_cache:     If set cache configured
  * @type:          Dictates which slice ID to be used
  *
  */
 struct cam_isp_sfe_bus_sys_cache_config {
+	bool                                 wr_enabled;
+	bool                                 rd_enabled;
 	struct cam_isp_resource_node        *res;
 	bool                                 use_cache;
 	int                                  scid;

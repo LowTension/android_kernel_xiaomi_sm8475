@@ -7149,6 +7149,8 @@ static int cam_isp_blob_sfe_exp_order_update(
 		}
 
 		/* Add more params if needed */
+		wm_rm_cache_cfg.wr_enabled = false;
+		wm_rm_cache_cfg.rd_enabled = false;
 		wm_rm_cache_cfg.use_cache =
 			(exp_order_max == i) ? true : false;
 		wm_rm_cache_cfg.scid = 0;
@@ -7218,6 +7220,15 @@ static int cam_isp_blob_sfe_exp_order_update(
 					return rc;
 			}
 		}
+
+		if (!wm_rm_cache_cfg.rd_enabled && !wm_rm_cache_cfg.wr_enabled) {
+			wm_rm_cache_cfg.use_cache = false;
+			if (base_idx == CAM_SFE_CORE_0)
+				ctx->flags.sys_cache_usage[CAM_LLCC_SMALL_1] = false;
+			else if (base_idx == CAM_SFE_CORE_1)
+				ctx->flags.sys_cache_usage[CAM_LLCC_SMALL_2] = false;
+		}
+
 		CAM_DBG(CAM_ISP,
 			"cache %s on exp order: %u [max: %u] for out: 0x%x",
 			(wm_rm_cache_cfg.use_cache ? "enabled" : "not enabled"),
