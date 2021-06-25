@@ -154,6 +154,7 @@ enum cam_camnoc_hw_irq_type {
  * @CAM_CAMNOC_TFE_2: Indicates TFE2 HW connection to camnoc
  * @CAM_CAMNOC_OPE: Indicates OPE HW connection to camnoc
  */
+ /* Deprecated, do not use this anymore. port_name serves the purpose instead of this */
 enum cam_camnoc_port_type {
 	CAM_CAMNOC_CDM,
 	CAM_CAMNOC_SFE_RD,
