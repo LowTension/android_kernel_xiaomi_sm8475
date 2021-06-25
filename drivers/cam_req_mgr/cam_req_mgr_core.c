@@ -3605,6 +3605,7 @@ static int cam_req_mgr_cb_notify_trigger(
 	if (link->sof_timestamp == trigger_data->sof_timestamp_val) {
 		CAM_DBG(CAM_CRM,
 			"Irq delay, skipping apply");
+		spin_unlock_bh(&link->link_state_spin_lock);
 		return 0;
 	}
 
