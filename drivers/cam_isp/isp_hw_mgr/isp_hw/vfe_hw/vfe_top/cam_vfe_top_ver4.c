@@ -1814,13 +1814,10 @@ static int cam_vfe_resource_start(
 			rsrc_data->common_reg->core_cfg_1));
 
 	val = ((rsrc_data->last_line + rsrc_data->vbi_value) -
-						rsrc_data->first_line) / 4;
+						rsrc_data->first_line) / 2;
 	if (val > rsrc_data->last_line)
 		val = rsrc_data->last_line;
 
-	/* Epoch line cfg will still be configured at midpoint of the frame width.
-	 * We use '/4' instead of '/2' because it is multipixel path.
-	 */
 	if (rsrc_data->horizontal_bin || rsrc_data->qcfa_bin ||
 		rsrc_data->sfe_binned_epoch_cfg)
 		val >>= 1;
