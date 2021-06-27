@@ -868,6 +868,7 @@ static int cam_vfe_bus_ver3_config_rdi_wm(
 		}
 		break;
 	case CAM_FORMAT_MIPI_RAW_8:
+	case CAM_FORMAT_YUV422:
 		if (rsrc_data->default_line_based) {
 			rsrc_data->en_cfg = 0x1;
 			rsrc_data->width =
@@ -967,6 +968,18 @@ static int cam_vfe_bus_ver3_config_rdi_wm(
 		rsrc_data->width =
 			ALIGNUP(rsrc_data->width * 8, 16) / 16;
 		rsrc_data->en_cfg = 0x1;
+		break;
+	case CAM_FORMAT_YUV422_10:
+		if (rsrc_data->default_line_based) {
+			rsrc_data->en_cfg = 0x1;
+			rsrc_data->width =
+				ALIGNUP((rsrc_data->width * 5) / 4, 16) / 16;
+		} else {
+			rsrc_data->width = CAM_VFE_RDI_BUS_DEFAULT_WIDTH;
+			rsrc_data->height = 0;
+			rsrc_data->stride = CAM_VFE_RDI_BUS_DEFAULT_STRIDE;
+			rsrc_data->en_cfg = (0x1 << 16) | 0x1;
+		}
 		break;
 	default:
 		CAM_ERR(CAM_ISP, "Unsupported RDI format %d",

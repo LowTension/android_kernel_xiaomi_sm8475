@@ -169,7 +169,8 @@ static int cam_vfe_camif_ver3_err_irq_top_half(
 	return rc;
 }
 
-static int cam_vfe_camif_ver3_validate_pix_pattern(uint32_t pattern)
+static int cam_vfe_camif_ver3_validate_pix_pattern(uint32_t pattern,
+	struct cam_vfe_mux_camif_ver3_data *camif_data)
 {
 	int rc;
 
@@ -178,11 +179,17 @@ static int cam_vfe_camif_ver3_validate_pix_pattern(uint32_t pattern)
 	case CAM_ISP_PATTERN_BAYER_GRGRGR:
 	case CAM_ISP_PATTERN_BAYER_BGBGBG:
 	case CAM_ISP_PATTERN_BAYER_GBGBGB:
+		camif_data->cam_common_cfg.input_pp_fmt =
+			camif_data->reg_data->input_bayer_fmt;
+		rc = 0;
+		break;
 	case CAM_ISP_PATTERN_YUV_YCBYCR:
 	case CAM_ISP_PATTERN_YUV_YCRYCB:
 	case CAM_ISP_PATTERN_YUV_CBYCRY:
 	case CAM_ISP_PATTERN_YUV_CRYCBY:
 		rc = 0;
+		camif_data->cam_common_cfg.input_pp_fmt =
+			camif_data->reg_data->input_yuv_fmt;
 		break;
 	default:
 		CAM_ERR(CAM_ISP, "Error, Invalid pix pattern:%d", pattern);
@@ -256,7 +263,7 @@ int cam_vfe_camif_ver3_acquire_resource(
 	acquire_data = (struct cam_vfe_acquire_args *)acquire_param;
 
 	rc = cam_vfe_camif_ver3_validate_pix_pattern(
-		acquire_data->vfe_in.in_port->test_pattern);
+		acquire_data->vfe_in.in_port->test_pattern, camif_data);
 
 	if (rc) {
 		CAM_ERR(CAM_ISP, "Validate pix pattern failed, rc = %d", rc);
@@ -445,6 +452,8 @@ static int cam_vfe_camif_ver3_resource_start(
 		CAM_SHIFT_TOP_CORE_CFG_STATS_HDR_BHIST;
 	val |= (rsrc_data->cam_common_cfg.input_mux_sel_pp & 0x3) <<
 		CAM_SHIFT_TOP_CORE_CFG_INPUTMUX_PP;
+	val |= (rsrc_data->cam_common_cfg.input_pp_fmt & 0x3) <<
+		CAM_SHIFT_TOP_CORE_CFG_INPUT_PP_FMT;
 
 	if (rsrc_data->is_fe_enabled && !rsrc_data->is_offline)
 		val |= 0x2 << rsrc_data->reg_data->operating_mode_shift;
