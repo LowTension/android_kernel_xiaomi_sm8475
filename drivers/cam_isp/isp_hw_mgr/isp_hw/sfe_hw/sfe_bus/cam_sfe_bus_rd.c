@@ -94,7 +94,7 @@ struct cam_sfe_bus_rd_rm_resource_data {
 	uint32_t             unpacker_cfg;
 	uint32_t             burst_len;
 	uint32_t             en_cfg;
-	uint32_t             img_addr;
+	dma_addr_t           img_addr;
 	uint32_t             input_if_cmd;
 	bool                 enable_caching;
 	uint32_t             cache_cfg;
@@ -1223,10 +1223,10 @@ static int cam_sfe_bus_rd_config_rm(void *priv, void *cmd_args,
 		cam_io_w_mb(update_buf->rm_update->image_buf[i],
 			rm_data->common_data->mem_base +
 			rm_data->hw_regs->image_addr);
-		CAM_DBG(CAM_SFE, "SFE:%d RM:%d image_address:0x%X",
+		CAM_DBG(CAM_SFE, "SFE:%d RM:%d image_address:0x%llx",
 			rm_data->common_data->core_index,
 			rm_data->index,
-			update_buf->rm_update->image_buf[i]);
+			(update_buf->rm_update->image_buf[i]));
 		rm_data->img_addr =
 			update_buf->rm_update->image_buf[i];
 	}

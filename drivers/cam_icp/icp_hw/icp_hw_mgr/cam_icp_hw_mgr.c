@@ -4488,6 +4488,7 @@ static int cam_icp_mgr_process_cmd_desc(struct cam_icp_hw_mgr *hw_mgr,
 					num_cmd_buf--;
 				return rc;
 			}
+			/* FW buffers are expected to be within 32-bit address range */
 			*fw_cmd_buf_iova_addr = addr;
 
 			if ((cmd_desc[i].offset >= len) ||
@@ -4634,6 +4635,7 @@ static int cam_icp_process_stream_settings(
 			return -EINVAL;
 		}
 
+		/* FW/CDM buffers are expected to be mapped in 32-bit address range */
 		map_cmd->mem_map_region_sets[i].start_addr = (uint32_t)iova +
 			(cmd_mem_regions->map_info_array[i].offset);
 		map_cmd->mem_map_region_sets[i].len = (uint32_t) len;
@@ -5000,7 +5002,7 @@ static void cam_icp_mgr_print_io_bufs(struct cam_packet *packet,
 	int32_t iommu_hdl, int32_t sec_mmu_hdl, uint32_t pf_buf_info,
 	bool *mem_found)
 {
-	dma_addr_t   iova_addr;
+	dma_addr_t iova_addr;
 	size_t     src_buf_size;
 	int        i;
 	int        j;
@@ -5054,14 +5056,13 @@ static void cam_icp_mgr_print_io_bufs(struct cam_packet *packet,
 			}
 
 			CAM_INFO(CAM_ICP,
-				"pln %d dir %d w %d h %d s %u sh %u sz %d addr 0x%x off 0x%x memh %x",
+				"pln %d dir %d w %d h %d s %u sh %u sz %zu addr 0x%llx off 0x%x memh %x",
 				j, io_cfg[i].direction,
 				io_cfg[i].planes[j].width,
 				io_cfg[i].planes[j].height,
 				io_cfg[i].planes[j].plane_stride,
 				io_cfg[i].planes[j].slice_height,
-				(int32_t)src_buf_size,
-				(unsigned int)iova_addr,
+				src_buf_size, iova_addr,
 				io_cfg[i].offsets[j],
 				io_cfg[i].mem_handle[j]);
 
@@ -5881,6 +5882,7 @@ static int cam_icp_mgr_acquire_hw(void *hw_mgr_priv, void *acquire_hw_args)
 
 	CAM_DBG(CAM_ICP, "acquire io buf handle %d",
 		icp_dev_acquire_info->io_config_cmd_handle);
+	/* FW/CDM buffers are expected to be mapped in 32-bit address range */
 	rc = cam_mem_get_io_buf(
 		icp_dev_acquire_info->io_config_cmd_handle,
 		hw_mgr->iommu_hdl,

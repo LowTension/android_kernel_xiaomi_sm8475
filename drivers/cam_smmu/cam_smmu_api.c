@@ -356,15 +356,15 @@ static void cam_smmu_dump_monitor_array(
 		hrs = do_div(tmp, 24);
 
 		CAM_INFO(CAM_SMMU,
-		"**** %llu:%llu:%llu.%llu : Index[%d] [%s] : ion_fd=%d start=0x%x end=0x%x len=%u region=%d",
+		"**** %llu:%llu:%llu.%llu : Index[%d] [%s] : ion_fd=%d start=0x%llx end=0x%llx len=%zu region=%d",
 		hrs, min, sec, ms,
 		index,
 		cb_info->monitor_entries[index].is_map ? "MAP" : "UNMAP",
 		cb_info->monitor_entries[index].ion_fd,
-		(void *)cb_info->monitor_entries[index].paddr,
-		((uint64_t)cb_info->monitor_entries[index].paddr +
-		(uint64_t)cb_info->monitor_entries[index].len),
-		(unsigned int)cb_info->monitor_entries[index].len,
+		cb_info->monitor_entries[index].paddr,
+		cb_info->monitor_entries[index].paddr +
+		cb_info->monitor_entries[index].len,
+		cb_info->monitor_entries[index].len,
 		cb_info->monitor_entries[index].region_id);
 
 		index = (index + 1) % CAM_SMMU_MONITOR_MAX_ENTRIES;
@@ -1333,11 +1333,11 @@ static int cam_smmu_detach_device(int idx)
 }
 
 static int cam_smmu_alloc_iova(size_t size,
-	int32_t smmu_hdl, uint32_t *iova)
+	int32_t smmu_hdl, unsigned long *iova)
 {
 	int rc = 0;
 	int idx;
-	uint32_t vaddr = 0;
+	unsigned long vaddr = 0;
 
 	if (!iova || !size || (smmu_hdl == HANDLE_INIT)) {
 		CAM_ERR(CAM_SMMU, "Error: Input args are invalid");
@@ -1381,7 +1381,7 @@ get_addr_end:
 	return rc;
 }
 
-static int cam_smmu_free_iova(uint32_t addr, size_t size,
+static int cam_smmu_free_iova(unsigned long iova, size_t size,
 	int32_t smmu_hdl)
 {
 	int rc = 0;
@@ -1408,7 +1408,7 @@ static int cam_smmu_free_iova(uint32_t addr, size_t size,
 		goto get_addr_end;
 	}
 
-	gen_pool_free(iommu_cb_set.cb_info[idx].shared_mem_pool, addr, size);
+	gen_pool_free(iommu_cb_set.cb_info[idx].shared_mem_pool, iova, size);
 
 get_addr_end:
 	return rc;
@@ -2064,7 +2064,7 @@ static int cam_smmu_map_buffer_validate(struct dma_buf *buf,
 	struct sg_table *table = NULL;
 	struct iommu_domain *domain;
 	size_t size = 0;
-	uint32_t iova = 0;
+	unsigned long iova = 0;
 	int rc = 0;
 	struct timespec64 ts1, ts2;
 	long microsec = 0;
@@ -2107,9 +2107,7 @@ static int cam_smmu_map_buffer_validate(struct dma_buf *buf,
 			goto err_unmap_sg;
 		}
 
-		rc = cam_smmu_alloc_iova(*len_ptr,
-			iommu_cb_set.cb_info[idx].handle,
-			&iova);
+		rc = cam_smmu_alloc_iova(*len_ptr, iommu_cb_set.cb_info[idx].handle, &iova);
 
 		if (rc < 0) {
 			CAM_ERR(CAM_SMMU,
@@ -2165,9 +2163,8 @@ static int cam_smmu_map_buffer_validate(struct dma_buf *buf,
 	}
 
 	CAM_DBG(CAM_SMMU,
-		"iova=%pK, region_id=%d, paddr=0x%x, len=%d, dma_map_attrs=%d",
-		iova, region_id, (uint64_t)*paddr_ptr, *len_ptr,
-		attach->dma_map_attrs);
+		"iova=%pK, region_id=%d, paddr=0x%llx, len=%zu, dma_map_attrs=%d",
+		iova, region_id, *paddr_ptr, *len_ptr, attach->dma_map_attrs);
 
 	if (iommu_cb_set.map_profile_enable) {
 		CAM_GET_TIMESTAMP(ts2);
@@ -2215,9 +2212,8 @@ static int cam_smmu_map_buffer_validate(struct dma_buf *buf,
 		goto err_alloc;
 	}
 
-	CAM_DBG(CAM_SMMU, "idx=%d, dma_buf=%pK, dev=%pK, paddr=0x%x, len=%u",
-		idx, buf, (void *)iommu_cb_set.cb_info[idx].dev,
-		(void *)*paddr_ptr, (unsigned int)*len_ptr);
+	CAM_DBG(CAM_SMMU, "idx=%d, dma_buf=%pK, dev=%pOFfp, paddr=0x%llx, len=%zu",
+		idx, buf, iommu_cb_set.cb_info[idx].dev, *paddr_ptr, *len_ptr);
 
 	/* Unmap the mapping in dma region as this is not used anyway */
 	if (region_id == CAM_SMMU_REGION_SHARED)
@@ -2334,7 +2330,7 @@ static int cam_smmu_unmap_buf_and_remove_from_list(
 		mapping_info);
 
 	CAM_DBG(CAM_SMMU,
-		"region_id=%d, paddr=0x%x, len=%d, dma_map_attrs=%d",
+		"region_id=%d, paddr=0x%llx, len=%d, dma_map_attrs=%d",
 		mapping_info->region_id, mapping_info->paddr, mapping_info->len,
 		mapping_info->attach->dma_map_attrs);
 
@@ -2343,8 +2339,8 @@ static int cam_smmu_unmap_buf_and_remove_from_list(
 
 	if (mapping_info->region_id == CAM_SMMU_REGION_SHARED) {
 		CAM_DBG(CAM_SMMU,
-			"Removing SHARED buffer paddr = %pK, len = %zu",
-			(void *)mapping_info->paddr, mapping_info->len);
+			"Removing SHARED buffer paddr = 0x%llx, len = %zu",
+			mapping_info->paddr, mapping_info->len);
 
 		domain = iommu_cb_set.cb_info[idx].domain;
 
@@ -2943,10 +2939,8 @@ static int cam_smmu_map_stage2_buffer_and_add_to_list(int idx, int ion_fd,
 	mapping_info->ref_count = 1;
 	mapping_info->buf = dmabuf;
 
-	CAM_DBG(CAM_SMMU, "idx=%d, ion_fd=%d, dev=%pK, paddr=%pK, len=%u",
-			idx, ion_fd,
-			(void *)iommu_cb_set.cb_info[idx].dev,
-			(void *)*paddr_ptr, (unsigned int)*len_ptr);
+	CAM_DBG(CAM_SMMU, "idx=%d, ion_fd=%d, dev=%pOFfp, paddr=0x%llx, len=%zu",
+		idx, ion_fd, iommu_cb_set.cb_info[idx].dev, *paddr_ptr, *len_ptr);
 
 	/* add to the list */
 	list_add(&mapping_info->list, &iommu_cb_set.cb_info[idx].smmu_buf_list);

@@ -2891,7 +2891,7 @@ static void cam_vfe_bus_ver3_update_ubwc_meta_addr(
 	uint32_t *reg_val_pair,
 	uint32_t  *j,
 	void     *regs,
-	uint64_t  image_buf)
+	dma_addr_t  image_buf)
 {
 	struct cam_vfe_bus_ver3_reg_offset_ubwc_client *ubwc_regs;
 

@@ -2105,6 +2105,7 @@ static void cam_cre_mgr_print_io_bufs(struct cam_packet *packet,
 					rc, io_cfg[i].mem_handle[j]);
 				continue;
 			}
+
 			if ((iova_addr & 0xFFFFFFFF) != iova_addr) {
 				CAM_ERR(CAM_CRE, "Invalid mapped address");
 				rc = -EINVAL;
@@ -2112,14 +2113,13 @@ static void cam_cre_mgr_print_io_bufs(struct cam_packet *packet,
 			}
 
 			CAM_INFO(CAM_CRE,
-				"pln %d dir %d w %d h %d s %u sh %u sz %d addr 0x%x off 0x%x memh %x",
+				"pln %d dir %d w %d h %d s %u sh %u sz %zu addr 0x%llx off 0x%x memh %x",
 				j, io_cfg[i].direction,
 				io_cfg[i].planes[j].width,
 				io_cfg[i].planes[j].height,
 				io_cfg[i].planes[j].plane_stride,
 				io_cfg[i].planes[j].slice_height,
-				(int32_t)src_buf_size,
-				(unsigned int)iova_addr,
+				src_buf_size, iova_addr,
 				io_cfg[i].offsets[j],
 				io_cfg[i].mem_handle[j]);
 
