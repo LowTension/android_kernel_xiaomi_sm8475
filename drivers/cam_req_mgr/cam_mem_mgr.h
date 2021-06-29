@@ -152,4 +152,27 @@ int cam_mem_mgr_init(void);
  */
 void cam_mem_mgr_deinit(void);
 
+/**
+ * @brief: Copy buffer content to presil mem for all buffers of
+ *       iommu handle
+ *
+ * @return Status of operation. Negative in case of error. Zero otherwise.
+ */
+int cam_mem_mgr_send_all_buffers_to_presil(int32_t iommu_hdl);
+
+/**
+ * @brief: Copy buffer content of single buffer to presil
+ *
+ * @return Status of operation. Negative in case of error. Zero otherwise.
+ */
+int cam_mem_mgr_send_buffer_to_presil(int32_t iommu_hdl, int32_t buf_handle);
+
+/**
+ * @brief: Copy back buffer content of single buffer from
+ *       presil
+ *
+ * @return Status of operation. Negative in case of error. Zero otherwise.
+ */
+int cam_mem_mgr_retrieve_buffer_from_presil(int32_t buf_handle,
+	uint32_t buf_size, uint32_t offset, int32_t iommu_hdl);
 #endif /* _CAM_MEM_MGR_H_ */

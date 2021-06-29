@@ -1782,3 +1782,29 @@ int cam_mem_mgr_free_memory_region(struct cam_mem_mgr_memory_desc *inp)
 	return rc;
 }
 EXPORT_SYMBOL(cam_mem_mgr_free_memory_region);
+
+#ifndef CONFIG_CAM_PRESIL
+
+struct dma_buf * cam_mem_mgr_get_dma_buf(int fd)
+{
+	return NULL;
+}
+
+int cam_mem_mgr_send_all_buffers_to_presil(int32_t iommu_hdl)
+{
+       return 0;
+}
+
+int cam_mem_mgr_send_buffer_to_presil(int32_t iommu_hdl, int32_t buf_handle)
+{
+	return 0;
+}
+
+int cam_mem_mgr_retrieve_buffer_from_presil(int32_t buf_handle,
+	uint32_t buf_size,
+	uint32_t offset,
+	int32_t iommu_hdl)
+{
+	return 0;
+}
+#endif

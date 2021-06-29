@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2016-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CAM_MEM_MGR_API_H_
@@ -115,5 +115,14 @@ int cam_mem_mgr_reserve_memory_region(struct cam_mem_mgr_request_desc *inp,
  * @return Status of operation. Negative in case of error. Zero otherwise.
  */
 int cam_mem_mgr_free_memory_region(struct cam_mem_mgr_memory_desc *inp);
+
+/**
+ * @brief: Translate fd into dmabuf
+ *
+ * @inp   : fd for buffer
+ *
+ * @return dmabuf .
+ */
+struct dma_buf * cam_mem_mgr_get_dma_buf(int fd);
 
 #endif /* _CAM_MEM_MGR_API_H_ */
