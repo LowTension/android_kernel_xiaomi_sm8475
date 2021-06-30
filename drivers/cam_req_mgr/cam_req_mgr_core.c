@@ -5044,6 +5044,10 @@ int cam_req_mgr_flush_requests(
 	rc = cam_common_wait_for_completion_timeout(
 		&link->workq_comp,
 		msecs_to_jiffies(CAM_REQ_MGR_SCHED_REQ_TIMEOUT));
+	if (rc)
+		CAM_WARN(CAM_CRM, "Flush call timeout for session_hdl %u link_hdl %u type: %d",
+			flush_info->link_hdl, flush_info->session_hdl,
+			flush_info->flush_type);
 end:
 	mutex_unlock(&g_crm_core_dev->crm_lock);
 	return rc;
