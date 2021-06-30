@@ -290,6 +290,7 @@ struct cam_req_mgr_link_control {
 #define CAM_MEM_FLAG_CDSP_OUTPUT                (1<<12)
 #define CAM_MEM_FLAG_DISABLE_DELAYED_UNMAP      (1<<13)
 #define CAM_MEM_FLAG_KMD_DEBUG_FLAG             (1<<14)
+#define CAM_MEM_FLAG_EVA_NOPIXEL                (1<<15)
 
 
 #define CAM_MEM_MMU_MAX_HANDLE                  16
