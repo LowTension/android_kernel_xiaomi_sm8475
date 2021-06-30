@@ -1153,8 +1153,8 @@ static int cam_sfe_bus_rd_config_rm(void *priv, void *cmd_args,
 	sfe_bus_rd_data = (struct cam_sfe_bus_rd_data *)
 		update_buf->res->res_priv;
 
-	if (!sfe_bus_rd_data || !sfe_bus_rd_data->cdm_util_ops) {
-		CAM_ERR(CAM_SFE, "Failed! Invalid data");
+	if (!sfe_bus_rd_data) {
+		CAM_ERR(CAM_SFE, "Invalid data");
 		return -EINVAL;
 	}
 
@@ -1255,14 +1255,12 @@ static int cam_sfe_bus_rd_update_rm(void *priv, void *cmd_args,
 
 	sfe_bus_rd_data = (struct cam_sfe_bus_rd_data *)
 		update_buf->res->res_priv;
-
-	cdm_util_ops = sfe_bus_rd_data->cdm_util_ops;
-
-	if (!sfe_bus_rd_data || !cdm_util_ops) {
-		CAM_ERR(CAM_SFE, "Failed! Invalid data");
+	if (!sfe_bus_rd_data || !sfe_bus_rd_data->cdm_util_ops) {
+		CAM_ERR(CAM_SFE, "Invalid data");
 		return -EINVAL;
 	}
 
+	cdm_util_ops = sfe_bus_rd_data->cdm_util_ops;
 	CAM_DBG(CAM_SFE, "#of RM: %d scratch_buf_cfg: %s",
 		sfe_bus_rd_data->num_rm,
 		update_buf->use_scratch_cfg ? "true" : "false");
