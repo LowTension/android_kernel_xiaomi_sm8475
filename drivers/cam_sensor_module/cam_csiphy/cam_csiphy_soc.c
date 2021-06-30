@@ -472,7 +472,7 @@ int32_t cam_csiphy_parse_dt_info(struct platform_device *pdev,
 			csiphy_common_reg_2_1_0;
 		csiphy_dev->ctrl_reg->csiphy_reset_reg = csiphy_reset_reg_2_1_0;
 		csiphy_dev->ctrl_reg->csiphy_reg = csiphy_v2_1_0;
-		csiphy_dev->ctrl_reg->getclockvoting = get_clk_vote_default;
+		csiphy_dev->ctrl_reg->getclockvoting = get_clk_voting_dynamic;
 		csiphy_dev->hw_version = CSIPHY_VERSION_V210;
 		csiphy_dev->is_divisor_32_comp = true;
 		csiphy_dev->clk_lane = 0;
