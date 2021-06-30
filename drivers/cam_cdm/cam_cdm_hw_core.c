@@ -2012,6 +2012,33 @@ int cam_hw_cdm_get_cdm_config(struct cam_hw_info *cdm_hw)
 		}
 	}
 
+	if (cam_presil_mode_enabled()) {
+		uint32_t override_family = 0;
+		uint32_t override_version = 0;
+
+		rc = of_property_read_u32(soc_info->pdev->dev.of_node,
+			"override-cdm-family", &override_family);
+		if (rc) {
+			CAM_INFO(CAM_CDM,
+				"no cdm family override,using current hw family 0x%x",
+				core->hw_family_version);
+			rc = 0;
+		} else {
+			core->hw_family_version = override_family;
+		}
+
+		rc = of_property_read_u32(soc_info->pdev->dev.of_node,
+			"override-cdm-version", &override_version);
+		if (rc) {
+			CAM_INFO(CAM_CDM,
+				"no cdm version override,using current hw version 0x%x",
+				core->hw_version);
+			rc = 0;
+		} else {
+			core->hw_version = override_version;
+		}
+	}
+
 	CAM_DBG(CAM_CDM,
 		"%s%d Hw version read success family =%x hw =%x",
 		soc_info->label_name, soc_info->index,
