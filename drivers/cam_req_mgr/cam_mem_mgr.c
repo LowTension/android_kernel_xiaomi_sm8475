@@ -36,27 +36,17 @@ static int cam_mem_mgr_get_dma_heaps(void);
 static void cam_mem_mgr_print_tbl(void)
 {
 	int i;
-	uint64_t ms, tmp, hrs, min, sec;
-	struct timespec64 *ts =  NULL;
+	uint64_t ms, hrs, min, sec;
 	struct timespec64 current_ts;
 
-	ktime_get_real_ts64(&(current_ts));
-	tmp = current_ts.tv_sec;
-	ms = (current_ts.tv_nsec) / 1000000;
-	sec = do_div(tmp, 60);
-	min = do_div(tmp, 60);
-	hrs = do_div(tmp, 24);
+	CAM_GET_TIMESTAMP(current_ts);
+	CAM_CONVERT_TIMESTAMP_FORMAT(current_ts, hrs, min, sec, ms);
 
 	CAM_INFO(CAM_MEM, "***%llu:%llu:%llu:%llu Mem mgr table dump***",
 		hrs, min, sec, ms);
 	for (i = 1; i < CAM_MEM_BUFQ_MAX; i++) {
 		if (tbl.bufq[i].active) {
-			ts = &tbl.bufq[i].timestamp;
-			tmp = ts->tv_sec;
-			ms = (ts->tv_nsec) / 1000000;
-			sec = do_div(tmp, 60);
-			min = do_div(tmp, 60);
-			hrs = do_div(tmp, 24);
+			CAM_CONVERT_TIMESTAMP_FORMAT((tbl.bufq[i].timestamp), hrs, min, sec, ms);
 			CAM_INFO(CAM_MEM,
 				"%llu:%llu:%llu:%llu idx %d fd %d i_ino %lu size %llu",
 				hrs, min, sec, ms, i, tbl.bufq[i].fd, tbl.bufq[i].i_ino,
@@ -235,7 +225,7 @@ static int32_t cam_mem_get_slot(void)
 
 	set_bit(idx, tbl.bitmap);
 	tbl.bufq[idx].active = true;
-	ktime_get_real_ts64(&(tbl.bufq[idx].timestamp));
+	CAM_GET_TIMESTAMP((tbl.bufq[idx].timestamp));
 	mutex_init(&tbl.bufq[idx].q_lock);
 	mutex_unlock(&tbl.m_lock);
 

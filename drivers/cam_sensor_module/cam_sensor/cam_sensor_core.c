@@ -750,6 +750,9 @@ int32_t cam_sensor_driver_cmd(struct cam_sensor_ctrl_t *s_ctrl,
 	struct cam_control *cmd = (struct cam_control *)arg;
 	struct cam_sensor_power_ctrl_t *power_info =
 		&s_ctrl->sensordata->power_info;
+	struct timespec64 ts;
+	uint64_t ms, sec, min, hrs;
+
 	if (!s_ctrl || !arg) {
 		CAM_ERR(CAM_SENSOR, "s_ctrl is NULL");
 		return -EINVAL;
@@ -1043,8 +1046,12 @@ int32_t cam_sensor_driver_cmd(struct cam_sensor_ctrl_t *s_ctrl,
 			}
 		}
 
+		CAM_GET_TIMESTAMP(ts);
+		CAM_CONVERT_TIMESTAMP_FORMAT(ts, hrs, min, sec, ms);
+
 		CAM_INFO(CAM_SENSOR,
-			"CAM_START_DEV Success for %s sensor_id:0x%x,sensor_slave_addr:0x%x",
+			"%llu:%llu:%llu.%llu CAM_START_DEV Success for %s sensor_id:0x%x,sensor_slave_addr:0x%x",
+			hrs, min, sec, ms,
 			s_ctrl->sensor_name,
 			s_ctrl->sensordata->slave_info.sensor_id,
 			s_ctrl->sensordata->slave_info.sensor_slave_addr);
@@ -1073,8 +1080,13 @@ int32_t cam_sensor_driver_cmd(struct cam_sensor_ctrl_t *s_ctrl,
 		cam_sensor_release_per_frame_resource(s_ctrl);
 		s_ctrl->last_flush_req = 0;
 		s_ctrl->sensor_state = CAM_SENSOR_ACQUIRE;
+
+		CAM_GET_TIMESTAMP(ts);
+		CAM_CONVERT_TIMESTAMP_FORMAT(ts, hrs, min, sec, ms);
+
 		CAM_INFO(CAM_SENSOR,
-			"CAM_STOP_DEV Success for %s sensor_id:0x%x,sensor_slave_addr:0x%x",
+			"%llu:%llu:%llu.%llu CAM_STOP_DEV Success for %s sensor_id:0x%x,sensor_slave_addr:0x%x",
+			hrs, min, sec, ms,
 			s_ctrl->sensor_name,
 			s_ctrl->sensordata->slave_info.sensor_id,
 			s_ctrl->sensordata->slave_info.sensor_slave_addr);

@@ -314,7 +314,7 @@ static void cam_smmu_update_monitor_array(
 
 	CAM_SMMU_INC_MONITOR_HEAD(&cb_info->monitor_head, &iterator);
 
-	ktime_get_real_ts64(&cb_info->monitor_entries[iterator].timestamp);
+	CAM_GET_TIMESTAMP(cb_info->monitor_entries[iterator].timestamp);
 
 	cb_info->monitor_entries[iterator].is_map = is_map;
 	cb_info->monitor_entries[iterator].ion_fd = mapping_info->ion_fd;
@@ -330,8 +330,7 @@ static void cam_smmu_dump_monitor_array(
 	int i = 0;
 	int64_t state_head = 0;
 	uint32_t index, num_entries, oldest_entry;
-	uint64_t ms, tmp, hrs, min, sec;
-	struct timespec64 *ts = NULL;
+	uint64_t ms, hrs, min, sec;
 
 	state_head = atomic64_read(&cb_info->monitor_head);
 
@@ -353,12 +352,8 @@ static void cam_smmu_dump_monitor_array(
 	index = oldest_entry;
 
 	for (i = 0; i < num_entries; i++) {
-		ts = &cb_info->monitor_entries[index].timestamp;
-		tmp = ts->tv_sec;
-		ms = (ts->tv_nsec) / 1000000;
-		sec = do_div(tmp, 60);
-		min = do_div(tmp, 60);
-		hrs = do_div(tmp, 24);
+		CAM_CONVERT_TIMESTAMP_FORMAT(cb_info->monitor_entries[index].timestamp,
+			hrs, min, sec, ms);
 
 		CAM_INFO(CAM_SMMU,
 		"**** %llu:%llu:%llu.%llu : Index[%d] [%s] : ion_fd=%d i_ino=%lu start=0x%llx end=0x%llx len=%zu region=%d",
@@ -543,8 +538,7 @@ static void cam_smmu_dump_cb_info(int idx)
 	size_t shared_reg_len = 0, io_reg_len = 0;
 	size_t shared_free_len = 0, io_free_len = 0;
 	uint32_t i = 0;
-	uint64_t ms, tmp, hrs, min, sec;
-	struct timespec64 *ts = NULL;
+	uint64_t ms, hrs, min, sec;
 	struct timespec64 current_ts;
 	struct cam_context_bank_info *cb_info =
 		&iommu_cb_set.cb_info[idx];
@@ -559,12 +553,9 @@ static void cam_smmu_dump_cb_info(int idx)
 		io_free_len = io_reg_len - cb_info->io_mapping_size;
 	}
 
-	ktime_get_real_ts64(&(current_ts));
-	tmp = current_ts.tv_sec;
-	ms = (current_ts.tv_nsec) / 1000000;
-	sec = do_div(tmp, 60);
-	min = do_div(tmp, 60);
-	hrs = do_div(tmp, 24);
+	CAM_GET_TIMESTAMP(current_ts);
+	CAM_CONVERT_TIMESTAMP_FORMAT(current_ts, hrs, min, sec, ms);
+
 	CAM_ERR(CAM_SMMU,
 		"********** %llu:%llu:%llu:%llu Context bank dump for %s **********",
 		hrs, min, sec, ms, cb_info->name[0]);
@@ -579,12 +570,7 @@ static void cam_smmu_dump_cb_info(int idx)
 		list_for_each_entry_safe(mapping, mapping_temp,
 			&iommu_cb_set.cb_info[idx].smmu_buf_list, list) {
 			i++;
-			ts = &mapping->ts;
-			tmp = ts->tv_sec;
-			ms = (ts->tv_nsec) / 1000000;
-			sec = do_div(tmp, 60);
-			min = do_div(tmp, 60);
-			hrs = do_div(tmp, 24);
+			CAM_CONVERT_TIMESTAMP_FORMAT(mapping->ts, hrs, min, sec, ms);
 			CAM_ERR(CAM_SMMU,
 				"%llu:%llu:%llu:%llu: %u ion_fd=%d i_ino=%lu start=0x%x end=0x%x len=%u region=%d",
 				hrs, min, sec, ms, i, mapping->ion_fd, mapping->i_ino,
@@ -2283,7 +2269,7 @@ static int cam_smmu_map_buffer_and_add_to_list(int idx, int ion_fd,
 	mapping_info->ion_fd = ion_fd;
 	mapping_info->i_ino = file_inode(buf->file)->i_ino;
 	mapping_info->is_internal = is_internal;
-	ktime_get_real_ts64(&mapping_info->ts);
+	CAM_GET_TIMESTAMP(mapping_info->ts);
 	/* add to the list */
 	list_add(&mapping_info->list,
 		&iommu_cb_set.cb_info[idx].smmu_buf_list);
@@ -2314,7 +2300,8 @@ static int cam_smmu_map_kernel_buffer_and_add_to_list(int idx,
 
 	mapping_info->ion_fd = -1;
 	mapping_info->i_ino = file_inode(buf->file)->i_ino;
-	ktime_get_real_ts64(&mapping_info->ts);
+	CAM_GET_TIMESTAMP(mapping_info->ts);
+
 	/* add to the list */
 	list_add(&mapping_info->list,
 		&iommu_cb_set.cb_info[idx].smmu_buf_kernel_list);
@@ -3239,15 +3226,10 @@ int cam_smmu_map_user_iova(int handle, int ion_fd, struct dma_buf *dmabuf,
 	buf_state = cam_smmu_user_reuse_fd_in_list(idx, ion_fd, dmabuf, paddr_ptr,
 		len_ptr, &ts);
 	if (buf_state == CAM_SMMU_BUFF_EXIST) {
-		uint64_t ms = 0, tmp = 0, hrs = 0, min = 0, sec = 0;
+		uint64_t ms = 0, hrs = 0, min = 0, sec = 0;
 
-		if (ts) {
-			tmp = ts->tv_sec;
-			ms = (ts->tv_nsec) / 1000000;
-			sec = do_div(tmp, 60);
-			min = do_div(tmp, 60);
-			hrs = do_div(tmp, 24);
-		}
+		if (ts)
+			CAM_CONVERT_TIMESTAMP_FORMAT((*ts), hrs, min, sec, ms);
 		CAM_ERR(CAM_SMMU,
 			"fd=%d already in list [%llu:%llu:%lu:%llu] cb=%s idx=%d handle=%d len=%llu,give same addr back",
 			ion_fd, hrs, min, sec, ms,

@@ -1241,6 +1241,7 @@ static void cam_ife_hw_mgr_print_acquire_info(
 	int hw_idx[CAM_ISP_HW_SPLIT_MAX] = {-1, -1};
 	int sfe_hw_idx[CAM_ISP_HW_SPLIT_MAX] = {-1, -1};
 	int i, len = 0;
+	uint64_t ms, sec, min, hrs;
 
 	if (!list_empty(&hw_mgr_ctx->res_list_ife_src)) {
 		hw_mgr_res = list_first_entry(&hw_mgr_ctx->res_list_ife_src,
@@ -1296,8 +1297,12 @@ static void cam_ife_hw_mgr_print_acquire_info(
 	if (hw_mgr_ctx->flags.is_offline)
 		len += scnprintf(log_info + len, (128 - len), " OFFLINE: Y");
 
+	CAM_GET_TIMESTAMP(hw_mgr_ctx->ts);
+	CAM_CONVERT_TIMESTAMP_FORMAT(hw_mgr_ctx->ts, hrs, min, sec, ms);
+
 	CAM_INFO(CAM_ISP,
-		"Acquired %s with [%u pix] [%u pd] [%u rdi] ports for ctx:%u",
+		"%llu:%llu:%llu.%llu Acquired %s with [%u pix] [%u pd] [%u rdi] ports for ctx:%u",
+		hrs, min, sec, ms,
 		log_info,
 		num_pix_port, num_pd_port, num_rdi_port,
 		hw_mgr_ctx->ctx_index);
@@ -1351,16 +1356,10 @@ static void cam_ife_hw_mgr_dump_acq_data(
 	struct cam_isp_hw_mgr_res    *hw_mgr_res = NULL;
 	struct cam_isp_hw_mgr_res    *hw_mgr_res_temp = NULL;
 	struct cam_isp_resource_node *hw_res = NULL;
-	struct timespec64            *ts = NULL;
-	uint64_t ms, tmp, hrs, min, sec;
+	uint64_t ms, hrs, min, sec;
 	int i = 0, j = 0;
 
-	ts = &hwr_mgr_ctx->ts;
-	tmp = ts->tv_sec;
-	ms = (ts->tv_nsec) / 1000000;
-	sec = do_div(tmp, 60);
-	min = do_div(tmp, 60);
-	hrs = do_div(tmp, 24);
+	CAM_CONVERT_TIMESTAMP_FORMAT(hwr_mgr_ctx->ts, hrs, min, sec, ms);
 
 	CAM_INFO(CAM_ISP,
 		"**** %llu:%llu:%llu.%llu ctx_idx: %u rdi_only: %s is_dual: %s acquired ****",
@@ -4885,8 +4884,6 @@ static int cam_ife_mgr_acquire_hw(void *hw_mgr_priv, void *acquire_hw_args)
 	acquire_args->op_params.param_list[1] =
 		ife_hw_mgr->isp_bus_caps.max_sfe_out_res_type;
 
-	ktime_get_real_ts64(&ife_ctx->ts);
-
 	cam_ife_hw_mgr_print_acquire_info(ife_ctx, total_pix_port,
 		total_pd_port, total_rdi_port, rc);
 
@@ -6662,6 +6659,7 @@ static int cam_ife_mgr_release_hw(void *hw_mgr_priv,
 	struct cam_ife_hw_mgr            *hw_mgr       = hw_mgr_priv;
 	struct cam_ife_hw_mgr_ctx        *ctx;
 	uint32_t                          i;
+	uint64_t                          ms, sec, min, hrs;
 
 	if (!hw_mgr_priv || !release_hw_args) {
 		CAM_ERR(CAM_ISP, "Invalid arguments");
@@ -6715,7 +6713,12 @@ static int cam_ife_mgr_release_hw(void *hw_mgr_priv,
 	}
 
 	cam_ife_mgr_free_cdm_cmd(&ctx->cdm_cmd);
-	CAM_INFO(CAM_ISP, "Release HW success ctx id: %u",
+
+	CAM_GET_TIMESTAMP(ctx->ts);
+	CAM_CONVERT_TIMESTAMP_FORMAT(ctx->ts, hrs, min, sec, ms);
+
+	CAM_INFO(CAM_ISP, "%llu:%llu:%llu.%llu Release HW success ctx id: %u",
+		hrs, min, sec, ms,
 		ctx->ctx_index);
 
 	memset(&ctx->ts, 0, sizeof(struct timespec64));
