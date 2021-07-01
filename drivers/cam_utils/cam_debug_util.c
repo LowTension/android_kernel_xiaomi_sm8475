@@ -227,6 +227,9 @@ const char *cam_get_module_name(unsigned long long module_id)
 	case CAM_PRESIL_CORE:
 		name = "CAM-CORE-PRESIL";
 		break;
+	case CAM_TPG:
+		name = "CAM-TPG";
+		break;
 	default:
 		name = "CAM";
 		break;

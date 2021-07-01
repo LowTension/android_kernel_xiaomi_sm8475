@@ -43,6 +43,7 @@
 #define CAM_SFE           BIT_ULL(30)
 #define CAM_CRE           BIT_ULL(31)
 #define CAM_PRESIL_CORE   BIT_ULL(32)
+#define CAM_TPG           BIT_ULL(33)
 
 /* Log level types */
 #define CAM_TYPE_TRACE      (1 << 0)

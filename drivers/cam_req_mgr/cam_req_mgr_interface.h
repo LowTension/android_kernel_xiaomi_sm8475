@@ -186,6 +186,7 @@ enum cam_req_mgr_device_error {
  * @EXTERNAL_1  : third party device
  * @EXTERNAL_2  : third party device
  * @EXTERNAL_3  : third party device
+ * @TPG         : Test Pattern Generator
  * @MAX         : invalid device id
  */
 enum cam_req_mgr_device_id {
@@ -198,6 +199,7 @@ enum cam_req_mgr_device_id {
 	CAM_REQ_MGR_DEVICE_EXTERNAL_1,
 	CAM_REQ_MGR_DEVICE_EXTERNAL_2,
 	CAM_REQ_MGR_DEVICE_EXTERNAL_3,
+	CAM_REQ_MGR_DEVICE_TPG,
 	CAM_REQ_MGR_DEVICE_ID_MAX,
 };
 
