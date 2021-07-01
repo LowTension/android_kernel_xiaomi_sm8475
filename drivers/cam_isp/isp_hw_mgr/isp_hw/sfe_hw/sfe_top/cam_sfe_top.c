@@ -51,14 +51,17 @@ struct cam_sfe_top_priv {
 	uint32_t                        sfe_debug_cfg;
 	uint32_t                        sensor_sel_diag_cfg;
 	int                             error_irq_handle;
+	uint16_t                        reserve_cnt;
+	uint16_t                        start_stop_cnt;
+	void                           *priv_per_stream;
 	spinlock_t                      spin_lock;
+	cam_hw_mgr_event_cb_func        event_cb;
 	struct cam_sfe_top_module_desc *module_desc;
 	struct cam_sfe_wr_client_desc  *wr_client_desc;
 };
 
 struct cam_sfe_path_data {
 	void __iomem                             *mem_base;
-	void                                     *priv;
 	struct cam_hw_intf                       *hw_intf;
 	struct cam_sfe_top_priv                  *top_priv;
 	struct cam_sfe_top_common_reg_offset     *common_reg;
@@ -68,10 +71,7 @@ struct cam_sfe_path_data {
 	struct cam_hw_soc_info                   *soc_info;
 	uint32_t                                  min_hblank_cnt;
 	int                                       sof_eof_handle;
-	cam_hw_mgr_event_cb_func                  event_cb;
 };
-
-static int start_stop_cnt;
 
 struct cam_sfe_top_debug_info {
 	uint32_t  shift;
@@ -1318,6 +1318,15 @@ int cam_sfe_top_reserve(void *device_priv,
 	args = (struct cam_sfe_acquire_args *)reserve_args;
 	acquire_args = &args->sfe_in;
 
+	if (top_priv->reserve_cnt) {
+		if (top_priv->priv_per_stream != args->priv) {
+			CAM_ERR(CAM_SFE,
+				"Acquiring same SFE[%u] HW res: %u for different streams");
+			rc = -EINVAL;
+			return rc;
+		}
+	}
+
 	for (i = 0; i < CAM_SFE_TOP_IN_PORT_MAX; i++) {
 		CAM_DBG(CAM_SFE, "i: %d res_id: %d state: %d", i,
 			acquire_args->res_id, top_priv->in_rsrc[i].res_state);
@@ -1327,9 +1336,6 @@ int cam_sfe_top_reserve(void *device_priv,
 			CAM_ISP_RESOURCE_STATE_AVAILABLE)) {
 			path_data = (struct cam_sfe_path_data *)
 				top_priv->in_rsrc[i].res_priv;
-			path_data->event_cb = args->event_cb;
-			path_data->priv = args->priv;
-			path_data->top_priv = top_priv;
 			CAM_DBG(CAM_SFE,
 				"SFE [%u] for rsrc: %u acquired",
 				top_priv->in_rsrc[i].hw_intf->hw_idx,
@@ -1344,6 +1350,12 @@ int cam_sfe_top_reserve(void *device_priv,
 			rc = 0;
 			break;
 		}
+	}
+
+	if (!rc) {
+		top_priv->reserve_cnt++;
+		top_priv->priv_per_stream = args->priv;
+		top_priv->event_cb = args->event_cb;
 	}
 
 	return rc;
@@ -1376,6 +1388,13 @@ int cam_sfe_top_release(void *device_priv,
 	in_res->res_state = CAM_ISP_RESOURCE_STATE_AVAILABLE;
 	in_res->cdm_ops = NULL;
 	in_res->tasklet_info = NULL;
+	if (top_priv->reserve_cnt)
+		top_priv->reserve_cnt--;
+
+	if (!top_priv->reserve_cnt) {
+		top_priv->priv_per_stream = NULL;
+		top_priv->event_cb = NULL;
+	}
 
 	return 0;
 }
@@ -1603,20 +1622,9 @@ static int cam_sfe_top_handle_err_irq_bottom_half(
 
 		evt_info.err_type = CAM_SFE_IRQ_STATUS_VIOLATION;
 		cam_sfe_top_print_debug_reg_info(top_priv);
-		for (i = 0; i < CAM_SFE_TOP_IN_PORT_MAX; i++) {
-			if (top_priv->in_rsrc[i].res_state ==
-				CAM_ISP_RESOURCE_STATE_STREAMING) {
-				struct cam_sfe_path_data *path_data;
-
-				path_data = (struct cam_sfe_path_data *)
-					top_priv->in_rsrc[i].res_priv;
-				if (path_data->event_cb) {
-					path_data->event_cb(path_data->priv,
-						CAM_ISP_HW_EVENT_ERROR, (void *)&evt_info);
-					break;
-				}
-			}
-		}
+		if (top_priv->event_cb)
+			top_priv->event_cb(top_priv->priv_per_stream,
+				CAM_ISP_HW_EVENT_ERROR, (void *)&evt_info);
 
 		ret = CAM_SFE_IRQ_STATUS_VIOLATION;
 	}
@@ -1824,7 +1832,7 @@ int cam_sfe_top_start(
 	}
 
 	sfe_res->res_state = CAM_ISP_RESOURCE_STATE_STREAMING;
-	start_stop_cnt++;
+	top_priv->start_stop_cnt++;
 	return 0;
 }
 
@@ -1877,10 +1885,10 @@ int cam_sfe_top_stop(
 		debug_cfg_disable = true;
 	}
 
-	if (start_stop_cnt)
-		start_stop_cnt--;
+	if (top_priv->start_stop_cnt)
+		top_priv->start_stop_cnt--;
 
-	if (!start_stop_cnt &&
+	if (!top_priv->start_stop_cnt &&
 		((top_priv->sfe_debug_cfg &
 		SFE_DEBUG_ENABLE_FRAME_COUNTER) ||
 		(top_priv->sfe_debug_cfg &
@@ -1902,8 +1910,9 @@ int cam_sfe_top_stop(
 	 * Reset clk rate & unsubscribe error irq
 	 * when all resources are streamed off
 	 */
-	if (!start_stop_cnt) {
+	if (!top_priv->start_stop_cnt) {
 		top_priv->applied_clk_rate = 0;
+
 		if (top_priv->error_irq_handle > 0) {
 			cam_irq_controller_unsubscribe_irq(
 				top_priv->common_data.sfe_irq_controller,
@@ -1956,6 +1965,10 @@ int cam_sfe_top_init(
 	}
 
 	top_priv->applied_clk_rate = 0;
+	top_priv->reserve_cnt = 0;
+	top_priv->start_stop_cnt = 0;
+	top_priv->priv_per_stream = NULL;
+	top_priv->event_cb = NULL;
 	top_priv->num_in_ports = sfe_top_hw_info->num_inputs;
 	memset(&top_priv->core_cfg, 0x0,
 		sizeof(struct cam_sfe_core_cfg));
@@ -1995,6 +2008,7 @@ int cam_sfe_top_init(
 				sfe_top_hw_info->common_reg_data;
 			path_data->modules_reg =
 				sfe_top_hw_info->modules_hw_info;
+			path_data->top_priv = top_priv;
 			path_data->hw_intf = hw_intf;
 			path_data->soc_info = soc_info;
 			scnprintf(top_priv->in_rsrc[i].res_name,
@@ -2028,6 +2042,7 @@ int cam_sfe_top_init(
 			path_data->modules_reg =
 				sfe_top_hw_info->modules_hw_info;
 			path_data->soc_info = soc_info;
+			path_data->top_priv = top_priv;
 			path_data->path_reg_data =
 				sfe_top_hw_info->rdi_reg_data[j++];
 		} else {
