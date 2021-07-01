@@ -11394,27 +11394,35 @@ static int cam_ife_hw_mgr_handle_hw_buf_done(
 	void                                *ctx,
 	void                                *evt_info)
 {
-	cam_hw_event_cb_func                 ife_hwr_irq_wm_done_cb;
-	struct cam_ife_hw_mgr_ctx           *ife_hw_mgr_ctx = ctx;
-	struct cam_isp_hw_done_event_data    buf_done_event_data = {0};
-	struct cam_isp_hw_event_info        *event_info = evt_info;
-	int32_t                              rc = 0;
+	cam_hw_event_cb_func                   ife_hwr_irq_wm_done_cb;
+	struct cam_ife_hw_mgr_ctx             *ife_hw_mgr_ctx = ctx;
+	struct cam_isp_hw_done_event_data      buf_done_event_data = {0};
+	struct cam_isp_hw_compdone_event_info *event_info = evt_info;
+	int32_t                                rc = 0, i;
 
 	ife_hwr_irq_wm_done_cb = ife_hw_mgr_ctx->common.event_cb;
 
-	buf_done_event_data.num_handles = 1;
-	buf_done_event_data.resource_handle[0] = event_info->res_id;
-	buf_done_event_data.last_consumed_addr[0] =
-		event_info->reg_val;
+	buf_done_event_data.num_handles = event_info->num_res;
 
-	if (cam_ife_hw_mgr_is_sfe_rdi_for_fetch(event_info->res_id)) {
-		rc = cam_ife_hw_mgr_check_rdi_scratch_buf_done(
-			ife_hw_mgr_ctx->ctx_index,
-			ife_hw_mgr_ctx->sfe_info.scratch_config,
-			event_info->res_id, event_info->reg_val);
-		if (rc)
-			goto end;
+	for (i = 0; i < event_info->num_res; i++) {
+		buf_done_event_data.resource_handle[i] = event_info->res_id[i];
+		buf_done_event_data.last_consumed_addr[i] = event_info->last_consumed_addr[i];
+
+		CAM_DBG(CAM_ISP, "Buf done for %s: %d res_id: 0x%x last consumed addr: 0x%x",
+		((event_info->hw_type == CAM_ISP_HW_TYPE_SFE) ? "SFE" : "IFE"),
+		event_info->hw_idx, event_info->res_id[i], event_info->last_consumed_addr[i]);
+
+		if (cam_ife_hw_mgr_is_sfe_rdi_for_fetch(event_info->res_id[i])) {
+			rc = cam_ife_hw_mgr_check_rdi_scratch_buf_done(
+				ife_hw_mgr_ctx->ctx_index,
+				ife_hw_mgr_ctx->sfe_info.scratch_config,
+				event_info->res_id[i],
+				event_info->last_consumed_addr[i]);
+			if (rc)
+				goto end;
+		}
 	}
+
 
 	if (atomic_read(&ife_hw_mgr_ctx->overflow_pending))
 		return 0;
@@ -11426,11 +11434,6 @@ static int cam_ife_hw_mgr_handle_hw_buf_done(
 	}
 
 end:
-	CAM_DBG(CAM_ISP,
-		"Buf done for %s: %d res_id: 0x%x last consumed addr: 0x%x",
-		((event_info->hw_type == CAM_ISP_HW_TYPE_SFE) ? "SFE" : "IFE"),
-		event_info->hw_idx, event_info->res_id, event_info->reg_val);
-
 	return 0;
 }
 

@@ -1688,7 +1688,7 @@ static int cam_sfe_bus_handle_sfe_out_done_bottom_half(
 	struct cam_isp_resource_node           *sfe_out = handler_priv;
 	struct cam_sfe_bus_wr_out_data         *rsrc_data = sfe_out->res_priv;
 	struct cam_sfe_bus_wr_irq_evt_payload  *evt_payload = evt_payload_priv;
-	struct cam_isp_hw_event_info            evt_info;
+	struct cam_isp_hw_compdone_event_info    evt_info = {0};
 	void                                   *ctx = NULL;
 	uint32_t                       out_list[CAM_SFE_BUS_SFE_OUT_MAX];
 
@@ -1711,16 +1711,17 @@ static int cam_sfe_bus_handle_sfe_out_done_bottom_half(
 
 		rc = cam_sfe_bus_get_comp_sfe_out_res_id_list(
 			comp_mask, out_list, &num_out);
+		evt_info.num_res = num_out;
 		for (i = 0; i < num_out; i++) {
-			evt_info.res_id = out_list[i];
-			 cam_sfe_bus_get_last_consumed_addr(
+			evt_info.res_id[i] = out_list[i];
+			cam_sfe_bus_get_last_consumed_addr(
 				rsrc_data->bus_priv,
-				evt_info.res_id, &val);
-			evt_info.reg_val = val;
-			if (rsrc_data->common_data->event_cb)
-				rsrc_data->common_data->event_cb(ctx, evt_id,
-					(void *)&evt_info);
+				evt_info.res_id[i], &val);
+			evt_info.last_consumed_addr[i] = val;
 		}
+		if (rsrc_data->common_data->event_cb)
+			rsrc_data->common_data->event_cb(ctx, evt_id,
+				(void *)&evt_info);
 		break;
 	default:
 		break;
