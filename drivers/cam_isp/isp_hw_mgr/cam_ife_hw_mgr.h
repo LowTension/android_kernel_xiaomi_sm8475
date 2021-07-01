@@ -11,7 +11,6 @@
 #include "cam_isp_hw_mgr.h"
 #include "cam_vfe_hw_intf.h"
 #include "cam_ife_csid_hw_intf.h"
-#include "cam_top_tpg_hw_intf.h"
 #include "cam_tasklet_util.h"
 #include "cam_cdm_intf_api.h"
 
@@ -126,7 +125,6 @@ struct cam_ife_hw_mgr_sfe_info {
  * @init_done:           indicate whether init hw is done
  * @is_fe_enabled:       indicate whether fetch engine\read path is enabled
  * @is_dual:             indicate whether context is in dual VFE mode
- * @is_tpg:              indicate whether context is using PHY TPG
  * @is_offline:          indicate whether context is for offline IFE
  * @dsp_enabled:         indicate whether dsp is enabled in this context
  * @internal_cdm:        indicate whether context uses internal CDM
@@ -149,7 +147,6 @@ struct cam_ife_hw_mgr_ctx_flags {
 	bool   init_done;
 	bool   is_fe_enabled;
 	bool   is_dual;
-	bool   is_tpg;
 	bool   is_offline;
 	bool   dsp_enabled;
 	bool   internal_cdm;
@@ -173,9 +170,6 @@ struct cam_ife_hw_mgr_ctx_flags {
  * @left_hw_idx:            hw index for master core [left]
  * @right_hw_idx:           hw index for slave core [right]
  * @hw_mgr:                 IFE hw mgr which owns this context
- * @res_list_tpg:           TPG resource list
- * @res_list_ife_in:        Starting resource(TPG,PHY0, PHY1...) Can only be
- *                          one.
  * @res_list_csid:          CSID resource list
  * @res_list_ife_src:       IFE input resource list
  * @res_list_sfe_src        SFE input resource list
@@ -225,7 +219,6 @@ struct cam_ife_hw_mgr_ctx {
 	struct cam_ife_hw_mgr          *hw_mgr;
 
 	struct cam_isp_hw_mgr_res       res_list_ife_in;
-	struct cam_isp_hw_mgr_res       res_list_tpg;
 	struct list_head                res_list_ife_csid;
 	struct list_head                res_list_ife_src;
 	struct list_head                res_list_sfe_src;
@@ -317,7 +310,6 @@ struct cam_isp_sys_cache_info {
  */
 struct cam_ife_hw_mgr {
 	struct cam_isp_hw_mgr          mgr_common;
-	struct cam_hw_intf            *tpg_devices[CAM_TOP_TPG_HW_NUM_MAX];
 	struct cam_hw_intf            *csid_devices[CAM_IFE_CSID_HW_NUM_MAX];
 	struct cam_isp_hw_intf_data   *ife_devices[CAM_IFE_HW_NUM_MAX];
 	struct cam_hw_intf            *sfe_devices[CAM_SFE_HW_NUM_MAX];

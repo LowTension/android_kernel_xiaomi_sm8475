@@ -133,13 +133,6 @@ camera-$(CONFIG_SPECTRA_ISP) += \
 	drivers/cam_isp/isp_hw_mgr/isp_hw/vfe_hw/vfe_top/cam_vfe_fe_ver1.o \
 	drivers/cam_isp/isp_hw_mgr/isp_hw/vfe_hw/vfe_top/cam_vfe_camif_lite_ver3.o \
 	drivers/cam_isp/isp_hw_mgr/isp_hw/vfe_hw/vfe17x/cam_vfe.o \
-	drivers/cam_isp/isp_hw_mgr/isp_hw/top_tpg/cam_top_tpg_dev.o \
-	drivers/cam_isp/isp_hw_mgr/isp_hw/top_tpg/cam_top_tpg_soc.o \
-	drivers/cam_isp/isp_hw_mgr/isp_hw/top_tpg/cam_top_tpg_core.o \
-	drivers/cam_isp/isp_hw_mgr/isp_hw/top_tpg/cam_top_tpg_ver1.o \
-	drivers/cam_isp/isp_hw_mgr/isp_hw/top_tpg/cam_top_tpg_ver2.o \
-	drivers/cam_isp/isp_hw_mgr/isp_hw/top_tpg/cam_top_tpg_ver3.o \
-	drivers/cam_isp/isp_hw_mgr/isp_hw/top_tpg/cam_top_tpg.o \
 	drivers/cam_isp/isp_hw_mgr/cam_isp_hw_mgr.o \
 	drivers/cam_isp/isp_hw_mgr/cam_ife_hw_mgr.o \
 	drivers/cam_isp/cam_isp_dev.o \

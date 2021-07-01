@@ -57,7 +57,6 @@
 #include "ope_dev_intf.h"
 #include "cre_dev_intf.h"
 
-#include "cam_top_tpg.h"
 #include "cam_tfe_dev.h"
 #include "cam_tfe_csid.h"
 #include "cam_csid_ppi100.h"
@@ -93,7 +92,6 @@ static const struct camera_submodule_component camera_tfe[] = {
 
 static const struct camera_submodule_component camera_isp[] = {
 #ifdef CONFIG_SPECTRA_ISP
-	{&cam_top_tpg_init_module, &cam_top_tpg_exit_module},
 	{&cam_ife_csid_init_module, &cam_ife_csid_exit_module},
 	{&cam_ife_csid_lite_init_module, &cam_ife_csid_lite_exit_module},
 	{&cam_vfe_init_module, &cam_vfe_exit_module},
