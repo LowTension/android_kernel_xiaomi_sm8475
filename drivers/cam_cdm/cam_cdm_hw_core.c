@@ -737,6 +737,10 @@ bool cam_hw_cdm_bl_write(
 {
 	struct cam_cdm *cdm_core = (struct cam_cdm *)cdm_hw->core_info;
 
+	CAM_DBG(CAM_CDM, "%s%d Base: 0x%x, Len: %u, Tag: %u, set_arb: %u, fifo_idx: %u",
+		cdm_hw->soc_info.label_name, cdm_hw->soc_info.index,
+		src, len, tag, set_arb, fifo_idx);
+
 	if (cam_cdm_write_hw_reg(cdm_hw,
 		cdm_core->offsets->bl_fifo_reg[fifo_idx]->bl_fifo_base,
 		src)) {
@@ -1487,25 +1491,24 @@ static void cam_hw_cdm_iommu_fault_handler(struct cam_smmu_pf_info *pf_info)
 {
 	struct cam_hw_info *cdm_hw = NULL;
 	struct cam_cdm *core = NULL;
-	struct cam_cdm_pid_mid_data *pid_mid_info = NULL;
+	struct cam_cdm_private_dt_data *pvt_data;
 	int i;
+
+	if (!pf_info) {
+		CAM_ERR(CAM_CDM, "pf_info is null");
+		return;
+	}
 
 	if (pf_info->token) {
 		cdm_hw = (struct cam_hw_info *)pf_info->token;
 		core = (struct cam_cdm *)cdm_hw->core_info;
-		pid_mid_info = core->offsets->cmn_reg->cdm_pid_mid_info;
+		pvt_data = (struct cam_cdm_private_dt_data *) cdm_hw->soc_info.soc_private;
 		CAM_ERR_RATE_LIMIT(CAM_CDM, "Page fault iova addr %pK\n",
 			(void *)pf_info->iova);
 
-		if (pid_mid_info) {
-			/*
-			 * If its CDM or OPE CDM then only handle the pf for CDM
-			 * else return.
-			 */
-			if (((pf_info->pid == pid_mid_info->cdm_pid) &&
-				(pf_info->mid == pid_mid_info->cdm_mid)) ||
-				((pf_info->pid == pid_mid_info->ope_cdm_pid) &&
-				(pf_info->mid == pid_mid_info->ope_cdm_mid)))
+		/* Check if the PID and MID are valid, if not handle the pf */
+		if ((pvt_data->pid >= 0) && (pvt_data->mid >= 0)) {
+			if (((pf_info->pid == pvt_data->pid) && (pf_info->mid == pvt_data->mid)))
 				goto handle_cdm_pf;
 			else
 				return;
