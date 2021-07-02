@@ -835,9 +835,9 @@ static void __cam_isp_ctx_send_sof_timestamp(
 	req_msg.u.frame_msg.frame_id_meta = ctx_isp->frame_id_meta;
 
 	CAM_DBG(CAM_ISP,
-		"link hdl 0x%x request id:%lld frame number:%lld SOF time stamp:%lld status:%u",
+		"link hdl 0x%x request id:%lld frame number:%lld SOF time stamp:%lld status:%u ctx %d",
 		ctx_isp->base->link_hdl, request_id, ctx_isp->frame_id,
-		ctx_isp->sof_timestamp_val, sof_event_status);
+		ctx_isp->sof_timestamp_val, sof_event_status, ctx_isp->base->ctx_id);
 
 	if (cam_req_mgr_notify_message(&req_msg,
 		V4L_EVENT_CAM_REQ_MGR_SOF, V4L_EVENT_CAM_REQ_MGR_EVENT))
@@ -1972,7 +1972,7 @@ notify_only:
 
 			if (!list_empty(&ctx->active_req_list)) {
 				req = list_first_entry(&ctx->active_req_list,
-					struct cam_ctx_request, list);
+						struct cam_ctx_request, list);
 				req_isp = (struct cam_isp_ctx_req *) req->req_priv;
 				if (req_isp->hw_update_data.fps != -1)
 					ctx_isp->fps = req_isp->hw_update_data.fps;
@@ -2363,10 +2363,11 @@ static int __cam_isp_ctx_sof_in_epoch(struct cam_isp_context *ctx_isp,
 			__cam_isp_ctx_substate_val_to_type(
 			ctx_isp->substate_activated));
 
-	CAM_DBG(CAM_ISP, "SOF in epoch ctx:%d frame_id:%lld next substate:%s",
+	CAM_DBG(CAM_ISP, "SOF in epoch ctx:%d frame_id:%lld next substate:%s time stamp:0x%llx",
 		ctx->ctx_id, ctx_isp->frame_id,
 		__cam_isp_ctx_substate_val_to_type(
-		ctx_isp->substate_activated));
+		ctx_isp->substate_activated),
+		ctx_isp->sof_timestamp_val);
 
 	return rc;
 }
