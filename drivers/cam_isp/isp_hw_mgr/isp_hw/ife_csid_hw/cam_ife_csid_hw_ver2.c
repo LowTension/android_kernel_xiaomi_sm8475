@@ -868,6 +868,19 @@ static int cam_ife_csid_ver2_rx_top_half(
 	return 0;
 }
 
+static inline uint32_t cam_ife_csid_ver2_input_core_to_hw_idx(int core_sel)
+{
+	switch (core_sel) {
+	case CAM_IFE_CSID_INPUT_CORE_SEL_SFE_0: return 0;
+	case CAM_IFE_CSID_INPUT_CORE_SEL_SFE_1: return 1;
+	/**
+	 * For all invalid cases, return a very large value
+	 * that can never be a valid hw idx.
+	 */
+	default: return 0xFFFF;
+	}
+}
+
 static int cam_ife_csid_ver2_handle_event_err(
 	struct cam_ife_csid_ver2_hw  *csid_hw,
 	uint32_t                      irq_status,
@@ -903,13 +916,9 @@ static int cam_ife_csid_ver2_handle_event_err(
 			csid_hw->hw_intf->hw_idx, err_type, irq_status);
 	}
 
-	if (csid_hw->top_cfg.input_core_type == CAM_IFE_CSID_INPUT_CORE_SEL_SFE_0)
-		evt.in_core_type = 0;
-	else if (csid_hw->top_cfg.input_core_type == CAM_IFE_CSID_INPUT_CORE_SEL_SFE_1)
-		evt.in_core_type = 1;
+	evt.in_core_idx = cam_ife_csid_ver2_input_core_to_hw_idx(csid_hw->top_cfg.input_core_type);
 
-	csid_hw->event_cb(csid_hw->token,
-		CAM_ISP_HW_EVENT_ERROR, (void *)&evt);
+	csid_hw->event_cb(csid_hw->token, CAM_ISP_HW_EVENT_ERROR, (void *)&evt);
 
 	return 0;
 }
