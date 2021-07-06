@@ -1201,6 +1201,7 @@ static int __cam_isp_handle_deferred_buf_done(
 						status, rc);
 				} else {
 					req_isp->num_acked++;
+					req_isp->fence_map_out[j].sync_id = -1;
 				}
 			}
 		} else {
@@ -1327,8 +1328,8 @@ static int __cam_isp_ctx_handle_buf_done_for_request_verify_addr(
 					CAM_SYNC_COMMON_EVENT_SUCCESS);
 			}
 			if (rc) {
-				CAM_DBG(CAM_ISP, "Sync failed with rc = %d",
-					 rc);
+				CAM_ERR(CAM_ISP, "Sync = %u for req = %llu failed with rc = %d",
+					 req_isp->fence_map_out[j].sync_id, req->request_id, rc);
 			} else if (req_isp->num_deferred_acks) {
 				/* Process deferred buf_done acks */
 				__cam_isp_handle_deferred_buf_done(ctx_isp,
@@ -1336,6 +1337,9 @@ static int __cam_isp_ctx_handle_buf_done_for_request_verify_addr(
 					CAM_SYNC_STATE_SIGNALED_SUCCESS,
 					CAM_SYNC_COMMON_EVENT_SUCCESS);
 			}
+			/* Reset fence */
+			if (!req_isp->is_sync_mode)
+				req_isp->fence_map_out[j].sync_id = -1;
 		} else if (!req_isp->bubble_report) {
 			CAM_DBG(CAM_ISP,
 				"Sync with failure: req %lld res 0x%x fd 0x%x, ctx %u",
@@ -1348,8 +1352,8 @@ static int __cam_isp_ctx_handle_buf_done_for_request_verify_addr(
 				CAM_SYNC_STATE_SIGNALED_ERROR,
 				CAM_SYNC_ISP_EVENT_BUBBLE);
 			if (rc) {
-				CAM_ERR(CAM_ISP, "Sync failed with rc = %d",
-					rc);
+				CAM_ERR(CAM_ISP, "Sync = %u for req = %llu failed with rc = %d",
+					req_isp->fence_map_out[j].sync_id, req->request_id, rc);
 			} else if (req_isp->num_deferred_acks) {
 				/* Process deferred buf_done acks */
 				__cam_isp_handle_deferred_buf_done(ctx_isp, req,
@@ -1357,6 +1361,8 @@ static int __cam_isp_ctx_handle_buf_done_for_request_verify_addr(
 					CAM_SYNC_STATE_SIGNALED_ERROR,
 					CAM_SYNC_ISP_EVENT_BUBBLE);
 			}
+			/* Reset fence */
+			req_isp->fence_map_out[j].sync_id = -1;
 		} else {
 			/*
 			 * Ignore the buffer done if bubble detect is on
@@ -1379,12 +1385,7 @@ static int __cam_isp_ctx_handle_buf_done_for_request_verify_addr(
 			continue;
 		}
 
-		CAM_DBG(CAM_ISP, "req %lld, reset sync id 0x%x ctx %u",
-			req->request_id,
-			req_isp->fence_map_out[j].sync_id, ctx->ctx_id);
-		if (!rc) {
-			req_isp->num_acked++;
-		}
+		req_isp->num_acked++;
 
 		if ((ctx_isp->use_frame_header_ts) &&
 			(req_isp->hw_update_data.frame_header_res_id ==
