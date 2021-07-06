@@ -203,6 +203,13 @@ int cam_a5_init_hw(void *device_priv,
 		return -EINVAL;
 	}
 
+	spin_lock_irqsave(&a5_dev->hw_lock, flags);
+	if (a5_dev->hw_state == CAM_HW_STATE_POWER_UP) {
+		spin_unlock_irqrestore(&a5_dev->hw_lock, flags);
+		return 0;
+	}
+	spin_unlock_irqrestore(&a5_dev->hw_lock, flags);
+
 	a5_soc_info = soc_info->soc_private;
 
 	cpas_vote.ahb_vote.type = CAM_VOTE_ABSOLUTE;
@@ -277,7 +284,10 @@ int cam_a5_deinit_hw(void *device_priv,
 	}
 
 	spin_lock_irqsave(&a5_dev->hw_lock, flags);
-	a5_dev->hw_state = CAM_HW_STATE_POWER_DOWN;
+	if (a5_dev->hw_state == CAM_HW_STATE_POWER_DOWN) {
+		spin_unlock_irqrestore(&a5_dev->hw_lock, flags);
+		return 0;
+	}
 	spin_unlock_irqrestore(&a5_dev->hw_lock, flags);
 
 	rc = cam_a5_disable_soc_resources(soc_info);
@@ -290,6 +300,10 @@ int cam_a5_deinit_hw(void *device_priv,
 		else
 			core_info->cpas_start = false;
 	}
+
+	spin_lock_irqsave(&a5_dev->hw_lock, flags);
+	a5_dev->hw_state = CAM_HW_STATE_POWER_DOWN;
+	spin_unlock_irqrestore(&a5_dev->hw_lock, flags);
 
 	return rc;
 }
