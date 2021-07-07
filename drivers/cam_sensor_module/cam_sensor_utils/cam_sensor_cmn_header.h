@@ -13,6 +13,8 @@
 #include <linux/timer.h>
 #include <linux/delay.h>
 #include <linux/list.h>
+
+#include <dt-bindings/msm-camera.h>
 #include <media/cam_sensor.h>
 #include <media/cam_req_mgr.h>
 
@@ -134,9 +136,9 @@ enum cam_flash_device_type {
 };
 
 enum cci_i2c_master_t {
-	MASTER_0,
-	MASTER_1,
-	MASTER_MAX,
+	MASTER_0 = CCI_MASTER_0,
+	MASTER_1 = CCI_MASTER_1,
+	MASTER_MAX = CCI_MASTER_MAX,
 };
 
 enum cci_device_num {
