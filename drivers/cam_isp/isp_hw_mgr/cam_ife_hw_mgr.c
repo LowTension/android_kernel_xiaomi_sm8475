@@ -11082,6 +11082,36 @@ static int cam_ife_hw_mgr_handle_hw_dump_info(
 	return rc;
 }
 
+static int cam_ife_hw_mgr_handle_sfe_event(
+	uint32_t                         evt_id,
+	struct cam_ife_hw_mgr_ctx       *ctx,
+	struct cam_isp_hw_event_info    *event_info)
+{
+	struct cam_isp_hw_error_event_data      error_event_data = {0};
+	struct cam_ife_hw_event_recovery_data   recovery_data = {0};
+
+	/* Currently only error events supported from SFE */
+	if (evt_id != CAM_ISP_HW_EVENT_ERROR) {
+		CAM_DBG(CAM_ISP, "SFE %u event not supported", evt_id);
+		return 0;
+	}
+
+	CAM_DBG(CAM_ISP, "SFE[%u] error [%u] on res_type %u",
+		event_info->hw_idx, event_info->err_type,
+		event_info->res_type);
+
+	/* Only report error to userspace */
+	if (event_info->err_type & CAM_SFE_IRQ_STATUS_VIOLATION) {
+		error_event_data.error_type = CAM_ISP_HW_ERROR_VIOLATION;
+		error_event_data.error_code = CAM_REQ_MGR_ISP_UNREPORTED_ERROR;
+		CAM_DBG(CAM_ISP, "Notify context for SFE error");
+		cam_ife_hw_mgr_find_affected_ctx(&error_event_data,
+			event_info->hw_idx, &recovery_data);
+	}
+
+	return 0;
+}
+
 static int cam_ife_hw_mgr_handle_hw_err(
 	uint32_t                             evt_id,
 	void                                *ctx,
@@ -11099,6 +11129,12 @@ static int cam_ife_hw_mgr_handle_hw_err(
 	if (event_info->hw_type == CAM_ISP_HW_TYPE_CSID) {
 		rc = cam_ife_hw_mgr_handle_csid_event(ctx, event_info,
 			evt_id);
+		goto end;
+	}
+
+	if (event_info->hw_type == CAM_ISP_HW_TYPE_SFE) {
+		rc = cam_ife_hw_mgr_handle_sfe_event(evt_id, ctx,
+			event_info);
 		goto end;
 	}
 

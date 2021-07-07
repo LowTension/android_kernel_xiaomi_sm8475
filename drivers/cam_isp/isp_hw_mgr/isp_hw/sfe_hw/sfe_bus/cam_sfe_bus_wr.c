@@ -1986,6 +1986,7 @@ static void cam_sfe_bus_wr_print_violation_info(
 static int cam_sfe_bus_wr_irq_bottom_half(
 	void *handler_priv, void *evt_payload_priv)
 {
+	int i;
 	uint32_t status = 0;
 	struct cam_sfe_bus_wr_priv            *bus_priv = handler_priv;
 	struct cam_sfe_bus_wr_common_data     *common_data;
@@ -2018,13 +2019,31 @@ static int cam_sfe_bus_wr_irq_bottom_half(
 	cam_sfe_bus_wr_put_evt_payload(common_data, &evt_payload);
 
 	evt_info.hw_idx = common_data->core_index;
+	evt_info.hw_type = CAM_ISP_HW_TYPE_SFE;
 	evt_info.res_type = CAM_ISP_RESOURCE_SFE_OUT;
 	evt_info.res_id = CAM_SFE_BUS_SFE_OUT_MAX;
 	evt_info.err_type = CAM_SFE_IRQ_STATUS_VIOLATION;
 
-	if (common_data->event_cb)
-		common_data->event_cb(NULL, CAM_ISP_HW_EVENT_ERROR,
-			(void *)&evt_info);
+	if (common_data->event_cb) {
+		struct cam_isp_resource_node      *out_rsrc_node = NULL;
+		struct cam_sfe_bus_wr_out_data    *out_rsrc_data = NULL;
+
+		for (i = 0; i < bus_priv->num_out; i++) {
+			out_rsrc_node = &bus_priv->sfe_out[i];
+
+			if (!out_rsrc_node || !out_rsrc_node->res_priv)
+				continue;
+
+			if (out_rsrc_node->res_state != CAM_ISP_RESOURCE_STATE_STREAMING)
+				continue;
+
+			out_rsrc_data = out_rsrc_node->res_priv;
+			common_data->event_cb(out_rsrc_data->priv,
+				CAM_ISP_HW_EVENT_ERROR, (void *)&evt_info);
+			break;
+		}
+	}
+
 	return 0;
 }
 
