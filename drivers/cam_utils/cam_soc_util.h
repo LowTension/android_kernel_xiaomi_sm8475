@@ -44,6 +44,9 @@
 /* maximum number of optional device clock */
 #define CAM_SOC_MAX_OPT_CLK    2
 
+/* maximum number of pinctrl mapping */
+#define CAM_SOC_MAX_PINCTRL_MAP     2
+
 /* DDR device types */
 #define DDR_TYPE_LPDDR4        6
 #define DDR_TYPE_LPDDR4X       7
@@ -97,16 +100,28 @@ struct cam_soc_reg_map {
 };
 
 /**
+ * struct cam_soc_pinctrl_state:   Information about pinctrl state
+ *
+ * @gpio_state_active:     default pinctrl state
+ * @gpio_state_suspend:    suspend state of pinctrl
+ * @is_active:             to identify if pinctrl is in use.
+ **/
+struct cam_soc_pinctrl_state {
+	struct pinctrl_state *gpio_state_active;
+	struct pinctrl_state *gpio_state_suspend;
+	bool is_active;
+};
+
+/**
  * struct cam_soc_pinctrl_info:   Information about pinctrl data
  *
  * @pinctrl:               pintrl object
- * @gpio_state_active:     default pinctrl state
- * @gpio_state_suspend     suspend state of pinctrl
+ * @pctrl_state:           pinctrl state montior map
  **/
 struct cam_soc_pinctrl_info {
 	struct pinctrl *pinctrl;
-	struct pinctrl_state *gpio_state_active;
-	struct pinctrl_state *gpio_state_suspend;
+	struct cam_soc_pinctrl_state pctrl_state[
+		CAM_SOC_MAX_PINCTRL_MAP];
 };
 
 /**
@@ -744,5 +759,18 @@ int cam_soc_util_reg_dump_to_cmd_buf(void *ctx,
  * @return:             success or failure
  */
 int cam_soc_util_print_clk_freq(struct cam_hw_soc_info *soc_info);
+
+/**
+ * cam_soc_util_select_pinctrl_state()
+ *
+ * @brief:              This function gets the pinctrl handle
+ *
+ * @soc_info:           Device soc struct to be populated
+ * @active:             True for active and false for suspend state
+ *
+ * @return:             success or failure
+ */
+int cam_soc_util_select_pinctrl_state(
+	struct cam_hw_soc_info *soc_info, int idx, bool active);
 
 #endif /* _CAM_SOC_UTIL_H_ */
