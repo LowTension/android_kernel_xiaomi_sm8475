@@ -95,7 +95,7 @@ end:
 	return rc;
 }
 
-int cam_ope_subdev_close_internal(struct v4l2_subdev *sd,
+static int cam_ope_subdev_close_internal(struct v4l2_subdev *sd,
 	struct v4l2_subdev_fh *fh)
 {
 	int rc = 0;
@@ -137,7 +137,7 @@ end:
 static int cam_ope_subdev_close(struct v4l2_subdev *sd,
 	struct v4l2_subdev_fh *fh)
 {
-	bool crm_active = cam_req_mgr_is_open(CAM_OPE);
+	bool crm_active = cam_req_mgr_is_open();
 
 	if (crm_active) {
 		CAM_DBG(CAM_OPE, "CRM is ACTIVE, close should be from CRM");
@@ -215,6 +215,7 @@ static int cam_ope_subdev_component_bind(struct device *dev,
 	g_ope_dev.open_cnt = 0;
 	mutex_init(&g_ope_dev.ope_lock);
 
+	node->sd_handler = cam_ope_subdev_close_internal;
 	CAM_DBG(CAM_OPE, "Subdev component bound successfully");
 
 	return rc;

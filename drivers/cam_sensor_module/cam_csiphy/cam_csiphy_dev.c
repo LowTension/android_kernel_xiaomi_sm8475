@@ -113,7 +113,7 @@ static int cam_csiphy_subdev_close_internal(struct v4l2_subdev *sd,
 static int cam_csiphy_subdev_close(struct v4l2_subdev *sd,
 	struct v4l2_subdev_fh *fh)
 {
-	bool crm_active = cam_req_mgr_is_open(CAM_CSIPHY);
+	bool crm_active = cam_req_mgr_is_open();
 
 	if (crm_active) {
 		CAM_DBG(CAM_CSIPHY, "CRM is ACTIVE, close should be from CRM");

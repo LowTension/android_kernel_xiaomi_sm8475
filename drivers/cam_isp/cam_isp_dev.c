@@ -55,7 +55,7 @@ static int cam_isp_subdev_open(struct v4l2_subdev *sd,
 	return 0;
 }
 
-int cam_isp_subdev_close_internal(struct v4l2_subdev *sd,
+static int cam_isp_subdev_close_internal(struct v4l2_subdev *sd,
 	struct v4l2_subdev_fh *fh)
 {
 	int rc = 0;
@@ -86,7 +86,7 @@ end:
 static int cam_isp_subdev_close(struct v4l2_subdev *sd,
 	struct v4l2_subdev_fh *fh)
 {
-	bool crm_active = cam_req_mgr_is_open(CAM_ISP);
+	bool crm_active = cam_req_mgr_is_open();
 
 	if (crm_active) {
 		CAM_DBG(CAM_ISP, "CRM is ACTIVE, close should be from CRM");
@@ -188,6 +188,7 @@ static int cam_isp_dev_component_bind(struct device *dev,
 		goto kfree;
 	}
 
+	node->sd_handler = cam_isp_subdev_close_internal;
 	cam_smmu_set_client_page_fault_handler(iommu_hdl,
 		cam_isp_dev_iommu_fault_handler, node);
 

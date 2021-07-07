@@ -46,7 +46,6 @@ static long cam_subdev_ioctl(struct v4l2_subdev *sd, unsigned int cmd,
 	struct cam_node *node =
 		(struct cam_node *) v4l2_get_subdevdata(sd);
 	struct v4l2_subdev_fh *fh = (struct v4l2_subdev_fh *)arg;
-	struct cam_control cntrl_cmd;
 
 	if (!node || node->state == CAM_NODE_STATE_UNINIT) {
 		rc = -EINVAL;
@@ -64,12 +63,19 @@ static long cam_subdev_ioctl(struct v4l2_subdev *sd, unsigned int cmd,
 			return 0;
 		}
 
-		cntrl_cmd.op_code = CAM_SD_SHUTDOWN;
-		cntrl_cmd.handle = (uint64_t)sd;
-		rc = cam_node_handle_shutdown_dev(node, &cntrl_cmd, fh);
+		if (!node->sd_handler) {
+			CAM_ERR(CAM_CORE,
+				"No shutdown routine for %s", node->name);
+			rc = -EINVAL;
+			goto end;
+		}
+
+		CAM_DBG(CAM_CORE, "Shutdown for %s from media device", node->name);
+		rc = node->sd_handler(sd, fh);
 		if (rc)
-			CAM_ERR(CAM_CORE, "shutdown device failed(rc = %d)",
-				rc);
+			CAM_ERR(CAM_CORE,
+				"shutdown device failed(rc = %d) for %s",
+				rc, node->name);
 		break;
 	default:
 		CAM_ERR(CAM_CORE, "Invalid command %d for %s", cmd,

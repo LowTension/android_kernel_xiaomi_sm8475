@@ -3363,42 +3363,6 @@ static int cam_icp_mgr_proc_boot(struct cam_icp_hw_mgr *hw_mgr)
 	return rc;
 }
 
-static int __resume_and_idle(struct cam_icp_hw_mgr *hw_mgr)
-{
-	struct cam_hw_intf *icp_dev_intf = hw_mgr->icp_dev_intf;
-	int rc;
-
-	rc = icp_dev_intf->hw_ops.init(icp_dev_intf->hw_priv, NULL, 0);
-	if (rc) {
-		CAM_ERR(CAM_ICP, "icp hw init failed rc=%d", rc);
-		return rc;
-	}
-
-	rc = cam_icp_mgr_proc_resume(hw_mgr);
-	if (rc) {
-		CAM_ERR(CAM_ICP, "icp resume failed rc=%d", rc);
-		goto out_deinit;
-	}
-
-	if (hw_mgr->icp_pc_flag) {
-		rc = cam_icp_mgr_send_pc_prep(hw_mgr);
-		if (rc) {
-			CAM_ERR(CAM_ICP,
-				"send power collapse prep failed rc=%d",
-				rc);
-			goto out_collapse;
-		}
-	}
-
-	return 0;
-
-out_collapse:
-	cam_icp_mgr_proc_suspend(hw_mgr);
-out_deinit:
-	icp_dev_intf->hw_ops.deinit(icp_dev_intf->hw_priv, NULL, 0);
-	return rc;
-}
-
 static void cam_icp_mgr_proc_shutdown(struct cam_icp_hw_mgr *hw_mgr)
 {
 	struct cam_hw_intf *icp_dev_intf = hw_mgr->icp_dev_intf;
@@ -3408,13 +3372,12 @@ static void cam_icp_mgr_proc_shutdown(struct cam_icp_hw_mgr *hw_mgr)
 		return;
 	}
 
-	if (!hw_mgr->icp_resumed && __resume_and_idle(hw_mgr))
-		return;
+	icp_dev_intf->hw_ops.init(icp_dev_intf->hw_priv, NULL, 0);
 
 	icp_dev_intf->hw_ops.process_cmd(
-			icp_dev_intf->hw_priv,
-			CAM_ICP_CMD_PROC_SHUTDOWN,
-			NULL, 0);
+		icp_dev_intf->hw_priv,
+		CAM_ICP_CMD_PROC_SHUTDOWN,
+		NULL, 0);
 
 	icp_dev_intf->hw_ops.deinit(icp_dev_intf->hw_priv, NULL, 0);
 
