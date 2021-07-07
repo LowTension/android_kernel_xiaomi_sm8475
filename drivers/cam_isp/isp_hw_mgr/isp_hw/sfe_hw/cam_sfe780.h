@@ -203,6 +203,149 @@ static struct cam_sfe_wr_client_desc sfe_780_wr_client_desc[] = {
 	},
 };
 
+static struct cam_sfe_top_cc_testbus_info
+		sfe780_testbus1_info[] = {
+	{
+		.mask = BIT(0),
+		.shift = 0,
+		.clc_name = "sw_xcfa_mode_sel",
+	},
+	{
+		.mask = BIT(0),
+		.shift = 1,
+		.clc_name = "bus_rd_line_done_rdi2",
+	},
+	{
+		.mask = BIT(0),
+		.shift = 2,
+		.clc_name = "bus_rd_line_done_rdi1",
+	},
+	{
+		.mask = BIT(0),
+		.shift = 3,
+		.clc_name = "bus_rd_line_done_rdi0",
+	},
+	{
+		.mask = BIT(0),
+		.shift = 4,
+		.clc_name = "down_count_flag",
+	},
+	{
+		.mask = BIT(0),
+		.shift = 5,
+		.clc_name = "rdi2_upcount_flag",
+	},
+	{
+		.mask = BIT(0),
+		.shift = 6,
+		.clc_name = "rdi1_upcount_flag",
+	},
+	{
+		.mask = BIT(0),
+		.shift = 7,
+		.clc_name = "rdi0_upcount_flag",
+	},
+	{
+		.mask = BIT(0) | BIT(1),
+		.shift = 8,
+		.clc_name = "rdi2_meta_pkts",
+	},
+	{
+		.mask = BIT(0) | BIT(1),
+		.shift = 10,
+		.clc_name = "rdi1_meta_pkts",
+	},
+	{
+		.mask = BIT(0) | BIT(1),
+		.shift = 12,
+		.clc_name = "rdi0_meta_pkts",
+	},
+	{
+		.mask = BIT(1) | BIT(2) | BIT(3),
+		.shift = 14,
+		.clc_name = "i_rdi2_sample",
+	},
+	{
+		.mask = BIT(0),
+		.shift = 18,
+		.clc_name = "i_rdi2_vld",
+	},
+	{
+		.mask = BIT(0) | BIT(1) | BIT(2) | BIT(3),
+		.shift = 19,
+		.clc_name = "i_rdi1_sample",
+	},
+	{
+		.mask = BIT(0),
+		.shift = 23,
+		.clc_name = "i_rdi1_vld",
+	},
+	{
+		.mask = BIT(1) | BIT(2) | BIT(3),
+		.shift = 24,
+		.clc_name = "i_rdi0_sample",
+	},
+	{
+		.mask = BIT(0),
+		.shift = 28,
+		.clc_name = "i_rdi0_vl",
+	},
+};
+
+static struct cam_sfe_top_cc_testbus_info
+		sfe780_testbus2_info[] = {
+	{
+		.mask = BIT(0),
+		.shift = 0,
+		.clc_name = "meta_consumed_ipp",
+	},
+	{
+		.mask = BIT(0),
+		.shift = 1,
+		.clc_name = "meta_consumed_bus_rd",
+	},
+	{
+		.mask = BIT(0),
+		.shift = 2,
+		.clc_name = "o_rdi0_overflow_rdy",
+	},
+	{
+		.mask = BIT(0),
+		.shift = 3,
+		.clc_name = "sw_single_dual_en",
+	},
+	{
+		.mask = BIT(0),
+		.shift = 4,
+		.clc_name = "rd_rup_cond",
+	},
+	{
+		.mask = BIT(0),
+		.shift = 5,
+		.clc_name = "bus_rd_rdy",
+	},
+	{
+		.mask = BIT(0),
+		.shift = 6,
+		.clc_name = "next_state",
+	},
+	{
+		.mask = BIT(0),
+		.shift = 7,
+		.clc_name = "curr_state",
+	},
+	{
+		.mask = BIT(0),
+		.shift = 8,
+		.clc_name = "xcfa_mode_cpy",
+	},
+	{
+		.mask = BIT(0),
+		.shift = 9,
+		.clc_name = "rd_kick_off_cond",
+	},
+};
+
 static struct cam_sfe_mode sfe_780_mode[] = {
 	{
 		.value = 0x0,
@@ -389,12 +532,15 @@ static struct cam_sfe_top_common_reg_offset  sfe780_top_commong_reg  = {
 	.sfe_single_dual_cfg           = 0x000000D0,
 	.bus_overflow_status           = 0x00000868,
 	.top_debug_cfg                 = 0x0000007C,
+	.top_cc_test_bus_ctrl          = 0x000001F0,
 	.lcr_supported                 = false,
 	.ir_supported                  = true,
 	.qcfa_only                     = false,
 	.num_sfe_mode                  = ARRAY_SIZE(sfe_780_mode),
 	.sfe_mode                      = sfe_780_mode,
 	.ipp_violation_mask            = 0x4000,
+	.top_debug_testbus_reg         = 11,
+	.top_cc_test_bus_supported     = true,
 	.num_debug_registers           = 18,
 	.top_debug = {
 		0x0000004C,
@@ -495,6 +641,25 @@ static struct cam_sfe_top_hw_info sfe780_top_hw_info = {
 	.top_err_desc    = sfe_780_top_irq_err_desc,
 	.num_clc_module  = 11,
 	.clc_dbg_mod_info = &sfe780_clc_dbg_module_info,
+	.num_of_testbus = 2,
+	.test_bus_info = {
+		/* TEST BUS 1 INFO */
+		{
+			.debugfs_val  = SFE_DEBUG_ENABLE_TESTBUS1,
+			.enable       = false,
+			.value        = 0x1,
+			.size         = ARRAY_SIZE(sfe780_testbus1_info),
+			.testbus      = sfe780_testbus1_info,
+		},
+		/* TEST BUS 2 INFO */
+		{
+			.debugfs_val  = SFE_DEBUG_ENABLE_TESTBUS2,
+			.enable       = false,
+			.value        = 0x3,
+			.size         = ARRAY_SIZE(sfe780_testbus2_info),
+			.testbus      = sfe780_testbus2_info,
+		},
+	},
 };
 
 static struct cam_irq_register_set sfe780_bus_rd_irq_reg[1] = {

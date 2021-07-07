@@ -45,6 +45,14 @@ struct cam_sfe_hw_core_info {
 #define SFE_DEBUG_ENABLE_FRAME_COUNTER            BIT(2)
 #define SFE_DEBUG_ENABLE_RD_DONE_IRQ              BIT(3)
 #define SFE_DEBUG_DISABLE_MMU_PREFETCH            BIT(4)
+#define SFE_DEBUG_ENABLE_TESTBUS1                 BIT(8)
+#define SFE_DEBUG_ENABLE_TESTBUS2                 BIT(9)
+
+/* Reserve 4 bits for future test-busses in debug config */
+#define SFE_DEBUG_ENABLE_TESTBUS_RESERVED1        BIT(10)
+#define SFE_DEBUG_ENABLE_TESTBUS_RESERVED2        BIT(11)
+#define SFE_DEBUG_ENABLE_TESTBUS_RESERVED3        BIT(12)
+#define SFE_DEBUG_ENABLE_TESTBUS_RESERVED4        BIT(13)
 
 int cam_sfe_get_hw_caps(void *device_priv,
 	void *get_hw_cap_args, uint32_t arg_size);
