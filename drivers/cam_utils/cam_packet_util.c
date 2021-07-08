@@ -9,6 +9,7 @@
 #include "cam_mem_mgr.h"
 #include "cam_packet_util.h"
 #include "cam_debug_util.h"
+#include "cam_common_util.h"
 
 #define CAM_UNIQUE_SRC_HDL_MAX 50
 
@@ -16,6 +17,7 @@ struct cam_patch_unique_src_buf_tbl {
 	int32_t       hdl;
 	dma_addr_t    iova;
 	size_t        buf_size;
+	uint32_t      flags;
 };
 
 int cam_packet_util_get_cmd_mem_addr(int handle, uint32_t **buf_addr,
@@ -173,6 +175,7 @@ void cam_packet_dump_patch_info(struct cam_packet *packet,
 	int32_t    hdl;
 	uintptr_t  cpu_addr = 0;
 	uint32_t  *dst_cpu_addr;
+	uint32_t   flags;
 	uint64_t   value = 0;
 
 	patch_desc = (struct cam_patch_desc *)
@@ -186,7 +189,7 @@ void cam_packet_dump_patch_info(struct cam_packet *packet,
 		hdl = cam_mem_is_secure_buf(patch_desc[i].src_buf_hdl) ?
 			sec_mmu_hdl : iommu_hdl;
 		rc = cam_mem_get_io_buf(patch_desc[i].src_buf_hdl,
-			hdl, &iova_addr, &src_buf_size);
+			hdl, &iova_addr, &src_buf_size, &flags);
 		if (rc < 0) {
 			CAM_ERR(CAM_UTIL,
 				"unable to get src buf address for hdl 0x%x",
@@ -206,10 +209,10 @@ void cam_packet_dump_patch_info(struct cam_packet *packet,
 			patch_desc[i].dst_offset);
 		value = *((uint64_t *)dst_cpu_addr);
 		CAM_INFO(CAM_UTIL,
-			"i = %d src_buf 0x%llx src_hdl 0x%x src_buf_with_offset 0x%llx size 0x%llx dst %p dst_offset %u dst_hdl 0x%x value 0x%llx",
+			"i = %d src_buf 0x%llx src_hdl 0x%x src_buf_with_offset 0x%llx src_size 0x%llx src_flags: %x dst %p dst_offset %u dst_hdl 0x%x value 0x%llx",
 			i, iova_addr, patch_desc[i].src_buf_hdl,
 			(iova_addr + patch_desc[i].src_offset),
-			src_buf_size, dst_cpu_addr,
+			src_buf_size, flags, dst_cpu_addr,
 			patch_desc[i].dst_offset,
 			patch_desc[i].dst_buf_hdl, value);
 
@@ -220,7 +223,8 @@ void cam_packet_dump_patch_info(struct cam_packet *packet,
 
 static int cam_packet_util_get_patch_iova(
 	struct cam_patch_unique_src_buf_tbl *tbl,
-	int32_t hdl, uint32_t buf_hdl, dma_addr_t *iova, size_t *buf_size)
+	int32_t hdl, uint32_t buf_hdl, dma_addr_t *iova,
+	size_t *buf_size, uint32_t *flags)
 {
 	int idx = 0;
 	int rc = 0;
@@ -235,11 +239,11 @@ static int cam_packet_util_get_patch_iova(
 				buf_hdl, idx, tbl[idx].hdl);
 			*iova = tbl[idx].iova;
 			*buf_size = tbl[idx].buf_size;
+			*flags = tbl[idx].flags;
 			is_found = true;
 			break;
 		} else if ((tbl[idx].hdl == 0) || (tbl[idx].iova == 0)) {
-			CAM_DBG(CAM_UTIL, "New src handle detected 0x%x",
-				buf_hdl);
+			CAM_DBG(CAM_UTIL, "New src handle detected 0x%x", buf_hdl);
 			is_found = false;
 			break;
 		}
@@ -251,8 +255,7 @@ static int cam_packet_util_get_patch_iova(
 	if (!is_found) {
 		CAM_DBG(CAM_UTIL, "src_hdl 0x%x not found in table entries",
 			buf_hdl);
-		rc = cam_mem_get_io_buf(buf_hdl, hdl,
-			&iova_addr, &src_buf_size);
+		rc = cam_mem_get_io_buf(buf_hdl, hdl, &iova_addr, &src_buf_size, flags);
 		if (rc < 0) {
 			CAM_ERR(CAM_UTIL,
 				"unable to get iova for src_hdl: 0x%x",
@@ -264,9 +267,10 @@ static int cam_packet_util_get_patch_iova(
 			tbl[idx].buf_size = src_buf_size;
 			tbl[idx].iova = iova_addr;
 			tbl[idx].hdl = buf_hdl;
+			tbl[idx].flags = *flags;
 			CAM_DBG(CAM_UTIL,
-				"Updated table index: %d with src_buf_hdl: 0x%x",
-				idx, tbl[idx].hdl);
+				"Updated table index: %d with src_buf_hdl: 0x%x flags: %x",
+				idx, tbl[idx].hdl, *flags);
 		}
 		*iova = iova_addr;
 		*buf_size = src_buf_size;
@@ -281,12 +285,13 @@ int cam_packet_util_process_patches(struct cam_packet *packet,
 	struct cam_patch_desc *patch_desc = NULL;
 	dma_addr_t iova_addr;
 	uintptr_t  cpu_addr = 0;
-	dma_addr_t   temp;
+	dma_addr_t temp;
 	uint32_t  *dst_cpu_addr;
 	size_t     dst_buf_len;
 	size_t     src_buf_size;
 	int        i  = 0;
 	int        rc = 0;
+	uint32_t   flags = 0;
 	int32_t    hdl;
 	struct cam_patch_unique_src_buf_tbl
 		tbl[CAM_UNIQUE_SRC_HDL_MAX];
@@ -307,7 +312,7 @@ int cam_packet_util_process_patches(struct cam_packet *packet,
 			sec_mmu_hdl : iommu_hdl;
 
 		rc = cam_packet_util_get_patch_iova(&tbl[0], hdl,
-			patch_desc[i].src_buf_hdl, &iova_addr, &src_buf_size);
+			patch_desc[i].src_buf_hdl, &iova_addr, &src_buf_size, &flags);
 		if (rc) {
 			CAM_ERR(CAM_UTIL,
 				"get_iova failed for patch[%d], src_buf_hdl: 0x%x: rc: %d",
@@ -348,7 +353,12 @@ int cam_packet_util_process_patches(struct cam_packet *packet,
 			patch_desc[i].dst_offset);
 		temp += patch_desc[i].src_offset;
 
-		*dst_cpu_addr = temp;
+		if ((flags & CAM_MEM_FLAG_HW_SHARED_ACCESS) ||
+			(flags & CAM_MEM_FLAG_CMD_BUF_TYPE))
+			*dst_cpu_addr = temp;
+		else
+			*dst_cpu_addr = cam_smmu_is_expanded_memory() ?
+				CAM_36BIT_INTF_GET_IOVA_BASE(temp) : temp;
 
 		CAM_DBG(CAM_UTIL,
 			"patch is done for dst %pk with src 0x%llx value 0x%llx",

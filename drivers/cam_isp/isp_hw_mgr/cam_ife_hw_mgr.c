@@ -6958,7 +6958,7 @@ static int cam_isp_blob_sfe_scratch_buf_update(
 		}
 
 		rc = cam_mem_get_io_buf(buffer_info->mem_handle,
-			mmu_hdl, &io_addr, &size);
+			mmu_hdl, &io_addr, &size, NULL);
 		if (rc) {
 			CAM_ERR(CAM_ISP,
 				"no scratch buf addr for res: 0x%x",
@@ -8695,7 +8695,7 @@ static int cam_ife_mgr_util_insert_frame_header(
 			hw_mgr->mgr_common.img_iommu_hdl;
 
 	rc = cam_mem_get_io_buf(kmd_buf->handle, mmu_hdl,
-		&iova_addr, &len);
+		&iova_addr, &len, NULL);
 	if (rc) {
 		CAM_ERR(CAM_ISP,
 			"Failed to get io addr for handle = %d for mmu_hdl = %u",
@@ -9932,7 +9932,7 @@ static void cam_ife_mgr_print_io_bufs(struct cam_ife_hw_mgr  *hw_mgr,
 				io_cfg[i].mem_handle[j]) ? sec_mmu_hdl :
 				iommu_hdl;
 			rc = cam_mem_get_io_buf(io_cfg[i].mem_handle[j],
-				mmu_hdl, &iova_addr, &src_buf_size);
+				mmu_hdl, &iova_addr, &src_buf_size, NULL);
 			if (rc < 0) {
 				CAM_ERR(CAM_ISP,
 					"get src buf address fail mem_handle 0x%x",
@@ -11403,6 +11403,7 @@ static int cam_ife_hw_mgr_check_rdi_scratch_buf_done(
 {
 	int rc = 0;
 	struct cam_sfe_scratch_buf_info *buf_info;
+	uint32_t cmp_addr = 0;
 
 	if (!scratch_cfg->config_done) {
 		CAM_DBG(CAM_ISP, "No scratch config for ctx: %u", ctx_index);
@@ -11414,7 +11415,9 @@ static int cam_ife_hw_mgr_check_rdi_scratch_buf_done(
 	case CAM_ISP_SFE_OUT_RES_RDI_1:
 	case CAM_ISP_SFE_OUT_RES_RDI_2:
 		buf_info = &scratch_cfg->buf_info[res_id - CAM_ISP_SFE_OUT_RES_BASE];
-		if (buf_info->io_addr == last_consumed_addr) {
+		cmp_addr = cam_smmu_is_expanded_memory() ?
+			CAM_36BIT_INTF_GET_IOVA_BASE(buf_info->io_addr) : buf_info->io_addr;
+		if (cmp_addr == last_consumed_addr) {
 			CAM_DBG(CAM_ISP, "SFE RDI%u buf done for scratch - skip ctx notify",
 				(res_id - CAM_ISP_SFE_OUT_RES_BASE));
 			rc = -EAGAIN;

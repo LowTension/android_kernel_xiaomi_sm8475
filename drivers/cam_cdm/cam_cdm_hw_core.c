@@ -1054,7 +1054,7 @@ int cam_hw_cdm_submit_bl(struct cam_hw_info *cdm_hw,
 			rc = cam_mem_get_io_buf(
 				cdm_cmd->cmd[i].bl_addr.mem_handle,
 				core->iommu_hdl.non_secure, &hw_vaddr_ptr,
-				&len);
+				&len, NULL);
 		} else if (req->data->type == CAM_CDM_BL_CMD_TYPE_HW_IOVA) {
 			if (!cdm_cmd->cmd[i].bl_addr.hw_iova) {
 				CAM_ERR(CAM_CDM,

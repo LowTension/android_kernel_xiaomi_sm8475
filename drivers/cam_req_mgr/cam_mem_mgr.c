@@ -256,7 +256,7 @@ static void cam_mem_put_slot(int32_t idx)
 }
 
 int cam_mem_get_io_buf(int32_t buf_handle, int32_t mmu_handle,
-	dma_addr_t *iova_ptr, size_t *len_ptr)
+	dma_addr_t *iova_ptr, size_t *len_ptr, uint32_t *flags)
 {
 	int rc = 0, idx;
 
@@ -284,21 +284,20 @@ int cam_mem_get_io_buf(int32_t buf_handle, int32_t mmu_handle,
 	}
 
 	if (CAM_MEM_MGR_IS_SECURE_HDL(buf_handle))
-		rc = cam_smmu_get_stage2_iova(mmu_handle,
-			tbl.bufq[idx].fd,
-			iova_ptr,
-			len_ptr);
+		rc = cam_smmu_get_stage2_iova(mmu_handle, tbl.bufq[idx].fd,
+			iova_ptr, len_ptr);
 	else
-		rc = cam_smmu_get_iova(mmu_handle,
-			tbl.bufq[idx].fd,
-			iova_ptr,
-			len_ptr);
+		rc = cam_smmu_get_iova(mmu_handle, tbl.bufq[idx].fd,
+			iova_ptr, len_ptr);
 	if (rc) {
 		CAM_ERR(CAM_MEM,
 			"fail to map buf_hdl:0x%x, mmu_hdl: 0x%x for fd:%d",
 			buf_handle, mmu_handle, tbl.bufq[idx].fd);
 		goto handle_mismatch;
 	}
+
+	if (flags)
+		*flags = tbl.bufq[idx].flags;
 
 	CAM_DBG(CAM_MEM,
 		"handle:0x%x fd:%d iova_ptr:0x%llx len_ptr:%llu",
@@ -312,11 +311,6 @@ EXPORT_SYMBOL(cam_mem_get_io_buf);
 int cam_mem_get_cpu_buf(int32_t buf_handle, uintptr_t *vaddr_ptr, size_t *len)
 {
 	int idx;
-
-	if (!atomic_read(&cam_mem_mgr_state)) {
-		CAM_ERR(CAM_MEM, "failed. mem_mgr not initialized");
-		return -EINVAL;
-	}
 
 	if (!atomic_read(&cam_mem_mgr_state)) {
 		CAM_ERR(CAM_MEM, "failed. mem_mgr not initialized");
@@ -926,7 +920,8 @@ int cam_mem_mgr_alloc_and_map(struct cam_mem_mgr_alloc_cmd *cmd)
 			region = CAM_SMMU_REGION_IO;
 
 
-		if (cmd->flags & CAM_MEM_FLAG_HW_SHARED_ACCESS)
+		if (cmd->flags & CAM_MEM_FLAG_HW_SHARED_ACCESS ||
+			(cam_smmu_is_expanded_memory() && cmd->flags & CAM_MEM_FLAG_CMD_BUF_TYPE))
 			region = CAM_SMMU_REGION_SHARED;
 
 		if (cmd->flags & CAM_MEM_FLAG_PROTECTED_MODE)

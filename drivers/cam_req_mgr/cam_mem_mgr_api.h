@@ -70,11 +70,12 @@ int cam_mem_mgr_release_mem(struct cam_mem_mgr_memory_desc *inp);
  * @mmu_handle: SMMU handle where buffer is mapped
  * @iova_ptr  : Pointer to mmu's iova
  * @len_ptr   : Length of the buffer
+ * @flags     : Flags the buffer was allocated with
  *
  * @return Status of operation. Negative in case of error. Zero otherwise.
  */
 int cam_mem_get_io_buf(int32_t buf_handle, int32_t mmu_handle,
-	dma_addr_t *iova_ptr, size_t *len_ptr);
+	dma_addr_t *iova_ptr, size_t *len_ptr, uint32_t *flags);
 
 /**
  * @brief: This indicates begin of CPU access.

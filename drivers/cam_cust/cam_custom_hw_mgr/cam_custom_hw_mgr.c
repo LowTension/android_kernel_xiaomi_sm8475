@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/slab.h>
@@ -1195,7 +1195,7 @@ static int cam_custom_add_io_buffers(
 					io_cfg[i].mem_handle[plane_id],
 					iommu_hdl,
 					&prepare_hw_data->io_addr[plane_id],
-					&size);
+					&size, NULL);
 				if (rc) {
 					CAM_ERR(CAM_CUSTOM,
 						"No io addr for plane: %d",

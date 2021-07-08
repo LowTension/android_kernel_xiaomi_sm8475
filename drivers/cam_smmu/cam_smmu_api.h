@@ -445,5 +445,9 @@ int cam_smmu_need_force_alloc_cached(bool *force_alloc_cached);
  */
 bool cam_smmu_need_shared_buffer_padding(void);
 
+/**
+ * @brief : API to determine whether certain HW is 36-bit memory addressable
+ */
+bool cam_smmu_is_expanded_memory(void);
 
 #endif /* _CAM_SMMU_API_H_ */

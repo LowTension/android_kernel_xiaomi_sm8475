@@ -596,7 +596,7 @@ static int cam_fd_mgr_util_prepare_io_buf_info(int32_t iommu_hdl,
 			if (need_io_map) {
 				rc = cam_mem_get_io_buf(
 					io_cfg[i].mem_handle[plane],
-					iommu_hdl, &io_addr[plane], &size);
+					iommu_hdl, &io_addr[plane], &size, NULL);
 				if (rc) {
 					CAM_ERR(CAM_FD,
 						"Failed to get io buf %u %u %u %d",

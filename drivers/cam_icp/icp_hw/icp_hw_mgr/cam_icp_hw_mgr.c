@@ -4442,7 +4442,7 @@ static int cam_icp_mgr_process_cmd_desc(struct cam_icp_hw_mgr *hw_mgr,
 	for (i = 0; i < packet->num_cmd_buf; i++, num_cmd_buf++) {
 		if (cmd_desc[i].type == CAM_CMD_BUF_FW) {
 			rc = cam_mem_get_io_buf(cmd_desc[i].mem_handle,
-				hw_mgr->iommu_hdl, &addr, &len);
+				hw_mgr->iommu_hdl, &addr, &len, NULL);
 			if (rc) {
 				CAM_ERR(CAM_ICP, "get cmd buf failed %x",
 					hw_mgr->iommu_hdl);
@@ -4589,7 +4589,7 @@ static int cam_icp_process_stream_settings(
 	for (i = 0; i < cmd_mem_regions->num_regions; i++) {
 		rc = cam_mem_get_io_buf(
 			cmd_mem_regions->map_info_array[i].mem_handle,
-			icp_hw_mgr.iommu_hdl, &iova, &len);
+			icp_hw_mgr.iommu_hdl, &iova, &len, NULL);
 		if (rc) {
 			CAM_ERR(CAM_ICP,
 				"Failed to get cmd region iova for handle %u",
@@ -4816,7 +4816,7 @@ static int cam_icp_packet_generic_blob_handler(void *user_data,
 		rc = cam_mem_get_io_buf(
 			ctx_data->icp_dev_io_info.io_config_cmd_handle,
 			icp_hw_mgr.iommu_hdl,
-			blob->io_buf_addr, &io_buf_size);
+			blob->io_buf_addr, &io_buf_size, NULL);
 		if (rc)
 			CAM_ERR(CAM_ICP, "Failed in blob update");
 		else
@@ -5006,15 +5006,10 @@ static void cam_icp_mgr_print_io_bufs(struct cam_packet *packet,
 				io_cfg[i].mem_handle[j]) ? sec_mmu_hdl :
 				iommu_hdl;
 			rc = cam_mem_get_io_buf(io_cfg[i].mem_handle[j],
-				mmu_hdl, &iova_addr, &src_buf_size);
+				mmu_hdl, &iova_addr, &src_buf_size, NULL);
 			if (rc < 0) {
 				CAM_ERR(CAM_UTIL,
 					"get src buf address fail rc %d", rc);
-				continue;
-			}
-			if ((iova_addr & 0xFFFFFFFF) != iova_addr) {
-				CAM_ERR(CAM_ICP, "Invalid mapped address");
-				rc = -EINVAL;
 				continue;
 			}
 
@@ -5849,7 +5844,7 @@ static int cam_icp_mgr_acquire_hw(void *hw_mgr_priv, void *acquire_hw_args)
 	rc = cam_mem_get_io_buf(
 		icp_dev_acquire_info->io_config_cmd_handle,
 		hw_mgr->iommu_hdl,
-		&io_buf_addr, &io_buf_size);
+		&io_buf_addr, &io_buf_size, NULL);
 	if (rc) {
 		CAM_ERR(CAM_ICP, "unable to get src buf info from io desc");
 		goto get_io_buf_failed;

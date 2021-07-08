@@ -2745,7 +2745,7 @@ static int cam_tfe_mgr_config_hw(void *hw_mgr_priv,
 			cdm_cmd->cmd[i].bl_addr.mem_handle,
 			g_tfe_hw_mgr.mgr_common.cmd_iommu_hdl,
 			&ctx->last_submit_bl_cmd.cmd[i].hw_addr,
-			&ctx->last_submit_bl_cmd.cmd[i].len);
+			&ctx->last_submit_bl_cmd.cmd[i].len, NULL);
 		} else if (cdm_cmd->type ==
 			CAM_CDM_BL_CMD_TYPE_HW_IOVA) {
 			if (!cdm_cmd->cmd[i].bl_addr.hw_iova) {
@@ -4633,7 +4633,7 @@ static void cam_tfe_mgr_print_io_bufs(struct cam_tfe_hw_mgr  *hw_mgr,
 			io_cfg[i].mem_handle[j]) ? sec_mmu_hdl :
 			iommu_hdl;
 		rc = cam_mem_get_io_buf(io_cfg[i].mem_handle[j],
-			mmu_hdl, &iova_addr, &src_buf_size);
+			mmu_hdl, &iova_addr, &src_buf_size, NULL);
 		if (rc < 0) {
 			CAM_ERR(CAM_ISP,
 				"get src buf address fail mem_handle 0x%x",
