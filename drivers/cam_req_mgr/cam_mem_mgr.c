@@ -842,10 +842,16 @@ static int cam_mem_util_map_hw_va(uint32_t flags,
 		dis_delayed_unmap = true;
 
 	CAM_DBG(CAM_MEM,
-		"map_hw_va : fd = %d,  flags = 0x%x, dir=%d, num_hdls=%d",
+		"map_hw_va : fd = %d, flags = 0x%x, dir=%d, num_hdls=%d",
 		fd, flags, dir, num_hdls);
 
 	for (i = 0; i < num_hdls; i++) {
+		/* If 36-bit enabled, check for ICP cmd buffers and map them within the shared region */
+		if (cam_smmu_is_expanded_memory() &&
+			cam_smmu_supports_shared_region(mmu_hdls[i]) &&
+			(flags & CAM_MEM_FLAG_CMD_BUF_TYPE))
+			region = CAM_SMMU_REGION_SHARED;
+
 		if (flags & CAM_MEM_FLAG_PROTECTED_MODE)
 			rc = cam_smmu_map_stage2_iova(mmu_hdls[i], fd, dmabuf, dir, hw_vaddr, len);
 		else
@@ -942,8 +948,7 @@ int cam_mem_mgr_alloc_and_map(struct cam_mem_mgr_alloc_cmd *cmd)
 			region = CAM_SMMU_REGION_IO;
 
 
-		if (cmd->flags & CAM_MEM_FLAG_HW_SHARED_ACCESS ||
-			(cam_smmu_is_expanded_memory() && cmd->flags & CAM_MEM_FLAG_CMD_BUF_TYPE))
+		if (cmd->flags & CAM_MEM_FLAG_HW_SHARED_ACCESS)
 			region = CAM_SMMU_REGION_SHARED;
 
 		if (cmd->flags & CAM_MEM_FLAG_PROTECTED_MODE)
