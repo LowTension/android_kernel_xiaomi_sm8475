@@ -1333,6 +1333,8 @@ static void __cam_csiphy_read_2phase_bist_debug_status(
 	struct csiphy_reg_t *csiphy_common_reg = NULL;
 	void __iomem *csiphybase = NULL;
 
+	csiphybase = csiphy_dev->soc_info.reg_map[0].mem_base;
+
 	for (i = 0; i < bist_status_arr_size; i++) {
 		csiphy_common_reg = &csiphy_dev->ctrl_reg->csiphy_bist_reg
 			->bist_status_err_check_arr[i];
@@ -1405,6 +1407,8 @@ static void __cam_csiphy_read_3phase_bist_debug_status(
 		csiphy_dev->ctrl_reg->csiphy_bist_reg->num_status_err_check_reg;
 	struct csiphy_reg_t *csiphy_common_reg = NULL;
 	void __iomem *csiphybase = NULL;
+
+	csiphybase = csiphy_dev->soc_info.reg_map[0].mem_base;
 
 	for (i = 0; i < bist_status_arr_size; i++) {
 		csiphy_common_reg = &csiphy_dev->ctrl_reg->csiphy_bist_reg
