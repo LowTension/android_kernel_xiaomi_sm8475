@@ -578,6 +578,11 @@ static int cam_mem_util_get_dma_buf(size_t len,
 			perms[num_vmids] = PERM_READ | PERM_WRITE;
 			num_vmids++;
 		}
+	} else if (cam_flags & CAM_MEM_FLAG_EVA_NOPIXEL) {
+		heap = tbl.secure_display_heap;
+		vmids[num_vmids] = VMID_CP_NON_PIXEL;
+		perms[num_vmids] = PERM_READ | PERM_WRITE;
+		num_vmids++;
 	} else if (use_cached_heap) {
 		try_heap = tbl.camera_heap;
 		heap = tbl.system_heap;
@@ -618,7 +623,8 @@ static int cam_mem_util_get_dma_buf(size_t len,
 		}
 	}
 
-	if (cam_flags & CAM_MEM_FLAG_PROTECTED_MODE) {
+	if ((cam_flags & CAM_MEM_FLAG_PROTECTED_MODE) ||
+		(cam_flags & CAM_MEM_FLAG_EVA_NOPIXEL)) {
 		if (num_vmids >= CAM_MAX_VMIDS) {
 			CAM_ERR(CAM_MEM, "Insufficient array size for vmids %d", num_vmids);
 			rc = -EINVAL;
@@ -765,6 +771,13 @@ static int cam_mem_util_check_alloc_flags(struct cam_mem_mgr_alloc_cmd *cmd)
 		return -EINVAL;
 	}
 
+	if ((cmd->flags & CAM_MEM_FLAG_EVA_NOPIXEL) &&
+		(cmd->flags & CAM_MEM_FLAG_PROTECTED_MODE ||
+		cmd->flags & CAM_MEM_FLAG_KMD_ACCESS)){
+		CAM_ERR(CAM_MEM,
+			"Kernel mapping and secure mode not allowed in no pixel mode");
+		return -EINVAL;
+	}
 	return 0;
 }
 
