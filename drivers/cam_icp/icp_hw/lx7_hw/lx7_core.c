@@ -825,6 +825,10 @@ int cam_lx7_process_cmd(void *priv, uint32_t cmd_type,
 		rc = __cam_lx7_update_clk_rate(lx7_info, args);
 		break;
 	}
+	case CAM_ICP_CMD_HW_DUMP:
+		/* Not supported for lx7 */
+		rc = 0;
+		break;
 	default:
 		CAM_ERR(CAM_ICP, "invalid command type=%u", cmd_type);
 		break;

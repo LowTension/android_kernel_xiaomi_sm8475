@@ -156,6 +156,11 @@ static int cam_ipe_handle_pc(struct cam_hw_info *ipe_dev)
 	core_info = (struct cam_ipe_device_core_info *)ipe_dev->core_info;
 	hw_info = core_info->ipe_hw_info;
 
+	if (!core_info->cpas_start) {
+		CAM_DBG(CAM_ICP, "CPAS IPE client not started");
+		return 0;
+	}
+
 	rc = cam_cpas_reg_read(core_info->cpas_handle,
 			CAM_CPAS_REG_CPASTOP, hw_info->pwr_ctrl,
 			true, &pwr_ctrl);
@@ -223,6 +228,11 @@ static int cam_ipe_handle_resume(struct cam_hw_info *ipe_dev)
 	core_info = (struct cam_ipe_device_core_info *)ipe_dev->core_info;
 	hw_info = core_info->ipe_hw_info;
 
+	if (!core_info->cpas_start) {
+		CAM_DBG(CAM_ICP, "CPAS IPE client not started");
+		return 0;
+	}
+
 	rc = cam_cpas_reg_read(core_info->cpas_handle,
 			CAM_CPAS_REG_CPASTOP, hw_info->pwr_ctrl,
 			true, &pwr_ctrl);
@@ -276,9 +286,9 @@ static int cam_ipe_cmd_reset(struct cam_hw_soc_info *soc_info,
 
 	CAM_DBG(CAM_ICP, "CAM_ICP_IPE_CMD_RESET");
 	if (!core_info->clk_enable || !core_info->cpas_start) {
-		CAM_ERR(CAM_HFI, "IPE reset failed. clk_en %d cpas_start %d",
+		CAM_DBG(CAM_ICP, "IPE not powered on clk_en %d cpas_start %d",
 				core_info->clk_enable, core_info->cpas_start);
-		return -EINVAL;
+		return 0;
 	}
 
 	hw_info = core_info->ipe_hw_info;
@@ -293,7 +303,7 @@ static int cam_ipe_cmd_reset(struct cam_hw_soc_info *soc_info,
 			IPE_RST_DONE_IRQ_STATUS_BIT, IPE_RST_DONE_IRQ_STATUS_BIT,
 			&status);
 
-		CAM_DBG(CAM_HFI, "ipe_cdm_irq_status = %u", status);
+		CAM_DBG(CAM_ICP, "ipe_cdm_irq_status = %u", status);
 		if ((status & IPE_RST_DONE_IRQ_STATUS_BIT) == 0x1)
 			break;
 		retry_cnt++;
@@ -316,7 +326,7 @@ static int cam_ipe_cmd_reset(struct cam_hw_soc_info *soc_info,
 			IPE_RST_DONE_IRQ_STATUS_BIT, IPE_RST_DONE_IRQ_STATUS_BIT,
 			&status);
 
-		CAM_DBG(CAM_HFI, "ipe_top_irq_status = %u", status);
+		CAM_DBG(CAM_ICP, "ipe_top_irq_status = %u", status);
 
 		if ((status & IPE_RST_DONE_IRQ_STATUS_BIT) == 0x1)
 			break;

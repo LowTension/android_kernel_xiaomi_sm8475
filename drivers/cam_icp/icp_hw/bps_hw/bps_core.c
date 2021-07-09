@@ -158,6 +158,11 @@ static int cam_bps_handle_pc(struct cam_hw_info *bps_dev)
 	core_info = (struct cam_bps_device_core_info *)bps_dev->core_info;
 	hw_info = core_info->bps_hw_info;
 
+	if (!core_info->cpas_start) {
+		CAM_DBG(CAM_ICP, "CPAS BPS client not started");
+		return 0;
+	}
+
 	rc = cam_cpas_reg_read(core_info->cpas_handle,
 			CAM_CPAS_REG_CPASTOP, hw_info->pwr_ctrl,
 			true, &pwr_ctrl);
@@ -224,6 +229,11 @@ static int cam_bps_handle_resume(struct cam_hw_info *bps_dev)
 	core_info = (struct cam_bps_device_core_info *)bps_dev->core_info;
 	hw_info = core_info->bps_hw_info;
 
+	if (!core_info->cpas_start) {
+		CAM_DBG(CAM_ICP, "CPAS BPS client not started");
+		return 0;
+	}
+
 	rc = cam_cpas_reg_read(core_info->cpas_handle,
 			CAM_CPAS_REG_CPASTOP, hw_info->pwr_ctrl,
 			true, &pwr_ctrl);
@@ -279,9 +289,9 @@ static int cam_bps_cmd_reset(struct cam_hw_soc_info *soc_info,
 	CAM_DBG(CAM_ICP, "CAM_ICP_BPS_CMD_RESET");
 
 	if (!core_info->clk_enable || !core_info->cpas_start) {
-		CAM_ERR(CAM_ICP, "BPS reset failed. clk_en %d cpas_start %d",
-				core_info->clk_enable, core_info->cpas_start);
-		return -EINVAL;
+		CAM_DBG(CAM_ICP, "BPS not powered on clk_en %d cpas_start %d",
+			core_info->clk_enable, core_info->cpas_start);
+		return 0;
 	}
 
 	hw_info = core_info->bps_hw_info;
