@@ -115,16 +115,12 @@ struct cam_ife_csid_ver2_evt_payload {
 };
 
 /*
- * struct cam_ife_csid_ver2_path_cfg: place holder for path parameters
+ * struct cam_ife_csid_ver2_camif_data: place holder for camif parameters
  *
- * @pix_pattern:  Pix pattern for incoming data
- * @stripe_loc:   Stripe location
  * @epoch0_cfg:   Epoch 0 configuration value
  * @epoch1_cfg:   Epoch 1 configuration value
  */
 struct cam_ife_csid_ver2_camif_data {
-	uint32_t pix_pattern;
-	uint32_t stripe_loc;
 	uint32_t epoch0;
 	uint32_t epoch1;
 };
@@ -149,7 +145,6 @@ struct cam_ife_csid_ver2_camif_data {
  * @qcfa_bin    :        qcfa binning enable/disable on path
  * @hor_ver_bin :        horizontal vertical binning enable/disable on path
  * @num_bytes_out:       Number of bytes out
- * @pix_pattern:         Pixel Pattern
  * @irq_handle:          IRQ handle
  * @err_irq_handle:      Error IRQ handle
  * @discard_irq_handle:  IRQ handle for SOF when discarding initial frames
@@ -183,7 +178,6 @@ struct cam_ife_csid_ver2_path_cfg {
 	uint32_t                            qcfa_bin;
 	uint32_t                            hor_ver_bin;
 	uint32_t                            num_bytes_out;
-	uint32_t                            pix_pattern;
 	uint32_t                            irq_handle;
 	uint32_t                            err_irq_handle;
 	uint32_t                            discard_irq_handle;
@@ -295,14 +289,11 @@ struct cam_ife_csid_ver2_rdi_reg_info {
 	uint32_t byte_cntr_en_shift_val;
 	uint32_t offline_mode_en_shift_val;
 	uint32_t debug_byte_cntr_rst_shift_val;
-	uint32_t stripe_loc_shift_val;
-	uint32_t pix_pattern_shift_val;
 	uint32_t ccif_violation_en;
 	uint32_t overflow_ctrl_mode_val;
 	uint32_t overflow_ctrl_en;
 	uint32_t fatal_err_mask;
 	uint32_t non_fatal_err_mask;
-	uint32_t pix_pattern_shift;
 	uint32_t camif_irq_mask;
 	uint32_t rup_aup_mask;
 	uint32_t top_irq_mask;
@@ -410,8 +401,6 @@ struct cam_ife_csid_ver2_pxl_reg_info {
 	uint32_t bin_pd_detect_x_end_shift_val;
 	uint32_t bin_pd_detect_y_offset_shift_val;
 	uint32_t bin_pd_detect_y_end_shift_val;
-	uint32_t stripe_loc_shift_val;
-	uint32_t pix_pattern_shift_val;
 	uint32_t epoch0_cfg_val;
 	uint32_t epoch1_cfg_val;
 	uint32_t epoch0_shift_val;
@@ -473,8 +462,6 @@ struct cam_ife_csid_ver2_common_reg_info {
 	uint32_t num_padding_rows_shift_val;
 	uint32_t num_vbi_lines_shift_val;
 	uint32_t num_hbi_cycles_shift_val;
-	uint32_t camif_stripe_loc_shift_val;
-	uint32_t camif_pix_pattern_shift_val;
 	uint32_t epoch0_line_shift_val;
 	uint32_t epoch1_line_shift_val;
 	uint32_t camif_width_shift_val;

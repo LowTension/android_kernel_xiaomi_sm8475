@@ -1885,7 +1885,6 @@ static int cam_ife_csid_hw_ver2_config_path_data(
 	path_cfg->vertical_bin = reserve->in_port->vertical_bin;
 	path_cfg->qcfa_bin = reserve->in_port->qcfa_bin;
 	path_cfg->num_bytes_out = reserve->in_port->num_bytes_out;
-	path_cfg->pix_pattern = reserve->in_port->test_pattern;
 	if (reserve->sync_mode == CAM_ISP_HW_SYNC_MASTER) {
 		path_cfg->start_pixel = reserve->in_port->left_start;
 		path_cfg->end_pixel = reserve->in_port->left_stop;
@@ -2033,12 +2032,9 @@ static int cam_ife_csid_ver_config_camif(
 
 	path_cfg->camif_data.epoch0 = epoch0;
 
-	path_cfg->camif_data.pix_pattern = reserve->in_port->test_pattern;
-
 end:
-	CAM_DBG(CAM_ISP, "CSID[%d] pix_pattern: %d epoch0: 0x%x",
-			csid_hw->hw_intf->hw_idx,
-			path_cfg->camif_data.pix_pattern, epoch0);
+	CAM_DBG(CAM_ISP, "CSID[%d] epoch0: 0x%x",
+			csid_hw->hw_intf->hw_idx, epoch0);
 	return rc;
 }
 
@@ -2467,9 +2463,6 @@ static int cam_ife_csid_ver2_init_config_rdi_path(
 	/* set frame drop pattern to 0 and period to 1 */
 	cam_io_w_mb(1, mem_base + path_reg->frm_drop_period_addr);
 	cam_io_w_mb(0, mem_base + path_reg->frm_drop_pattern_addr);
-	/* set irq sub sample pattern to 1 and period to 0 */
-	cam_io_w_mb(0, mem_base + path_reg->irq_subsample_period_addr);
-	cam_io_w_mb(1, mem_base + path_reg->irq_subsample_pattern_addr);
 
 	/*TODO Need to check for any hw errata like 480 and 580*/
 	/* set pxl drop pattern to 0 and period to 1 */
@@ -2647,9 +2640,6 @@ static int cam_ife_csid_ver2_init_config_pxl_path(
 	/* set frame drop pattern to 0 and period to 1 */
 	cam_io_w_mb(1, mem_base + path_reg->frm_drop_period_addr);
 	cam_io_w_mb(0, mem_base + path_reg->frm_drop_pattern_addr);
-	/* set irq sub sample pattern to 1 and period to 1 */
-	cam_io_w_mb(0, mem_base + path_reg->irq_subsample_period_addr);
-	cam_io_w_mb(1, mem_base + path_reg->irq_subsample_pattern_addr);
 	/* set pxl drop pattern to 0 and period to 1 */
 	cam_io_w_mb(0, mem_base + path_reg->pix_drop_pattern_addr);
 	cam_io_w_mb(1, mem_base + path_reg->pix_drop_period_addr);
@@ -2760,12 +2750,6 @@ static int cam_ife_csid_ver2_program_rdi_path(
 			csid_hw->hw_intf->hw_idx, res->res_id);
 
 		/*Program the camif part */
-		val =  (path_cfg->camif_data.pix_pattern <<
-			path_reg->pix_pattern_shift_val) |
-			(path_cfg->camif_data.stripe_loc <<
-			path_reg->stripe_loc_shift_val);
-
-		cam_io_w_mb(val, mem_base + path_reg->camif_frame_cfg_addr);
 		cam_io_w_mb(path_cfg->camif_data.epoch0 <<
 			path_reg->epoch0_shift_val,
 			mem_base + path_reg->epoch_irq_cfg_addr);
@@ -2898,12 +2882,6 @@ static int cam_ife_csid_ver2_program_ipp_path(
 	mem_base = soc_info->reg_map[CAM_IFE_CSID_CLC_MEM_BASE_ID].mem_base;
 	path_cfg = (struct cam_ife_csid_ver2_path_cfg *)res->res_priv;
 
-	val =  (path_cfg->camif_data.pix_pattern <<
-			path_reg->pix_pattern_shift_val) |
-			(path_cfg->camif_data.stripe_loc <<
-			 path_reg->stripe_loc_shift_val);
-
-	cam_io_w_mb(val, mem_base + path_reg->camif_frame_cfg_addr);
 	cam_io_w_mb(path_cfg->camif_data.epoch0 << path_reg->epoch0_shift_val,
 		mem_base + path_reg->epoch_irq_cfg_addr);
 
@@ -3114,12 +3092,6 @@ static int cam_ife_csid_ver2_program_ppp_path(
 
 	path_cfg = (struct cam_ife_csid_ver2_path_cfg *)res->res_priv;
 
-	val =  (path_cfg->camif_data.pix_pattern <<
-			path_reg->pix_pattern_shift_val) |
-			(path_cfg->camif_data.stripe_loc <<
-			 path_reg->stripe_loc_shift_val);
-
-	cam_io_w_mb(val, mem_base + path_reg->camif_frame_cfg_addr);
 	cam_io_w_mb(path_cfg->camif_data.epoch0 << path_reg->epoch0_shift_val,
 		mem_base + path_reg->epoch_irq_cfg_addr);
 
