@@ -302,23 +302,16 @@ static int32_t cam_sensor_get_io_buffer(
 }
 
 int32_t cam_sensor_util_write_qtimer_to_io_buffer(
-	struct cam_buf_io_cfg *io_cfg)
+	uint64_t qtime_ns, struct cam_buf_io_cfg *io_cfg)
 {
 	uintptr_t buf_addr = 0x0, target_buf = 0x0;
 	size_t buf_size = 0, target_size = 0;
 	int32_t rc = 0;
-	uint64_t qtime_ns = 0;
 
 	if (io_cfg == NULL) {
 		CAM_ERR(CAM_SENSOR,
 			"Invalid args, io buf is NULL");
 		return -EINVAL;
-	}
-
-	rc = cam_sensor_util_get_current_qtimer_ns(&qtime_ns);
-	if (rc < 0) {
-		CAM_ERR(CAM_SENSOR, "failed to get qtimer rc:%d");
-		return rc;
 	}
 
 	if (io_cfg->direction == CAM_BUF_OUTPUT) {

@@ -782,6 +782,7 @@ static int cam_ois_pkt_parse(struct cam_ois_ctrl_t *o_ctrl, void *arg)
 		}
 		break;
 	case CAM_OIS_PACKET_OPCODE_READ: {
+		uint64_t qtime_ns;
 		struct cam_buf_io_cfg *io_cfg;
 		struct i2c_settings_array i2c_read_settings;
 
@@ -826,6 +827,12 @@ static int cam_ois_pkt_parse(struct cam_ois_ctrl_t *o_ctrl, void *arg)
 			return rc;
 		}
 
+		rc = cam_sensor_util_get_current_qtimer_ns(&qtime_ns);
+		if (rc < 0) {
+			CAM_ERR(CAM_SENSOR, "failed to get qtimer rc:%d");
+			return rc;
+		}
+
 		rc = cam_sensor_i2c_read_data(
 			&i2c_read_settings,
 			&o_ctrl->io_master_info);
@@ -837,7 +844,7 @@ static int cam_ois_pkt_parse(struct cam_ois_ctrl_t *o_ctrl, void *arg)
 
 		if (csl_packet->num_io_configs > 1) {
 			rc = cam_sensor_util_write_qtimer_to_io_buffer(
-				&io_cfg[1]);
+				qtime_ns, &io_cfg[1]);
 			if (rc < 0) {
 				CAM_ERR(CAM_OIS,
 					"write qtimer failed rc: %d", rc);
