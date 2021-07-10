@@ -123,6 +123,7 @@
 #define CAM_ISP_GENERIC_BLOB_TYPE_DYNAMIC_MODE_SWITCH       15
 #define CAM_ISP_GENERIC_BLOB_TYPE_BW_LIMITER_CFG            16
 #define CAM_ISP_GENERIC_BLOB_TYPE_FPS_CONFIG                17
+#define CAM_ISP_GENERIC_BLOB_TYPE_INIT_CONFIG               18
 #define CAM_ISP_GENERIC_BLOB_TYPE_SFE_CLOCK_CONFIG          21
 #define CAM_ISP_GENERIC_BLOB_TYPE_SFE_CORE_CONFIG           22
 #define CAM_ISP_GENERIC_BLOB_TYPE_SFE_OUT_CONFIG            23
@@ -175,6 +176,8 @@
 #define CAM_ISP_SFE_BINNED_EPOCH_CFG_ENABLE    BIT(3)
 #define CAM_ISP_EPD_SUPPORT                    BIT(4)
 #define CAM_ISP_SFE_FS_MODE_EN                 BIT(5)
+#define CAM_ISP_SFE_SHDR_MODE_EN               BIT(6)
+#define CAM_ISP_AEB_MODE_EN                    BIT(7)
 
 /* ISP core cfg flag params */
 #define CAM_ISP_PARAM_CORE_CFG_HDR_MUX_SEL BIT(0)
@@ -978,6 +981,28 @@ struct cam_isp_out_rsrc_bw_limiter_config {
 	__u32                                   num_ports;
 	__u32                                   reserved;
 	struct cam_isp_wm_bw_limiter_config     bw_limiter_config[1];
+};
+
+/**
+ * struct cam_isp_init_config - Init config for IFE/CSID/SFE
+ *
+ *    Any configurations to be consumed by KMD
+ *    prior to stream on - one time configuration per stream.
+ *    This blob is expected only in INIT packet. Per frame
+ *    dynamic settings will not be part of this blob.
+ *
+ * @epoch_factor       : % factor for epoch config with respect to frame height
+ *                       If factor is 60, epoch will be configured to 3/5th of
+ *                       the frame height. If this field is 0,
+ *                       KMD will configure default 50% of the height
+ * @additional_params  : Reserved fields for future use
+ */
+struct cam_isp_init_config {
+	struct cam_isp_epoch_height_config {
+	__u32             epoch_factor;
+	} epoch_cfg;
+
+	__u32             additional_params[19];
 };
 
 #define CAM_ISP_ACQUIRE_COMMON_VER0         0x1000
