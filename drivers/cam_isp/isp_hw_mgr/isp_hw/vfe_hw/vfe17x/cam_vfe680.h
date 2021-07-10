@@ -697,7 +697,6 @@ static struct cam_vfe_bus_ver3_hw_info vfe680_bus_hw_info = {
 			0x00000C3C,
 			0x00000C40,
 			0x00000C44,
-			0x00000C48,
 		},
 		.ubwc_static_ctrl                 = 0x00000C58,
 		.pwr_iso_cfg                      = 0x00000C5C,
@@ -1550,7 +1549,7 @@ static struct cam_vfe_bus_ver3_hw_info vfe680_bus_hw_info = {
 			.max_width     = -1,
 			.max_height    = -1,
 			.source_group  = CAM_VFE_BUS_VER3_SRC_GRP_2,
-			.mid[0]        = 8,
+			.mid[0]        = 18,
 			.num_wm        = 1,
 			.line_based    = 1,
 			.wm_idx        = {
@@ -1565,7 +1564,7 @@ static struct cam_vfe_bus_ver3_hw_info vfe680_bus_hw_info = {
 			.max_width     = -1,
 			.max_height    = -1,
 			.source_group  = CAM_VFE_BUS_VER3_SRC_GRP_3,
-			.mid[0]        = 9,
+			.mid[0]        = 19,
 			.num_wm        = 1,
 			.line_based    = 1,
 			.wm_idx        = {
@@ -1580,7 +1579,7 @@ static struct cam_vfe_bus_ver3_hw_info vfe680_bus_hw_info = {
 			.max_width     = -1,
 			.max_height    = -1,
 			.source_group  = CAM_VFE_BUS_VER3_SRC_GRP_4,
-			.mid[0]        = 10,
+			.mid[0]        = 20,
 			.num_wm        = 1,
 			.line_based    = 1,
 			.wm_idx        = {
