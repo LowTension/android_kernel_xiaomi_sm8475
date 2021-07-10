@@ -12,7 +12,6 @@
 #define CAM_SFE_RDI_VER_1_0    0x1000
 #define CAM_SFE_TOP_VER_1_0    0x10000
 
-#define CAM_SFE_DELAY_BW_REDUCTION_NUM_FRAMES  18
 #define CAM_SFE_TOP_IN_PORT_MAX                6
 #define CAM_SFE_RDI_MAX                        5
 

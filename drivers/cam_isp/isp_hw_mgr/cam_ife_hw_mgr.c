@@ -58,10 +58,49 @@ static struct cam_ife_hw_mgr g_ife_hw_mgr;
 static uint32_t g_num_ife, g_num_ife_lite;
 static uint32_t max_ife_out_res;
 
+static int cam_isp_blob_ife_clock_update(
+	struct cam_isp_clock_config           *clock_config,
+	struct cam_ife_hw_mgr_ctx             *ctx);
+
+static int cam_isp_blob_sfe_clock_update(
+	struct cam_isp_clock_config           *clock_config,
+	struct cam_ife_hw_mgr_ctx             *ctx);
+
+
 static int cam_ife_hw_mgr_event_handler(
 	void                                *priv,
 	uint32_t                             evt_id,
 	void                                *evt_info);
+
+static int cam_ife_mgr_finish_clk_bw_update(
+	struct cam_ife_hw_mgr_ctx             *ctx, uint64_t request_id)
+{
+	int i, rc = 0;
+	struct cam_isp_apply_clk_bw_args clk_bw_args;
+
+	clk_bw_args.request_id = request_id;
+	for (i = 0; i < ctx->num_base; i++) {
+		clk_bw_args.hw_intf = NULL;
+		if (ctx->base[i].hw_type == CAM_ISP_HW_TYPE_VFE)
+			clk_bw_args.hw_intf = g_ife_hw_mgr.ife_devices[ctx->base[i].idx]->hw_intf;
+		else if (ctx->base[i].hw_type == CAM_ISP_HW_TYPE_SFE)
+			clk_bw_args.hw_intf = g_ife_hw_mgr.sfe_devices[ctx->base[i].idx];
+		else
+			continue;
+
+		CAM_DBG(CAM_PERF, "Apply Clock/BW for req_id:%d i:%d hw_idx=%d hw_type:%d",
+			request_id, i, clk_bw_args.hw_intf->hw_idx, clk_bw_args.hw_intf->hw_type);
+		rc |= clk_bw_args.hw_intf->hw_ops.process_cmd(clk_bw_args.hw_intf->hw_priv,
+			CAM_ISP_HW_CMD_APPLY_CLK_BW_UPDATE, &clk_bw_args,
+			sizeof(struct cam_isp_apply_clk_bw_args));
+		if (rc)
+			CAM_ERR(CAM_PERF,
+				"Finish Clock/BW Update failed i:%d hw_idx=%d hw_type:%d rc:%d",
+				i, ctx->base[i].idx, ctx->base[i].hw_type, rc);
+	}
+
+	return rc;
+}
 
 static inline int __cam_ife_mgr_get_hw_soc_info(
 	struct list_head          *res_list,
@@ -5370,6 +5409,10 @@ static int cam_isp_blob_bw_update_v2(
 				bw_upd_args.node_res =
 					hw_mgr_res->hw_res[split_idx];
 
+				/*
+				 * Update BW values to top, actual apply to hw will happen when
+				 * CAM_ISP_HW_CMD_APPLY_CLK_BW_UPDATE is called
+				 */
 				rc = hw_intf->hw_ops.process_cmd(
 					hw_intf->hw_priv,
 					CAM_ISP_HW_CMD_BW_UPDATE_V2,
@@ -5409,6 +5452,10 @@ static int cam_isp_blob_bw_update_v2(
 				sfe_bw_update_args.node_res =
 					hw_mgr_res->hw_res[split_idx];
 
+				/*
+				 * Update BW values to top, actual apply to hw will happen when
+				 * CAM_ISP_HW_CMD_APPLY_CLK_BW_UPDATE is called
+				 */
 				rc = hw_intf->hw_ops.process_cmd(
 					hw_intf->hw_priv,
 					CAM_ISP_HW_CMD_BW_UPDATE_V2,
@@ -5595,36 +5642,62 @@ static int cam_ife_mgr_config_hw(void *hw_mgr_priv,
 		ctx->last_cdm_done_req = 0;
 	}
 
-	for (i = 0; i < CAM_IFE_HW_NUM_MAX; i++) {
-		if (hw_update_data->bw_config_valid[i] == true) {
+	CAM_DBG(CAM_PERF,
+		"ctx_idx=%d, bw_config_version=%d config_valid[BW VFE_CLK SFE_CLK]:[%d %d %d]",
+		ctx->ctx_index, ctx->bw_config_version,
+		hw_update_data->bw_clk_config.bw_config_valid,
+		hw_update_data->bw_clk_config.ife_clock_config_valid,
+		hw_update_data->bw_clk_config.sfe_clock_config_valid);
 
-			CAM_DBG(CAM_PERF, "idx=%d, bw_config_version=%d",
-				ctx, ctx->ctx_index, i,
-				hw_update_data->bw_config_version);
-
-			if (hw_update_data->bw_config_version ==
-				CAM_ISP_BW_CONFIG_V1) {
-				rc = cam_isp_blob_bw_update(
-					(struct cam_isp_bw_config *)
-					&hw_update_data->bw_config[i], ctx);
-				if (rc)
-					CAM_ERR(CAM_PERF,
-					"Bandwidth Update Failed rc: %d", rc);
-			} else if (hw_update_data->bw_config_version ==
-				CAM_ISP_BW_CONFIG_V2) {
-				rc = cam_isp_blob_bw_update_v2(
-					(struct cam_isp_bw_config_v2 *)
-					&hw_update_data->bw_config_v2[i], ctx);
-				if (rc)
-					CAM_ERR(CAM_PERF,
-					"Bandwidth Update Failed rc: %d", rc);
-
-			} else {
-				CAM_ERR(CAM_PERF,
-					"Invalid bw config version: %d",
-					hw_update_data->bw_config_version);
-			}
+	/*
+	 * Update clock and bw values to top layer, the actual application of these
+	 * votes to hw will happen for all relevant hw indices at once, in a separate
+	 * finish update call
+	 */
+	if (hw_update_data->bw_clk_config.ife_clock_config_valid) {
+		rc = cam_isp_blob_ife_clock_update((struct cam_isp_clock_config *)
+			&hw_update_data->bw_clk_config.ife_clock_config, ctx);
+		if (rc) {
+			CAM_ERR(CAM_PERF, "Clock Update Failed, rc=%d", rc);
+			return rc;
 		}
+	}
+
+	if (hw_update_data->bw_clk_config.sfe_clock_config_valid) {
+		rc = cam_isp_blob_sfe_clock_update((struct cam_isp_clock_config *)
+			&hw_update_data->bw_clk_config.sfe_clock_config, ctx);
+		if (rc) {
+			CAM_ERR(CAM_PERF, "Clock Update Failed, rc=%d", rc);
+			return rc;
+		}
+	}
+
+	if (hw_update_data->bw_clk_config.bw_config_valid) {
+		if (ctx->bw_config_version == CAM_ISP_BW_CONFIG_V1) {
+			rc = cam_isp_blob_bw_update(
+				(struct cam_isp_bw_config *)
+				&hw_update_data->bw_clk_config.bw_config, ctx);
+			if (rc) {
+				CAM_ERR(CAM_PERF, "Bandwidth Update Failed rc: %d", rc);
+				return rc;
+			}
+		} else if (ctx->bw_config_version == CAM_ISP_BW_CONFIG_V2) {
+			rc = cam_isp_blob_bw_update_v2((struct cam_isp_bw_config_v2 *)
+				&hw_update_data->bw_clk_config.bw_config_v2, ctx);
+			if (rc) {
+				CAM_ERR(CAM_PERF, "Bandwidth Update Failed rc: %d", rc);
+				return rc;
+			}
+		} else {
+			CAM_ERR(CAM_PERF, "Invalid bw config version: %d", ctx->bw_config_version);
+		}
+	}
+
+	/* Apply the updated values in top layer to the HW*/
+	rc = cam_ife_mgr_finish_clk_bw_update(ctx, cfg->request_id);
+	if (rc) {
+		CAM_ERR(CAM_ISP, "Failed in finishing clk/bw update rc: %d", rc);
+		return rc;
 	}
 
 	CAM_DBG(CAM_ISP,
@@ -5774,11 +5847,11 @@ static int cam_ife_mgr_stop_hw_in_overflow(void *stop_hw_args)
 }
 
 static int cam_ife_mgr_bw_control(struct cam_ife_hw_mgr_ctx *ctx,
-	enum cam_vfe_bw_control_action action)
+	enum cam_isp_bw_control_action action)
 {
 	struct cam_isp_hw_mgr_res             *hw_mgr_res;
 	struct cam_hw_intf                    *hw_intf;
-	struct cam_vfe_bw_control_args         bw_ctrl_args;
+	struct cam_isp_bw_control_args         bw_ctrl_args;
 	int                                    rc = -EINVAL;
 	uint32_t                               i;
 
@@ -5799,7 +5872,30 @@ static int cam_ife_mgr_bw_control(struct cam_ife_hw_mgr_ctx *ctx,
 					hw_intf->hw_priv,
 					CAM_ISP_HW_CMD_BW_CONTROL,
 					&bw_ctrl_args,
-					sizeof(struct cam_vfe_bw_control_args));
+					sizeof(struct cam_isp_bw_control_args));
+				if (rc)
+					CAM_ERR(CAM_ISP, "BW Update failed");
+			} else
+				CAM_WARN(CAM_ISP, "NULL hw_intf!");
+		}
+	}
+
+	list_for_each_entry(hw_mgr_res, &ctx->res_list_sfe_src, list) {
+		for (i = 0; i < CAM_ISP_HW_SPLIT_MAX; i++) {
+			if (!hw_mgr_res->hw_res[i])
+				continue;
+
+			hw_intf = hw_mgr_res->hw_res[i]->hw_intf;
+			if (hw_intf && hw_intf->hw_ops.process_cmd) {
+				bw_ctrl_args.node_res =
+					hw_mgr_res->hw_res[i];
+				bw_ctrl_args.action = action;
+
+				rc = hw_intf->hw_ops.process_cmd(
+					hw_intf->hw_priv,
+					CAM_ISP_HW_CMD_BW_CONTROL,
+					&bw_ctrl_args,
+					sizeof(struct cam_isp_bw_control_args));
 				if (rc)
 					CAM_ERR(CAM_ISP, "BW Update failed");
 			} else
@@ -5812,7 +5908,7 @@ static int cam_ife_mgr_bw_control(struct cam_ife_hw_mgr_ctx *ctx,
 
 static int cam_ife_mgr_pause_hw(struct cam_ife_hw_mgr_ctx *ctx)
 {
-	return cam_ife_mgr_bw_control(ctx, CAM_VFE_BW_CONTROL_EXCLUDE);
+	return cam_ife_mgr_bw_control(ctx, CAM_ISP_BW_CONTROL_EXCLUDE);
 }
 
 /* entry function: stop_hw */
@@ -7640,30 +7736,21 @@ static int cam_isp_blob_sfe_core_cfg_update(
 	return rc;
 }
 
-static int cam_isp_blob_clock_update(
-	uint32_t                               blob_type,
-	struct cam_isp_generic_blob_info      *blob_info,
+static int cam_isp_blob_ife_clock_update(
 	struct cam_isp_clock_config           *clock_config,
-	struct cam_hw_prepare_update_args     *prepare)
+	struct cam_ife_hw_mgr_ctx             *ctx)
 {
-	struct cam_ife_hw_mgr_ctx             *ctx = NULL;
 	struct cam_isp_hw_mgr_res             *hw_mgr_res;
 	struct cam_hw_intf                    *hw_intf;
 	struct cam_vfe_clock_update_args       clock_upd_args;
 	uint64_t                               clk_rate = 0;
 	int                                    rc = -EINVAL;
-	uint32_t                               i;
-	uint32_t                               j;
+	uint32_t                               i, j;
 	bool                                   camif_l_clk_updated = false;
 	bool                                   camif_r_clk_updated = false;
 
-	ctx = prepare->ctxt_to_hw_map;
-
-	CAM_DBG(CAM_PERF,
-		"usage=%u left_clk= %lu right_clk=%lu",
-		clock_config->usage_type,
-		clock_config->left_pix_hz,
-		clock_config->right_pix_hz);
+	CAM_DBG(CAM_PERF, "IFE clk update usage=%u left_clk= %lu right_clk=%lu",
+		clock_config->usage_type, clock_config->left_pix_hz, clock_config->right_pix_hz);
 
 	list_for_each_entry(hw_mgr_res, &ctx->res_list_ife_src, list) {
 		for (i = 0; i < CAM_ISP_HW_SPLIT_MAX; i++) {
@@ -7671,26 +7758,9 @@ static int cam_isp_blob_clock_update(
 			if (!hw_mgr_res->hw_res[i])
 				continue;
 
-			if (hw_mgr_res->res_id == CAM_ISP_HW_VFE_IN_CAMIF) {
-				if (i == CAM_ISP_HW_SPLIT_LEFT) {
-					if (camif_l_clk_updated)
-						continue;
-
-					clk_rate =
-						clock_config->left_pix_hz;
-
-					camif_l_clk_updated = true;
-				} else {
-					if (camif_r_clk_updated)
-						continue;
-
-					clk_rate =
-						clock_config->right_pix_hz;
-
-					camif_r_clk_updated = true;
-				}
-			} else if (hw_mgr_res->res_id ==
-				CAM_ISP_HW_VFE_IN_PDLIB) {
+			if ((hw_mgr_res->res_id == CAM_ISP_HW_VFE_IN_CAMIF) ||
+				(hw_mgr_res->res_id ==
+				CAM_ISP_HW_VFE_IN_PDLIB)) {
 				if (i == CAM_ISP_HW_SPLIT_LEFT) {
 					if (camif_l_clk_updated)
 						continue;
@@ -7725,38 +7795,43 @@ static int cam_isp_blob_clock_update(
 
 			hw_intf = hw_mgr_res->hw_res[i]->hw_intf;
 			if (hw_intf && hw_intf->hw_ops.process_cmd) {
-				clock_upd_args.node_res =
-					hw_mgr_res->hw_res[i];
+				clock_upd_args.node_res = hw_mgr_res->hw_res[i];
 				CAM_DBG(CAM_PERF,
-				"res_id=%u i= %d clk=%llu\n",
-				hw_mgr_res->res_id, i, clk_rate);
+					"Update Clock value res_id=%u i= %d clk=%llu",
+					hw_mgr_res->res_id, i, clk_rate);
 
 				clock_upd_args.clk_rate = clk_rate;
 
+				/*
+				 * Update clock values to top, actual apply to hw will happen when
+				 * CAM_ISP_HW_CMD_APPLY_CLK_BW_UPDATE is called
+				 */
 				rc = hw_intf->hw_ops.process_cmd(
 					hw_intf->hw_priv,
 					CAM_ISP_HW_CMD_CLOCK_UPDATE,
 					&clock_upd_args,
 					sizeof(
 					struct cam_vfe_clock_update_args));
-				if (rc)
+				if (rc) {
 					CAM_ERR(CAM_PERF,
-						"Clock Update failed");
+						"IFE:%d Clock Update failed clk_rate:%llu rc:%d",
+						hw_intf->hw_idx, clk_rate, rc);
+					goto end;
+				}
 			} else
 				CAM_WARN(CAM_ISP, "NULL hw_intf!");
 		}
 	}
 
+end:
 	return rc;
 }
 
+
 static int cam_isp_blob_sfe_clock_update(
-	uint32_t                               blob_type,
-	struct cam_isp_generic_blob_info      *blob_info,
 	struct cam_isp_clock_config           *clock_config,
-	struct cam_hw_prepare_update_args     *prepare)
+	struct cam_ife_hw_mgr_ctx             *ctx)
 {
-	struct cam_ife_hw_mgr_ctx             *ctx = NULL;
 	struct cam_isp_hw_mgr_res             *hw_mgr_res;
 	struct cam_hw_intf                    *hw_intf;
 	struct cam_sfe_clock_update_args       clock_upd_args;
@@ -7766,13 +7841,10 @@ static int cam_isp_blob_sfe_clock_update(
 	bool                                   l_clk_updated = false;
 	bool                                   r_clk_updated = false;
 
-	ctx = prepare->ctxt_to_hw_map;
 
 	CAM_DBG(CAM_PERF,
 		"SFE clk update usage: %u left_clk: %lu right_clk: %lu",
-		clock_config->usage_type,
-		clock_config->left_pix_hz,
-		clock_config->right_pix_hz);
+		clock_config->usage_type, clock_config->left_pix_hz, clock_config->right_pix_hz);
 
 	list_for_each_entry(hw_mgr_res, &ctx->res_list_sfe_src, list) {
 		for (i = 0; i < CAM_ISP_HW_SPLIT_MAX; i++) {
@@ -7811,6 +7883,10 @@ static int cam_isp_blob_sfe_clock_update(
 				hw_mgr_res->res_id, i, clk_rate);
 
 				clock_upd_args.clk_rate = clk_rate;
+				/*
+				 * Update clock values to top, actual apply to hw will happen when
+				 * CAM_ISP_HW_CMD_APPLY_CLK_BW_UPDATE is called
+				 */
 				rc = hw_intf->hw_ops.process_cmd(
 					hw_intf->hw_priv,
 					CAM_ISP_HW_CMD_CLOCK_UPDATE,
@@ -8189,7 +8265,9 @@ static int cam_isp_packet_generic_blob_handler(void *user_data,
 	}
 		break;
 	case CAM_ISP_GENERIC_BLOB_TYPE_CLOCK_CONFIG: {
+		size_t clock_config_size = 0;
 		struct cam_isp_clock_config    *clock_config;
+		struct cam_isp_prepare_hw_update_data   *prepare_hw_data;
 
 		if (blob_size < sizeof(struct cam_isp_clock_config)) {
 			CAM_ERR(CAM_ISP, "Invalid blob size %u", blob_size);
@@ -8227,10 +8305,14 @@ static int cam_isp_packet_generic_blob_handler(void *user_data,
 			return -EINVAL;
 		}
 
-		rc = cam_isp_blob_clock_update(blob_type, blob_info,
-			clock_config, prepare);
-		if (rc)
-			CAM_ERR(CAM_PERF, "Clock Update Failed, rc=%d", rc);
+		prepare_hw_data = (struct cam_isp_prepare_hw_update_data  *)
+			prepare->priv;
+		clock_config_size = sizeof(struct cam_isp_clock_config) +
+			((clock_config->num_rdi - 1) *
+			sizeof(clock_config->rdi_hz));
+		memcpy(&prepare_hw_data->bw_clk_config.ife_clock_config, clock_config,
+			clock_config_size);
+		prepare_hw_data->bw_clk_config.ife_clock_config_valid = true;
 	}
 		break;
 	case CAM_ISP_GENERIC_BLOB_TYPE_BW_CONFIG: {
@@ -8277,7 +8359,7 @@ static int cam_isp_packet_generic_blob_handler(void *user_data,
 		}
 
 		if (!prepare || !prepare->priv ||
-			(bw_config->usage_type >= CAM_IFE_HW_NUM_MAX)) {
+			(bw_config->usage_type >= CAM_ISP_HW_USAGE_TYPE_MAX)) {
 			CAM_ERR(CAM_ISP, "Invalid inputs usage type %d",
 				bw_config->usage_type);
 			return -EINVAL;
@@ -8286,10 +8368,10 @@ static int cam_isp_packet_generic_blob_handler(void *user_data,
 		prepare_hw_data = (struct cam_isp_prepare_hw_update_data  *)
 			prepare->priv;
 
-		memcpy(&prepare_hw_data->bw_config[bw_config->usage_type],
-			bw_config, sizeof(prepare_hw_data->bw_config[0]));
-		prepare_hw_data->bw_config_version = CAM_ISP_BW_CONFIG_V1;
-		prepare_hw_data->bw_config_valid[bw_config->usage_type] = true;
+		memcpy(&prepare_hw_data->bw_clk_config.bw_config, bw_config,
+			sizeof(prepare_hw_data->bw_clk_config.bw_config));
+		ife_mgr_ctx->bw_config_version = CAM_ISP_BW_CONFIG_V1;
+		prepare_hw_data->bw_clk_config.bw_config_valid = true;
 	}
 		break;
 	case CAM_ISP_GENERIC_BLOB_TYPE_BW_CONFIG_V2: {
@@ -8339,7 +8421,7 @@ static int cam_isp_packet_generic_blob_handler(void *user_data,
 		}
 
 		if (!prepare || !prepare->priv ||
-			(bw_config->usage_type >= CAM_IFE_HW_NUM_MAX)) {
+			(bw_config->usage_type >= CAM_ISP_HW_USAGE_TYPE_MAX)) {
 			CAM_ERR(CAM_ISP, "Invalid inputs usage type %d",
 				bw_config->usage_type);
 			return -EINVAL;
@@ -8348,17 +8430,16 @@ static int cam_isp_packet_generic_blob_handler(void *user_data,
 		prepare_hw_data = (struct cam_isp_prepare_hw_update_data  *)
 			prepare->priv;
 
-		memset(&prepare_hw_data->bw_config_v2[bw_config->usage_type],
-			0, sizeof(
-			prepare_hw_data->bw_config_v2[bw_config->usage_type]));
+		memset(&prepare_hw_data->bw_clk_config.bw_config_v2, 0,
+			sizeof(prepare_hw_data->bw_clk_config.bw_config_v2));
 		bw_config_size = sizeof(struct cam_isp_bw_config_v2) +
 			((bw_config->num_paths - 1) *
 			sizeof(struct cam_axi_per_path_bw_vote));
-		memcpy(&prepare_hw_data->bw_config_v2[bw_config->usage_type],
-			bw_config, bw_config_size);
+		memcpy(&prepare_hw_data->bw_clk_config.bw_config_v2, bw_config,
+			bw_config_size);
 
-		prepare_hw_data->bw_config_version = CAM_ISP_BW_CONFIG_V2;
-		prepare_hw_data->bw_config_valid[bw_config->usage_type] = true;
+		ife_mgr_ctx->bw_config_version = CAM_ISP_BW_CONFIG_V2;
+		prepare_hw_data->bw_clk_config.bw_config_valid = true;
 	}
 		break;
 	case CAM_ISP_GENERIC_BLOB_TYPE_UBWC_CONFIG: {
@@ -8782,7 +8863,9 @@ static int cam_sfe_packet_generic_blob_handler(void *user_data,
 
 	switch (blob_type) {
 	case CAM_ISP_GENERIC_BLOB_TYPE_SFE_CLOCK_CONFIG: {
+		size_t clock_config_size = 0;
 		struct cam_isp_clock_config    *clock_config;
+		struct cam_isp_prepare_hw_update_data *prepare_hw_data;
 
 		if (blob_size < sizeof(struct cam_isp_clock_config)) {
 			CAM_ERR(CAM_ISP, "Invalid blob size %u", blob_size);
@@ -8820,10 +8903,14 @@ static int cam_sfe_packet_generic_blob_handler(void *user_data,
 			return -EINVAL;
 		}
 
-		rc = cam_isp_blob_sfe_clock_update(blob_type, blob_info,
-			clock_config, prepare);
-		if (rc)
-			CAM_ERR(CAM_PERF, "Clock Update Failed, rc=%d", rc);
+		prepare_hw_data = (struct cam_isp_prepare_hw_update_data  *)
+			prepare->priv;
+		clock_config_size = sizeof(struct cam_isp_clock_config) +
+			((clock_config->num_rdi - 1) *
+			sizeof(clock_config->rdi_hz));
+		memcpy(&prepare_hw_data->bw_clk_config.sfe_clock_config, clock_config,
+			clock_config_size);
+		prepare_hw_data->bw_clk_config.sfe_clock_config_valid = true;
 	}
 		break;
 	case CAM_ISP_GENERIC_BLOB_TYPE_SFE_OUT_CONFIG: {
@@ -9647,13 +9734,6 @@ static int cam_ife_mgr_prepare_hw_update(void *hw_mgr_priv,
 	prepare->num_out_map_entries = 0;
 	prepare->num_reg_dump_buf = 0;
 
-	memset(&prepare_hw_data->bw_config[0], 0x0,
-		sizeof(prepare_hw_data->bw_config[0]) *
-		CAM_IFE_HW_NUM_MAX);
-	memset(&prepare_hw_data->bw_config_valid[0], 0x0,
-		sizeof(prepare_hw_data->bw_config_valid[0]) *
-		CAM_IFE_HW_NUM_MAX);
-
 	/* Assign IFE RD for non SFE targets */
 	if (ctx->ctx_type != CAM_IFE_CTX_TYPE_SFE)
 		res_list_ife_rd_tmp = &ctx->res_list_ife_in_rd;
@@ -9858,7 +9938,7 @@ end:
 
 static int cam_ife_mgr_resume_hw(struct cam_ife_hw_mgr_ctx *ctx)
 {
-	return cam_ife_mgr_bw_control(ctx, CAM_VFE_BW_CONTROL_INCLUDE);
+	return cam_ife_mgr_bw_control(ctx, CAM_ISP_BW_CONTROL_INCLUDE);
 }
 
 static int cam_ife_mgr_sof_irq_debug(

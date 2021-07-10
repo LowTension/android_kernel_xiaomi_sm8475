@@ -7,7 +7,6 @@
 #define _CAM_VFE_TOP_COMMON_H_
 
 #define CAM_VFE_TOP_MUX_MAX 6
-#define CAM_VFE_DELAY_BW_REDUCTION_NUM_FRAMES 18
 
 #include "cam_cpas_api.h"
 #include "cam_vfe_hw_intf.h"
@@ -23,14 +22,18 @@ struct cam_vfe_top_priv_common {
 	uint32_t                        hw_idx;
 	struct cam_axi_vote             applied_axi_vote;
 	struct cam_axi_vote             req_axi_vote[CAM_VFE_TOP_MUX_MAX];
-	struct cam_axi_vote             last_vote[
-					CAM_VFE_DELAY_BW_REDUCTION_NUM_FRAMES];
-	uint32_t                        last_counter;
+	struct cam_axi_vote             last_bw_vote[CAM_DELAY_CLK_BW_REDUCTION_NUM_REQ];
+	uint64_t                        last_total_bw_vote[CAM_DELAY_CLK_BW_REDUCTION_NUM_REQ];
+	uint32_t                        last_bw_counter;
+	uint64_t                        last_clk_vote[CAM_DELAY_CLK_BW_REDUCTION_NUM_REQ];
+	uint32_t                        last_clk_counter;
 	uint64_t                        total_bw_applied;
+	enum cam_clk_bw_state           clk_state;
+	enum cam_clk_bw_state           bw_state;
 	uint32_t                        hw_version;
-	enum cam_vfe_bw_control_action  axi_vote_control[CAM_VFE_TOP_MUX_MAX];
+	enum cam_isp_bw_control_action  axi_vote_control[CAM_VFE_TOP_MUX_MAX];
 	struct cam_hw_soc_info         *soc_info;
-	unsigned long                   hw_clk_rate;
+	unsigned long                   applied_clk_rate;
 	unsigned long                   req_clk_rate[CAM_VFE_TOP_MUX_MAX];
 
 };
@@ -59,14 +62,8 @@ struct cam_vfe_top_dump_data {
 		lut_entry[CAM_VFE_TOP_MAX_LUT_DUMP_ENTRIES];
 };
 
-int cam_vfe_top_set_hw_clk_rate(
-	struct cam_vfe_top_priv_common *top_common);
-
 int cam_vfe_top_clock_update(struct cam_vfe_top_priv_common *top_common,
 	void *cmd_args, uint32_t arg_size);
-
-int cam_vfe_top_set_axi_bw_vote(struct cam_vfe_soc_private *soc_private,
-	struct cam_vfe_top_priv_common *top_common, bool start_stop);
 
 int cam_vfe_top_bw_update_v2(struct cam_vfe_soc_private *soc_private,
 	struct cam_vfe_top_priv_common *top_common, void *cmd_args,
@@ -79,5 +76,13 @@ int cam_vfe_top_bw_update(struct cam_vfe_soc_private *soc_private,
 int cam_vfe_top_bw_control(struct cam_vfe_soc_private *soc_private,
 	struct cam_vfe_top_priv_common *top_common, void *cmd_args,
 	uint32_t arg_size);
+
+int cam_vfe_top_apply_clk_bw_update(
+	struct cam_vfe_top_priv_common *top_common, void *cmd_args,
+	uint32_t arg_size);
+
+int cam_vfe_top_apply_clock_start_stop(struct cam_vfe_top_priv_common *top_common);
+
+int cam_vfe_top_apply_bw_start_stop(struct cam_vfe_top_priv_common *top_common);
 
 #endif /* _CAM_VFE_TOP_COMMON_H_ */
