@@ -12,6 +12,7 @@
 #include "cam_common_util.h"
 
 #define CAM_UNIQUE_SRC_HDL_MAX 50
+#define CAM_PRESIL_UNIQUE_HDL_MAX 50
 
 struct cam_patch_unique_src_buf_tbl {
 	int32_t       hdl;
@@ -457,6 +458,171 @@ int cam_packet_util_process_generic_cmd_buffer(
 		}
 
 		blob_ptr += (blob_block_size / sizeof(uint32_t));
+	}
+
+end:
+	return rc;
+}
+
+int cam_presil_retrieve_buffers_from_packet(struct cam_packet *packet, int iommu_hdl,
+	int out_res_id)
+{
+	int rc = 0, i, j;
+	struct cam_buf_io_cfg   *io_cfg = NULL;
+	dma_addr_t               io_addr[CAM_PACKET_MAX_PLANES];
+	size_t                   size;
+
+	if (!packet || (iommu_hdl < 0)) {
+		CAM_ERR(CAM_PRESIL, "Invalid params packet %pK iommu_hdl: %d", packet, iommu_hdl);
+		return -EINVAL;
+	}
+
+	CAM_DBG(CAM_PRESIL, "Retrieving output buffer corresponding to res: 0x%x", out_res_id);
+	io_cfg = (struct cam_buf_io_cfg *)((uint8_t *)&packet->payload + packet->io_configs_offset);
+	for (i = 0; i < packet->num_io_configs; i++) {
+		if ((io_cfg[i].direction != CAM_BUF_OUTPUT) ||
+			(io_cfg[i].resource_type != out_res_id))
+			continue;
+
+		memset(io_addr, 0, sizeof(io_addr));
+		for (j = 0; j < CAM_PACKET_MAX_PLANES; j++) {
+			if (!io_cfg[i].mem_handle[j])
+				break;
+
+			rc = cam_mem_get_io_buf(io_cfg[i].mem_handle[j], iommu_hdl, &io_addr[j],
+				&size, NULL);
+			if (rc) {
+				CAM_ERR(CAM_PRESIL, "no io addr for plane%d", j);
+				rc = -ENOMEM;
+				return rc;
+			}
+
+			/* For presil, address should be within 32 bit */
+			if (io_addr[j] >> 32) {
+				CAM_ERR(CAM_PRESIL,
+					"Invalid address, presil mapped address should be 32 bit");
+				rc = -EINVAL;
+				return rc;
+			}
+
+			CAM_INFO(CAM_PRESIL,
+				"Retrieving IO CFG buffer:%d addr: 0x%x offset 0x%x res_id: 0x%x",
+				io_cfg[i].mem_handle[j], io_addr[j], io_cfg[i].offsets[j],
+				io_cfg[i].resource_type);
+			cam_mem_mgr_retrieve_buffer_from_presil(io_cfg[i].mem_handle[j], size,
+				io_cfg[i].offsets[j], iommu_hdl);
+		}
+	}
+
+	return rc;
+}
+
+static void cam_presil_add_unique_buf_hdl_to_list(int32_t buf_hdl,
+	int32_t *hdl_list, int *num_hdls, int max_handles)
+{
+	int k;
+	bool hdl_found = false;
+
+	if (!buf_hdl)
+		return;
+
+	if (*num_hdls >= max_handles) {
+		CAM_ERR(CAM_PRESIL, "Failed to add entry num_hdls: %d max_handles:%d", *num_hdls,
+			max_handles);
+		return;
+	}
+
+	for (k = 0; k < *num_hdls; k++) {
+		if (hdl_list[k] == buf_hdl) {
+			hdl_found = true;
+			break;
+		}
+	}
+
+	if (!hdl_found)
+		hdl_list[(*num_hdls)++] = buf_hdl;
+}
+
+int cam_presil_send_buffers_from_packet(struct cam_packet *packet, int img_iommu_hdl,
+	int cdm_iommu_hdl)
+{
+	struct cam_buf_io_cfg   *io_cfg = NULL;
+	struct cam_cmd_buf_desc *cmd_desc = NULL;
+	struct cam_patch_desc *patch_desc = NULL;
+	int  i, j, rc = 0;
+	int32_t unique_img_buffers[CAM_PRESIL_UNIQUE_HDL_MAX] = {0};
+	int32_t unique_cmd_buffers[CAM_PRESIL_UNIQUE_HDL_MAX] = {0};
+	int num_img_handles = 0, num_cmd_handles = 0;
+
+	if(!packet) {
+		CAM_ERR(CAM_PRESIL, "Packet is NULL");
+		return -EINVAL;
+	}
+
+	if (img_iommu_hdl == -1) {
+		goto send_cmd_buffers;
+	}
+
+	/* Adding IO config buffer handles to list*/
+	io_cfg = (struct cam_buf_io_cfg *)((uint8_t *)&packet->payload + packet->io_configs_offset);
+	for (i = 0; i < packet->num_io_configs; i++) {
+		if (io_cfg[i].direction == CAM_BUF_OUTPUT)
+			continue;
+
+		for (j = 0; j < CAM_PACKET_MAX_PLANES; j++) {
+			if (!io_cfg[i].mem_handle[j])
+				break;
+
+			CAM_DBG(CAM_PRESIL, "Adding IO CFG buffer:%d", io_cfg[i].mem_handle[j]);
+			cam_presil_add_unique_buf_hdl_to_list(io_cfg[i].mem_handle[j],
+				unique_img_buffers, &num_img_handles, CAM_PRESIL_UNIQUE_HDL_MAX);
+		}
+	}
+
+	for (i = 0; i < num_img_handles; i++) {
+		CAM_DBG(CAM_PRESIL, "Sending Image buffer i:%d mem_handle:%d", i,
+			unique_img_buffers[i]);
+		rc = cam_mem_mgr_send_buffer_to_presil(img_iommu_hdl,
+			unique_img_buffers[i]);
+		if (rc) {
+			CAM_ERR(CAM_PRESIL, "Failed to send buffer i:%d mem_handle:%d rc:%d",
+					i, unique_img_buffers[i], rc);
+			return rc;
+		}
+	}
+
+send_cmd_buffers:
+	if (cdm_iommu_hdl == -1) {
+		goto end;
+	}
+
+	/* Adding CMD buffer handles to list*/
+	cmd_desc = (struct cam_cmd_buf_desc *) ((uint8_t *)&packet->payload +
+		packet->cmd_buf_offset);
+	for (i = 0; i < packet->num_cmd_buf; i++) {
+		CAM_DBG(CAM_PRESIL, "Adding CMD buffer:%d", cmd_desc[i].mem_handle);
+		cam_presil_add_unique_buf_hdl_to_list(cmd_desc[i].mem_handle,
+				unique_cmd_buffers, &num_cmd_handles, CAM_PRESIL_UNIQUE_HDL_MAX);
+	}
+
+	/* Adding Patch src buffer handles to list */
+	patch_desc = (struct cam_patch_desc *) ((uint8_t *)&packet->payload + packet->patch_offset);
+	for (i = 0; i < packet->num_patches; i++) {
+		CAM_DBG(CAM_PRESIL, "Adding Patch src buffer:%d", patch_desc[i].src_buf_hdl);
+		cam_presil_add_unique_buf_hdl_to_list(patch_desc[i].src_buf_hdl,
+				unique_cmd_buffers, &num_cmd_handles, CAM_PRESIL_UNIQUE_HDL_MAX);
+	}
+
+	for (i = 0; i < num_cmd_handles; i++) {
+		CAM_DBG(CAM_PRESIL, "Sending Command buffer i:%d mem_handle:%d", i,
+			unique_cmd_buffers[i]);
+		rc = cam_mem_mgr_send_buffer_to_presil(cdm_iommu_hdl,
+			unique_cmd_buffers[i]);
+		if (rc) {
+			CAM_ERR(CAM_PRESIL, "Failed to send buffer i:%d mem_handle:%d rc:%d",
+					i, unique_cmd_buffers[i], rc);
+			return rc;
+		}
 	}
 
 end:

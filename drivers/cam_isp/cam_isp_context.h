@@ -474,6 +474,7 @@ struct cam_isp_ctx_mini_dump_info {
  * @hw_intf:            ISP hw manager interface
  * @ctx_id:             ID for this context
  * @isp_device_type     Isp device type
+ * @img_iommu_hdl       IOMMU HDL for image buffers
  *
  */
 int cam_isp_context_init(struct cam_isp_context *ctx,
@@ -481,7 +482,8 @@ int cam_isp_context_init(struct cam_isp_context *ctx,
 	struct cam_req_mgr_kmd_ops *bridge_ops,
 	struct cam_hw_mgr_intf *hw_intf,
 	uint32_t ctx_id,
-	uint32_t isp_device_type);
+	uint32_t isp_device_type,
+	int img_iommu_hdl);
 
 /**
  * cam_isp_context_deinit()

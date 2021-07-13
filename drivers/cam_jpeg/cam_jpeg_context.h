@@ -49,12 +49,14 @@ struct cam_jpeg_ctx_irq_ops {
  * @ctx_base: Context base from cam_context
  * @hw_intf: JPEG hw manager interface
  * @ctx_id: ID for this context
+ * @img_iommu_hdl: IOMMU HDL for image buffers
  *
  */
 int cam_jpeg_context_init(struct cam_jpeg_context *ctx,
 	struct cam_context *ctx_base,
 	struct cam_hw_mgr_intf *hw_intf,
-	uint32_t ctx_id);
+	uint32_t ctx_id,
+	int img_iommu_hdl);
 
 /**
  * cam_jpeg_context_deinit()

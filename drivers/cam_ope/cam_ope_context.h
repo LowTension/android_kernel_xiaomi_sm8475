@@ -31,9 +31,11 @@ struct cam_ope_context {
  * @ctx:     Pointer to context
  * @hw_intf: Pointer to OPE hardware interface
  * @ctx_id:  ID for this context
+ * @img_iommu_hdl: IOMMU HDL for image buffers
+ *
  */
 int cam_ope_context_init(struct cam_ope_context *ctx,
-	struct cam_hw_mgr_intf *hw_intf, uint32_t ctx_id);
+	struct cam_hw_mgr_intf *hw_intf, uint32_t ctx_id, int img_iommu_hdl);
 
 /**
  * cam_ope_context_deinit() - OPE context deinit

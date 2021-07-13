@@ -24,8 +24,10 @@
 #include "cam_packet_util.h"
 #include "cam_debug_util.h"
 #include "cam_cpas_api.h"
+#include "cam_mem_mgr.h"
 #include "cam_mem_mgr_api.h"
 #include "cam_common_util.h"
+#include "cam_presil_hw_access.h"
 
 #define CAM_IFE_SAFE_DISABLE 0
 #define CAM_IFE_SAFE_ENABLE 1
@@ -5808,6 +5810,19 @@ static int cam_ife_mgr_config_hw(void *hw_mgr_priv,
 			cdm_cmd->cmd[i - skip].arbitrate = false;
 		}
 		cdm_cmd->cmd_arrary_count = cfg->num_hw_update_entries - skip;
+
+		if (cam_presil_mode_enabled()) {
+			CAM_INFO(CAM_ISP, "Sending relevant buffers for request:%llu to presil",
+				cfg->request_id);
+			rc = cam_presil_send_buffers_from_packet(hw_update_data->packet,
+				g_ife_hw_mgr.mgr_common.img_iommu_hdl,
+				g_ife_hw_mgr.mgr_common.cmd_iommu_hdl);
+			if (rc) {
+				CAM_ERR(CAM_ISP, "Error sending buffers for request:%llu to presil",
+					cfg->request_id);
+				return rc;
+			}
+		}
 
 		reinit_completion(&ctx->config_done_complete);
 		ctx->applied_req_id = cfg->request_id;

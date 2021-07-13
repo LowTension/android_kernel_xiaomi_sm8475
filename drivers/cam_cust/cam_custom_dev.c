@@ -138,7 +138,7 @@ static int cam_custom_component_bind(struct device *dev,
 			&g_custom_dev.ctx[i],
 			&node->crm_node_intf,
 			&node->hw_mgr_intf,
-			i);
+			i, iommu_hdl);
 		if (rc) {
 			CAM_ERR(CAM_CUSTOM, "Custom context init failed!");
 			goto unregister;

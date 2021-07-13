@@ -209,7 +209,7 @@ static int cam_icp_component_bind(struct device *dev,
 	for (i = 0; i < CAM_ICP_CTX_MAX; i++) {
 		g_icp_dev.ctx_icp[i].base = &g_icp_dev.ctx[i];
 		rc = cam_icp_context_init(&g_icp_dev.ctx_icp[i],
-					hw_mgr_intf, i);
+					hw_mgr_intf, i, iommu_hdl);
 		if (rc) {
 			CAM_ERR(CAM_ICP, "ICP context init failed");
 			goto ctx_fail;
