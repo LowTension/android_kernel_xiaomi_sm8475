@@ -3183,7 +3183,7 @@ static bool cam_req_mgr_cb_notify_err(
 		(!err_info->req_id)) {
 		CAM_ERR(CAM_CRM, "invalid param: Err %d req %lld",
 			err_info->error, err_info->req_id);
-		rc = false;
+		rc = true;
 		goto end;
 	}
 	tmp_slot = &link->req.in_q->slot[idx];
@@ -3233,10 +3233,12 @@ static bool cam_req_mgr_cb_notify_err(
 				if (dev->ops && dev->ops->change_state) {
 					state_info.dev_hdl = dev->dev_hdl;
 
-					if (!(dev->ops->change_state(&state_info))) {
+					if (dev->ops->change_state(&state_info)) {
 						CAM_DBG(CAM_CRM,
-							"Err on bubble notify");
+							"Err on bubble notify req %lld",
+							err_info->req_id);
 						rc = false;
+						goto end;
 					}
 
 					task = cam_req_mgr_workq_get_task(link->workq);
@@ -3473,14 +3475,14 @@ static int cam_req_mgr_send_to_bubble(
 					rc = dev->ops->change_state(
 						&state_info);
 					if (rc < 0)
-						CAM_INFO(CAM_CRM,
+						CAM_ERR(CAM_CRM,
 							"Failed to change state");
 				} else {
-					link->bubble_skip = link->max_delay;
+					link->bubble_skip = link->max_delay - 1;
 				}
 			}
 			rc = cam_req_mgr_cb_notify_err(&notify);
-			if (!rc)
+			if (rc)
 				CAM_INFO(CAM_CRM,
 					"Bubble recovery failed");
 		}
@@ -3534,7 +3536,8 @@ static int cam_req_mgr_is_slave_link_ready(
 	struct cam_req_mgr_core_link *master_link,
 	struct cam_req_mgr_slot *slot,
 	int32_t fps,
-	uint64_t frame_duration_ns)
+	uint64_t frame_duration_ns,
+	uint64_t curr_boot_timestamp_ns)
 {
 	struct cam_req_mgr_slot             *sync_slot = NULL;
 	struct cam_req_mgr_req_queue        *sync_in_q;
@@ -3546,6 +3549,7 @@ static int cam_req_mgr_is_slave_link_ready(
 	uint64_t                             curr_sync_time_ns = 0;
 	int64_t                              diff = 0;
 	uint64_t                             threshold_ns = 0;
+	uint64_t                             time_left_to_apply;
 	int i, rc = 0;
 
 	sof_time = master_link->sync_data.sof_time;
@@ -3673,7 +3677,7 @@ static int cam_req_mgr_is_slave_link_ready(
 			rc = cam_req_mgr_send_to_bubble(master_link,
 					(sync_slot->req_id -
 					sync_link->max_delay));
-					master_link->sync_data.sync_link_sof_skip = true;
+			master_link->sync_data.sync_link_sof_skip = true;
 			CAM_DBG(CAM_CRM,
 				"Master sof %lld slave sof %lld",
 				sof_time.csid_timestamp_ns,
@@ -3705,6 +3709,20 @@ static int cam_req_mgr_is_slave_link_ready(
 			dump_info.m_req_id = slot->req_id;
 			cam_req_mgr_dump_link_info(&dump_info);
 			rc = -EINVAL;
+		}
+
+		time_left_to_apply = (sof_time.boottime_ns +
+			((1000 * MILLI_SECOND_CONVERSION_FACTOR) /
+			master_link->fps)) - curr_boot_timestamp_ns;
+
+		if (time_left_to_apply < (4 * MILLI_SECOND_CONVERSION_FACTOR)) {
+			CAM_WARN_RATE_LIMIT(CAM_CRM,
+				"SOF time %lld epoch time %lld Time left to apply %lld ",
+				sof_time.boottime_ns, curr_boot_timestamp_ns, time_left_to_apply);
+		} else {
+			CAM_DBG(CAM_CRM,
+				"SOF time %lld epoch time %lld Time left to apply %lld ",
+				sof_time.boottime_ns, curr_boot_timestamp_ns, time_left_to_apply);
 		}
 	}
 	return rc;
@@ -3894,7 +3912,8 @@ static int cam_req_mgr_cb_notify_trigger(
 			 */
 
 			rc = cam_req_mgr_is_slave_link_ready(
-				link, slot, trigger_data->fps, frame_duration);
+				link, slot, trigger_data->fps, frame_duration,
+				curr_boot_timestamp_ns);
 			if (rc) {
 				CAM_DBG(CAM_CRM, "Sync link not ready");
 				return rc;
