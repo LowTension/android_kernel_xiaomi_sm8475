@@ -3600,10 +3600,10 @@ static int cam_ife_csid_ver2_enable_hw(
 	if (csid_hw->top_err_irq_handle < 1) {
 		CAM_ERR(CAM_ISP, "csid[%d] top error irq subscribe fail",
 			csid_hw->hw_intf->hw_idx);
-		 cam_irq_controller_unsubscribe_irq(
+		cam_irq_controller_unsubscribe_irq(
 			csid_hw->csid_irq_controller,
-			csid_hw->top_err_irq_handle);
-		 csid_hw->top_err_irq_handle = 0;
+			csid_hw->buf_done_irq_handle);
+		csid_hw->buf_done_irq_handle = 0;
 		return -EINVAL;
 	}
 
@@ -3912,11 +3912,11 @@ int cam_ife_csid_ver2_stop(void *hw_priv,
 		rc = cam_irq_controller_unsubscribe_irq(
 			csid_hw->csid_irq_controller,
 			csid_hw->top_err_irq_handle);
-		csid_hw->buf_done_irq_handle = 0;
+		csid_hw->top_err_irq_handle = 0;
 	}
 
-	mutex_unlock(&csid_hw->hw_info->hw_mutex);
 	cam_ife_csid_ver2_disable_csi2(csid_hw);
+	mutex_unlock(&csid_hw->hw_info->hw_mutex);
 
 	reset.reset_type = CAM_IFE_CSID_RESET_PATH;
 	cam_ife_csid_ver2_reset(hw_priv, &reset,
