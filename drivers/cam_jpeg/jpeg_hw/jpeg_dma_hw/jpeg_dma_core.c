@@ -182,6 +182,7 @@ irqreturn_t cam_jpeg_dma_irq(int irq_num, void *data)
 	if (CAM_JPEG_HW_IRQ_IS_FRAME_DONE(irq_status, hw_info)) {
 		spin_lock(&jpeg_dma_dev->hw_lock);
 		if (core_info->core_state == CAM_JPEG_DMA_CORE_READY) {
+			CAM_TRACE(CAM_JPEG, "DMA FrameDone IRQ");
 			core_info->result_size = 1;
 			CAM_DBG(CAM_JPEG, "result_size %d",
 				core_info->result_size);

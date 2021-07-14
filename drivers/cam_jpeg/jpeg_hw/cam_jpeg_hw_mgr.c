@@ -58,6 +58,7 @@ static int cam_jpeg_process_next_hw_update(void *priv, void *data,
 	uint32_t dev_type;
 	struct cam_jpeg_hw_cfg_req *p_cfg_req = NULL;
 	uint32_t cdm_cfg_to_insert = 0;
+	uint32_t pass_num;
 
 	if (!data || !priv) {
 		CAM_ERR(CAM_JPEG, "Invalid data");
@@ -103,10 +104,13 @@ static int cam_jpeg_process_next_hw_update(void *priv, void *data,
 	/* insert next cdm payload at index */
 	/* for enc or dma 1st pass at index 1 */
 	/* for dma 2nd pass at index 2, for 3rd at 4 */
-	if (p_cfg_req->num_hw_entry_processed == 0)
+	if (p_cfg_req->num_hw_entry_processed == 0) {
 		cdm_cfg_to_insert = CAM_JPEG_CFG;
-	else
+		pass_num = 1;
+	} else {
 		cdm_cfg_to_insert = p_cfg_req->num_hw_entry_processed + 2;
+		pass_num = 2;
+	}
 
 	CAM_DBG(CAM_JPEG, "processed %d total %d using cfg entry %d for %pK",
 		p_cfg_req->num_hw_entry_processed,
@@ -141,7 +145,10 @@ static int cam_jpeg_process_next_hw_update(void *priv, void *data,
 		goto end_error;
 	}
 
-	CAM_TRACE(CAM_JPEG, "Start JPEG ENC Req %llu", config_args->request_id);
+	CAM_TRACE(CAM_JPEG, "Start JPEG %s ctx %lld Req %llu Pass %d",
+		(dev_type == CAM_JPEG_DEV_TYPE_ENC) ? "ENC" : "DMA",
+		(uint64_t) ctx_data,
+		config_args->request_id, pass_num);
 
 	rc = hw_mgr->devices[dev_type][0]->hw_ops.start(
 		hw_mgr->devices[dev_type][0]->hw_priv, NULL, 0);
