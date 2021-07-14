@@ -84,14 +84,16 @@ struct cam_csiphy_aon_sel_params_t {
 
 /**
  * struct cam_cphy_dphy_status_reg_params_t
- * @csiphy_3ph_status0_offset       : CSIPhy 3ph status addr
- * @2ph_status0_offset              : CSIPhy 2ph status addr
- * @3ph_status_size                 : CSIPhy 3ph status registers size
- * @2ph_status_size                 : CSIPhy 2ph status registers size
+ * @csiphy_3ph_status0_offset              : CSIPhy 3ph status addr
+ * @csiphy_2ph_status0_offset              : CSIPhy 2ph status addr
+ * @cphy_lane_status                       : CPHY Lane status6 register offsets for each lane
+ * @csiphy_3ph_status_size                 : CSIPhy 3ph status registers size
+ * @csiphy_2ph_status_size                 : CSIPhy 2ph status registers size
  */
 struct cam_cphy_dphy_status_reg_params_t {
 	uint32_t csiphy_3ph_status0_offset;
 	uint32_t csiphy_2ph_status0_offset;
+	uint32_t cphy_lane_status[CAM_CSIPHY_MAX_CPHY_LANES];
 	uint16_t csiphy_3ph_status_size;
 	uint16_t csiphy_2ph_status_size;
 };
