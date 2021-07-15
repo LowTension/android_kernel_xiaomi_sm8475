@@ -602,7 +602,7 @@ static void cam_cpastop_work(struct work_struct *work)
 		return;
 	}
 
-	cam_req_mgr_thread_switch_delay_detect(
+	cam_req_mgr_thread_switch_delay_detect(CAM_CPAS_WORKQUEUE_NAME,
 			payload->workq_scheduled_ts);
 
 	cpas_hw = payload->hw;

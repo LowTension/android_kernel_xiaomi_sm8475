@@ -399,7 +399,7 @@ int cam_cci_parse_dt_info(struct platform_device *pdev,
 
 	for (i = 0; i < MASTER_MAX; i++) {
 		new_cci_dev->write_wq[i] = create_singlethread_workqueue(
-			"cam_cci_wq");
+			CAM_CCI_WORKQUEUE_NAME);
 		if (!new_cci_dev->write_wq[i])
 			CAM_ERR(CAM_CCI, "Failed to create write wq");
 	}

@@ -1306,7 +1306,7 @@ static void cam_hw_cdm_work(struct work_struct *work)
 		return;
 	}
 
-	cam_req_mgr_thread_switch_delay_detect(
+	cam_req_mgr_thread_switch_delay_detect(cdm_hw->soc_info.dev_name,
 		payload->workq_scheduled_ts);
 
 	CAM_DBG(CAM_CDM, "IRQ status=0x%x", payload->irq_status);
@@ -2339,9 +2339,9 @@ static int cam_hw_cdm_component_bind(struct device *dev,
 
 		init_completion(&cdm_core->bl_fifo[i].bl_complete);
 
-		len = strlcpy(work_q_name, cdm_core->name,
-				sizeof(cdm_core->name));
-		snprintf(work_q_name + len, sizeof(work_q_name) - len, "%d", i);
+		len = strlcpy(work_q_name, cdm_hw->soc_info.label_name,
+				sizeof(work_q_name));
+		snprintf(work_q_name + len, sizeof(work_q_name) - len, "%d_%d", cdm_hw->soc_info.index, i);
 		cdm_core->bl_fifo[i].work_queue = alloc_workqueue(work_q_name,
 				WQ_UNBOUND | WQ_MEM_RECLAIM | WQ_SYSFS,
 				CAM_CDM_INFLIGHT_WORKS);

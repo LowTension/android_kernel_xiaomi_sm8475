@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/delay.h>
@@ -34,7 +34,7 @@ static void cam_virtual_cdm_work(struct work_struct *work)
 		cdm_hw = payload->hw;
 		core = (struct cam_cdm *)cdm_hw->core_info;
 
-		cam_req_mgr_thread_switch_delay_detect(
+		cam_req_mgr_thread_switch_delay_detect(core->name,
 			payload->workq_scheduled_ts);
 
 		if (payload->irq_status & 0x2) {
