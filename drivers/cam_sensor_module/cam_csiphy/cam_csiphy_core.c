@@ -195,7 +195,7 @@ void cam_csiphy_reset(struct csiphy_device *csiphy_dev)
 			+ 5);
 	}
 
-	if (csiphy_dev->en_status_reg_dump) {
+	if (csiphy_dev->en_lane_status_reg_dump) {
 		CAM_INFO(CAM_CSIPHY, "Status Reg Dump after phy reset");
 		cam_csiphy_print_status_reg(csiphy_dev);
 	}
@@ -2087,7 +2087,7 @@ int32_t cam_csiphy_core_cfg(void *phy_dev,
 
 		csiphy_dev->start_dev_count++;
 
-		if (csiphy_dev->en_status_reg_dump) {
+		if (csiphy_dev->en_lane_status_reg_dump) {
 			usleep_range(50000, 50005);
 			CAM_INFO(CAM_CSIPHY, "Status Reg Dump after config");
 			cam_csiphy_print_status_reg(csiphy_dev);

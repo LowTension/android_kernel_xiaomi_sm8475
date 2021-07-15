@@ -10,7 +10,7 @@
 #include <media/cam_sensor.h>
 #include "camera_main.h"
 
-#define CSIPHY_DEBUGFS_NAME_MAX_SIZE 30
+#define CSIPHY_DEBUGFS_NAME_MAX_SIZE 10
 static struct dentry *root_dentry;
 
 static void cam_csiphy_subdev_handle_message(
@@ -27,7 +27,7 @@ static void cam_csiphy_subdev_handle_message(
 		if (data == csiphy_dev->soc_info.index) {
 			cam_csiphy_status_dmp(csiphy_dev);
 
-			if (csiphy_dev->en_status_reg_dump) {
+			if (csiphy_dev->en_lane_status_reg_dump) {
 				CAM_INFO(CAM_CSIPHY,
 					"Status Reg Dump on failure");
 				cam_csiphy_print_status_reg(csiphy_dev);
@@ -41,7 +41,6 @@ static void cam_csiphy_subdev_handle_message(
 
 static int cam_csiphy_debug_register(struct csiphy_device *csiphy_dev)
 {
-	int rc = 0;
 	struct dentry *dbgfileptr = NULL;
 	char debugfs_name[CSIPHY_DEBUGFS_NAME_MAX_SIZE];
 
@@ -51,39 +50,31 @@ static int cam_csiphy_debug_register(struct csiphy_device *csiphy_dev)
 	}
 
 	if (!root_dentry) {
-		dbgfileptr = debugfs_create_dir("camera_csiphy", NULL);
-		if (!dbgfileptr) {
-			CAM_ERR(CAM_CSIPHY,
-				"Debugfs could not create directory!");
-			rc = -ENOENT;
-			goto end;
+		root_dentry = debugfs_create_dir("camera_csiphy", NULL);
+		if (IS_ERR(root_dentry)) {
+			CAM_ERR(CAM_CSIPHY, "Debugfs could not create root directory. rc: %ld",
+				root_dentry);
+			return -ENOENT;
 		}
-		/* Store parent inode for cleanup in caller */
-		root_dentry = dbgfileptr;
 	}
 
-	snprintf(debugfs_name, CSIPHY_DEBUGFS_NAME_MAX_SIZE, "%s%d%s", "csiphy",
-		csiphy_dev->soc_info.index,
-		"_en_irq_dump");
-	dbgfileptr = debugfs_create_bool(debugfs_name, 0644,
-		root_dentry, &csiphy_dev->enable_irq_dump);
-
-	memset(debugfs_name, 0, CSIPHY_DEBUGFS_NAME_MAX_SIZE);
-
-	snprintf(debugfs_name, CSIPHY_DEBUGFS_NAME_MAX_SIZE, "%s%d%s", "csiphy",
-		csiphy_dev->soc_info.index,
-		"_en_status_reg_dump");
-	dbgfileptr = debugfs_create_bool(debugfs_name, 0644,
-		root_dentry, &csiphy_dev->en_status_reg_dump);
-
+	/* Create the CSIPHY directory for this csiphy */
+	snprintf(debugfs_name, CSIPHY_DEBUGFS_NAME_MAX_SIZE, "CSIPHY%d",
+		csiphy_dev->soc_info.index);
+	dbgfileptr = debugfs_create_dir(debugfs_name, root_dentry);
 	if (IS_ERR(dbgfileptr)) {
-		if (PTR_ERR(dbgfileptr) == -ENODEV)
-			CAM_WARN(CAM_CSIPHY, "DebugFS not enabled in kernel!");
-		else
-			rc = PTR_ERR(dbgfileptr);
+		CAM_ERR(CAM_CSIPHY, "Could not create a debugfs PHY indx subdirectory. rc: %ld",
+			dbgfileptr);
+		return -ENOENT;
 	}
-end:
-	return rc;
+
+	debugfs_create_bool("en_irq_status_reg_dump", 0644,
+		dbgfileptr, &csiphy_dev->enable_irq_dump);
+
+	debugfs_create_bool("en_lane_status_reg_dump", 0644,
+		dbgfileptr, &csiphy_dev->en_lane_status_reg_dump);
+
+	return 0;
 }
 
 static void cam_csiphy_debug_unregister(void)
