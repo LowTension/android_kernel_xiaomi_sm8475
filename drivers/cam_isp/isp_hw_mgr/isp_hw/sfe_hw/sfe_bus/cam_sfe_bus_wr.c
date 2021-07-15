@@ -393,6 +393,7 @@ static void cam_sfe_bus_wr_print_constraint_errors(
 }
 
 static void cam_sfe_bus_wr_get_constraint_errors(
+	bool                       *skip_error_notify,
 	struct cam_sfe_bus_wr_priv *bus_priv)
 {
 	uint32_t i, j, constraint_errors;
@@ -419,6 +420,19 @@ static void cam_sfe_bus_wr_get_constraint_errors(
 					wm_data->hw_regs->debug_status_1);
 				if (!constraint_errors)
 					continue;
+
+				/*
+				 * Due to a HW bug in constraint checker skip addr unalign
+				 * for RDI clients
+				 */
+				if ((out_rsrc_data->out_type >= CAM_SFE_BUS_SFE_OUT_RDI0) &&
+					(out_rsrc_data->out_type <= CAM_SFE_BUS_SFE_OUT_RDI4) &&
+					(constraint_errors >> 21)) {
+					*skip_error_notify = true;
+					CAM_DBG(CAM_SFE, "WM: %s constraint_error: 0x%x",
+						wm_name, constraint_errors);
+					continue;
+				}
 
 				cam_sfe_bus_wr_print_constraint_errors(
 					bus_priv, wm_name, constraint_errors);
@@ -599,6 +613,7 @@ static int cam_sfe_bus_acquire_wm(
 	rsrc_data->acquired_height = out_port_info->height;
 	rsrc_data->is_dual = is_dual;
 	rsrc_data->enable_caching =  false;
+	rsrc_data->offset = 0;
 
 	/* RDI0-4 line based mode by default */
 	if (sfe_out_res_id == CAM_SFE_BUS_SFE_OUT_RDI0 ||
@@ -794,6 +809,7 @@ static int cam_sfe_bus_stop_wm(struct cam_isp_resource_node *wm_res)
 	rsrc_data->init_cfg_done = false;
 	rsrc_data->hfr_cfg_done = false;
 	rsrc_data->enable_caching =  false;
+	rsrc_data->offset = 0;
 
 	return 0;
 }
@@ -1987,12 +2003,12 @@ static int cam_sfe_bus_wr_irq_bottom_half(
 	void *handler_priv, void *evt_payload_priv)
 {
 	int i;
-	uint32_t status = 0;
+	uint32_t status = 0, cons_violation = 0;
+	bool skip_err_notify = false;
 	struct cam_sfe_bus_wr_priv            *bus_priv = handler_priv;
 	struct cam_sfe_bus_wr_common_data     *common_data;
 	struct cam_isp_hw_event_info           evt_info;
 	struct cam_sfe_bus_wr_irq_evt_payload *evt_payload = evt_payload_priv;
-	uint32_t cons_violation = 0;
 
 	if (!handler_priv || !evt_payload_priv)
 		return -EINVAL;
@@ -2014,33 +2030,35 @@ static int cam_sfe_bus_wr_irq_bottom_half(
 			bus_priv);
 
 	if (cons_violation)
-		cam_sfe_bus_wr_get_constraint_errors(bus_priv);
+		cam_sfe_bus_wr_get_constraint_errors(&skip_err_notify, bus_priv);
 
 	cam_sfe_bus_wr_put_evt_payload(common_data, &evt_payload);
 
-	evt_info.hw_idx = common_data->core_index;
-	evt_info.hw_type = CAM_ISP_HW_TYPE_SFE;
-	evt_info.res_type = CAM_ISP_RESOURCE_SFE_OUT;
-	evt_info.res_id = CAM_SFE_BUS_SFE_OUT_MAX;
-	evt_info.err_type = CAM_SFE_IRQ_STATUS_VIOLATION;
+	if (!skip_err_notify) {
+		evt_info.hw_idx = common_data->core_index;
+		evt_info.hw_type = CAM_ISP_HW_TYPE_SFE;
+		evt_info.res_type = CAM_ISP_RESOURCE_SFE_OUT;
+		evt_info.res_id = CAM_SFE_BUS_SFE_OUT_MAX;
+		evt_info.err_type = CAM_SFE_IRQ_STATUS_VIOLATION;
 
-	if (common_data->event_cb) {
-		struct cam_isp_resource_node      *out_rsrc_node = NULL;
-		struct cam_sfe_bus_wr_out_data    *out_rsrc_data = NULL;
+		if (common_data->event_cb) {
+			struct cam_isp_resource_node      *out_rsrc_node = NULL;
+			struct cam_sfe_bus_wr_out_data    *out_rsrc_data = NULL;
 
-		for (i = 0; i < bus_priv->num_out; i++) {
-			out_rsrc_node = &bus_priv->sfe_out[i];
+			for (i = 0; i < bus_priv->num_out; i++) {
+				out_rsrc_node = &bus_priv->sfe_out[i];
 
-			if (!out_rsrc_node || !out_rsrc_node->res_priv)
-				continue;
+				if (!out_rsrc_node || !out_rsrc_node->res_priv)
+					continue;
 
-			if (out_rsrc_node->res_state != CAM_ISP_RESOURCE_STATE_STREAMING)
-				continue;
+				if (out_rsrc_node->res_state != CAM_ISP_RESOURCE_STATE_STREAMING)
+					continue;
 
-			out_rsrc_data = out_rsrc_node->res_priv;
-			common_data->event_cb(out_rsrc_data->priv,
-				CAM_ISP_HW_EVENT_ERROR, (void *)&evt_info);
-			break;
+				out_rsrc_data = out_rsrc_node->res_priv;
+				common_data->event_cb(out_rsrc_data->priv,
+					CAM_ISP_HW_EVENT_ERROR, (void *)&evt_info);
+				break;
+			}
 		}
 	}
 
@@ -2230,19 +2248,15 @@ skip_cache_cfg:
 
 		/* WM Image address */
 		for (k = 0; k < loop_size; k++) {
-			if (wm_data->en_cfg & (0x3 << 16))
-				CAM_SFE_ADD_REG_VAL_PAIR(reg_val_pair, j,
-					wm_data->hw_regs->image_addr,
-					(update_buf->wm_update->image_buf[i] +
-					wm_data->offset + k * frame_inc));
-			else
-				CAM_SFE_ADD_REG_VAL_PAIR(reg_val_pair, j,
-					wm_data->hw_regs->image_addr,
-					(update_buf->wm_update->image_buf[i] +
-					k * frame_inc));
+			CAM_SFE_ADD_REG_VAL_PAIR(reg_val_pair, j,
+				wm_data->hw_regs->image_addr,
+				(update_buf->wm_update->image_buf[i] +
+				wm_data->offset + k * frame_inc));
+			update_buf->wm_update->image_buf_offset[i] =
+				wm_data->offset;
 
-			CAM_DBG(CAM_SFE, "WM:%d image address 0x%X",
-				wm_data->index, reg_val_pair[j-1]);
+			CAM_DBG(CAM_SFE, "WM:%d image address 0x%X offset: 0x%x",
+				wm_data->index, reg_val_pair[j-1], wm_data->offset);
 		}
 
 		CAM_SFE_ADD_REG_VAL_PAIR(reg_val_pair, j,
@@ -2374,16 +2388,13 @@ static int cam_sfe_bus_wr_config_wm(void *priv, void *cmd_args,
 
 		/* WM Image address */
 		for (k = 0; k < loop_size; k++) {
-			if (wm_data->en_cfg & (0x3 << 16))
-				cam_io_w_mb((update_buf->wm_update->image_buf[i] +
-					wm_data->offset + k * frame_inc),
-					wm_data->common_data->mem_base +
-					wm_data->hw_regs->image_addr);
-			else
-				cam_io_w_mb((update_buf->wm_update->image_buf[i] +
-					k * frame_inc),
-					wm_data->common_data->mem_base +
-					wm_data->hw_regs->image_addr);
+			cam_io_w_mb((update_buf->wm_update->image_buf[i] +
+				wm_data->offset + k * frame_inc),
+				wm_data->common_data->mem_base +
+				wm_data->hw_regs->image_addr);
+			CAM_DBG(CAM_SFE, "WM:%d image address: 0x%x offset: 0x%x",
+				wm_data->index, update_buf->wm_update->image_buf[i],
+				wm_data->offset);
 		}
 
 		cam_io_w_mb(frame_inc,
@@ -2631,16 +2642,23 @@ static int cam_sfe_bus_wr_update_wm_config(
 
 		wm_data->en_cfg = (wm_config->wm_mode << 16) | 0x1;
 		wm_data->width  = wm_config->width;
+		if ((sfe_out_data->out_type >= CAM_SFE_BUS_SFE_OUT_RDI0) &&
+			(sfe_out_data->out_type <= CAM_SFE_BUS_SFE_OUT_RDI4)) {
+			/* WM mode enum starts at 1, userland to send based on HW desc */
+			wm_data->wm_mode = wm_config->wm_mode + 1;
+			cam_sfe_bus_config_rdi_wm(wm_data);
+		}
 
 		if (i == PLANE_C)
 			wm_data->height = wm_config->height / 2;
 		else
 			wm_data->height = wm_config->height;
 
+		wm_data->offset = wm_config->offset;
 		CAM_DBG(CAM_SFE,
-			"WM:%d en_cfg:0x%X height:%d width:%d",
+			"WM:%d en_cfg:0x%X height:%d width:%d offset:%u packer_fmt: 0x%x",
 			wm_data->index, wm_data->en_cfg, wm_data->height,
-			wm_data->width);
+			wm_data->width, wm_data->offset, wm_data->pack_fmt);
 	}
 
 	return 0;
