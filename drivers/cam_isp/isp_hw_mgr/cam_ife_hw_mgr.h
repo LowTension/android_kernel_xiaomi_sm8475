@@ -112,10 +112,12 @@ struct cam_sfe_scratch_buf_cfg {
 /**
  * struct cam_ife_hw_mgr_sfe_info - SFE info
  *
- * @num_fetches:      Indicate number of SFE fetches for this stream
- * @scratch_config    Scratch buffer config if any for this stream
+ * @skip_scratch_cfg_streamon: Determine if scratch cfg needs to be programmed at stream on
+ * @num_fetches:               Indicate number of SFE fetches for this stream
+ * @scratch_config:            Scratch buffer config if any for this stream
  */
 struct cam_ife_hw_mgr_sfe_info {
+	bool                            skip_scratch_cfg_streamon;
 	uint32_t                        num_fetches;
 	struct cam_sfe_scratch_buf_cfg *scratch_config;
 };
