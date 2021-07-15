@@ -467,7 +467,8 @@ static int cam_ife_mgr_get_hw_caps(void *hw_mgr_priv,
 	return rc;
 }
 
-static int cam_ife_hw_mgr_is_sfe_rdi_for_fetch(uint32_t res_id)
+static inline int cam_ife_hw_mgr_is_sfe_rdi_for_fetch(
+	uint32_t res_id)
 {
 	int rc = 0;
 
@@ -482,6 +483,13 @@ static int cam_ife_hw_mgr_is_sfe_rdi_for_fetch(uint32_t res_id)
 	}
 
 	return rc;
+}
+
+static inline int cam_ife_hw_mgr_is_shdr_fs_rdi_res(
+	uint32_t res_id, bool is_sfe_shdr, bool is_sfe_fs)
+{
+	return (cam_ife_hw_mgr_is_sfe_rdi_for_fetch(res_id) &&
+		(is_sfe_shdr || is_sfe_fs));
 }
 
 static int cam_ife_hw_mgr_is_sfe_rdi_res(uint32_t res_id)
@@ -3390,9 +3398,11 @@ static int cam_ife_hw_mgr_acquire_res_ife_csid_rdi(
 		csid_acquire.tasklet = ife_ctx->common.tasklet_info;
 		csid_acquire.cb_priv = ife_ctx;
 		csid_acquire.cdm_ops = ife_ctx->cdm_ops;
-		if (cam_ife_hw_mgr_is_sfe_rdi_for_fetch(
-			out_port->res_type)) {
-			CAM_DBG(CAM_ISP, "setting inline shdr mode");
+		if (cam_ife_hw_mgr_is_shdr_fs_rdi_res(
+			out_port->res_type,
+			ife_ctx->flags.is_sfe_shdr, ife_ctx->flags.is_sfe_fs)) {
+			CAM_DBG(CAM_ISP, "setting inline shdr mode for res: 0x%x",
+				out_port->res_type);
 			csid_acquire.sfe_inline_shdr = true;
 		}
 
@@ -7150,7 +7160,7 @@ static inline int __cam_isp_sfe_send_cache_config(
 		sizeof(struct cam_isp_sfe_bus_sys_cache_config));
 	if (rc) {
 		CAM_ERR(CAM_ISP,
-			"Failed in sending cache config for:%d",
+			"Failed in sending cache config for: %u",
 			hw_res->res_id);
 	}
 
@@ -7163,6 +7173,7 @@ static int cam_isp_blob_sfe_exp_order_update(
 	struct cam_hw_prepare_update_args   *prepare)
 {
 	int rc = 0, i, j;
+	bool send_config;
 	uint32_t exp_order_max = 0;
 	uint32_t res_id_out, res_id_in;
 	struct cam_ife_hw_mgr_ctx               *ctx;
@@ -7193,8 +7204,14 @@ static int cam_isp_blob_sfe_exp_order_update(
 			order_cfg->res_type);
 		if (!rc) {
 			CAM_ERR(CAM_ISP,
-				"Not a SFE fetch RDI: 0x%x",
-				order_cfg->res_type);
+				"Not a SFE fetch RDI: 0x%x", order_cfg->res_type);
+			return -EINVAL;
+		}
+
+		if ((order_cfg->res_type - CAM_ISP_SFE_OUT_RES_RDI_0) >=
+			ctx->sfe_info.num_fetches) {
+			CAM_ERR(CAM_ISP, "resource 0x%x active fetches: %u mismatch",
+				order_cfg->res_type, ctx->sfe_info.num_fetches);
 			return -EINVAL;
 		}
 
@@ -7204,6 +7221,7 @@ static int cam_isp_blob_sfe_exp_order_update(
 		wm_rm_cache_cfg.use_cache =
 			(exp_order_max == i) ? true : false;
 		wm_rm_cache_cfg.scid = 0;
+		send_config = false;
 
 		/* Currently using cache for short only */
 		if (wm_rm_cache_cfg.use_cache) {
@@ -7238,10 +7256,18 @@ static int cam_isp_blob_sfe_exp_order_update(
 			rc = __cam_isp_sfe_send_cache_config(
 				CAM_ISP_HW_SFE_SYS_CACHE_WM_CONFIG,
 				&wm_rm_cache_cfg);
-			if (rc)
-				return rc;
+			send_config = true;
+			break;
 		}
 
+		if (rc || !send_config) {
+			CAM_ERR(CAM_ISP,
+				"Failed to send cache config for WR res: 0x%x base_idx: %u send_config: %d rc: %d",
+				order_cfg->res_type, base_idx, send_config, rc);
+			return -EINVAL;
+		}
+
+		send_config = false;
 		/* RDI WMs have been validated find corresponding RM */
 		if (order_cfg->res_type == CAM_ISP_SFE_OUT_RES_RDI_0)
 			res_id_in = CAM_ISP_HW_SFE_IN_RD0;
@@ -7266,9 +7292,16 @@ static int cam_isp_blob_sfe_exp_order_update(
 				rc = __cam_isp_sfe_send_cache_config(
 					CAM_ISP_HW_SFE_SYS_CACHE_RM_CONFIG,
 					&wm_rm_cache_cfg);
-				if (rc)
-					return rc;
+				send_config = true;
+				break;
 			}
+		}
+
+		if (rc || !send_config) {
+			CAM_ERR(CAM_ISP,
+				"Failed to send cache config for RD res: 0x%x base_idx: %u send_config: %d rc: %d",
+				res_id_in, base_idx, send_config, rc);
+			return -EINVAL;
 		}
 
 		if (!wm_rm_cache_cfg.rd_enabled && !wm_rm_cache_cfg.wr_enabled) {
@@ -9182,6 +9215,14 @@ static int cam_sfe_packet_generic_blob_handler(void *user_data,
 		break;
 	case CAM_ISP_GENERIC_BLOB_TYPE_SFE_SCRATCH_BUF_CFG: {
 		struct cam_isp_sfe_init_scratch_buf_config *scratch_config;
+
+		if (!(ife_mgr_ctx->flags.is_sfe_fs ||
+			ife_mgr_ctx->flags.is_sfe_shdr)) {
+			CAM_ERR(CAM_ISP,
+				"Not SFE sHDR/FS context: %u scratch buf blob not supported",
+				ife_mgr_ctx->ctx_index);
+			return -EINVAL;
+		}
 
 		if (blob_size <
 			sizeof(struct cam_isp_sfe_init_scratch_buf_config)) {
@@ -11726,7 +11767,9 @@ static int cam_ife_hw_mgr_handle_hw_buf_done(
 		((event_info->hw_type == CAM_ISP_HW_TYPE_SFE) ? "SFE" : "IFE"),
 		event_info->hw_idx, event_info->res_id[i], event_info->last_consumed_addr[i]);
 
-		if (cam_ife_hw_mgr_is_sfe_rdi_for_fetch(event_info->res_id[i])) {
+		if (cam_ife_hw_mgr_is_shdr_fs_rdi_res(event_info->res_id[i],
+			ife_hw_mgr_ctx->flags.is_sfe_shdr,
+			ife_hw_mgr_ctx->flags.is_sfe_fs)) {
 			rc = cam_ife_hw_mgr_check_rdi_scratch_buf_done(
 				ife_hw_mgr_ctx->ctx_index,
 				ife_hw_mgr_ctx->sfe_info.scratch_config,
