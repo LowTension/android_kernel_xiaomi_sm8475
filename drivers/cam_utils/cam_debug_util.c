@@ -10,14 +10,14 @@
 
 #include "cam_debug_util.h"
 
-static unsigned long long debug_mdl;
+unsigned long long debug_mdl;
 module_param(debug_mdl, ullong, 0644);
 
 /* 0x0 - only logs, 0x1 - only trace, 0x2 - logs + trace */
-static uint debug_type;
+uint debug_type;
 module_param(debug_type, uint, 0644);
 
-static uint debug_priority;
+uint debug_priority;
 module_param(debug_priority, uint, 0644);
 
 struct camera_debug_settings cam_debug;
@@ -123,163 +123,14 @@ error:
 	return -EPERM;
 }
 
-const char *cam_get_module_name(unsigned long long module_id)
-{
-	const char *name = NULL;
-
-	switch (module_id) {
-	case CAM_CDM:
-		name = "CAM-CDM";
-		break;
-	case CAM_CORE:
-		name = "CAM-CORE";
-		break;
-	case CAM_CRM:
-		name = "CAM-CRM";
-		break;
-	case CAM_CPAS:
-		name = "CAM-CPAS";
-		break;
-	case CAM_ISP:
-		name = "CAM-ISP";
-		break;
-	case CAM_SENSOR:
-		name = "CAM-SENSOR";
-		break;
-	case CAM_SMMU:
-		name = "CAM-SMMU";
-		break;
-	case CAM_SYNC:
-		name = "CAM-SYNC";
-		break;
-	case CAM_ICP:
-		name = "CAM-ICP";
-		break;
-	case CAM_JPEG:
-		name = "CAM-JPEG";
-		break;
-	case CAM_FD:
-		name = "CAM-FD";
-		break;
-	case CAM_LRME:
-		name = "CAM-LRME";
-		break;
-	case CAM_FLASH:
-		name = "CAM-FLASH";
-		break;
-	case CAM_ACTUATOR:
-		name = "CAM-ACTUATOR";
-		break;
-	case CAM_CCI:
-		name = "CAM-CCI";
-		break;
-	case CAM_CSIPHY:
-		name = "CAM-CSIPHY";
-		break;
-	case CAM_EEPROM:
-		name = "CAM-EEPROM";
-		break;
-	case CAM_UTIL:
-		name = "CAM-UTIL";
-		break;
-	case CAM_CTXT:
-		name = "CAM-CTXT";
-		break;
-	case CAM_HFI:
-		name = "CAM-HFI";
-		break;
-	case CAM_OIS:
-		name = "CAM-OIS";
-		break;
-	case CAM_IRQ_CTRL:
-		name = "CAM-IRQ-CTRL";
-		break;
-	case CAM_MEM:
-		name = "CAM-MEM";
-		break;
-	case CAM_PERF:
-		name = "CAM-PERF";
-		break;
-	case CAM_REQ:
-		name = "CAM-REQ";
-		break;
-	case CAM_CUSTOM:
-		name = "CAM-CUSTOM";
-		break;
-	case CAM_OPE:
-		name = "CAM-OPE";
-		break;
-	case CAM_PRESIL:
-		name = "CAM-PRESIL";
-		break;
-	case CAM_RES:
-		name = "CAM-RES";
-		break;
-	case CAM_IO_ACCESS:
-		name = "CAM-IO-ACCESS";
-		break;
-	case CAM_SFE:
-		name = "CAM-SFE";
-		break;
-	case CAM_CRE:
-		name = "CAM-CRE";
-		break;
-	case CAM_PRESIL_CORE:
-		name = "CAM-CORE-PRESIL";
-		break;
-	case CAM_TPG:
-		name = "CAM-TPG";
-		break;
-	default:
-		name = "CAM";
-		break;
-	}
-
-	return name;
-}
-
-const char *cam_get_tag_name(unsigned int tag_id)
-{
-	const char *name = NULL;
-
-	switch (tag_id) {
-	case CAM_TYPE_TRACE:
-		name = "CAM_TRACE";
-		break;
-	case CAM_TYPE_ERR:
-		name = "CAM_ERR";
-		break;
-	case CAM_TYPE_WARN:
-		name = "CAM_WARN";
-		break;
-	case CAM_TYPE_INFO:
-		name = "CAM_INFO";
-		break;
-	case CAM_TYPE_DBG:
-		name = "CAM_DBG";
-		break;
-	default:
-		name = "CAM";
-		break;
-	}
-
-	return name;
-}
-
 static inline void __cam_print_to_buffer(char *buf, const size_t buf_size, size_t *len,
-	unsigned int tag, unsigned long long module_id, const char *func, const int line,
-	const bool is_final_print, const char *fmt, va_list args)
+	unsigned int tag, enum cam_debug_module_id module_id, const char *fmt, va_list args)
 {
 	size_t buf_len = *len;
 
-	if (is_final_print)
-		buf_len += scnprintf(buf + buf_len, (buf_size - buf_len), "%s: %s: %s: %d: ",
-			cam_get_tag_name(tag), cam_get_module_name(module_id), func, line);
-	else
-		buf_len += scnprintf(buf + buf_len, (buf_size - buf_len), "\n%-8s: %s:\t",
-			cam_get_tag_name(tag), cam_get_module_name(module_id));
+	buf_len += scnprintf(buf + buf_len, (buf_size - buf_len), "\n%-8s: %s:\t",
+			CAM_LOG_TAG_NAME(tag), CAM_DBG_MOD_NAME(module_id));
 	buf_len += vscnprintf(buf + buf_len, (buf_size - buf_len), fmt, args);
-
 	*len = buf_len;
 }
 
@@ -289,43 +140,34 @@ void cam_print_to_buffer(char *buf, const size_t buf_size, size_t *len, unsigned
 	va_list args;
 
 	va_start(args, fmt);
-	__cam_print_to_buffer(buf, buf_size, len, tag, module_id, "", 0, false, fmt, args);
+	__cam_print_to_buffer(buf, buf_size, len, tag, module_id, fmt, args);
 	va_end(args);
 }
 
-void cam_debug_log(unsigned long long module_id, unsigned int priority,
-	const char *func, const int line, const char *fmt, ...)
+static void __cam_print_log(int type, const char *fmt, va_list args)
 {
-	if ((debug_mdl & module_id) && (priority >= debug_priority)) {
-		char str_buf[STR_BUFFER_MAX_LENGTH];
-		size_t len = 0;
-		va_list args;
+	va_list args1, args2;
 
-		va_start(args, fmt);
-		__cam_print_to_buffer(str_buf, STR_BUFFER_MAX_LENGTH, &len, CAM_TYPE_DBG, module_id,
-			func, line, true, fmt, args);
-
-		if ((debug_type == 0) || (debug_type == 2))
-			pr_info("%s\n", str_buf);
-		if ((debug_type == 1) || (debug_type == 2))
-			trace_cam_log_debug(str_buf);
-
-		va_end(args);
+	va_copy(args1, args);
+	va_copy(args2, args1);
+	if ((type & CAM_PRINT_LOG) && (debug_type != 1))
+		vprintk(fmt, args1);
+	if ((type & CAM_PRINT_TRACE) && (debug_type != 0)) {
+		/* skip the first character which is used by printk to identify the log level */
+		trace_cam_log_debug(fmt + sizeof(KERN_INFO) - 1, &args2);
 	}
+	va_end(args2);
+	va_end(args1);
 }
 
-void cam_debug_trace(unsigned int tag, unsigned long long module_id,
-	const char *func, const int line, const char *fmt, ...)
+void cam_print_log(int type, const char *fmt, ...)
 {
-	if ((tag == CAM_TYPE_TRACE) || (debug_type == 1) || (debug_type == 2)) {
-		char str_buf[STR_BUFFER_MAX_LENGTH];
-		size_t len = 0;
-		va_list args;
+	va_list args;
 
-		va_start(args, fmt);
-		__cam_print_to_buffer(str_buf, STR_BUFFER_MAX_LENGTH, &len, tag,
-			module_id, func, line, true, fmt, args);
-		trace_cam_log_debug(str_buf);
-		va_end(args);
-	}
+	if (!type)
+		return;
+
+	va_start(args, fmt);
+	__cam_print_log(type, fmt, args);
+	va_end(args);
 }
