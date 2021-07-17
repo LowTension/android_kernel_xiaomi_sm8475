@@ -999,6 +999,16 @@ int32_t cam_csiphy_config_dev(struct csiphy_device *csiphy_dev,
 				csiphy_common_reg->delay + 5);
 	}
 
+	if (csiphy_dev->csiphy_info[index].csiphy_3phase) {
+		rc = cam_csiphy_cphy_data_rate_config(csiphy_dev, index);
+		if (rc) {
+			CAM_ERR(CAM_CSIPHY,
+				"Date rate specific configuration failed rc: %d",
+				rc);
+			return rc;
+		}
+	}
+
 	intermediate_var = csiphy_dev->csiphy_info[index].settle_time;
 	do_div(intermediate_var, 200000000);
 	settle_cnt = intermediate_var;
@@ -1047,15 +1057,6 @@ int32_t cam_csiphy_config_dev(struct csiphy_device *csiphy_dev,
 
 	if (csiphy_dev->preamble_enable)
 		__cam_csiphy_prgm_bist_reg(csiphy_dev, is_3phase);
-	if (csiphy_dev->csiphy_info[index].csiphy_3phase) {
-		rc = cam_csiphy_cphy_data_rate_config(csiphy_dev, index);
-		if (rc) {
-			CAM_ERR(CAM_CSIPHY,
-				"Date rate specific configuration failed rc: %d",
-				rc);
-			return rc;
-		}
-	}
 
 	cam_csiphy_cphy_irq_config(csiphy_dev);
 
@@ -1540,8 +1541,10 @@ int32_t cam_csiphy_core_cfg(void *phy_dev,
 {
 	struct cam_control   *cmd = (struct cam_control *)arg;
 	struct csiphy_device *csiphy_dev = (struct csiphy_device *)phy_dev;
+	struct cam_cphy_dphy_status_reg_params_t *status_reg_ptr;
 	struct csiphy_reg_parms_t *csiphy_reg;
 	struct cam_hw_soc_info *soc_info;
+	uint32_t      cphy_trio_status;
 	void __iomem *csiphybase;
 	int32_t              rc = 0;
 	uint32_t             i;
@@ -1565,6 +1568,7 @@ int32_t cam_csiphy_core_cfg(void *phy_dev,
 
 	csiphybase = soc_info->reg_map[0].mem_base;
 	csiphy_reg = &csiphy_dev->ctrl_reg->csiphy_reg;
+	status_reg_ptr = csiphy_reg->status_reg_params;
 	CAM_DBG(CAM_CSIPHY, "Opcode received: %d", cmd->op_code);
 	mutex_lock(&csiphy_dev->mutex);
 	switch (cmd->op_code) {
@@ -1702,6 +1706,9 @@ int32_t cam_csiphy_core_cfg(void *phy_dev,
 
 		if (csiphy_dev->csiphy_state == CAM_CSIPHY_INIT)
 			csiphy_dev->csiphy_state = CAM_CSIPHY_ACQUIRE;
+
+		CAM_INFO(CAM_CSIPHY,
+			"CAM_ACQUIRE_DEV: CSIPHY_IDX: %d", csiphy_dev->soc_info.index);
 	}
 		break;
 	case CAM_QUERY_CAP: {
@@ -1729,8 +1736,8 @@ int32_t cam_csiphy_core_cfg(void *phy_dev,
 		}
 
 		if (csiphy_dev->csiphy_state != CAM_CSIPHY_START) {
-			CAM_ERR(CAM_CSIPHY, "Not in right state to stop : %d",
-				csiphy_dev->csiphy_state);
+			CAM_ERR(CAM_CSIPHY, "Csiphy:%d Not in right state to stop : %d",
+				csiphy_dev->soc_info.index, csiphy_dev->csiphy_state);
 			goto release_mutex;
 		}
 
@@ -2004,16 +2011,6 @@ int32_t cam_csiphy_core_cfg(void *phy_dev,
 			CAM_ERR(CAM_CSIPHY, "cam_csiphy_enable_hw failed");
 			goto cpas_stop;
 		}
-		rc = cam_csiphy_config_dev(csiphy_dev, config.dev_handle);
-		if (csiphy_dump == 1)
-			cam_csiphy_mem_dmp(&csiphy_dev->soc_info);
-
-		if (rc < 0) {
-			CAM_ERR(CAM_CSIPHY, "cam_csiphy_config_dev failed");
-			cam_csiphy_disable_hw(csiphy_dev);
-			goto cpas_stop;
-		}
-		csiphy_dev->start_dev_count++;
 
 		if (csiphy_reg->prgm_cmn_reg_across_csiphy) {
 			cam_csiphy_prgm_cmn_data(csiphy_dev, false);
@@ -2021,6 +2018,13 @@ int32_t cam_csiphy_core_cfg(void *phy_dev,
 			mutex_lock(&active_csiphy_cnt_mutex);
 			active_csiphy_hw_cnt++;
 			mutex_unlock(&active_csiphy_cnt_mutex);
+		}
+
+		rc = cam_csiphy_config_dev(csiphy_dev, config.dev_handle);
+		if (rc < 0) {
+			CAM_ERR(CAM_CSIPHY, "cam_csiphy_config_dev failed");
+			cam_csiphy_disable_hw(csiphy_dev);
+			goto cpas_stop;
 		}
 
 		if (csiphy_onthego_reg_count) {
@@ -2044,6 +2048,34 @@ int32_t cam_csiphy_core_cfg(void *phy_dev,
 					csiphy_onthego_regs[i+2]);
 			}
 		}
+
+		if (g_phy_data[csiphy_dev->soc_info.index].is_3phase && status_reg_ptr) {
+			rc = 0;
+			for (i = 0; i < CAM_CSIPHY_MAX_CPHY_LANES; i++) {
+				if (status_reg_ptr->cphy_lane_status[i]) {
+					cphy_trio_status = cam_io_r_mb(csiphybase +
+						status_reg_ptr->cphy_lane_status[i]);
+
+					if (cphy_trio_status) {
+						CAM_ERR(CAM_CSIPHY,
+							"Reg_offset: 0x%x, Cphy_trio%d_status = 0x%x",
+							status_reg_ptr->cphy_lane_status[i],
+							i, cphy_trio_status);
+						rc = -EINVAL;
+					}
+				}
+			}
+
+			if (rc) {
+				cam_csiphy_disable_hw(csiphy_dev);
+				goto cpas_stop;
+			}
+		}
+
+		if (csiphy_dump == 1)
+			cam_csiphy_mem_dmp(&csiphy_dev->soc_info);
+
+		csiphy_dev->start_dev_count++;
 
 		if (csiphy_dev->en_status_reg_dump) {
 			usleep_range(50000, 50005);

@@ -15,8 +15,9 @@ struct cam_csiphy_aon_sel_params_t aon_cam_select_params = {
 };
 
 struct cam_cphy_dphy_status_reg_params_t status_regs_2_1_0 = {
-	.csiphy_3ph_status0_offset = 0x340,
+	.csiphy_3ph_status0_offset = 0x0340,
 	.csiphy_2ph_status0_offset = 0x00C0,
+	.cphy_lane_status = {0x0358, 0x0758, 0x0B58},
 	.csiphy_3ph_status_size = 24,
 	.csiphy_2ph_status_size = 20,
 };
@@ -28,7 +29,7 @@ struct csiphy_reg_parms_t csiphy_v2_1_0 = {
 	.mipi_csiphy_interrupt_clear0_addr = 0x1058,
 	.mipi_csiphy_glbl_irq_cmd_addr = 0x1028,
 	.csiphy_common_array_size = 4,
-	.csiphy_reset_array_size = 3,
+	.csiphy_reset_array_size = 2,
 	.csiphy_2ph_config_array_size = 24,
 	.csiphy_3ph_config_array_size = 43,
 	.csiphy_2ph_clock_lane = 0x1,
@@ -39,7 +40,7 @@ struct csiphy_reg_parms_t csiphy_v2_1_0 = {
 };
 
 struct csiphy_reg_t csiphy_common_reg_2_1_0[] = {
-	{0x1014, 0x00, 0xBB8, CSIPHY_LANE_ENABLE},
+	{0x1014, 0x00, 0x00, CSIPHY_LANE_ENABLE},
 	{0x1084, 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
 	{0x1018, 0x01, 0x00, CSIPHY_DEFAULT_PARAMS},
 	{0x101C, 0x7A, 0x00, CSIPHY_DEFAULT_PARAMS},
@@ -48,7 +49,6 @@ struct csiphy_reg_t csiphy_common_reg_2_1_0[] = {
 struct csiphy_reg_t csiphy_reset_reg_2_1_0[] = {
 	{0x1014, 0x00, 0x00, CSIPHY_LANE_ENABLE},
 	{0x1000, 0x01, 0x01, CSIPHY_DEFAULT_PARAMS},
-	{0x1000, 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
 };
 
 struct csiphy_reg_t csiphy_irq_reg_2_1_0[] = {
@@ -465,8 +465,8 @@ struct csiphy_reg_t csiphy_3ph_v2_1_0_reg[MAX_LANES][MAX_SETTINGS_PER_LANE] = {
 		{0x0A48, 0x0C, 0x00, CSIPHY_DEFAULT_PARAMS},
 		{0x0A4C, 0x07, 0x00, CSIPHY_DEFAULT_PARAMS},
 		{0x0A40, 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
-		{0x0A60, 0xA8, 0x00, CSIPHY_DEFAULT_PARAMS},
-		{0x1000, 0x0E, 0x00, CSIPHY_DEFAULT_PARAMS},
+		{0x0A60, 0xA8, 0x64, CSIPHY_DEFAULT_PARAMS},
+		{0x1000, 0x0E, 0x3E8, CSIPHY_DEFAULT_PARAMS},
 	},
 };
 
