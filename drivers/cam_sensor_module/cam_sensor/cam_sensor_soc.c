@@ -254,6 +254,14 @@ static int32_t cam_sensor_driver_get_dt_data(struct cam_sensor_ctrl_t *s_ctrl)
 		s_ctrl->is_aon_user = true;
 	}
 
+	rc = cam_sensor_util_aon_registration(
+		s_ctrl->sensordata->subdev_id[SUB_MODULE_CSIPHY],
+		s_ctrl->is_aon_user);
+	if (rc) {
+		CAM_ERR(CAM_SENSOR, "Aon registration failed, rc: %d", rc);
+		goto FREE_SENSOR_DATA;
+	}
+
 	return rc;
 
 FREE_SENSOR_DATA:
