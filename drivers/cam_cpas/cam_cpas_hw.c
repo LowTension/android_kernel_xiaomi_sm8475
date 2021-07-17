@@ -2041,7 +2041,7 @@ static void cam_cpas_update_monitor_array(struct cam_hw_info *cpas_hw,
 
 	entry = &cpas_core->monitor_entries[iterator];
 
-	ktime_get_real_ts64(&entry->timestamp);
+	CAM_GET_TIMESTAMP(entry->timestamp);
 	strlcpy(entry->identifier_string, identifier_string,
 		sizeof(entry->identifier_string));
 
@@ -2128,7 +2128,7 @@ static void cam_cpas_dump_monitor_array(
 	int i = 0, j = 0;
 	int64_t state_head = 0;
 	uint32_t index, num_entries, oldest_entry;
-	uint64_t ms, tmp, hrs, min, sec;
+	uint64_t ms, hrs, min, sec;
 	struct cam_cpas_monitor *entry;
 	struct timespec64 curr_timestamp;
 	char log_buf[CAM_CPAS_LOG_BUF_LEN];
@@ -2151,13 +2151,8 @@ static void cam_cpas_dump_monitor_array(
 			CAM_CPAS_MONITOR_MAX_ENTRIES, &oldest_entry);
 	}
 
-
-	ktime_get_real_ts64(&curr_timestamp);
-	tmp = curr_timestamp.tv_sec;
-	ms = (curr_timestamp.tv_nsec) / 1000000;
-	sec = do_div(tmp, 60);
-	min = do_div(tmp, 60);
-	hrs = do_div(tmp, 24);
+	CAM_GET_TIMESTAMP(curr_timestamp);
+	CAM_CONVERT_TIMESTAMP_FORMAT(curr_timestamp, hrs, min, sec, ms);
 
 	CAM_INFO(CAM_CPAS,
 		"**** %llu:%llu:%llu.%llu : ======== Dumping monitor information ===========",
@@ -2167,11 +2162,7 @@ static void cam_cpas_dump_monitor_array(
 
 	for (i = 0; i < num_entries; i++) {
 		entry = &cpas_core->monitor_entries[index];
-		tmp = entry->timestamp.tv_sec;
-		ms = (entry->timestamp.tv_nsec) / 1000000;
-		sec = do_div(tmp, 60);
-		min = do_div(tmp, 60);
-		hrs = do_div(tmp, 24);
+		CAM_CONVERT_TIMESTAMP_FORMAT(entry->timestamp, hrs, min, sec, ms);
 		memset(log_buf, 0, sizeof(log_buf));
 		len = 0;
 
