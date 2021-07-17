@@ -3403,6 +3403,21 @@ static int cam_ife_hw_mgr_acquire_res_ife_csid_rdi(
 			CAM_DBG(CAM_ISP, "setting inline shdr mode for res: 0x%x",
 				out_port->res_type);
 			csid_acquire.sfe_inline_shdr = true;
+
+			/*
+			 * Merged output will only be from the first n RDIs
+			 * starting from RDI0. Any other RDI[1:2] resource
+			 * if only being dumped will be considered as a
+			 * no merge resource
+			 */
+			if ((ife_ctx->flags.is_aeb_mode) &&
+				((out_port->res_type - CAM_ISP_SFE_OUT_RES_RDI_0) >=
+				ife_ctx->sfe_info.num_fetches)) {
+				csid_acquire.en_secondary_evt = true;
+				CAM_DBG(CAM_ISP,
+					"Secondary evt enabled for path: 0x%x",
+					out_port->res_type);
+			}
 		}
 
 		/*
@@ -4201,6 +4216,10 @@ static int cam_ife_mgr_acquire_hw_for_ctx(
 	ife_ctx->flags.dsp_enabled = (bool)in_port->dsp_mode;
 	ife_ctx->flags.is_dual = (bool)in_port->usage_type;
 
+	/* Update aeb mode for the given in_port once */
+	if ((in_port->aeb_mode) && (!ife_ctx->flags.is_aeb_mode))
+		ife_ctx->flags.is_aeb_mode = true;
+
 	/* get root node resource */
 	rc = cam_ife_hw_mgr_acquire_res_root(ife_ctx, in_port);
 	if (rc) {
@@ -4514,6 +4533,18 @@ static inline int cam_ife_mgr_hw_check_in_res_type(
 	}
 }
 
+static inline void cam_ife_mgr_acquire_get_feature_flag_params(
+	struct cam_isp_in_port_info_v2      *in,
+	struct cam_isp_in_port_generic_info *in_port)
+{
+	in_port->secure_mode              = in->feature_flag & CAM_ISP_PARAM_FETCH_SECURITY_MODE;
+	in_port->dynamic_sensor_switch_en = in->feature_flag & CAM_ISP_DYNAMIC_SENOR_SWITCH_EN;
+	in_port->can_use_lite             = in->feature_flag & CAM_ISP_CAN_USE_LITE_MODE;
+	in_port->sfe_binned_epoch_cfg     = in->feature_flag & CAM_ISP_SFE_BINNED_EPOCH_CFG_ENABLE;
+	in_port->epd_supported            = in->feature_flag & CAM_ISP_EPD_SUPPORT;
+	in_port->aeb_mode                 = in->feature_flag & CAM_ISP_AEB_MODE_EN;
+}
+
 static int cam_ife_mgr_acquire_get_unified_structure_v2(
 	struct cam_isp_acquire_hw_info *acquire_hw_info,
 	uint32_t offset, uint32_t *input_size,
@@ -4588,16 +4619,8 @@ static int cam_ife_mgr_acquire_get_unified_structure_v2(
 	in_port->num_out_res              =  in->num_out_res;
 	in_port->sfe_in_path_type         =  (in->sfe_in_path_type & 0xFFFF);
 	in_port->sfe_ife_enable           =  in->sfe_in_path_type >> 16;
-	in_port->secure_mode              = (in->feature_flag &
-		                           CAM_ISP_PARAM_FETCH_SECURITY_MODE);
-	in_port->dynamic_sensor_switch_en = (in->feature_flag &
-		                           CAM_ISP_DYNAMIC_SENOR_SWITCH_EN);
-	in_port->can_use_lite             =  in->feature_flag &
-						CAM_ISP_CAN_USE_LITE_MODE;
-	in_port->sfe_binned_epoch_cfg     = (in->feature_flag &
-		CAM_ISP_SFE_BINNED_EPOCH_CFG_ENABLE);
-	in_port->epd_supported            =  (in->feature_flag &
-					   CAM_ISP_EPD_SUPPORT);
+
+	cam_ife_mgr_acquire_get_feature_flag_params(in, in_port);
 
 	in_port->data = kcalloc(in->num_out_res,
 		sizeof(struct cam_isp_out_port_generic_info),
@@ -4873,6 +4896,9 @@ static int cam_ife_mgr_acquire_hw(void *hw_mgr_priv, void *acquire_hw_args)
 	if (ife_ctx->ctx_type == CAM_IFE_CTX_TYPE_SFE)
 		acquire_args->op_flags |=
 			CAM_IFE_CTX_SFE_EN;
+
+	if (ife_ctx->flags.is_aeb_mode)
+		acquire_args->op_flags |= CAM_IFE_CTX_AEB_EN;
 
 	ife_ctx->flags.ctx_in_use = true;
 	ife_ctx->num_reg_dump_buf = 0;
@@ -8376,6 +8402,50 @@ static inline int cam_isp_validate_bw_limiter_blob(
 	return 0;
 }
 
+static int cam_isp_blob_ife_init_config_update(
+	struct cam_hw_prepare_update_args *prepare,
+	struct cam_isp_init_config        *init_config)
+{
+	int i, rc = -EINVAL;
+	struct cam_hw_intf                    *hw_intf;
+	struct cam_ife_hw_mgr_ctx             *ctx = NULL;
+	struct cam_isp_hw_mgr_res             *hw_mgr_res;
+	struct cam_isp_hw_init_config_update   init_cfg_update;
+
+	ctx = prepare->ctxt_to_hw_map;
+
+	/* Assign init config */
+	init_cfg_update.init_config = init_config;
+	list_for_each_entry(hw_mgr_res, &ctx->res_list_ife_src, list) {
+		for (i = 0; i < CAM_ISP_HW_SPLIT_MAX; i++) {
+			if (!hw_mgr_res->hw_res[i])
+				continue;
+
+			if (hw_mgr_res->res_id != CAM_ISP_HW_VFE_IN_CAMIF)
+				continue;
+
+			hw_intf = hw_mgr_res->hw_res[i]->hw_intf;
+			if (hw_intf && hw_intf->hw_ops.process_cmd) {
+				init_cfg_update.node_res =
+					hw_mgr_res->hw_res[i];
+				CAM_DBG(CAM_ISP, "Init config update for res_id: %u",
+					hw_mgr_res->res_id);
+
+				rc = hw_intf->hw_ops.process_cmd(
+					hw_intf->hw_priv,
+					CAM_ISP_HW_CMD_INIT_CONFIG_UPDATE,
+					&init_cfg_update,
+					sizeof(
+					struct cam_isp_hw_init_config_update));
+				if (rc)
+					CAM_ERR(CAM_ISP, "Init cfg update failed rc: %d", rc);
+			}
+		}
+	}
+
+	return rc;
+}
+
 static int cam_isp_packet_generic_blob_handler(void *user_data,
 	uint32_t blob_type, uint32_t blob_size, uint8_t *blob_data)
 {
@@ -8961,6 +9031,38 @@ static int cam_isp_packet_generic_blob_handler(void *user_data,
 
 	}
 		break;
+	case CAM_ISP_GENERIC_BLOB_TYPE_INIT_CONFIG: {
+		struct cam_isp_init_config            *init_config;
+		struct cam_isp_prepare_hw_update_data *prepare_hw_data;
+
+		prepare_hw_data = (struct cam_isp_prepare_hw_update_data *)
+			prepare->priv;
+
+		if (prepare_hw_data->packet_opcode_type !=
+			CAM_ISP_PACKET_INIT_DEV) {
+			CAM_ERR(CAM_ISP,
+				"Init config blob not supported for packet type: %u req: %llu",
+				prepare_hw_data->packet_opcode_type,
+				 prepare->packet->header.request_id);
+			return -EINVAL;
+		}
+
+		if (blob_size < sizeof(struct cam_isp_init_config)) {
+			CAM_ERR(CAM_ISP,
+				"Invalid init config blob size %u expected %u",
+				blob_size, sizeof(struct cam_isp_init_config));
+			return -EINVAL;
+		}
+
+		init_config = (struct cam_isp_init_config *)blob_data;
+		rc = cam_isp_blob_ife_init_config_update(
+			prepare, init_config);
+		if (rc)
+			CAM_ERR(CAM_ISP,
+				"Init config failed for req: %llu rc: %d",
+				 prepare->packet->header.request_id, rc);
+	}
+		break;
 	default:
 		CAM_WARN(CAM_ISP, "Invalid blob type %d", blob_type);
 		break;
@@ -9423,6 +9525,7 @@ static int cam_sfe_packet_generic_blob_handler(void *user_data,
 	case CAM_ISP_GENERIC_BLOB_TYPE_SENSOR_BLANKING_CONFIG:
 	case CAM_ISP_GENERIC_BLOB_TYPE_DISCARD_INITIAL_FRAMES:
 	case CAM_ISP_GENERIC_BLOB_TYPE_FPS_CONFIG:
+	case CAM_ISP_GENERIC_BLOB_TYPE_INIT_CONFIG:
 		break;
 	default:
 		CAM_WARN(CAM_ISP, "Invalid blob type: %u", blob_type);
@@ -11594,6 +11697,40 @@ static int cam_ife_hw_mgr_handle_hw_epoch(
 	return 0;
 }
 
+static int cam_ife_hw_mgr_handle_csid_camif_sof(
+	struct cam_ife_hw_mgr_ctx            *ctx,
+	struct cam_isp_hw_event_info         *event_info)
+{
+	struct cam_isp_hw_sof_event_data      sof_done_event_data;
+	cam_hw_event_cb_func                  ife_hw_irq_sof_cb;
+
+	/*
+	 * Currently SOF update is from IFE TOP - this CSID CAMIF SOF
+	 * is only to monitor second/third exposure frame for custom
+	 * AEB use-case hence the checks
+	 */
+	if (!(ctx->flags.is_aeb_mode && event_info->is_secondary_evt)) {
+		CAM_DBG(CAM_ISP,
+			"Received CSID CAMIF SOF aeb_mode: %d secondary_evt: %d - skip update",
+			ctx->flags.is_aeb_mode, event_info->is_secondary_evt);
+		return 0;
+	}
+
+	CAM_DBG(CAM_ISP,
+		"Received CSID CAMIF SOF res: %d as secondary evt",
+		event_info->res_id);
+
+	ife_hw_irq_sof_cb = ctx->common.event_cb;
+	sof_done_event_data.is_secondary_evt = true;
+	sof_done_event_data.boot_time = 0;
+	sof_done_event_data.timestamp = 0;
+
+	ife_hw_irq_sof_cb(ctx->common.cb_priv,
+		CAM_ISP_HW_EVENT_SOF, (void *)&sof_done_event_data);
+
+	return 0;
+}
+
 static int cam_ife_hw_mgr_handle_hw_sof(
 	void                                 *ctx,
 	void                                 *evt_info)
@@ -11603,6 +11740,9 @@ static int cam_ife_hw_mgr_handle_hw_sof(
 	cam_hw_event_cb_func                  ife_hw_irq_sof_cb;
 	struct cam_isp_hw_sof_event_data      sof_done_event_data;
 	struct timespec64 ts;
+
+	if (event_info->hw_type == CAM_ISP_HW_TYPE_CSID)
+		return cam_ife_hw_mgr_handle_csid_camif_sof(ctx, event_info);
 
 	memset(&sof_done_event_data, 0, sizeof(sof_done_event_data));
 

@@ -516,6 +516,7 @@ int cam_vfe_process_cmd(void *hw_priv, uint32_t cmd_type,
 	case CAM_ISP_HW_CMD_FE_UPDATE_IN_RD:
 	case CAM_ISP_HW_CMD_GET_PATH_PORT_MAP:
 	case CAM_ISP_HW_CMD_APPLY_CLK_BW_UPDATE:
+	case CAM_ISP_HW_CMD_INIT_CONFIG_UPDATE:
 		rc = core_info->vfe_top->hw_ops.process_cmd(
 			core_info->vfe_top->top_priv, cmd_type, cmd_args,
 			arg_size);

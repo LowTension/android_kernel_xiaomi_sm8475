@@ -69,6 +69,7 @@ struct cam_vfe_mux_ver4_data {
 	uint32_t                           qcfa_bin;
 	uint32_t                           dual_hw_idx;
 	uint32_t                           is_dual;
+	uint32_t                           epoch_factor;
 	bool                               is_fe_enabled;
 	bool                               is_offline;
 	bool                               is_lite;
@@ -1063,6 +1064,30 @@ static int cam_vfe_core_config_control(
 	return 0;
 }
 
+static int cam_vfe_init_config_update(
+	void *cmd_args, uint32_t arg_size)
+{
+	struct cam_isp_hw_init_config_update *init_cfg = cmd_args;
+	struct cam_isp_resource_node *rsrc_node = init_cfg->node_res;
+	struct cam_vfe_mux_ver4_data *mux_data = rsrc_node->res_priv;
+
+	if (arg_size != sizeof(struct cam_isp_hw_init_config_update)) {
+		CAM_ERR(CAM_ISP, "Invalid args size expected: %zu actual: %zu",
+			sizeof(struct cam_isp_hw_init_config_update),
+			arg_size);
+		return -EINVAL;
+	}
+
+	mux_data->epoch_factor =
+		init_cfg->init_config->epoch_cfg.epoch_factor;
+
+	CAM_DBG(CAM_ISP,
+		"Init Update for res_name: %s epoch_factor: %u%%",
+		rsrc_node->res_name, mux_data->epoch_factor);
+
+	return 0;
+}
+
 static int cam_vfe_top_ver4_mux_get_reg_update(
 	struct cam_vfe_top_ver4_priv *top_priv,
 	void *cmd_args, uint32_t arg_size)
@@ -1185,7 +1210,7 @@ int cam_vfe_top_acquire_resource(
 		acquire_data->vfe_in.in_port->horizontal_bin;
 	res_data->vbi_value      = 0;
 	res_data->hbi_value      = 0;
-	res_data->sfe_binned_epoch_cfg = (bool)
+	res_data->sfe_binned_epoch_cfg =
 		acquire_data->vfe_in.in_port->sfe_binned_epoch_cfg;
 
 	if (res_data->is_dual)
@@ -1472,6 +1497,9 @@ int cam_vfe_top_ver4_process_cmd(void *device_priv, uint32_t cmd_type,
 	case CAM_ISP_HW_CMD_APPLY_CLK_BW_UPDATE:
 		rc = cam_vfe_top_apply_clk_bw_update(&top_priv->top_common, cmd_args, arg_size);
 		break;
+	case CAM_ISP_HW_CMD_INIT_CONFIG_UPDATE:
+		rc = cam_vfe_init_config_update(cmd_args, arg_size);
+		break;
 	default:
 		rc = -EINVAL;
 		CAM_ERR(CAM_ISP, "Error, Invalid cmd:%d", cmd_type);
@@ -1621,6 +1649,7 @@ static int cam_vfe_handle_irq_bottom_half(void *handler_priv,
 		irq_status[i] = payload->irq_reg_val[i];
 
 	evt_info.hw_idx   = vfe_res->hw_intf->hw_idx;
+	evt_info.hw_type  = CAM_ISP_HW_TYPE_VFE;
 	evt_info.res_id   = vfe_res->res_id;
 	evt_info.res_type = vfe_res->res_type;
 	evt_info.reg_val = 0;
@@ -1781,7 +1810,7 @@ static int cam_vfe_resource_start(
 	struct cam_isp_resource_node *vfe_res)
 {
 	struct cam_vfe_mux_ver4_data   *rsrc_data;
-	uint32_t                        val = 0;
+	uint32_t                        val = 0, epoch_factor = 50;
 	int                             rc = 0;
 	uint32_t                        err_irq_mask[CAM_IFE_IRQ_REGISTERS_MAX];
 	uint32_t                        irq_mask[CAM_IFE_IRQ_REGISTERS_MAX];
@@ -1817,8 +1846,13 @@ static int cam_vfe_resource_start(
 		cam_io_r_mb(rsrc_data->mem_base +
 			rsrc_data->common_reg->core_cfg_1));
 
+	/* % epoch factor from userland */
+	if ((rsrc_data->epoch_factor) && (rsrc_data->epoch_factor <= 100))
+		epoch_factor = rsrc_data->epoch_factor;
+
 	val = ((rsrc_data->last_line + rsrc_data->vbi_value) -
-						rsrc_data->first_line) / 2;
+		rsrc_data->first_line) * epoch_factor / 100;
+
 	if (val > rsrc_data->last_line)
 		val = rsrc_data->last_line;
 
@@ -1828,7 +1862,10 @@ static int cam_vfe_resource_start(
 
 	cam_io_w_mb(val, rsrc_data->mem_base +
 				rsrc_data->common_reg->epoch_height_cfg);
-	CAM_DBG(CAM_ISP, "epoch_line_cfg: 0x%X", val);
+	CAM_DBG(CAM_ISP,
+		"height [0x%x : 0x%x] vbi_val: 0x%x epoch_factor: %u%% epoch_line_cfg: 0x%x",
+		rsrc_data->first_line, rsrc_data->last_line,
+		rsrc_data->vbi_value, epoch_factor, val);
 
 skip_core_cfg:
 	vfe_res->res_state = CAM_ISP_RESOURCE_STATE_STREAMING;
@@ -1986,6 +2023,7 @@ skip_core_decfg:
 		vfe_priv->irq_err_handle = 0;
 	}
 
+	vfe_priv->epoch_factor = 0;
 	CAM_DBG(CAM_ISP, "VFE:%d Res: %s Stopped",
 		vfe_res->hw_intf->hw_idx,
 		vfe_res->res_name);

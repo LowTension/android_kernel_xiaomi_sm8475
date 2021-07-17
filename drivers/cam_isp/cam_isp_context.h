@@ -269,6 +269,7 @@ struct cam_isp_context_event_record {
  * @custom_enabled:            Custom HW enabled for this ctx
  * @use_frame_header_ts:       Use frame header for qtimer ts
  * @support_consumed_addr:     Indicate whether HW has last consumed addr reg
+ * @aeb_enabled:               Indicate if stream is for AEB
  * @apply_in_progress          Whether request apply is in progress
  * @use_default_apply:         Use default settings in case of frame skip
  * @init_timestamp:            Timestamp at which this context is initialized
@@ -319,6 +320,7 @@ struct cam_isp_context {
 	bool                                  custom_enabled;
 	bool                                  use_frame_header_ts;
 	bool                                  support_consumed_addr;
+	bool                                  aeb_enabled;
 	atomic_t                              apply_in_progress;
 	bool                                  use_default_apply;
 	unsigned int                          init_timestamp;

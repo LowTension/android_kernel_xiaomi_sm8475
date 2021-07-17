@@ -38,6 +38,7 @@
 #define CAM_IFE_CTX_CONSUME_ADDR_EN    BIT(2)
 #define CAM_IFE_CTX_APPLY_DEFAULT_CFG  BIT(3)
 #define CAM_IFE_CTX_SFE_EN             BIT(4)
+#define CAM_IFE_CTX_AEB_EN             BIT(5)
 
 /*
  * Maximum configuration entry size  - This is based on the
@@ -215,11 +216,13 @@ struct cam_isp_prepare_hw_update_data {
 /**
  * struct cam_isp_hw_sof_event_data - Event payload for CAM_HW_EVENT_SOF
  *
- * @timestamp:   Time stamp for the sof event
- * @boot_time:   Boot time stamp for the sof event
+ * @is_secondary_event: Event notified as secondary
+ * @timestamp         : Time stamp for the sof event
+ * @boot_time         : Boot time stamp for the sof event
  *
  */
 struct cam_isp_hw_sof_event_data {
+	bool           is_secondary_evt;
 	uint64_t       timestamp;
 	uint64_t       boot_time;
 };

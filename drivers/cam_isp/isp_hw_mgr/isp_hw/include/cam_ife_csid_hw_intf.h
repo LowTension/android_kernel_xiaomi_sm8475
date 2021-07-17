@@ -132,11 +132,13 @@ struct cam_isp_in_port_generic_info {
 	uint32_t                        lite_path_count;
 	uint32_t                        sfe_in_path_type;
 	uint32_t                        sfe_ife_enable;
-	uint32_t                        secure_mode;
-	uint32_t                        dynamic_sensor_switch_en;
-	uint32_t                        can_use_lite;
-	uint32_t                        sfe_binned_epoch_cfg;
-	uint32_t                        epd_supported;
+	uint32_t                        epoch_factor;
+	bool                            secure_mode;
+	bool                            dynamic_sensor_switch_en;
+	bool                            can_use_lite;
+	bool                            sfe_binned_epoch_cfg;
+	bool                            epd_supported;
+	bool                            aeb_mode;
 	struct cam_isp_out_port_generic_info    *data;
 };
 
@@ -162,6 +164,8 @@ struct cam_isp_in_port_generic_info {
  * @sfe_inline_shdr:     Flag to indicate if sfe is inline shdr
  * @is_offline :         Flag to indicate offline
  * @need_top_cfg:        Flag to indicate if top cfg is needed
+ * @en_secondary_evt:    Flag to enable secondary event for the given resource
+ *                       depending on the use-case
  * @tasklet:             Tasklet to schedule bottom halves
  * @buf_done_controller: IRQ controller for buf done for version 680 hw
  * @cdm_ops:             CDM Ops
@@ -186,6 +190,7 @@ struct cam_csid_hw_reserve_resource_args {
 	bool                                      sfe_inline_shdr;
 	bool                                      is_offline;
 	bool                                      need_top_cfg;
+	bool                                      en_secondary_evt;
 	void                                     *tasklet;
 	void                                     *buf_done_controller;
 	void                                     *cdm_ops;
