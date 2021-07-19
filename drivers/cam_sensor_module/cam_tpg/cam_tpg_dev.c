@@ -9,6 +9,36 @@
 #include "tpg_hw/tpg_hw_v_1_0/tpg_hw_v_1_0_data.h"
 #include "tpg_hw/tpg_hw_v_1_3/tpg_hw_v_1_3_data.h"
 
+static int cam_tpg_subdev_close(struct v4l2_subdev *sd,
+	struct v4l2_subdev_fh *fh)
+{
+	struct cam_tpg_device *tpg_dev =
+		v4l2_get_subdevdata(sd);
+
+	bool crm_active = cam_req_mgr_is_open();
+
+	if (!tpg_dev) {
+		CAM_ERR(CAM_TPG, "tpg_dev ptr is NULL");
+		return -EINVAL;
+	}
+
+	if (crm_active) {
+		CAM_DBG(CAM_TPG, "CRM is ACTIVE, close should be from CRM");
+		return 0;
+	}
+
+	mutex_lock(&tpg_dev->mutex);
+	if (tpg_dev->state == CAM_TPG_STATE_INIT) {
+		CAM_DBG(CAM_TPG, "TPG node %d is succesfully closed", tpg_dev->soc_info.index);
+		mutex_unlock(&tpg_dev->mutex);
+		return 0;
+	}
+	cam_tpg_shutdown(tpg_dev);
+	mutex_unlock(&tpg_dev->mutex);
+
+	return 0;
+}
+
 static long cam_tpg_subdev_ioctl(struct v4l2_subdev *sd,
 	unsigned int cmd, void *arg)
 {
@@ -18,6 +48,15 @@ static long cam_tpg_subdev_ioctl(struct v4l2_subdev *sd,
 	switch (cmd) {
 	case VIDIOC_CAM_CONTROL:
 		rc = cam_tpg_core_cfg(tpg_dev, arg);
+		break;
+	case CAM_SD_SHUTDOWN:
+		if (!cam_req_mgr_is_shutdown()) {
+			CAM_ERR(CAM_CORE, "SD shouldn't come from user space");
+			return 0;
+		}
+		mutex_lock(&tpg_dev->mutex);
+		cam_tpg_shutdown(tpg_dev);
+		mutex_unlock(&tpg_dev->mutex);
 		break;
 	default:
 		CAM_ERR(CAM_TPG, "Wrong ioctl : %d", cmd);
@@ -81,23 +120,6 @@ static struct v4l2_subdev_core_ops tpg_subdev_core_ops = {
 #endif
 };
 
-static int cam_tpg_subdev_close(struct v4l2_subdev *sd,
-	struct v4l2_subdev_fh *fh)
-{
-	struct cam_tpg_device *tpg_dev =
-		v4l2_get_subdevdata(sd);
-
-	if (!tpg_dev) {
-		CAM_ERR(CAM_TPG, "tpg_dev ptr is NULL");
-		return -EINVAL;
-	}
-
-	mutex_lock(&tpg_dev->mutex);
-	cam_tpg_shutdown(tpg_dev);
-	mutex_unlock(&tpg_dev->mutex);
-
-	return 0;
-}
 
 static const struct v4l2_subdev_ops tpg_subdev_ops = {
 	.core = &tpg_subdev_core_ops,
@@ -225,6 +247,7 @@ static int cam_tpg_hw_layer_init(struct cam_tpg_device *tpg_dev,
 	tpg_dev->tpg_hw.hw_info  = (struct tpg_hw_info *)match_dev->data;
 	tpg_dev->tpg_hw.soc_info = &tpg_dev->soc_info;
 	tpg_dev->tpg_hw.cpas_handle = tpg_dev->cpas_handle;
+	tpg_dev->tpg_hw.state    = TPG_HW_STATE_HW_DISABLED;
 	mutex_init(&tpg_dev->tpg_hw.mutex);
 
 	tpg_dev->tpg_hw.vc_slots = devm_kzalloc(&pdev->dev,
