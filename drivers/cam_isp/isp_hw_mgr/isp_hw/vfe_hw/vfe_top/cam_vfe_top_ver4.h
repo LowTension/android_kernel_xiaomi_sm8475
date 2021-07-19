@@ -98,17 +98,21 @@ struct cam_vfe_ver4_path_hw_info {
 	struct cam_vfe_ver4_path_reg_data          *reg_data;
 };
 
+struct cam_vfe_top_ver4_debug_reg_info {
+	uint32_t  shift;
+	char     *clc_name;
+};
+
 struct cam_vfe_top_ver4_hw_info {
 	struct cam_vfe_top_ver4_reg_offset_common  *common_reg;
 	struct cam_vfe_ver4_path_hw_info            vfe_full_hw_info;
 	struct cam_vfe_ver4_path_hw_info            pdlib_hw_info;
-	struct cam_vfe_ver4_path_hw_info           *rdi_hw_info[
-		CAM_VFE_RDI_VER2_MAX];
-
+	struct cam_vfe_ver4_path_hw_info           *rdi_hw_info[CAM_VFE_RDI_VER2_MAX];
 	struct cam_vfe_ver4_path_reg_data          *reg_data;
 	struct cam_vfe_top_ver4_wr_client_desc     *wr_client_desc;
 	struct cam_vfe_top_ver4_module_desc        *ipp_module_desc;
 	uint32_t                                    num_reg;
+	struct cam_vfe_top_ver4_debug_reg_info     (*debug_reg_info)[][8];
 	uint32_t                                    num_mux;
 	uint32_t                                    num_path_port_map;
 	uint32_t mux_type[CAM_VFE_TOP_MUX_MAX];
@@ -140,5 +144,19 @@ int cam_vfe_top_ver4_init(struct cam_hw_soc_info     *soc_info,
 	struct cam_vfe_top                          **vfe_top);
 
 int cam_vfe_top_ver4_deinit(struct cam_vfe_top      **vfe_top);
+
+#define VFE_DBG_INFO(shift_val, name) {.shift = shift_val, .clc_name = name}
+
+#define VFE_DBG_INFO_ARRAY_4bit(name1, name2, name3, name4, name5, name6, name7, name8) \
+	{                                                                               \
+		VFE_DBG_INFO(0, name1),                                                 \
+		VFE_DBG_INFO(4, name2),                                                 \
+		VFE_DBG_INFO(8, name3),                                                 \
+		VFE_DBG_INFO(12, name4),                                                \
+		VFE_DBG_INFO(16, name5),                                                \
+		VFE_DBG_INFO(20, name6),                                                \
+		VFE_DBG_INFO(24, name7),                                                \
+		VFE_DBG_INFO(28, name8),                                                \
+	}
 
 #endif /* _CAM_VFE_TOP_VER4_H_ */

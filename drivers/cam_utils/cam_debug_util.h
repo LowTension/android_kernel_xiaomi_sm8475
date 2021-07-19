@@ -317,6 +317,8 @@ void cam_print_to_buffer(char *buf, const size_t buf_size, size_t *len, unsigned
 #define CAM_INFO_BUF(module_id, buf, buf_size, len, fmt, args...)                                  \
 	cam_print_to_buffer(buf, buf_size, len, CAM_TYPE_INFO, module_id, fmt, ##args)
 
+#define CAM_BOOL_TO_YESNO(val) ((val) ? "Y" : "N")
+
 /**
  * struct cam_cpas_debug_settings - Sysfs debug settings for cpas driver
  */

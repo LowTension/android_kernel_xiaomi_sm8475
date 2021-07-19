@@ -12,6 +12,8 @@
 #include "cam_vfe_bus_ver3.h"
 #include "cam_irq_controller.h"
 
+#define CAM_VFE_68X_NUM_DBG_REG 5
+
 static struct cam_vfe_top_ver4_module_desc vfe68x_ipp_mod_desc[] = {
 	{
 		.id = 0,
@@ -87,7 +89,7 @@ static struct cam_vfe_top_ver4_reg_offset_common vfe68x_top_common_reg = {
 	.bus_violation_status     = 0x00001264,
 	.bus_overflow_status      = 0x00001268,
 	.top_debug_cfg            = 0x00001074,
-	.num_top_debug_reg        = 5,
+	.num_top_debug_reg        = CAM_VFE_68X_NUM_DBG_REG,
 	.top_debug                = {
 		0x0000105C,
 		0x00001060,
@@ -159,6 +161,58 @@ static struct cam_vfe_ver4_path_hw_info
 	},
 };
 
+static struct cam_vfe_top_ver4_debug_reg_info vfe68x_dbg_reg_info[CAM_VFE_68X_NUM_DBG_REG][8] = {
+	VFE_DBG_INFO_ARRAY_4bit(
+		"test_bus_reserved",
+		"test_bus_reserved",
+		"test_bus_reserved",
+		"test_bus_reserved",
+		"test_bus_reserved",
+		"test_bus_reserved",
+		"test_bus_reserved",
+		"test_bus_reserved"
+	),
+	{
+		VFE_DBG_INFO(32, "non-CLC info"),
+		VFE_DBG_INFO(32, "non-CLC info"),
+		VFE_DBG_INFO(32, "non-CLC info"),
+		VFE_DBG_INFO(32, "non-CLC info"),
+		VFE_DBG_INFO(32, "non-CLC info"),
+		VFE_DBG_INFO(32, "non-CLC info"),
+		VFE_DBG_INFO(32, "non-CLC info"),
+		VFE_DBG_INFO(32, "non-CLC info"),
+	},
+	VFE_DBG_INFO_ARRAY_4bit(
+		"PP_THROTTLE",
+		"STATS_BG_THROTTLE",
+		"STATS_BG",
+		"BLS",
+		"GLUT",
+		"unused",
+		"unused",
+		"unused"
+	),
+	VFE_DBG_INFO_ARRAY_4bit(
+		"RDI_0",
+		"RDI_1",
+		"RDI_2",
+		"RDI_3",
+		"PP_STATS_BG",
+		"PP_GLUT",
+		"PP_STATS_BG",
+		"PP_GLUT"
+	),
+	VFE_DBG_INFO_ARRAY_4bit(
+		"unused",
+		"unused",
+		"unused",
+		"unused",
+		"unused",
+		"unused",
+		"unused",
+		"unused"
+	),
+};
 
 static struct cam_vfe_top_ver4_hw_info vfe68x_top_hw_info = {
 	.common_reg = &vfe68x_top_common_reg,
@@ -180,7 +234,7 @@ static struct cam_vfe_top_ver4_hw_info vfe68x_top_hw_info = {
 		CAM_VFE_RDI_VER_1_0,
 		CAM_VFE_RDI_VER_1_0,
 	},
-
+	.debug_reg_info = &vfe68x_dbg_reg_info,
 };
 
 static struct cam_irq_register_set vfe680x_bus_irq_reg[2] = {
