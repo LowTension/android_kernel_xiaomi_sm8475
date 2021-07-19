@@ -2646,7 +2646,7 @@ static int cam_ife_csid_ver2_init_config_rdi_path(
 	struct cam_hw_soc_info                   *soc_info;
 	const struct cam_ife_csid_ver2_path_reg_info *path_reg = NULL;
 	const struct cam_ife_csid_ver2_common_reg_info *cmn_reg = NULL;
-	uint32_t  val;
+	uint32_t  val, cfg0 = 0, cfg1 = 0;
 	struct cam_ife_csid_ver2_path_cfg *path_cfg;
 	struct cam_ife_csid_cid_data *cid_data;
 	void __iomem *mem_base;
@@ -2681,13 +2681,14 @@ static int cam_ife_csid_ver2_init_config_rdi_path(
 	/*Configure cfg0:
 	 * VC
 	 * DT
+	 * Timestamp enable and strobe selection for v780
 	 * DT_ID cobination
 	 * Decode Format
 	 * Frame_id_dec_en
 	 * VFR en
 	 * offline mode
 	 */
-	val = (cid_data->vc_dt[CAM_IFE_CSID_MULTI_VC_DT_GRP_0].vc <<
+	cfg0 = (cid_data->vc_dt[CAM_IFE_CSID_MULTI_VC_DT_GRP_0].vc <<
 			cmn_reg->vc_shift_val) |
 		(cid_data->vc_dt[CAM_IFE_CSID_MULTI_VC_DT_GRP_0].dt <<
 			cmn_reg->dt_shift_val) |
@@ -2696,13 +2697,18 @@ static int cam_ife_csid_ver2_init_config_rdi_path(
 		 	cmn_reg->decode_format_shift_val);
 
 	if (csid_reg->cmn_reg->vfr_supported)
-		val |= path_cfg->vfr_en << cmn_reg->vfr_en_shift_val;
+		cfg0 |= path_cfg->vfr_en << cmn_reg->vfr_en_shift_val;
 
 	if (csid_reg->cmn_reg->frame_id_dec_supported)
-		val |= path_cfg->frame_id_dec_en <<
+		cfg0 |= path_cfg->frame_id_dec_en <<
 			cmn_reg->frame_id_decode_en_shift_val;
 
-	cam_io_w_mb(val, mem_base + path_reg->cfg0_addr);
+	if (cmn_reg->timestamp_enabled_in_cfg0)
+		cfg0 |= (1 << path_reg->timestamp_en_shift_val) |
+			(cmn_reg->timestamp_strobe_val <<
+				cmn_reg->timestamp_stb_sel_shift_val);
+
+	cam_io_w_mb(cfg0, mem_base + path_reg->cfg0_addr);
 
 	/*Configure Multi VC DT combo */
 	if (cid_data->vc_dt[CAM_IFE_CSID_MULTI_VC_DT_GRP_1].valid) {
@@ -2725,32 +2731,33 @@ static int cam_ife_csid_ver2_init_config_rdi_path(
 	 * Plain format
 	 * Packing format
 	 */
-	val = (path_cfg->crop_enable << path_reg->crop_h_en_shift_val) |
+	cfg1 = (path_cfg->crop_enable << path_reg->crop_h_en_shift_val) |
 		(path_cfg->crop_enable <<
 		 path_reg->crop_v_en_shift_val);
 
 	if (cmn_reg->drop_supported)
-		val |= (path_cfg->drop_enable <<
+		cfg1 |= (path_cfg->drop_enable <<
 				path_reg->drop_v_en_shift_val) |
 			(path_cfg->drop_enable <<
 				path_reg->drop_h_en_shift_val);
 
-	val |= (1 << path_reg->timestamp_en_shift_val) |
-		(cmn_reg->timestamp_strobe_val <<
-			cmn_reg->timestamp_stb_sel_shift_val);
-
 	if (path_reg->mipi_pack_supported)
-		val |= path_cfg->path_format[CAM_IFE_CSID_MULTI_VC_DT_GRP_0].packing_fmt <<
+		cfg1 |= path_cfg->path_format[CAM_IFE_CSID_MULTI_VC_DT_GRP_0].packing_fmt <<
 			path_reg->packing_fmt_shift_val;
 
-	val |= (path_cfg->path_format[CAM_IFE_CSID_MULTI_VC_DT_GRP_0].plain_fmt <<
+	cfg1 |= (path_cfg->path_format[CAM_IFE_CSID_MULTI_VC_DT_GRP_0].plain_fmt <<
 			path_reg->plain_fmt_shift_val);
 
 	if (csid_hw->debug_info.debug_val &
 		CAM_IFE_CSID_DEBUG_ENABLE_HBI_VBI_INFO)
-		val |= 1 << path_reg->format_measure_en_shift_val;
+		cfg1 |= 1 << path_reg->format_measure_en_shift_val;
 
-	cam_io_w_mb(val, mem_base + path_reg->cfg1_addr);
+	if (!cmn_reg->timestamp_enabled_in_cfg0)
+		cfg1 |= (1 << path_reg->timestamp_en_shift_val) |
+			(cmn_reg->timestamp_strobe_val <<
+				cmn_reg->timestamp_stb_sel_shift_val);
+
+	cam_io_w_mb(cfg1, mem_base + path_reg->cfg1_addr);
 
 	/* set frame drop pattern to 0 and period to 1 */
 	cam_io_w_mb(1, mem_base + path_reg->frm_drop_period_addr);
@@ -2801,7 +2808,7 @@ static int cam_ife_csid_ver2_init_config_pxl_path(
 	struct cam_hw_soc_info                   *soc_info;
 	const struct cam_ife_csid_ver2_path_reg_info *path_reg = NULL;
 	const struct cam_ife_csid_ver2_common_reg_info *cmn_reg = NULL;
-	uint32_t val = 0;
+	uint32_t val = 0, cfg0 = 0, cfg1 = 0;
 	struct cam_ife_csid_ver2_path_cfg *path_cfg;
 	struct cam_ife_csid_cid_data *cid_data;
 	void __iomem *mem_base;
@@ -2827,12 +2834,13 @@ static int cam_ife_csid_ver2_init_config_pxl_path(
 	/*Configure:
 	 * VC
 	 * DT
+	 * Timestamp enable and strobe selection
 	 * DT_ID cobination
 	 * Decode Format
 	 * Frame_id_dec_en
 	 * VFR en
 	 */
-	val |= (cid_data->vc_dt[CAM_IFE_CSID_MULTI_VC_DT_GRP_0].vc <<
+	cfg0 |= (cid_data->vc_dt[CAM_IFE_CSID_MULTI_VC_DT_GRP_0].vc <<
 			cmn_reg->vc_shift_val) |
 		(cid_data->vc_dt[CAM_IFE_CSID_MULTI_VC_DT_GRP_0].dt <<
 			cmn_reg->dt_shift_val) |
@@ -2841,17 +2849,21 @@ static int cam_ife_csid_ver2_init_config_pxl_path(
 		 	cmn_reg->decode_format_shift_val);
 
 	if (csid_reg->cmn_reg->vfr_supported)
-		val |= path_cfg->vfr_en << cmn_reg->vfr_en_shift_val;
+		cfg0 |= path_cfg->vfr_en << cmn_reg->vfr_en_shift_val;
 
 	if (csid_reg->cmn_reg->frame_id_dec_supported)
-		val |= path_cfg->frame_id_dec_en <<
+		cfg0 |= path_cfg->frame_id_dec_en <<
 			cmn_reg->frame_id_decode_en_shift_val;
 
-	CAM_DBG(CAM_ISP, "CSID[%d] res:%d cfg0_addr 0x%x",
-		csid_hw->hw_intf->hw_idx, res->res_id,
-		val);
+	if (cmn_reg->timestamp_enabled_in_cfg0)
+		cfg0 |= (1 << path_reg->timestamp_en_shift_val) |
+			(cmn_reg->timestamp_strobe_val <<
+				cmn_reg->timestamp_stb_sel_shift_val);
 
-	cam_io_w_mb(val, mem_base + path_reg->cfg0_addr);
+	CAM_DBG(CAM_ISP, "CSID[%d] res:%d cfg0_addr 0x%x",
+		csid_hw->hw_intf->hw_idx, res->res_id, cfg0);
+
+	cam_io_w_mb(cfg0, mem_base + path_reg->cfg0_addr);
 
 	/*Configure Multi VC DT combo */
 	if (cid_data->vc_dt[CAM_IFE_CSID_MULTI_VC_DT_GRP_1].valid) {
@@ -2880,53 +2892,54 @@ static int cam_ife_csid_ver2_init_config_pxl_path(
 	if (csid_hw->flags.binning_enabled) {
 
 		if (path_reg->binning_supported & CAM_IFE_CSID_BIN_HORIZONTAL)
-			val |= path_cfg->horizontal_bin <<
+			cfg1 |= path_cfg->horizontal_bin <<
 				path_reg->bin_h_en_shift_val;
 
 		if (path_reg->binning_supported & CAM_IFE_CSID_BIN_VERTICAL)
-			val |= path_cfg->vertical_bin <<
+			cfg1 |= path_cfg->vertical_bin <<
 				path_reg->bin_v_en_shift_val;
 
 		if (path_reg->binning_supported & CAM_IFE_CSID_BIN_QCFA)
-			val |= path_cfg->qcfa_bin <<
+			cfg1 |= path_cfg->qcfa_bin <<
 				path_reg->bin_qcfa_en_shift_val;
 
 		if (path_cfg->qcfa_bin || path_cfg->vertical_bin ||
 				path_cfg->horizontal_bin)
-			val |= 1  << path_reg->bin_en_shift_val;
+			cfg1 |= 1  << path_reg->bin_en_shift_val;
 	}
 
-	val |= (path_cfg->crop_enable << path_reg->crop_h_en_shift_val) |
+	cfg1 |= (path_cfg->crop_enable << path_reg->crop_h_en_shift_val) |
 		(path_cfg->crop_enable <<
 		 path_reg->crop_v_en_shift_val);
 
 	if (cmn_reg->drop_supported)
-		val |= (path_cfg->drop_enable <<
+		cfg1 |= (path_cfg->drop_enable <<
 				path_reg->drop_v_en_shift_val) |
 			(path_cfg->drop_enable <<
 				path_reg->drop_h_en_shift_val);
 
-	val |= 1 << path_reg->pix_store_en_shift_val;
-	val |= 1 << path_reg->timestamp_en_shift_val;
-	val |= cmn_reg->timestamp_strobe_val <<
-		cmn_reg->timestamp_stb_sel_shift_val;
+	cfg1 |= 1 << path_reg->pix_store_en_shift_val;
 
 	/*enable early eof based on crop enable */
 	if (!(csid_hw->debug_info.debug_val &
 		    CAM_IFE_CSID_DEBUG_DISABLE_EARLY_EOF) &&
 		cmn_reg->early_eof_supported &&
 		path_cfg->crop_enable)
-		val |= (1 << path_reg->early_eof_en_shift_val);
+		cfg1 |= (1 << path_reg->early_eof_en_shift_val);
 
 	if (csid_hw->debug_info.debug_val &
 		CAM_IFE_CSID_DEBUG_ENABLE_HBI_VBI_INFO)
-		val |= 1 << path_reg->format_measure_en_shift_val;
+		cfg1 |= 1 << path_reg->format_measure_en_shift_val;
+
+	if (!cmn_reg->timestamp_enabled_in_cfg0)
+		cfg1 |= (1 << path_reg->timestamp_en_shift_val) |
+			(cmn_reg->timestamp_strobe_val <<
+				cmn_reg->timestamp_stb_sel_shift_val);
 
 	CAM_DBG(CAM_ISP, "CSID[%d] res:%d cfg1_addr 0x%x",
-		csid_hw->hw_intf->hw_idx, res->res_id,
-		val);
+		csid_hw->hw_intf->hw_idx, res->res_id, cfg1);
 
-	cam_io_w_mb(val, mem_base + path_reg->cfg1_addr);
+	cam_io_w_mb(cfg1, mem_base + path_reg->cfg1_addr);
 
 	/* set frame drop pattern to 0 and period to 1 */
 	cam_io_w_mb(1, mem_base + path_reg->frm_drop_period_addr);

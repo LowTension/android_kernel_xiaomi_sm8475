@@ -173,6 +173,7 @@ struct cam_vfe_bus_ver3_comp_grp_data {
 struct cam_vfe_bus_ver3_vfe_out_data {
 	uint32_t                              out_type;
 	uint32_t                              source_group;
+	uint32_t                              buf_done_mask_shift;
 	struct cam_vfe_bus_ver3_common_data  *common_data;
 	struct cam_vfe_bus_ver3_priv         *bus_priv;
 
@@ -1657,15 +1658,14 @@ static int cam_vfe_bus_ver3_release_comp_grp(
 }
 
 static int cam_vfe_bus_ver3_start_comp_grp(
-	struct cam_isp_resource_node *comp_grp, uint32_t *bus_irq_reg_mask)
+	struct cam_vfe_bus_ver3_vfe_out_data *vfe_out_data, uint32_t *bus_irq_reg_mask)
 {
 	int rc = 0;
 	uint32_t val;
-	struct cam_vfe_bus_ver3_comp_grp_data *rsrc_data = NULL;
-	struct cam_vfe_bus_ver3_common_data *common_data = NULL;
-
-	rsrc_data = comp_grp->res_priv;
-	common_data = rsrc_data->common_data;
+	struct cam_isp_resource_node *comp_grp = vfe_out_data->comp_grp;
+	struct cam_vfe_bus_ver3_comp_grp_data *rsrc_data =
+		vfe_out_data->comp_grp->res_priv;
+	struct cam_vfe_bus_ver3_common_data *common_data = rsrc_data->common_data;
 
 	CAM_DBG(CAM_ISP,
 		"Start VFE:%d comp_grp:%d streaming state:%d comp_mask:0x%X",
@@ -1728,6 +1728,7 @@ skip_comp_cfg:
 
 	bus_irq_reg_mask[CAM_VFE_BUS_VER3_IRQ_REG0] =
 		(0x1 << (rsrc_data->comp_grp_type +
+		vfe_out_data->buf_done_mask_shift +
 		rsrc_data->common_data->comp_done_shift));
 
 	CAM_DBG(CAM_ISP, "Start Done VFE:%d comp_grp:%d bus_irq_mask_0: 0x%X",
@@ -1760,7 +1761,8 @@ static int cam_vfe_bus_ver3_handle_comp_done_bottom_half(
 	uint64_t            *comp_mask)
 {
 	int rc = CAM_VFE_IRQ_STATUS_ERR;
-	struct cam_isp_resource_node          *comp_grp = handler_priv;
+	struct cam_vfe_bus_ver3_vfe_out_data  *vfe_out  = handler_priv;
+	struct cam_isp_resource_node          *comp_grp = vfe_out->comp_grp;
 	struct cam_vfe_bus_irq_evt_payload    *evt_payload = evt_payload_priv;
 	struct cam_vfe_bus_ver3_comp_grp_data *rsrc_data = comp_grp->res_priv;
 	uint32_t                              *cam_ife_irq_regs;
@@ -1779,6 +1781,7 @@ static int cam_vfe_bus_ver3_handle_comp_done_bottom_half(
 	status_0 = cam_ife_irq_regs[CAM_IFE_IRQ_BUS_VER3_REG_STATUS0];
 
 	if (status_0 & BIT(rsrc_data->comp_grp_type +
+		vfe_out->buf_done_mask_shift +
 		rsrc_data->common_data->comp_done_shift)) {
 		evt_payload->evt_id = CAM_ISP_HW_EVENT_DONE;
 		rc = CAM_VFE_IRQ_STATUS_SUCCESS;
@@ -2153,8 +2156,7 @@ static int cam_vfe_bus_ver3_start_vfe_out(
 		rc = cam_vfe_bus_ver3_start_wm(&rsrc_data->wm_res[i]);
 
 	memset(bus_irq_reg_mask, 0, sizeof(bus_irq_reg_mask));
-	rc = cam_vfe_bus_ver3_start_comp_grp(rsrc_data->comp_grp,
-		bus_irq_reg_mask);
+	rc = cam_vfe_bus_ver3_start_comp_grp(rsrc_data, bus_irq_reg_mask);
 
 	if (rsrc_data->is_dual && !rsrc_data->is_master)
 		goto end;
@@ -2372,7 +2374,7 @@ static int cam_vfe_bus_ver3_handle_vfe_out_done_bottom_half(
 	uint32_t                               out_list[CAM_VFE_BUS_VER3_VFE_OUT_MAX];
 
 	rc = cam_vfe_bus_ver3_handle_comp_done_bottom_half(
-		rsrc_data->comp_grp, evt_payload_priv, &comp_mask);
+		rsrc_data, evt_payload_priv, &comp_mask);
 	CAM_DBG(CAM_ISP, "VFE:%d out_type:0x%X rc:%d",
 		rsrc_data->common_data->core_index, rsrc_data->out_type,
 		rsrc_data->out_type, rc);
@@ -2452,6 +2454,8 @@ static int cam_vfe_bus_ver3_init_vfe_out_resource(uint32_t  index,
 
 	rsrc_data->source_group =
 		ver3_hw_info->vfe_out_hw_info[index].source_group;
+	rsrc_data->buf_done_mask_shift =
+		ver3_hw_info->vfe_out_hw_info[index].bufdone_shift;
 	rsrc_data->out_type     =
 		ver3_hw_info->vfe_out_hw_info[index].vfe_out_type;
 	rsrc_data->common_data  = &ver3_bus_priv->common_data;

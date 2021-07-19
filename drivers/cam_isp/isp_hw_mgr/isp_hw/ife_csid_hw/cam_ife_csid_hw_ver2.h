@@ -451,6 +451,7 @@ struct cam_ife_csid_ver2_common_reg_info {
 	uint32_t global_reset;
 	uint32_t rup_supported;
 	uint32_t only_master_rup;
+	bool     timestamp_enabled_in_cfg0;
 
 	/* Masks */
 	uint32_t pxl_cnt_mask;
