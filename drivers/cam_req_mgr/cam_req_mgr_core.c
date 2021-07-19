@@ -360,6 +360,46 @@ static int __cam_req_mgr_notify_frame_skip(
 }
 
 /**
+ * __cam_req_mgr_send_evt()
+ *
+ * @brief      : Send event to all connected devices
+ * @req_id     : Req ID
+ * @type       : Event type
+ * @error      : Error type
+ * @link       : Link info
+ *
+ */
+static int __cam_req_mgr_send_evt(
+	uint64_t                       req_id,
+	enum cam_req_mgr_link_evt_type type,
+	enum cam_req_mgr_device_error  error,
+	struct cam_req_mgr_core_link  *link)
+{
+	int i;
+	struct cam_req_mgr_link_evt_data     evt_data;
+	struct cam_req_mgr_connected_device *device = NULL;
+
+	CAM_DBG(CAM_CRM,
+		"Notify event type: %d to all connected devices on link: 0x%x",
+		type, link->link_hdl);
+
+	for (i = 0; i < link->num_devs; i++) {
+		device = &link->l_dev[i];
+		if (device != NULL) {
+			evt_data.dev_hdl = device->dev_hdl;
+			evt_data.evt_type = type;
+			evt_data.link_hdl = link->link_hdl;
+			evt_data.req_id = req_id;
+			evt_data.u.error = error;
+			if (device->ops && device->ops->process_evt)
+				device->ops->process_evt(&evt_data);
+		}
+	}
+
+	return 0;
+}
+
+/**
  * __cam_req_mgr_notify_error_on_link()
  *
  * @brief : Notify userspace on exceeding max retry
@@ -386,6 +426,9 @@ static int __cam_req_mgr_notify_error_on_link(
 		CAM_ERR(CAM_CRM, "pd : %d is more than expected", pd);
 		return -EINVAL;
 	}
+
+	/* Notify all devices in the link about the error */
+	__cam_req_mgr_send_evt(0, CAM_REQ_MGR_LINK_EVT_STALLED, CRM_KMD_ERR_FATAL, link);
 
 	CAM_ERR_RATE_LIMIT(CAM_CRM,
 		"Notifying userspace to trigger recovery on link 0x%x for session %d",
@@ -1788,32 +1831,6 @@ static int __cam_req_mgr_reset_in_q(struct cam_req_mgr_req_data *req)
 }
 
 /**
- * __cam_req_mgr_notify_sof_freeze()
- *
- * @brief : Notify devices on link on detecting a SOF freeze
- * @link  : link on which the sof freeze was detected
- *
- */
-static void __cam_req_mgr_notify_sof_freeze(
-	struct cam_req_mgr_core_link *link)
-{
-	int                                  i = 0;
-	struct cam_req_mgr_link_evt_data     evt_data;
-	struct cam_req_mgr_connected_device *dev = NULL;
-
-	for (i = 0; i < link->num_devs; i++) {
-		dev = &link->l_dev[i];
-		evt_data.evt_type = CAM_REQ_MGR_LINK_EVT_SOF_FREEZE;
-		evt_data.dev_hdl = dev->dev_hdl;
-		evt_data.link_hdl =  link->link_hdl;
-		evt_data.req_id = 0;
-		evt_data.u.error = CRM_KMD_ERR_FATAL;
-		if (dev->ops && dev->ops->process_evt)
-			dev->ops->process_evt(&evt_data);
-	}
-}
-
-/**
  * __cam_req_mgr_process_sof_freeze()
  *
  * @brief : Apoptosis - Handles case when connected devices are not responding
@@ -1866,7 +1883,8 @@ static int __cam_req_mgr_process_sof_freeze(void *priv, void *data)
 		session->session_hdl, link->link_hdl, link->max_delay,
 		last_applied_req_id);
 
-	__cam_req_mgr_notify_sof_freeze(link);
+	__cam_req_mgr_send_evt(0, CAM_REQ_MGR_LINK_EVT_SOF_FREEZE,
+		CRM_KMD_ERR_FATAL, link);
 	memset(&msg, 0, sizeof(msg));
 
 	msg.session_hdl = session->session_hdl;
@@ -2732,13 +2750,11 @@ void __cam_req_mgr_apply_on_bubble(
  */
 int cam_req_mgr_process_error(void *priv, void *data)
 {
-	int                                  rc = 0, idx = -1, i;
+	int                                  rc = 0, idx = -1;
 	struct cam_req_mgr_error_notify     *err_info = NULL;
 	struct cam_req_mgr_core_link        *link = NULL;
 	struct cam_req_mgr_req_queue        *in_q = NULL;
 	struct cam_req_mgr_slot             *slot = NULL;
-	struct cam_req_mgr_connected_device *device = NULL;
-	struct cam_req_mgr_link_evt_data     evt_data;
 	struct crm_task_payload             *task_data = NULL;
 
 	if (!data || !priv) {
@@ -2783,21 +2799,9 @@ int cam_req_mgr_process_error(void *priv, void *data)
 				return -EINVAL;
 			}
 			/* Notify all devices in the link about error */
-			for (i = 0; i < link->num_devs; i++) {
-				device = &link->l_dev[i];
-				if (device != NULL) {
-					evt_data.dev_hdl = device->dev_hdl;
-					evt_data.evt_type =
-						CAM_REQ_MGR_LINK_EVT_ERR;
-					evt_data.link_hdl = link->link_hdl;
-					evt_data.req_id = err_info->req_id;
-					evt_data.u.error = err_info->error;
-					if (device->ops &&
-						device->ops->process_evt)
-						rc = device->ops->process_evt(
-							&evt_data);
-				}
-			}
+			__cam_req_mgr_send_evt(err_info->req_id, CAM_REQ_MGR_LINK_EVT_ERR,
+				err_info->error, link);
+
 			/* Bring processing pointer to bubbled req id */
 			__cam_req_mgr_tbl_set_all_skip_cnt(&link->req.l_tbl);
 			in_q->rd_idx = idx;
@@ -5074,10 +5078,8 @@ end:
 
 int cam_req_mgr_link_control(struct cam_req_mgr_link_control *control)
 {
-	int                                     rc = 0, i, j;
+	int                                     rc = 0, i;
 	struct cam_req_mgr_core_link           *link = NULL;
-	struct cam_req_mgr_connected_device    *dev = NULL;
-	struct cam_req_mgr_link_evt_data        evt_data;
 	int                                     init_timeout = 0;
 	long                                    idx;
 	bool                                    bit;
@@ -5147,26 +5149,13 @@ int cam_req_mgr_link_control(struct cam_req_mgr_link_control *control)
 			/* Pause the timer before sensor stream on */
 			link->watchdog->pause_timer = true;
 			/* notify nodes */
-			for (j = 0; j < link->num_devs; j++) {
-				dev = &link->l_dev[j];
-				evt_data.evt_type = CAM_REQ_MGR_LINK_EVT_RESUME;
-				evt_data.link_hdl =  link->link_hdl;
-				evt_data.dev_hdl = dev->dev_hdl;
-				evt_data.req_id = 0;
-				if (dev->ops && dev->ops->process_evt)
-					dev->ops->process_evt(&evt_data);
-			}
+			__cam_req_mgr_send_evt(0, CAM_REQ_MGR_LINK_EVT_RESUME,
+				CRM_KMD_ERR_MAX, link);
 		} else if (control->ops == CAM_REQ_MGR_LINK_DEACTIVATE) {
 			/* notify nodes */
-			for (j = 0; j < link->num_devs; j++) {
-				dev = &link->l_dev[j];
-				evt_data.evt_type = CAM_REQ_MGR_LINK_EVT_PAUSE;
-				evt_data.link_hdl =  link->link_hdl;
-				evt_data.dev_hdl = dev->dev_hdl;
-				evt_data.req_id = 0;
-				if (dev->ops && dev->ops->process_evt)
-					dev->ops->process_evt(&evt_data);
-			}
+			__cam_req_mgr_send_evt(0, CAM_REQ_MGR_LINK_EVT_PAUSE,
+				CRM_KMD_ERR_MAX, link);
+
 			/* Destroy SOF watchdog timer */
 			spin_lock_bh(&link->link_state_spin_lock);
 			link->state = CAM_CRM_LINK_STATE_IDLE;
