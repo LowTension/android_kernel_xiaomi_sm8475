@@ -4195,9 +4195,19 @@ static int __cam_isp_ctx_rdi_only_sof_in_top_state(
 			ctx_isp->frame_id);
 
 		/*
-		 * It is idle frame with out any applied request id, send
-		 * request id as zero
+		 * It's possible for rup done to be processed before
+		 * SOF, check for first active request shutter here
 		 */
+		if (!list_empty(&ctx->active_req_list)) {
+			struct cam_ctx_request  *req = NULL;
+
+			req = list_first_entry(&ctx->active_req_list,
+				struct cam_ctx_request, list);
+			if (req->request_id > ctx_isp->reported_req_id) {
+				request_id = req->request_id;
+				ctx_isp->reported_req_id = request_id;
+			}
+		}
 		__cam_isp_ctx_send_sof_timestamp(ctx_isp, request_id,
 			CAM_REQ_MGR_SOF_EVENT_SUCCESS);
 	} else {
