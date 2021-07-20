@@ -71,7 +71,7 @@ int cam_csiphy_util_update_aon_ops(bool get_access, uint32_t phy_idx);
  *
  * This API allows to print all the cphy/dphy specific status registers
  */
-int cam_csiphy_print_status_reg(struct csiphy_device *csiphy_dev);
+int cam_csiphy_dump_status_reg(struct csiphy_device *csiphy_dev);
 
 /**
  * @phy_idx    : To acquire the correct PHY hw to do the operation with
@@ -81,5 +81,4 @@ int cam_csiphy_print_status_reg(struct csiphy_device *csiphy_dev);
  *
  */
 int cam_csiphy_util_update_aon_registration(uint32_t phy_idx, bool is_aon_user);
-
 #endif /* _CAM_CSIPHY_CORE_H_ */

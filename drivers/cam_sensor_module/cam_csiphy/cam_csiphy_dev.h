@@ -305,8 +305,9 @@ struct csiphy_work_queue {
  * @csiphy_cpas_cp_reg_mask    : Secure csiphy lane mask
  * @ops                        : KMD operations
  * @crm_cb                     : Callback API pointers
- * @enable_irq_dump            : Debugfs flag to enable hw IRQ register dump
+ * @enable_irq_status_reg_dump : Debugfs flag to enable hw IRQ status register dump
  * @en_lane_status_reg_dump    : Debugfs flag to enable cphy/dphy lane status dump
+ * @en_full_phy_reg_dump       : Debugfs flag to enable the dump for all the Phy registers
  * @preamble_enable            : To enable preamble pattern
  * @work_queue                 : Work queue to offload the work
  */
@@ -338,8 +339,9 @@ struct csiphy_device {
 					CSIPHY_MAX_INSTANCES_PER_PHY];
 	struct cam_req_mgr_kmd_ops     ops;
 	struct cam_req_mgr_crm_cb     *crm_cb;
-	bool                           enable_irq_dump;
+	bool                           enable_irq_status_reg_dump;
 	bool                           en_lane_status_reg_dump;
+	bool                           en_full_phy_reg_dump;
 	uint16_t                       preamble_enable;
 	struct workqueue_struct       *work_queue;
 };
