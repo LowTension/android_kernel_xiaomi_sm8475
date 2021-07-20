@@ -173,7 +173,7 @@ struct cam_context_bank_info {
 	dma_addr_t discard_iova_start;
 	size_t discard_iova_len;
 
-	atomic64_t  monitor_head;
+	atomic64_t monitor_head;
 	struct cam_smmu_monitor monitor_entries[CAM_SMMU_MONITOR_MAX_ENTRIES];
 };
 
@@ -3177,6 +3177,18 @@ static int cam_smmu_map_iova_validate_params(int handle,
 	}
 
 	return rc;
+}
+
+bool cam_smmu_supports_shared_region(int handle)
+{
+	int idx = GET_SMMU_TABLE_IDX(handle);
+	bool is_shared;
+
+	mutex_lock(&iommu_cb_set.cb_info[idx].lock);
+	is_shared = (iommu_cb_set.cb_info[idx].shared_support) ? true : false;
+	mutex_unlock(&iommu_cb_set.cb_info[idx].lock);
+
+	return is_shared;
 }
 
 int cam_smmu_map_user_iova(int handle, int ion_fd, struct dma_buf *dmabuf,

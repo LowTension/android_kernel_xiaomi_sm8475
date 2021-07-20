@@ -234,12 +234,13 @@ int cam_smmu_put_scratch_iova(int handle,
 int cam_smmu_destroy_handle(int handle);
 
 /**
- * @brief       : Finds index by handle in the smmu client table
+ * @brief       : Returns if context bank identified by handle has a shared region
  *
- * @param handle: Handle to identify the CAM SMMU client (VFE, CPP, FD etc.)
- * @return Index of SMMU client. Nagative in case of error.
+ * @param handle: Handle to identify the context bank
+ * @return      : True if context banks supports shared region, false otherwise
+ * @note        : Currently, only ICP context banks support shared regions.
  */
-int cam_smmu_find_index_by_handle(int hdl);
+bool cam_smmu_supports_shared_region(int handle);
 
 /**
  * @brief       : Registers smmu fault handler for client
