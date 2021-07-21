@@ -1173,6 +1173,8 @@ static struct cam_ife_csid_ver2_top_reg_info
 	.master_slave_sel_shift_val     = 1,
 	.master_sel_val                 = 0,
 	.slave_sel_val                  = 1,
+	.io_path_cfg_rst_val            = 1,
+	.dual_cfg_rst_val               = 0,
 };
 
 static struct cam_ife_csid_ver2_reg_info cam_ife_csid_680_reg_info = {

@@ -207,6 +207,8 @@ struct cam_ife_csid_ver2_top_reg_info {
 	uint32_t master_slave_sel_shift_val;
 	uint32_t master_sel_val;
 	uint32_t slave_sel_val;
+	uint32_t io_path_cfg_rst_val;
+	uint32_t dual_cfg_rst_val;
 };
 
 struct cam_ife_csid_ver2_rdi_reg_info {

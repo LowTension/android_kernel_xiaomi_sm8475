@@ -3680,7 +3680,9 @@ static int cam_ife_csid_ver2_disable_core(
 	struct cam_ife_csid_ver2_hw *csid_hw)
 {
 	const struct cam_ife_csid_ver2_reg_info *csid_reg;
+	const struct cam_ife_csid_ver2_top_reg_info *top_reg = NULL;
 	struct cam_hw_soc_info                   *soc_info;
+	struct cam_csid_soc_private              *soc_private;
 	int rc = 0;
 	unsigned long                             flags;
 
@@ -3697,8 +3699,11 @@ static int cam_ife_csid_ver2_disable_core(
 		return rc;
 
 	soc_info = &csid_hw->hw_info->soc_info;
+	soc_private = (struct cam_csid_soc_private *)
+		soc_info->soc_private;
 	csid_reg = (struct cam_ife_csid_ver2_reg_info *)
 			csid_hw->core_info->csid_reg;
+	top_reg = csid_reg->top_reg;
 	cam_ife_csid_ver2_disable_csi2(csid_hw);
 
 	/* Disable the top IRQ interrupt */
@@ -3710,6 +3715,24 @@ static int cam_ife_csid_ver2_disable_core(
 			csid_hw->csid_irq_controller,
 			csid_hw->reset_irq_handle);
 		csid_hw->reset_irq_handle = 0;
+	}
+
+	/*
+	 * Wrapper config can be reset only by ares from
+	 * camera subsystem power up or CSR ares bit
+	 * in CSID clk branch both of which are not
+	 * gauranteed at the end of a given CSID stream.
+	 * Explicitly resetting the config for full CSIDs
+	 * via AHB to avoid conflict on consecutive sessions
+	 */
+	if ((top_reg) && (!soc_private->is_ife_csid_lite)) {
+		cam_io_w_mb(top_reg->io_path_cfg_rst_val,
+			soc_info->reg_map[CAM_IFE_CSID_TOP_MEM_BASE_ID].mem_base +
+			top_reg->io_path_cfg0_addr[csid_hw->hw_intf->hw_idx]);
+
+		cam_io_w_mb(top_reg->dual_cfg_rst_val,
+			soc_info->reg_map[CAM_IFE_CSID_TOP_MEM_BASE_ID].mem_base +
+			top_reg->dual_csid_cfg0_addr[csid_hw->hw_intf->hw_idx]);
 	}
 
 	rc = cam_ife_csid_disable_soc_resources(soc_info);
