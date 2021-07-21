@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  */
 
 #ifndef CAM_JPEG_HW_MGR_H
@@ -132,6 +132,7 @@ struct cam_jpeg_hw_ctx_data {
  * @hw_config_req_list: Pending hw update requests list
  * @free_req_list: Free nodes for above list
  * @req_list: Nodes of hw update list
+ * @num_pid: num of pids supported in the device
  */
 struct cam_jpeg_hw_mgr {
 	struct mutex hw_mgr_mutex;
@@ -160,6 +161,7 @@ struct cam_jpeg_hw_mgr {
 	struct list_head hw_config_req_list;
 	struct list_head free_req_list;
 	struct cam_jpeg_hw_cfg_req req_list[CAM_JPEG_HW_CFG_Q_MAX];
+	uint32_t num_pid[CAM_JPEG_DEV_TYPE_MAX];
 };
 
 #endif /* CAM_JPEG_HW_MGR_H */
