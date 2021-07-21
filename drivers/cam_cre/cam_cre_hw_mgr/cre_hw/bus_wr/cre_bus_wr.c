@@ -2,38 +2,49 @@
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
  */
-
-#include <linux/of.h>
-#include <linux/debugfs.h>
-#include <linux/videodev2.h>
-#include <linux/uaccess.h>
-#include <linux/platform_device.h>
-#include <linux/firmware.h>
 #include <linux/delay.h>
-#include <linux/timer.h>
-#include <linux/iopoll.h>
-#include <media/cam_cre.h>
 #include "cam_io_util.h"
-#include "cam_hw.h"
 #include "cam_hw_intf.h"
-#include "cre_core.h"
-#include "cre_soc.h"
-#include "cam_soc_util.h"
-#include "cam_io_util.h"
-#include "cam_cpas_api.h"
 #include "cam_debug_util.h"
+#include "cam_common_util.h"
+#include "cre_core.h"
 #include "cre_hw.h"
 #include "cre_dev_intf.h"
 #include "cre_bus_wr.h"
-#include "cam_common_util.h"
+#include <media/cam_cre.h>
 
 static struct cre_bus_wr *wr_info;
+
 #define update_cre_reg_set(cre_reg_buf, off, val) \
 	do {                                           \
 		cre_reg_buf->wr_reg_set[cre_reg_buf->num_wr_reg_set].offset = (off); \
 		cre_reg_buf->wr_reg_set[cre_reg_buf->num_wr_reg_set].value = (val); \
 		cre_reg_buf->num_wr_reg_set++; \
 	} while (0)
+
+static int cam_cre_translate_write_format(struct plane_info p_info,
+	struct cam_cre_bus_wr_client_reg_val *wr_client_reg_val)
+{
+	CAM_DBG(CAM_CRE, "width 0x%x, height 0x%x stride 0x%x alignment 0x%x",
+		p_info.width, p_info.height, p_info.stride, p_info.alignment);
+
+	/* Number of output pixels */
+	wr_client_reg_val->width     = p_info.width;
+	/* Number of output bytes */
+	wr_client_reg_val->stride    = p_info.stride;
+	/* Number of output lines */
+	wr_client_reg_val->height    = p_info.height;
+	wr_client_reg_val->alignment = p_info.alignment;
+
+	/*
+	 * Update packer format to zero irrespective of output format
+	 * This is as per the recomendation from CRE HW team for CRE 1.0
+	 * This logic has to be updated for CRE 1.1
+	 */
+	wr_client_reg_val->format = 0;
+
+	return 0;
+}
 
 static int cam_cre_bus_wr_out_port_idx(uint32_t output_port_id)
 {
@@ -59,6 +70,9 @@ static int cam_cre_bus_wr_reg_set_update(struct cam_cre_hw *cam_cre_hw_info,
 	wr_reg_set = reg_set_upd_cmd->cre_reg_buf.wr_reg_set;
 
 	for (i = 0; i < num_reg_set; i++) {
+		CAM_DBG(CAM_CRE, "base 0x%x CRE value 0x%x offset 0x%x",
+				cam_cre_hw_info->bus_wr_reg_offset->base,
+				wr_reg_set[i].value, wr_reg_set[i].offset);
 		cam_io_w_mb(wr_reg_set[i].value,
 			cam_cre_hw_info->bus_wr_reg_offset->base + wr_reg_set[i].offset);
 	}
@@ -84,23 +98,18 @@ static int cam_cre_bus_wr_update(struct cam_cre_hw *cam_cre_hw_info,
 	int batch_idx, int io_idx,
 	struct cre_reg_buffer *cre_reg_buf)
 {
-	int k, out_port_idx;
-	uint32_t num_wm_ports;
-	uint32_t comb_idx = 0;
+	int rc, k, out_port_idx;
 	uint32_t req_idx;
-	uint32_t temp = 0;
-	uint32_t wm_port_id;
+	uint32_t val = 0;
 	uint32_t iova_base, iova_offset;
 	struct cam_hw_prepare_update_args *prepare_args;
 	struct cam_cre_ctx *ctx_data;
 	struct cam_cre_request *cre_request;
 	struct cre_io_buf *io_buf;
-	struct cre_bus_wr_ctx *bus_wr_ctx;
 	struct cam_cre_bus_wr_reg *wr_reg;
 	struct cam_cre_bus_wr_client_reg *wr_reg_client;
 	struct cam_cre_bus_wr_reg_val *wr_reg_val;
-	struct cam_cre_bus_wr_client_reg_val *wr_res_val_client;
-	struct cre_bus_out_port_to_wm *out_port_to_wm;
+	struct cam_cre_bus_wr_client_reg_val *wr_client_reg_val;
 
 	if (ctx_id < 0 || !prepare) {
 		CAM_ERR(CAM_CRE, "Invalid data: %d %x", ctx_id, prepare);
@@ -122,11 +131,10 @@ static int cam_cre_bus_wr_update(struct cam_cre_hw *cam_cre_hw_info,
 	req_idx = prepare->req_idx;
 
 	cre_request = ctx_data->req_list[req_idx];
-	bus_wr_ctx = wr_info->bus_wr_ctx[ctx_id];
 	wr_reg = cam_cre_hw_info->bus_wr_reg_offset;
 	wr_reg_val = cam_cre_hw_info->bus_wr_reg_val;
 
-	CAM_DBG(CAM_CRE, "req_idx = %d req_id = %lld offset = %d",
+	CAM_DBG(CAM_CRE, "req_idx = %d req_id = %lld",
 		req_idx, cre_request->request_id);
 
 	io_buf = cre_request->io_buf[batch_idx][io_idx];
@@ -140,25 +148,26 @@ static int cam_cre_bus_wr_update(struct cam_cre_hw *cam_cre_hw_info,
 			io_buf->resource_type);
 		return -EINVAL;
 	}
-	out_port_to_wm = &wr_info->out_port_to_wm[out_port_idx];
-	num_wm_ports = out_port_to_wm->num_wm;
+
+	CAM_DBG(CAM_CRE, "out_port_idx = %d", out_port_idx);
 
 	for (k = 0; k < io_buf->num_planes; k++) {
-		CAM_DBG(CAM_CRE, "comb_idx = %d p_idx = %d",
-			comb_idx, k);
-		/* frame level info */
-		wm_port_id = out_port_to_wm->wm_port_id[k];
-		wr_reg_client = &wr_reg->wr_clients[wm_port_id];
-		wr_res_val_client = &wr_reg_val->wr_clients[wm_port_id];
+		wr_reg_client = &wr_reg->wr_clients[out_port_idx];
+		wr_client_reg_val = &wr_reg_val->wr_clients[out_port_idx];
+
+		CAM_DBG(CAM_CRE, "wr_reg_client %x wr_client_reg_val %x",
+				wr_reg_client, wr_client_reg_val, wr_client_reg_val);
 
 		/* Core cfg: enable, Mode */
-		temp = 0;
-		temp |= ((wr_res_val_client->mode &
-			wr_res_val_client->mode_mask) <<
-			wr_res_val_client->mode_shift);
+		val = 0;
+		val |= ((wr_client_reg_val->mode &
+			wr_client_reg_val->mode_mask) <<
+			wr_client_reg_val->mode_shift);
+		val |= wr_client_reg_val->client_en;
+
 		update_cre_reg_set(cre_reg_buf,
 			wr_reg->offset + wr_reg_client->client_cfg,
-			temp);
+			val);
 
 		/*
 		 * As CRE have 36 Bit addressing support Image Address
@@ -174,41 +183,43 @@ static int cam_cre_bus_wr_update(struct cam_cre_hw *cam_cre_hw_info,
 			wr_reg->offset + wr_reg_client->addr_cfg,
 			iova_offset);
 
+		rc = cam_cre_translate_write_format(io_buf->p_info[k],
+				wr_client_reg_val);
+		if (rc < 0)
+			return -EINVAL;
+
 		/* Buffer size */
-		temp = 0;
-		temp = io_buf->p_info[k].width;
-		temp |= (io_buf->p_info[k].height &
-				wr_res_val_client->height_mask) <<
-				wr_res_val_client->height_shift;
+		val = 0;
+		val = wr_client_reg_val->width;
+		val |= (wr_client_reg_val->height &
+				wr_client_reg_val->height_mask) <<
+				wr_client_reg_val->height_shift;
 		update_cre_reg_set(cre_reg_buf,
 			wr_reg->offset + wr_reg_client->img_cfg_0,
-			temp);
-
-		update_cre_reg_set(cre_reg_buf,
-			wr_reg->offset + wr_reg_client->img_cfg_1,
-			io_buf->p_info[k].x_init);
+			val);
 
 		/* stride */
 		update_cre_reg_set(cre_reg_buf,
 			wr_reg->offset + wr_reg_client->img_cfg_2,
-			io_buf->p_info[k].stride);
+			wr_client_reg_val->stride);
 
+		val = 0;
+		val |= ((wr_client_reg_val->format &
+			wr_client_reg_val->format_mask) <<
+			wr_client_reg_val->format_shift);
+		val |= ((wr_client_reg_val->alignment &
+			wr_client_reg_val->alignment_mask) <<
+			wr_client_reg_val->alignment_shift);
 		/* pack cfg : Format and alignment */
-		temp = 0;
-		temp |= ((io_buf->p_info[k].format &
-			wr_res_val_client->format_mask) <<
-			wr_res_val_client->format_shift);
-		temp |= ((io_buf->p_info[k].alignment &
-			wr_res_val_client->alignment_mask) <<
-			wr_res_val_client->alignment_shift);
 		update_cre_reg_set(cre_reg_buf,
 			wr_reg->offset + wr_reg_client->packer_cfg,
-			temp);
+			val);
+
 		/* Upadte debug status CFG*/
-		temp = 0xFFFF;
+		val = 0xFFFF;
 		update_cre_reg_set(cre_reg_buf,
 			wr_reg->offset + wr_reg_client->debug_status_cfg,
-			temp);
+			val);
 	}
 
 	return 0;
@@ -224,7 +235,6 @@ static int cam_cre_bus_wr_prepare(struct cam_cre_hw *cam_cre_hw_info,
 	struct cam_cre_ctx *ctx_data;
 	struct cam_cre_request *cre_request;
 	struct cre_io_buf *io_buf;
-	struct cre_bus_wr_ctx *bus_wr_ctx;
 	struct cre_reg_buffer *cre_reg_buf;
 
 	if (ctx_id < 0 || !data) {
@@ -234,7 +244,6 @@ static int cam_cre_bus_wr_prepare(struct cam_cre_hw *cam_cre_hw_info,
 	prepare = data;
 	ctx_data = prepare->ctx_data;
 	req_idx = prepare->req_idx;
-	bus_wr_ctx = wr_info->bus_wr_ctx[ctx_id];
 
 	cre_request = ctx_data->req_list[req_idx];
 
@@ -245,8 +254,8 @@ static int cam_cre_bus_wr_prepare(struct cam_cre_hw *cam_cre_hw_info,
 		cre_reg_buf = &cre_request->cre_reg_buf[i];
 		for (j = 0; j < cre_request->num_io_bufs[i]; j++) {
 			io_buf = cre_request->io_buf[i][j];
-			CAM_DBG(CAM_CRE, "batch = %d io buf num = %d dir = %d",
-				i, j, io_buf->direction);
+			CAM_DBG(CAM_CRE, "batch = %d io buf num = %d",
+				i, j);
 			if (io_buf->direction != CAM_BUF_OUTPUT)
 				continue;
 
@@ -292,10 +301,11 @@ static int cam_cre_bus_wr_acquire(struct cam_cre_hw *cam_cre_hw_info,
 		if (!in_acquire->out_res[i].width)
 			continue;
 
-		CAM_DBG(CAM_CRE, "i = %d format = %u width = %x height = %x",
+		CAM_DBG(CAM_CRE, "i = %d format = %u width = 0x%x height = 0x%x res_id %d",
 			i, in_acquire->out_res[i].format,
 			in_acquire->out_res[i].width,
-			in_acquire->out_res[i].height);
+			in_acquire->out_res[i].height,
+			in_acquire->in_res[i].res_id);
 
 		out_port_idx =
 		cam_cre_bus_wr_out_port_idx(in_acquire->out_res[i].res_id);
@@ -306,20 +316,12 @@ static int cam_cre_bus_wr_acquire(struct cam_cre_hw *cam_cre_hw_info,
 			goto end;
 		}
 		CAM_DBG(CAM_CRE, "out_port_idx %d", out_port_idx);
-		out_port_to_wr = &wr_info->out_port_to_wm[out_port_idx - 1];
+		out_port_to_wr = &wr_info->out_port_to_wm[out_port_idx];
 		if (!out_port_to_wr->num_wm) {
 			CAM_DBG(CAM_CRE, "Invalid format for Input port");
 			rc = -EINVAL;
 			goto end;
 		}
-
-		bus_wr_ctx->io_port_info.output_port_id[i] =
-			in_acquire->out_res[i].res_id;
-		bus_wr_ctx->io_port_info.output_format_type[i] =
-			in_acquire->out_res[i].format;
-
-		CAM_DBG(CAM_CRE, "i:%d port_id = %u",
-			i, bus_wr_ctx->io_port_info.output_port_id[i]);
 	}
 
 end:
@@ -343,12 +345,12 @@ static int cam_cre_bus_wr_init(struct cam_cre_hw *cam_cre_hw_info,
 	bus_wr_reg = cam_cre_hw_info->bus_wr_reg_offset;
 	bus_wr_reg->base = dev_init->core_info->cre_hw_info->cre_bus_wr_base;
 
+	CAM_DBG(CAM_CRE, "bus_wr_reg->base 0x%x", bus_wr_reg->base);
+
 	cam_io_w_mb(bus_wr_reg_val->irq_mask_0,
-		cam_cre_hw_info->bus_wr_reg_offset->base +
-		bus_wr_reg->irq_mask_0);
+		bus_wr_reg->base + bus_wr_reg->irq_mask_0);
 	cam_io_w_mb(bus_wr_reg_val->irq_mask_1,
-		cam_cre_hw_info->bus_wr_reg_offset->base +
-		bus_wr_reg->irq_mask_1);
+		bus_wr_reg->base + bus_wr_reg->irq_mask_1);
 
 	return 0;
 }
@@ -377,7 +379,7 @@ static int cam_cre_bus_wr_probe(struct cam_cre_hw *cam_cre_hw_info,
 
 	for (i = 0; i < bus_wr_reg_val->num_clients; i++) {
 		output_port_idx =
-			bus_wr_reg_val->wr_clients[i].output_port_id - 1;
+			bus_wr_reg_val->wr_clients[i].wm_port_id;
 		out_port_to_wm = &wr_info->out_port_to_wm[output_port_idx];
 		wm_idx = out_port_to_wm->num_wm;
 		out_port_to_wm->output_port_id =
@@ -391,12 +393,12 @@ static int cam_cre_bus_wr_probe(struct cam_cre_hw *cam_cre_hw_info,
 		out_port_to_wm = &wr_info->out_port_to_wm[i];
 		CAM_DBG(CAM_CRE, "output port id = %d",
 			out_port_to_wm->output_port_id);
-			CAM_DBG(CAM_CRE, "num_wms = %d",
-				out_port_to_wm->num_wm);
-			for (k = 0; k < out_port_to_wm->num_wm; k++) {
-				CAM_DBG(CAM_CRE, "wm port id = %d",
-					out_port_to_wm->wm_port_id[k]);
-			}
+		CAM_DBG(CAM_CRE, "num_wms = %d",
+			out_port_to_wm->num_wm);
+		for (k = 0; k < out_port_to_wm->num_wm; k++) {
+			CAM_DBG(CAM_CRE, "wm port id = %d",
+				out_port_to_wm->wm_port_id[k]);
+		}
 	}
 
 	return 0;
@@ -413,6 +415,7 @@ static int cam_cre_bus_wr_isr(struct cam_cre_hw *cam_cre_hw_info,
 	uint32_t debug_status_1;
 	uint32_t img_violation_status;
 	uint32_t violation_status;
+	int i;
 
 	if (!cam_cre_hw_info || !irq_data) {
 		CAM_ERR(CAM_CRE, "Invalid cam_cre_hw_info");
@@ -425,6 +428,10 @@ static int cam_cre_bus_wr_isr(struct cam_cre_hw *cam_cre_hw_info,
 	/* Read and Clear Top Interrupt status */
 	irq_status_0 = cam_io_r_mb(bus_wr_reg->base + bus_wr_reg->irq_status_0);
 	irq_status_1 = cam_io_r_mb(bus_wr_reg->base + bus_wr_reg->irq_status_1);
+
+	CAM_DBG(CAM_CRE, "BUS irq_status_0 0x%x irq_status_1 0x%x",
+		irq_status_0, irq_status_1);
+
 	cam_io_w_mb(irq_status_0,
 		bus_wr_reg->base + bus_wr_reg->irq_clear_0);
 	cam_io_w_mb(irq_status_1,
@@ -439,7 +446,8 @@ static int cam_cre_bus_wr_isr(struct cam_cre_hw *cam_cre_hw_info,
 	}
 
 	if ((irq_status_0 & bus_wr_reg_val->violation) ||
-		(irq_status_0 & bus_wr_reg_val->img_size_violation)) {
+		(irq_status_0 & bus_wr_reg_val->img_size_violation) ||
+		(irq_status_0 & bus_wr_reg_val->cons_violation)) {
 		irq_data->error = 1;
 		img_violation_status = cam_io_r_mb(bus_wr_reg->base +
 			bus_wr_reg->image_size_violation_status);
@@ -456,8 +464,14 @@ static int cam_cre_bus_wr_isr(struct cam_cre_hw *cam_cre_hw_info,
 			debug_status_0, debug_status_1);
 	}
 
-	if (irq_status_1 & bus_wr_reg_val->client_buf_done)
-		CAM_INFO(CAM_CRE, "Cleint 0 Buff done");
+	if (irq_status_0 & bus_wr_reg_val->comp_buf_done) {
+		for (i = 0; i < bus_wr_reg_val->num_clients; i++) {
+			if (irq_status_1 & bus_wr_reg_val->
+				wr_clients[i].client_buf_done)
+				CAM_INFO(CAM_CRE, "Cleint %d Buff done", i);
+				irq_data->wr_buf_done = 1 << i;
+		}
+	}
 
 	return 0;
 }

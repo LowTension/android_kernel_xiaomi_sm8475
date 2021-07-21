@@ -3,8 +3,6 @@
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
  */
 #include <linux/module.h>
-#include <linux/slab.h>
-#include <linux/mod_devicetable.h>
 #include <linux/of_device.h>
 #include <linux/timer.h>
 

@@ -40,6 +40,7 @@ struct cre_top {
 	struct cre_top_ctx top_ctx[CAM_CRE_CTX_MAX];
 	struct completion reset_complete;
 	struct completion idle_done;
+	struct completion bufdone;
 	struct mutex      cre_hw_mutex;
 	spinlock_t        hw_lock;
 };

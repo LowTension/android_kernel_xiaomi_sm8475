@@ -16,43 +16,6 @@
 #include "cam_cre_hw_mgr.h"
 
 /**
- * struct cre_bus_wr_io_port_info
- *
- * @num_frames_cmds: Number of frame commands
- * @go_cmd_addr:     GO command address
- * @go_cmd_len:      GO command length
- */
-struct cre_bus_wr_io_port_info {
-	uint32_t  num_frames_cmds;
-	uint32_t *go_cmd_addr;
-	uint32_t  go_cmd_len;
-	uint32_t  output_port_id[CRE_MAX_OUT_RES];
-	uint32_t  output_format_type[CRE_MAX_OUT_RES];
-};
-
-/**
- * struct cre_bus_wr_io_port_batch
- *
- * num_batch:   Number of batches
- * io_port: CDM IO Port Info
- */
-struct cre_bus_wr_io_port_batch {
-	uint32_t num_batch;
-	struct cre_bus_wr_io_port_info io_port[CRE_MAX_BATCH_SIZE];
-};
-
-/**
- * struct cre_bus_wr_wm
- *
- * @wm_port_id:  WM port ID
- * @format_type: Format type
- */
-struct cre_bus_wr_wm {
-	uint32_t wm_port_id;
-	uint32_t format_type;
-};
-
-/**
  * struct cre_bus_out_port_to_wm
  *
  * @output_port_id: Output port ID
@@ -72,14 +35,11 @@ struct cre_bus_out_port_to_wm {
  * @cre_acquire:       CRE acquire structure
  * @security_flag:     security flag
  * @num_out_ports:     Number of out ports
- * @io_port_info:      IO port info
  */
 struct cre_bus_wr_ctx {
 	struct cam_cre_acquire_dev_info *cre_acquire;
 	bool security_flag;
 	uint32_t num_out_ports;
-	struct cre_bus_wr_io_port_info io_port_info;
-	struct cre_bus_wr_io_port_batch io_port_batch;
 };
 
 /**
@@ -94,5 +54,4 @@ struct cre_bus_wr {
 	struct cre_bus_out_port_to_wm out_port_to_wm[CRE_MAX_OUT_RES];
 	struct cre_bus_wr_ctx *bus_wr_ctx[CRE_CTX_MAX];
 };
-
 #endif /* CRE_BUS_WR_H */

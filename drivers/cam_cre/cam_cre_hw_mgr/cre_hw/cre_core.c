@@ -4,9 +4,6 @@
  */
 
 #include <linux/of.h>
-#include <linux/debugfs.h>
-#include <linux/videodev2.h>
-#include <linux/uaccess.h>
 #include <linux/platform_device.h>
 #include <linux/delay.h>
 #include <linux/timer.h>
@@ -28,9 +25,6 @@
 #include "cre_bus_rd.h"
 
 #define CAM_CRE_RESET_TIMEOUT msecs_to_jiffies(500)
-
-#define CAM_CRE_FE_IRQ 0x4
-#define CAM_CRE_WE_IRQ 0x2
 
 struct cam_cre_irq_data irq_data;
 
@@ -558,6 +552,7 @@ irqreturn_t cam_cre_irq(int irq_num, void *data)
 	cre_hw = core_info->cre_hw_info->cre_hw;
 
 	irq_data.error = 0;
+	irq_data.wr_buf_done = 0;
 
 	cam_cre_top_process(cre_hw, 0, CRE_HW_ISR, &irq_data);
 
@@ -567,10 +562,10 @@ irqreturn_t cam_cre_irq(int irq_num, void *data)
 		cam_cre_bus_rd_process(cre_hw, 0, CRE_HW_ISR, &irq_data);
 
 	spin_lock(&cre_dev->hw_lock);
+	CAM_DBG(CAM_CRE, "core_info->irq_cb.cre_hw_mgr_cb %x core_info->irq_cb.data %x",
+			core_info->irq_cb.cre_hw_mgr_cb, core_info->irq_cb.data);
 	if (core_info->irq_cb.cre_hw_mgr_cb && core_info->irq_cb.data)
-		if (irq_data.error ||
-			((irq_data.top_irq_status & CAM_CRE_WE_IRQ) &&
-			 irq_data.wr_buf_done))
+		if (irq_data.error || irq_data.wr_buf_done)
 			core_info->irq_cb.cre_hw_mgr_cb(&irq_data,
 				sizeof(struct cam_hw_info),
 				core_info->irq_cb.data);

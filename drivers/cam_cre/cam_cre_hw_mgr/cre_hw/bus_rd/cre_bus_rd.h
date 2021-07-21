@@ -16,57 +16,16 @@
 #include "cam_cre_hw_mgr.h"
 
 /**
- * struct cre_bus_rd_io_port_info
- *
- * @pixel_pattern:      Pixel pattern
- * @input_port_id:      Port Id
- * @input_format_type:  Format type
- * @latency_buf_size:   Latency buffer size
- */
-struct cre_bus_rd_io_port_info {
-	uint32_t pixel_pattern[CRE_MAX_IN_RES];
-	uint32_t input_port_id[CRE_MAX_IN_RES];
-	uint32_t input_format_type[CRE_MAX_IN_RES];
-	uint32_t latency_buf_size;
-};
-
-/**
- * struct cre_bus_rd_io_port_batch
- *
- * num_batch:   Number of batches
- * io_port: CDM IO Port Info
- */
-struct cre_bus_rd_io_port_batch {
-	uint32_t num_batch;
-	struct cre_bus_rd_io_port_info io_port[CRE_MAX_BATCH_SIZE];
-};
-
-/**
- * struct cre_bus_rd_rm
- *
- * @rm_port_id:  RM port ID
- * @format_type: Format type
- */
-struct cre_bus_rd_rm {
-	uint32_t rm_port_id;
-	uint32_t format_type;
-};
-
-/**
  * struct cre_bus_rd_ctx
  *
  * @cre_acquire:    CRE acquire structure
  * @security_flag:  security flag
  * @num_in_ports:   Number of in ports
- * @io_port_info:   IO port info
- * @io_port_batch:  IO port info
  */
 struct cre_bus_rd_ctx {
 	struct cam_cre_acquire_dev_info *cre_acquire;
 	bool security_flag;
 	uint32_t num_in_ports;
-	struct cre_bus_rd_io_port_info io_port_info;
-	struct cre_bus_rd_io_port_batch io_port_batch;
 };
 
 /**

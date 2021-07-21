@@ -13,6 +13,6 @@
 #define CAM_CRE_CTX_MAX        16
 
 int cam_cre_hw_mgr_init(struct device_node *of_node,
-	uint64_t *hw_mgr_hdl, int *iommu_hdl);
+	void *hw_mgr, int *iommu_hdl);
 
 #endif /* CAM_CRE_HW_MGR_INTF_H */

@@ -44,13 +44,11 @@ struct cam_cre_ctx_irq_ops {
  * @brief: Initialization function for the CRE context
  *
  * @ctx: CRE context obj to be initialized
- * @ctx_base: Context base from cam_context
  * @hw_intf: CRE hw manager interface
  * @ctx_id: ID for this context
  *
  */
 int cam_cre_context_init(struct cam_cre_context *ctx,
-	struct cam_context *ctx_base,
 	struct cam_hw_mgr_intf *hw_intf,
 	uint32_t ctx_id);
 

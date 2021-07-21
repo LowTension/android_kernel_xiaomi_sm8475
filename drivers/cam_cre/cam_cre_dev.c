@@ -109,14 +109,14 @@ static const struct v4l2_subdev_internal_ops cam_cre_subdev_internal_ops = {
 static int cam_cre_subdev_component_bind(struct device *dev,
 	struct device *master_dev, void *data)
 {
-	int rc;
 	int i;
-	struct cam_hw_mgr_intf hw_mgr_intf;
+	int rc = 0;
+	struct cam_hw_mgr_intf *hw_mgr_intf;
 	struct cam_node *node;
 	int iommu_hdl = -1;
 	struct platform_device *pdev = to_platform_device(dev);
 
-	CAM_DBG(CAM_CRE, "CRE Subdev Component bind");
+	g_cre_dev.sd.pdev = pdev;
 	g_cre_dev.sd.internal_ops = &cam_cre_subdev_internal_ops;
 	rc = cam_subdev_probe(&g_cre_dev.sd, pdev, CAM_CRE_DEV_NAME,
 		CAM_CRE_DEVICE_TYPE);
@@ -126,18 +126,25 @@ static int cam_cre_subdev_component_bind(struct device *dev,
 	}
 	node = (struct cam_node *)g_cre_dev.sd.token;
 
-	rc = cam_cre_hw_mgr_init(pdev->dev.of_node,
-		(uint64_t *)&hw_mgr_intf, &iommu_hdl);
-	if (rc) {
-		CAM_ERR(CAM_CRE, "Can not initialize CRE HWmanager %d", rc);
-		goto unregister;
+	hw_mgr_intf = kzalloc(sizeof(*hw_mgr_intf), GFP_KERNEL);
+	if (!hw_mgr_intf) {
+		CAM_ERR(CAM_CRE, "Error allocating memory");
+		rc = -ENOMEM;
+		goto hw_alloc_fail;
 	}
 
+	rc = cam_cre_hw_mgr_init(pdev->dev.of_node, hw_mgr_intf,
+		&iommu_hdl);
+	if (rc) {
+		CAM_ERR(CAM_CRE, "Can not initialize CRE HWmanager %d", rc);
+		goto hw_init_fail;
+	}
+
+	memset(g_cre_dev.ctx_cre, 0,  sizeof(g_cre_dev.ctx_cre));
 	for (i = 0; i < CAM_CRE_CTX_MAX; i++) {
+		g_cre_dev.ctx_cre[i].base = &g_cre_dev.ctx[i];
 		rc = cam_cre_context_init(&g_cre_dev.ctx_cre[i],
-			&g_cre_dev.ctx[i],
-			&node->hw_mgr_intf,
-			i);
+			hw_mgr_intf, i);
 		if (rc) {
 			CAM_ERR(CAM_CRE, "CRE context init failed %d %d",
 				i, rc);
@@ -145,8 +152,8 @@ static int cam_cre_subdev_component_bind(struct device *dev,
 		}
 	}
 
-	rc = cam_node_init(node, &hw_mgr_intf, g_cre_dev.ctx, CAM_CRE_CTX_MAX,
-		CAM_CRE_DEV_NAME);
+	rc = cam_node_init(node, hw_mgr_intf, g_cre_dev.ctx,
+		CAM_CRE_CTX_MAX, CAM_CRE_DEV_NAME);
 	if (rc) {
 		CAM_ERR(CAM_CRE, "CRE node init failed %d", rc);
 		goto ctx_init_fail;
@@ -156,6 +163,7 @@ static int cam_cre_subdev_component_bind(struct device *dev,
 	cam_smmu_set_client_page_fault_handler(iommu_hdl,
 		cam_cre_dev_iommu_fault_handler, node);
 
+	g_cre_dev.open_cnt = 0;
 	mutex_init(&g_cre_dev.cre_lock);
 
 	CAM_DBG(CAM_CRE, "Component bound successfully");
@@ -166,7 +174,9 @@ ctx_init_fail:
 	for (--i; i >= 0; i--)
 		if (cam_cre_context_deinit(&g_cre_dev.ctx_cre[i]))
 			CAM_ERR(CAM_CRE, "deinit fail %d %d", i, rc);
-unregister:
+hw_init_fail:
+	kfree(hw_mgr_intf);
+hw_alloc_fail:
 	if (cam_subdev_remove(&g_cre_dev.sd))
 		CAM_ERR(CAM_CRE, "remove fail %d", rc);
 err:
@@ -176,19 +186,14 @@ err:
 static void cam_cre_subdev_component_unbind(struct device *dev,
 	struct device *master_dev, void *data)
 {
-	int rc;
 	int i;
 
-	for (i = 0; i < CAM_CTX_MAX; i++) {
-		rc = cam_cre_context_deinit(&g_cre_dev.ctx_cre[i]);
-		if (rc)
-			CAM_ERR(CAM_CRE, "CRE context %d deinit failed %d",
-				i, rc);
-	}
+	for (i = 0; i < CRE_CTX_MAX; i++)
+		cam_cre_context_deinit(&g_cre_dev.ctx_cre[i]);
 
-	rc = cam_subdev_remove(&g_cre_dev.sd);
-	if (rc)
-		CAM_ERR(CAM_CRE, "Unregister failed %d", rc);
+	cam_node_deinit(g_cre_dev.node);
+	cam_subdev_remove(&g_cre_dev.sd);
+	mutex_destroy(&g_cre_dev.cre_lock);
 }
 
 const static struct component_ops cam_cre_subdev_component_ops = {
