@@ -1773,7 +1773,7 @@ static int __cam_isp_ctx_reg_upd_in_applied_state(
 		list_add_tail(&req->list, &ctx->active_req_list);
 		ctx_isp->active_req_cnt++;
 
-		if (req_isp->is_sync_mode) {
+		if (req_isp->is_sync_mode && !atomic_read(&req_isp->buf_done_ready)) {
 			request_id = req->request_id;
 			notify_rup_info.link_hdl = ctx->link_hdl;
 			notify_rup_info.req_id = request_id;
@@ -3423,7 +3423,9 @@ static int __cam_isp_ctx_signal_buf_done(
 		}
 	}
 
-	CAM_WARN(CAM_ISP, "Request %lld not found", signal_buf_done->req_id);
+	CAM_WARN(CAM_ISP, "Request %lld not found in ctx : %d",
+		signal_buf_done->req_id,
+		ctx->ctx_id);
 end:
 	return 0;
 }
@@ -3441,6 +3443,7 @@ static int __cam_isp_ctx_change_substate(
 	struct cam_isp_context    *ctx_isp =
 				    (struct cam_isp_context *) ctx->ctx_priv;
 
+	spin_lock_bh(&ctx->lock);
 	if (!list_empty(&ctx->wait_req_list)) {
 		req = list_first_entry(&ctx->wait_req_list,
 			struct cam_ctx_request,
@@ -3450,13 +3453,16 @@ static int __cam_isp_ctx_change_substate(
 			req_isp->bubble_detected = true;
 			req_isp->reapply = true;
 			bubble_req = req;
+			ctx_isp->active_req_cnt++;
 			list_del_init(&req->list);
 			list_add_tail(&req->list, &ctx->active_req_list);
+			spin_unlock_bh(&ctx->lock);
 			goto end;
 		}
 	} else {
 		CAM_ERR(CAM_ISP, "Ctx:%d No wait request", ctx->ctx_id);
 	}
+	spin_unlock_bh(&ctx->lock);
 
 	if (!bubble_req) {
 		list_for_each_entry_safe(req, req_temp,
@@ -4959,6 +4965,7 @@ static int __cam_isp_ctx_config_dev_in_top_state(
 	cfg.num_in_map_entries = 0;
 	memset(&req_isp->hw_update_data, 0, sizeof(req_isp->hw_update_data));
 	req_isp->hw_update_data.fps = -1;
+	req_isp->is_sync_mode = false;
 	req_isp->hw_update_data.packet = packet;
 
 	rc = ctx->hw_mgr_intf->hw_prepare_update(
@@ -5811,10 +5818,19 @@ static int __cam_isp_ctx_get_isp_info(int32_t dev_hdl, void *data)
 	if ((isp_ctx->substate_activated ==
 		CAM_ISP_CTX_ACTIVATED_APPLIED) ||
 		(isp_ctx->substate_activated ==
-		CAM_ISP_CTX_ACTIVATED_BUBBLE_APPLIED))
+		CAM_ISP_CTX_ACTIVATED_BUBBLE_APPLIED)) {
+		if (!list_empty(&ctx->wait_req_list)) {
+			struct cam_ctx_request           *req;
+
+			req = list_first_entry(&ctx->wait_req_list,
+				struct cam_ctx_request, list);
+			isp_dev->bubble_req = req->request_id;
+		}
 		isp_dev->is_applied = true;
-	else
+	} else {
 		isp_dev->is_applied = false;
+		isp_dev->bubble_req = 0;
+	}
 
 	return rc;
 }
