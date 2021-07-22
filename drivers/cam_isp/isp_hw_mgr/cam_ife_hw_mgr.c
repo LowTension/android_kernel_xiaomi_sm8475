@@ -11063,6 +11063,7 @@ static int cam_ife_mgr_process_recovery_cb(void *priv, void *data)
 	switch (error_type) {
 	case CAM_ISP_HW_ERROR_OVERFLOW:
 	case CAM_ISP_HW_ERROR_BUSIF_OVERFLOW:
+	case CAM_ISP_HW_ERROR_VIOLATION:
 		if (!recovery_data->affected_ctx[0]) {
 			CAM_ERR(CAM_ISP,
 				"No context is affected but recovery called");
@@ -11125,9 +11126,6 @@ static int cam_ife_mgr_process_recovery_cb(void *priv, void *data)
 		break;
 
 	case CAM_ISP_HW_ERROR_P2I_ERROR:
-		break;
-
-	case CAM_ISP_HW_ERROR_VIOLATION:
 		break;
 
 	default:

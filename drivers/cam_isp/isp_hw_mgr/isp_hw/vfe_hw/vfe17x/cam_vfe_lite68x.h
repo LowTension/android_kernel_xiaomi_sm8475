@@ -490,7 +490,7 @@ static struct cam_vfe_bus_ver3_hw_info vfe680x_bus_hw_info = {
 	.num_comp_grp    = 5,
 	.support_consumed_addr = true,
 	.comp_done_shift = 0,
-	.top_irq_shift   = 1,
+	.top_irq_shift   = 0,
 	.max_out_res = CAM_ISP_IFE_OUT_RES_BASE + 33,
 };
 
