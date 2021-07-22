@@ -11,6 +11,8 @@
 #include "cam_ife_csid_hw_intf.h"
 #include "cam_debug_util.h"
 #include "camera_main.h"
+#include "cam_cpas_api.h"
+#include <dt-bindings/msm-camera.h>
 
 static struct cam_hw_intf *cam_ife_csid_hw_list[CAM_IFE_CSID_HW_NUM_MAX] = {
 	0, 0, 0, 0};
@@ -62,6 +64,14 @@ static int cam_ife_csid_component_bind(struct device *dev,
 
 	csid_core_info = (struct cam_ife_csid_core_info  *)match_dev->data;
 
+	if (!cam_cpas_is_feature_supported(CAM_CPAS_ISP_FUSE,
+		(1 << hw_intf->hw_idx), NULL) ||
+		!cam_cpas_is_feature_supported(CAM_CPAS_ISP_LITE_FUSE,
+		(1 << hw_intf->hw_idx), NULL)) {
+		CAM_DBG(CAM_ISP, "CSID[%d] not supported based on fuse",
+			csid_dev_idx);
+		goto free_hw_info;
+	}
 	/* call the driver init and fill csid_hw_info->core_info */
 	rc = cam_ife_csid_hw_probe_init(hw_intf, csid_core_info, false);
 
