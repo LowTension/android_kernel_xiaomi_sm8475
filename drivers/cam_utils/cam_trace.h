@@ -20,6 +20,7 @@
 #include "cam_context.h"
 
 #define CAM_DEFAULT_VALUE 0xFF
+#define CAM_TRACE_PRINT_MAX_LEN 512
 
 TRACE_EVENT(cam_context_state,
 	TP_PROTO(const char *name, struct cam_context *ctx),
@@ -92,19 +93,21 @@ TRACE_EVENT(cam_log_event,
 );
 
 TRACE_EVENT(cam_log_debug,
-	TP_PROTO(const char *string1),
-	TP_ARGS(string1),
+	TP_PROTO(const char *fmt, va_list *args),
+	TP_ARGS(fmt, args),
 	TP_STRUCT__entry(
-		__string(string1, string1)
+		__dynamic_array(char, msg, CAM_TRACE_PRINT_MAX_LEN)
 	),
 	TP_fast_assign(
-		__assign_str(string1, string1);
+		va_list ap;
+
+		va_copy(ap, *args);
+		vsnprintf(__get_dynamic_array(msg), CAM_TRACE_PRINT_MAX_LEN, fmt, ap);
+		va_end(ap);
 	),
-	TP_printk(
-		"%s",
-		__get_str(string1)
-	)
+	TP_printk("%s", __get_str(msg))
 );
+
 
 TRACE_EVENT(cam_icp_fw_dbg,
 	TP_PROTO(char *dbg_message, uint64_t timestamp),
