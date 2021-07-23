@@ -17,6 +17,7 @@
 #define CAM_CPAS_MAX_CLIENTS                 42
 #define CAM_CPAS_MAX_AXI_PORTS               6
 #define CAM_CPAS_MAX_TREE_LEVELS             4
+#define CAM_CPAS_MAX_RT_WR_NIU_NODES         10
 #define CAM_CPAS_MAX_GRAN_PATHS_PER_CLIENT   32
 #define CAM_CPAS_PATH_DATA_MAX               40
 #define CAM_CPAS_TRANSACTION_MAX             2
@@ -162,6 +163,7 @@ struct cam_cpas_bus_client {
  * @axi_port_name: Name of this AXI port
  * @bus_client: bus client info for this port
  * @ib_bw_voting_needed: if this port can update ib bw dynamically
+ * @is_rt: if this port represents a real time axi port
  * @axi_port_node: Node representing AXI Port info in device tree
  * @ab_bw: AB bw value for this port
  * @ib_bw: IB bw value for this port
@@ -174,6 +176,7 @@ struct cam_cpas_axi_port {
 	const char *axi_port_name;
 	struct cam_cpas_bus_client bus_client;
 	bool ib_bw_voting_needed;
+	bool is_rt;
 	struct device_node *axi_port_node;
 	uint64_t ab_bw;
 	uint64_t ib_bw;
@@ -225,22 +228,24 @@ struct cam_cpas_axi_port_debug_info {
  *           monitoring registers
  * @camnoc_port_name: Camnoc port names
  * @camnoc_fill_level: Camnoc fill level register info
+ * @rt_wr_niu_pri_lut: priority lut low values of RT Wr NIUs
  */
 struct cam_cpas_monitor {
-	struct timespec64                   timestamp;
-	char                                identifier_string[128];
-	int32_t                             identifier_value;
+	struct timespec64   timestamp;
+	char                identifier_string[128];
+	int32_t             identifier_value;
 	struct cam_cpas_axi_port_debug_info axi_info[CAM_CPAS_MAX_AXI_PORTS];
-	uint64_t                            applied_camnoc_clk;
-	unsigned int                        applied_ahb_level;
-	uint32_t                            fe_ddr;
-	uint32_t                            be_ddr;
-	uint32_t                            fe_mnoc;
-	uint32_t                            be_mnoc;
-	uint32_t                            be_shub;
-	uint32_t                            num_camnoc_lvl_regs;
-	const char                         *camnoc_port_name[CAM_CAMNOC_FILL_LVL_REG_INFO_MAX];
-	uint32_t                            camnoc_fill_level[CAM_CAMNOC_FILL_LVL_REG_INFO_MAX];
+	uint64_t            applied_camnoc_clk;
+	unsigned int        applied_ahb_level;
+	uint32_t            fe_ddr;
+	uint32_t            be_ddr;
+	uint32_t            fe_mnoc;
+	uint32_t            be_mnoc;
+	uint32_t            be_shub;
+	uint32_t            num_camnoc_lvl_regs;
+	const char          *camnoc_port_name[CAM_CAMNOC_FILL_LVL_REG_INFO_MAX];
+	uint32_t            camnoc_fill_level[CAM_CAMNOC_FILL_LVL_REG_INFO_MAX];
+	uint32_t            rt_wr_niu_pri_lut[CAM_CPAS_MAX_RT_WR_NIU_NODES];
 };
 
 /**
@@ -269,6 +274,8 @@ struct cam_cpas_monitor {
  * @monitor_head: Monitor array head
  * @monitor_entries: cpas monitor array
  * @full_state_dump: Whether to enable full cpas state dump or not
+ * @smart_qos_dump: Whether to dump smart qos information on update
+ * @camnoc_info: Pointer to camnoc header info
  */
 struct cam_cpas {
 	struct cam_cpas_hw_caps hw_caps;
@@ -294,6 +301,7 @@ struct cam_cpas {
 	atomic64_t  monitor_head;
 	struct cam_cpas_monitor monitor_entries[CAM_CPAS_MONITOR_MAX_ENTRIES];
 	bool full_state_dump;
+	bool smart_qos_dump;
 	void *camnoc_info;
 };
 

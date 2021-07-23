@@ -50,6 +50,11 @@ struct cam_cpas_vdd_ahb_mapping {
  * @tree_dev_node: Device node from devicetree for current tree node
  * @parent_node: Pointer to node one or more level above the current level
  *     (starting from end node of cpas client)
+ * @pri_lut_low_offset: Register offset value for priority lut low.
+ *                           Valid only for level1 nodes (representing NIUs)
+ * @niu_size: Size of NIU that this node represents. Size in KB
+ * @curr_priority: New calculated priority
+ * @applied_priority: Currently applied priority
  *
  */
 struct cam_cpas_tree_node {
@@ -71,6 +76,10 @@ struct cam_cpas_tree_node {
 	bool constituent_paths[CAM_CPAS_PATH_DATA_MAX];
 	struct device_node *tree_dev_node;
 	struct cam_cpas_tree_node *parent_node;
+	uint32_t pri_lut_low_offset;
+	uint32_t niu_size;
+	uint32_t curr_priority;
+	uint32_t applied_priority;
 };
 
 /**
@@ -110,6 +119,23 @@ struct cam_sys_cache_info {
 	struct llcc_slice_desc          *slic_desc;
 };
 
+
+/**
+ * struct cam_cpas_smart_qos_info : Smart QOS info
+ *
+ * @rt_wr_priority_min:   Minimum priority value for rt write nius
+ * @rt_wr_priority_max:   Maximum priority value for rt write nius
+ * @num_rt_wr_nius:       Number of RT Wr NIUs
+ * @rt_wr_niu_node:       List of level1 nodes representing RT Wr NIUs
+ */
+struct cam_cpas_smart_qos_info {
+	uint8_t rt_wr_priority_min;
+	uint8_t rt_wr_priority_max;
+	uint8_t num_rt_wr_nius;
+	struct cam_cpas_tree_node *rt_wr_niu_node[CAM_CPAS_MAX_RT_WR_NIU_NODES];
+};
+
+
 /**
  * struct cam_cpas_private_soc : CPAS private DT info
  *
@@ -134,7 +160,9 @@ struct cam_sys_cache_info {
  * @num_feature_info: number of feature_info entries
  * @feature_info: Structure for storing feature information
  * @num_caches: Number of last level caches
- * @llcc_info:  Cache info
+ * @llcc_info: Cache info
+ * @enable_smart_qos: Whether to enable Smart QoS mechanism on current chipset
+ * @smart_qos_info: Pointer to smart qos info
  */
 struct cam_cpas_private_soc {
 	const char *arch_compat;
@@ -157,6 +185,8 @@ struct cam_cpas_private_soc {
 	struct cam_cpas_feature_info  feature_info[CAM_CPAS_MAX_FUSE_FEATURE];
 	uint32_t num_caches;
 	struct cam_sys_cache_info *llcc_info;
+	bool enable_smart_qos;
+	struct cam_cpas_smart_qos_info *smart_qos_info;
 };
 
 void cam_cpas_util_debug_parse_data(struct cam_cpas_private_soc *soc_private);

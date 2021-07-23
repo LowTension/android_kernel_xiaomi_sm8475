@@ -26,7 +26,7 @@ module_param(cam_min_camnoc_ib_bw, uint, 0644);
 static void cam_cpas_update_monitor_array(struct cam_hw_info *cpas_hw,
 	const char *identifier_string, int32_t identifier_value);
 static void cam_cpas_dump_monitor_array(
-	struct cam_cpas *cpas_core);
+	struct cam_hw_info *cpas_hw);
 
 static void cam_cpas_process_bw_overrides(
 	struct cam_cpas_bus_client *bus_client, uint64_t *ab, uint64_t *ib,
@@ -527,6 +527,200 @@ static int cam_cpas_hw_dump_camnoc_buff_fill_info(
 
 }
 
+static void cam_cpas_print_smart_qos_priority(
+	struct cam_hw_info *cpas_hw)
+{
+	struct cam_cpas *cpas_core = (struct cam_cpas *) cpas_hw->core_info;
+	struct cam_hw_soc_info *soc_info = &cpas_hw->soc_info;
+	struct cam_cpas_private_soc *soc_private =
+		(struct cam_cpas_private_soc *) cpas_hw->soc_info.soc_private;
+	struct cam_cpas_tree_node *niu_node;
+	uint8_t i;
+	int32_t reg_indx = cpas_core->regbase_index[CAM_CPAS_REG_CAMNOC];
+	char log_buf[CAM_CPAS_LOG_BUF_LEN] = {0};
+	size_t len = 0;
+	uint32_t val = 0;
+
+	for (i = 0; i < soc_private->smart_qos_info->num_rt_wr_nius; i++) {
+		niu_node = soc_private->smart_qos_info->rt_wr_niu_node[i];
+
+		val = cam_io_r_mb(soc_info->reg_map[reg_indx].mem_base +
+			niu_node->pri_lut_low_offset);
+
+		len += scnprintf((log_buf + len), (CAM_CPAS_LOG_BUF_LEN - len),
+			" [%s:0x%x]", niu_node->node_name, val);
+	}
+
+	CAM_INFO(CAM_CPAS, "SmartQoS [Node Pri_lut_low] %s", log_buf);
+}
+
+static bool cam_cpas_is_new_rt_bw_lower(
+	const struct cam_hw_info *cpas_hw)
+{
+	struct cam_cpas *cpas_core = (struct cam_cpas *) cpas_hw->core_info;
+	int i;
+	struct cam_cpas_axi_port *temp_axi_port = NULL;
+	uint64_t applied_total = 0, new_total = 0;
+
+	for (i = 0; i < cpas_core->num_axi_ports; i++) {
+		temp_axi_port = &cpas_core->axi_port[i];
+
+		if (temp_axi_port->is_rt) {
+			CAM_DBG(CAM_PERF, "Port %s applied %llu new %llu",
+				temp_axi_port->axi_port_name, temp_axi_port->applied_ab_bw,
+				temp_axi_port->ab_bw);
+
+			applied_total += temp_axi_port->applied_ab_bw;
+			new_total += temp_axi_port->ab_bw;
+		}
+	}
+
+	return (new_total < applied_total) ? true : false;
+}
+
+static void cam_cpas_reset_niu_priorities(
+	struct cam_hw_info *cpas_hw)
+{
+	struct cam_cpas_private_soc *soc_private =
+		(struct cam_cpas_private_soc *) cpas_hw->soc_info.soc_private;
+	uint8_t i;
+
+	for (i = 0; i < soc_private->smart_qos_info->num_rt_wr_nius; i++)
+		soc_private->smart_qos_info->rt_wr_niu_node[i]->applied_priority = 0x0;
+}
+
+static bool cam_cpas_calculate_smart_qos(
+	struct cam_hw_info *cpas_hw)
+{
+	struct cam_cpas *cpas_core = (struct cam_cpas *) cpas_hw->core_info;
+	struct cam_cpas_private_soc *soc_private =
+		(struct cam_cpas_private_soc *) cpas_hw->soc_info.soc_private;
+	struct cam_cpas_tree_node *niu_node;
+	uint8_t i;
+	bool needs_update = false;
+	uint64_t bw_per_kb, max_bw_per_kb = 0, remainder, ramp_val;
+	int8_t pos;
+	uint32_t priority;
+	uint8_t val;
+
+	for (i = 0; i < soc_private->smart_qos_info->num_rt_wr_nius; i++) {
+		niu_node = soc_private->smart_qos_info->rt_wr_niu_node[i];
+
+		bw_per_kb = niu_node->camnoc_bw;
+		remainder = do_div(bw_per_kb, niu_node->niu_size);
+
+		if (max_bw_per_kb < bw_per_kb)
+			max_bw_per_kb = bw_per_kb;
+
+		CAM_DBG(CAM_PERF,
+			"NIU[%d][%s] : camnoc_bw %llu, niu_size %u, bw_per_kb %lld, remainder %lld max_bw_per_kb %lld",
+			i, niu_node->node_name, niu_node->camnoc_bw, niu_node->niu_size,
+			bw_per_kb, remainder, max_bw_per_kb);
+	}
+
+	if (!max_bw_per_kb) {
+		CAM_DBG(CAM_PERF, "No valid bw on NIU nodes");
+		return false;
+	}
+
+	for (i = 0; i < soc_private->smart_qos_info->num_rt_wr_nius; i++) {
+		niu_node = soc_private->smart_qos_info->rt_wr_niu_node[i];
+
+		bw_per_kb = niu_node->camnoc_bw;
+		remainder = do_div(bw_per_kb, niu_node->niu_size); // --> dropping remainder
+
+		priority = 0;
+
+		for (pos = 7; pos >= 0; pos--) {
+			if (pos == 0) {
+				val = soc_private->smart_qos_info->rt_wr_priority_min;
+			} else if (pos == 7) {
+				val = soc_private->smart_qos_info->rt_wr_priority_max;
+			} else {
+				ramp_val = pos * bw_per_kb;
+				remainder = do_div(ramp_val, max_bw_per_kb);
+
+				CAM_DBG(CAM_PERF,
+					"pos=%d, bw_per_kb=%lld, pos*bw_per_kb=%lld, ramp_val=%lld, remainder=%lld, max_bw_per_kb=%lld",
+					pos, bw_per_kb, pos * bw_per_kb, ramp_val, remainder,
+					max_bw_per_kb);
+
+				// round the value
+				if ((remainder * 2) >= max_bw_per_kb)
+					ramp_val += 1;
+
+				val = (uint8_t)(ramp_val);
+				val += soc_private->smart_qos_info->rt_wr_priority_min;
+				val = min(val, soc_private->smart_qos_info->rt_wr_priority_max);
+			}
+
+			priority = priority << 4;
+			priority |= val;
+
+			CAM_DBG(CAM_PERF, "pos=%d, val=0x%x, priority=0x%x", pos, val, priority);
+		}
+
+		niu_node->curr_priority = priority;
+
+		if (niu_node->curr_priority != niu_node->applied_priority)
+			needs_update = true;
+
+		CAM_DBG(CAM_PERF,
+			"Node[%d][%s] : camnoc_bw=%lld, niu_size=%d, bw_per_kb %lld, Priority applied 0x%x new 0x%x needs_update %d",
+			i, niu_node->node_name, niu_node->camnoc_bw, niu_node->niu_size, bw_per_kb,
+			niu_node->applied_priority, niu_node->curr_priority,
+			needs_update);
+	}
+
+	if (cpas_core->smart_qos_dump && needs_update) {
+		for (i = 0; i < soc_private->smart_qos_info->num_rt_wr_nius; i++) {
+			niu_node = soc_private->smart_qos_info->rt_wr_niu_node[i];
+			CAM_INFO(CAM_PERF,
+				"Node[%d][%s] : camnoc_bw=%lld, niu_size=%d, offset 0x%x, Priority new 0x%x applied 0x%x",
+				i, niu_node->node_name, niu_node->camnoc_bw, niu_node->niu_size,
+				niu_node->pri_lut_low_offset,
+				niu_node->curr_priority, niu_node->applied_priority);
+		}
+	}
+
+	return needs_update;
+}
+
+static int cam_cpas_apply_smart_qos(
+	struct cam_hw_info *cpas_hw)
+{
+	struct cam_cpas *cpas_core = (struct cam_cpas *) cpas_hw->core_info;
+	struct cam_hw_soc_info *soc_info = &cpas_hw->soc_info;
+	struct cam_cpas_private_soc *soc_private =
+		(struct cam_cpas_private_soc *) cpas_hw->soc_info.soc_private;
+	struct cam_cpas_tree_node *niu_node;
+	uint8_t i;
+	int32_t reg_indx = cpas_core->regbase_index[CAM_CPAS_REG_CAMNOC];
+
+	if (cpas_core->smart_qos_dump) {
+		CAM_INFO(CAM_PERF, "Printing SmartQos values before update");
+		cam_cpas_print_smart_qos_priority(cpas_hw);
+	}
+
+	for (i = 0; i < soc_private->smart_qos_info->num_rt_wr_nius; i++) {
+		niu_node = soc_private->smart_qos_info->rt_wr_niu_node[i];
+
+		if (niu_node->curr_priority != niu_node->applied_priority) {
+			cam_io_w_mb(niu_node->curr_priority,
+				soc_info->reg_map[reg_indx].mem_base +
+				niu_node->pri_lut_low_offset);
+			niu_node->applied_priority = niu_node->curr_priority;
+		}
+	}
+
+	if (cpas_core->smart_qos_dump) {
+		CAM_INFO(CAM_PERF, "Printing SmartQos values after update");
+		cam_cpas_print_smart_qos_priority(cpas_hw);
+	}
+
+	return 0;
+}
+
 static int cam_cpas_util_set_camnoc_axi_clk_rate(
 	struct cam_hw_info *cpas_hw)
 {
@@ -856,6 +1050,8 @@ static int cam_cpas_util_apply_client_axi_vote(
 	struct cam_axi_vote *axi_vote)
 {
 	struct cam_cpas *cpas_core = (struct cam_cpas *) cpas_hw->core_info;
+	struct cam_cpas_private_soc *soc_private =
+		(struct cam_cpas_private_soc *) cpas_hw->soc_info.soc_private;
 	struct cam_axi_vote *con_axi_vote = NULL;
 	struct cam_cpas_axi_port *mnoc_axi_port = NULL;
 	struct cam_cpas_tree_node *curr_tree_node = NULL;
@@ -869,6 +1065,8 @@ static int cam_cpas_util_apply_client_axi_vote(
 		par_camnoc_old = 0, par_mnoc_ab_old = 0, par_mnoc_ib_old = 0;
 	int rc = 0, i = 0;
 	uint64_t applied_ab = 0, applied_ib = 0;
+	bool apply_smart_qos = false;
+	bool rt_bw_updated = false;
 
 	mutex_lock(&cpas_core->tree_lock);
 	if (!cpas_client->tree_node_valid) {
@@ -1015,6 +1213,37 @@ static int cam_cpas_util_apply_client_axi_vote(
 		goto unlock_tree;
 	}
 
+	if (soc_private->enable_smart_qos) {
+		CAM_DBG(CAM_PERF, "Start QoS update for client[%s][%d]",
+			cpas_client->data.identifier, cpas_client->data.cell_index);
+		for (i = 0; i < cpas_core->num_axi_ports; i++) {
+			if (mnoc_axi_port_updated[i] && cpas_core->axi_port[i].is_rt) {
+				rt_bw_updated = true;
+				break;
+			}
+		}
+
+		if (rt_bw_updated) {
+			apply_smart_qos = cam_cpas_calculate_smart_qos(cpas_hw);
+
+			if (apply_smart_qos && cam_cpas_is_new_rt_bw_lower(cpas_hw)) {
+				/*
+				 * If new BW is low, apply QoS first and then vote,
+				 * otherwise vote first and then apply QoS
+				 */
+				CAM_DBG(CAM_PERF, "Apply Smart QoS first");
+				rc = cam_cpas_apply_smart_qos(cpas_hw);
+				if (rc) {
+					CAM_ERR(CAM_CPAS,
+						"Failed in Smart QoS rc=%d", rc);
+					goto unlock_tree;
+				}
+
+				apply_smart_qos = false;
+			}
+		}
+	}
+
 vote_start_clients:
 	for (i = 0; i < cpas_core->num_axi_ports; i++) {
 		if (mnoc_axi_port_updated[i])
@@ -1055,10 +1284,23 @@ vote_start_clients:
 		mnoc_axi_port->applied_ab_bw = applied_ab;
 		mnoc_axi_port->applied_ib_bw = applied_ib;
 	}
+
 	rc = cam_cpas_camnoc_set_vote_axi_clk_rate(
 		cpas_hw, camnoc_axi_port_updated);
-	if (rc)
+	if (rc) {
 		CAM_ERR(CAM_CPAS, "Failed in setting axi clk rate rc=%d", rc);
+		goto unlock_tree;
+	}
+
+	if (soc_private->enable_smart_qos && apply_smart_qos) {
+		CAM_DBG(CAM_PERF, "Apply Smart QoS after bw votes");
+
+		rc = cam_cpas_apply_smart_qos(cpas_hw);
+		if (rc) {
+			CAM_ERR(CAM_CPAS, "Failed in Smart QoS rc=%d", rc);
+			goto unlock_tree;
+		}
+	}
 
 unlock_tree:
 	mutex_unlock(&cpas_core->tree_lock);
@@ -1528,6 +1770,9 @@ static int cam_cpas_hw_start(void *hw_priv, void *start_args,
 		CAM_DBG(CAM_CPAS, "irq_count=%d\n",
 			atomic_read(&cpas_core->irq_count));
 
+		if (soc_private->enable_smart_qos)
+			cam_cpas_reset_niu_priorities(cpas_hw);
+
 		cam_smmu_reset_cb_page_fault_cnt();
 		cpas_hw->hw_state = CAM_HW_STATE_POWER_UP;
 	}
@@ -1910,6 +2155,9 @@ static int cam_cpas_log_vote(struct cam_hw_info *cpas_hw)
 	struct cam_cpas_tree_node *curr_node;
 	struct cam_hw_soc_info *soc_info = &cpas_hw->soc_info;
 
+	if ((cpas_core->streamon_clients > 0) && soc_private->enable_smart_qos)
+		cam_cpas_print_smart_qos_priority(cpas_hw);
+
 	/*
 	 * First print rpmh registers as early as possible to catch nearest
 	 * state of rpmh after an issue (overflow) occurs.
@@ -2006,7 +2254,7 @@ static int cam_cpas_log_vote(struct cam_hw_info *cpas_hw)
 			curr_node->mnoc_ab_bw, curr_node->mnoc_ib_bw);
 	}
 
-	cam_cpas_dump_monitor_array(cpas_core);
+	cam_cpas_dump_monitor_array(cpas_hw);
 
 	if (cpas_core->internal_ops.print_poweron_settings)
 		cpas_core->internal_ops.print_poweron_settings(cpas_hw);
@@ -2108,7 +2356,8 @@ static void cam_cpas_update_monitor_array(struct cam_hw_info *cpas_hw,
 
 		if (j >= CAM_CAMNOC_FILL_LVL_REG_INFO_MAX) {
 			CAM_WARN(CAM_CPAS,
-				"CPAS monitor reg info buffer full, max : %d", j);
+				"CPAS monitor reg info buffer full, max : %d",
+				j);
 			break;
 		}
 
@@ -2120,11 +2369,25 @@ static void cam_cpas_update_monitor_array(struct cam_hw_info *cpas_hw,
 	}
 
 	entry->num_camnoc_lvl_regs = j;
+
+	if (soc_private->enable_smart_qos) {
+		for (i = 0; i < soc_private->smart_qos_info->num_rt_wr_nius; i++) {
+			struct cam_cpas_tree_node *niu_node =
+				soc_private->smart_qos_info->rt_wr_niu_node[i];
+
+			entry->rt_wr_niu_pri_lut[i] =
+				cam_io_r_mb(soc_info->reg_map[reg_camnoc].mem_base +
+				niu_node->pri_lut_low_offset);
+		}
+	}
 }
 
 static void cam_cpas_dump_monitor_array(
-	struct cam_cpas *cpas_core)
+	struct cam_hw_info *cpas_hw)
 {
+	struct cam_cpas *cpas_core = (struct cam_cpas *) cpas_hw->core_info;
+	struct cam_cpas_private_soc *soc_private =
+		(struct cam_cpas_private_soc *) cpas_hw->soc_info.soc_private;
 	int i = 0, j = 0;
 	int64_t state_head = 0;
 	uint32_t index, num_entries, oldest_entry;
@@ -2196,8 +2459,21 @@ static void cam_cpas_dump_monitor_array(
 				(entry->camnoc_fill_level[j] & 0x7FF),
 				(entry->camnoc_fill_level[j] & 0x7F0000) >> 16);
 		}
-
 		CAM_INFO(CAM_CPAS, "CAMNOC REG[Queued Pending] %s", log_buf);
+
+		if (soc_private->enable_smart_qos) {
+			len = 0;
+			for (j = 0; j < soc_private->smart_qos_info->num_rt_wr_nius; j++) {
+				struct cam_cpas_tree_node *niu_node =
+					soc_private->smart_qos_info->rt_wr_niu_node[j];
+
+				len += scnprintf((log_buf + len),
+					(CAM_CPAS_LOG_BUF_LEN - len), " [%s: 0x%x]",
+					niu_node->node_name,
+					entry->rt_wr_niu_pri_lut[j]);
+			}
+			CAM_INFO(CAM_CPAS, "SmartQoS [Node: Pri_lut_low] %s", log_buf);
+		}
 
 		index = (index + 1) % CAM_CPAS_MONITOR_MAX_ENTRIES;
 	}
@@ -2656,6 +2932,9 @@ static int cam_cpas_util_create_debugfs(struct cam_cpas *cpas_core)
 	dbgfileptr = debugfs_create_bool("full_state_dump", 0644,
 		cpas_core->dentry, &cpas_core->full_state_dump);
 
+	dbgfileptr = debugfs_create_bool("smart_qos_dump", 0644,
+		cpas_core->dentry, &cpas_core->smart_qos_dump);
+
 	if (IS_ERR(dbgfileptr)) {
 		if (PTR_ERR(dbgfileptr) == -ENODEV)
 			CAM_WARN(CAM_CPAS, "DebugFS not enabled in kernel!");
@@ -2707,6 +2986,7 @@ int cam_cpas_hw_probe(struct platform_device *pdev,
 	cpas_hw->open_count = 0;
 	cpas_core->ahb_bus_scaling_disable = false;
 	cpas_core->full_state_dump = false;
+	cpas_core->smart_qos_dump = false;
 
 	atomic64_set(&cpas_core->monitor_head, -1);
 
