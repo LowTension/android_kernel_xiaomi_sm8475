@@ -62,7 +62,6 @@ struct cam_jpeg_dma_device_core_info {
 	struct cam_jpeg_set_irq_cb irq_cb;
 	int32_t ref_count;
 	struct mutex core_mutex;
-	int32_t result_size;
 	uint32_t num_pid;
 	uint32_t pid[CAM_JPEG_HW_MAX_NUM_PID];
 	uint32_t rd_mid;

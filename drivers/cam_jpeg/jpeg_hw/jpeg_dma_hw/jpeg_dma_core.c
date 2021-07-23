@@ -177,17 +177,14 @@ irqreturn_t cam_jpeg_dma_irq(int irq_num, void *data)
 	cam_io_w_mb(irq_status,
 		soc_info->reg_map[0].mem_base +
 		core_info->jpeg_dma_hw_info->reg_offset.int_clr);
-	CAM_DBG(CAM_JPEG, "irq_num %d  irq_status = %x , core_state %d",
+	CAM_DBG(CAM_JPEG, "irq_num: %d  irq_status: 0x%x , core_state: %d",
 		irq_num, irq_status, core_info->core_state);
 	if (CAM_JPEG_HW_IRQ_IS_FRAME_DONE(irq_status, hw_info)) {
 		spin_lock(&jpeg_dma_dev->hw_lock);
 		if (core_info->core_state == CAM_JPEG_DMA_CORE_READY) {
 			CAM_TRACE(CAM_JPEG, "DMA FrameDone IRQ");
-			core_info->result_size = 1;
-			CAM_DBG(CAM_JPEG, "result_size %d",
-				core_info->result_size);
-			core_info->core_state =
-				CAM_JPEG_DMA_CORE_RESETTING_ON_DONE;
+			CAM_DBG(CAM_JPEG, "frane_done");
+			core_info->core_state = CAM_JPEG_DMA_CORE_RESETTING_ON_DONE;
 			cam_io_w_mb(hw_info->reg_val.reset_cmd,
 				mem_base + hw_info->reg_offset.reset_cmd);
 		} else {
@@ -201,33 +198,29 @@ irqreturn_t cam_jpeg_dma_irq(int irq_num, void *data)
 		spin_lock(&jpeg_dma_dev->hw_lock);
 		if (core_info->core_state == CAM_JPEG_DMA_CORE_RESETTING) {
 			core_info->core_state = CAM_JPEG_DMA_CORE_READY;
-			core_info->result_size = -1;
 			complete(&jpeg_dma_dev->hw_complete);
-		} else if (core_info->core_state ==
-			CAM_JPEG_DMA_CORE_RESETTING_ON_DONE) {
+		} else if (core_info->core_state == CAM_JPEG_DMA_CORE_RESETTING_ON_DONE) {
 			if (core_info->irq_cb.jpeg_hw_mgr_cb) {
-				core_info->irq_cb.jpeg_hw_mgr_cb(irq_status,
-					core_info->result_size,
-					core_info->irq_cb.data);
+				core_info->irq_cb.jpeg_hw_mgr_cb(irq_status, 1,
+					(void *)&core_info->irq_cb.irq_cb_data);
 			} else {
 				CAM_WARN(CAM_JPEG, "unexpected frame done");
 			}
-			core_info->result_size = -1;
 			core_info->core_state = CAM_JPEG_DMA_CORE_NOT_READY;
 		} else {
 			CAM_ERR(CAM_JPEG, "unexpected reset irq");
 		}
 		spin_unlock(&jpeg_dma_dev->hw_lock);
 	}
+
 	if (CAM_JPEG_HW_IRQ_IS_STOP_DONE(irq_status, hw_info)) {
 		spin_lock(&jpeg_dma_dev->hw_lock);
 		if (core_info->core_state == CAM_JPEG_DMA_CORE_ABORTING) {
 			core_info->core_state = CAM_JPEG_DMA_CORE_NOT_READY;
 			complete(&jpeg_dma_dev->hw_complete);
 			if (core_info->irq_cb.jpeg_hw_mgr_cb) {
-				core_info->irq_cb.jpeg_hw_mgr_cb(irq_status,
-					-1,
-					core_info->irq_cb.data);
+				core_info->irq_cb.jpeg_hw_mgr_cb(irq_status, 0,
+					(void *)&core_info->irq_cb.irq_cb_data);
 			}
 		} else {
 			CAM_ERR(CAM_JPEG, "unexpected abort irq");
@@ -402,18 +395,23 @@ int cam_jpeg_dma_process_cmd(void *device_priv, uint32_t cmd_type,
 	case CAM_JPEG_CMD_SET_IRQ_CB:
 	{
 		struct cam_jpeg_set_irq_cb *irq_cb = cmd_args;
+		struct cam_jpeg_irq_cb_data *irq_cb_data;
 
 		if (!cmd_args) {
 			CAM_ERR(CAM_JPEG, "cmd args NULL");
 			return -EINVAL;
 		}
+
+		irq_cb_data = &irq_cb->irq_cb_data;
 		if (irq_cb->b_set_cb) {
 			core_info->irq_cb.jpeg_hw_mgr_cb =
 				irq_cb->jpeg_hw_mgr_cb;
-			core_info->irq_cb.data = irq_cb->data;
+			core_info->irq_cb.irq_cb_data.jpeg_req = irq_cb_data->jpeg_req;
+			core_info->irq_cb.irq_cb_data.private_data = irq_cb_data->private_data;
 		} else {
 			core_info->irq_cb.jpeg_hw_mgr_cb = NULL;
-			core_info->irq_cb.data = NULL;
+			core_info->irq_cb.irq_cb_data.jpeg_req = NULL;
+			core_info->irq_cb.irq_cb_data.private_data = NULL;
 		}
 		rc = 0;
 		break;

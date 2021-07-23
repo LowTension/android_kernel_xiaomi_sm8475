@@ -198,7 +198,7 @@ int cam_jpeg_context_init(struct cam_jpeg_context *ctx,
 	ctx->base = ctx_base;
 
 	for (i = 0; i < CAM_CTX_REQ_MAX; i++)
-		ctx->req_base[i].req_priv = ctx;
+		ctx->req_base[i].req_priv = &ctx->jpeg_req[i];
 
 	rc = cam_context_init(ctx_base, jpeg_dev_name, CAM_JPEG, ctx_id,
 		NULL, hw_intf, ctx->req_base, CAM_CTX_REQ_MAX);

@@ -256,6 +256,16 @@ static void cam_v4l2_event_queue_notify_error(const struct v4l2_event *old,
 			ev_header->u.err_msg.error_type,
 			ev_header->u.err_msg.error_code);
 		break;
+	case V4L_EVENT_CAM_REQ_MGR_NODE_EVENT:
+		CAM_ERR_RATE_LIMIT(CAM_CRM,
+			"Failed to notify node event. Sess 0x%x ReqId %d Lnk 0x%x dev_hdl: %d evt_type: %u evt_cause: %u",
+			ev_header->session_hdl,
+			ev_header->u.node_msg.request_id,
+			ev_header->u.node_msg.link_hdl,
+			ev_header->u.node_msg.device_hdl,
+			ev_header->u.node_msg.event_type,
+			ev_header->u.node_msg.event_cause);
+		break;
 	default:
 		CAM_ERR(CAM_CRM, "Failed to notify crm event id %d",
 			old->id);

@@ -15,11 +15,13 @@
 
 /**
  * struct cam_jpeg_context - Jpeg context
- * @base: Base jpeg cam context object
- * @req_base: Common request structure
+ * @base      : Base jpeg cam context object
+ * @jpeg_req  : Jpeg reguest data stored during prepare update
+ * @req_base  : Common request structure
  */
 struct cam_jpeg_context {
 	struct cam_context *base;
+	struct cam_jpeg_request_data jpeg_req[CAM_CTX_REQ_MAX];
 	struct cam_ctx_request req_base[CAM_CTX_REQ_MAX];
 };
 
