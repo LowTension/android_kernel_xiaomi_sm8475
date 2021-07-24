@@ -11,6 +11,7 @@
 #include "cam_sfe_core.h"
 #include "cam_sfe_soc.h"
 #include "cam_sfe680.h"
+#include "cam_sfe780.h"
 #include "cam_debug_util.h"
 #include "camera_main.h"
 
@@ -224,6 +225,10 @@ static const struct of_device_id cam_sfe_dt_match[] = {
 	{
 		.compatible = "qcom,sfe680",
 		.data = &cam_sfe680_hw_info,
+	},
+	{
+		.compatible = "qcom,sfe780",
+		.data = &cam_sfe780_hw_info,
 	},
 	{}
 };

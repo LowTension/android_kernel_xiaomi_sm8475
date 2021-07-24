@@ -19,7 +19,7 @@
 #define CAM_SHIFT_TOP_CORE_CFG_OPS_MODE_CFG    1
 #define CAM_SHIFT_TOP_CORE_CFG_FS_MODE_CFG     0
 
-#define CAM_SFE_TOP_DBG_REG_MAX                12
+#define CAM_SFE_TOP_DBG_REG_MAX                18
 
 struct cam_sfe_top_module_desc {
 	uint32_t id;
@@ -31,10 +31,27 @@ struct cam_sfe_top {
 	struct cam_hw_ops       hw_ops;
 };
 
+struct cam_sfe_mode {
+	int  value;
+	char  *desc;
+};
+
 struct cam_sfe_wr_client_desc {
 	uint32_t  wm_id;
 	uint8_t  *desc;
 };
+
+struct cam_sfe_top_err_irq_desc {
+	uint32_t  bitmask;
+	char     *err_name;
+	char     *desc;
+};
+
+struct cam_sfe_top_debug_info {
+	uint32_t  shift;
+	char     *clc_name;
+};
+
 
 struct cam_sfe_top_common_reg_offset {
 	uint32_t hw_version;
@@ -43,7 +60,7 @@ struct cam_sfe_top_common_reg_offset {
 	uint32_t core_cgc_ctrl;
 	uint32_t ahb_clk_ovd;
 	uint32_t core_cfg;
-	uint32_t violation_status;
+	uint32_t ipp_violation_status;
 	uint32_t diag_config;
 	uint32_t diag_sensor_status_0;
 	uint32_t diag_sensor_status_1;
@@ -55,19 +72,28 @@ struct cam_sfe_top_common_reg_offset {
 	uint32_t lcr_throttle_cfg;
 	uint32_t hdr_throttle_cfg;
 	uint32_t sfe_op_throttle_cfg;
+	uint32_t irc_throttle_cfg;
+	uint32_t sfe_single_dual_cfg;
 	uint32_t bus_overflow_status;
 	uint32_t top_debug_cfg;
+	bool     lcr_supported;
+	bool     ir_supported;
+	bool     qcfa_only;
+	struct   cam_sfe_mode *sfe_mode;
+	uint32_t num_sfe_mode;
+	uint32_t ipp_violation_mask;
+	uint32_t num_debug_registers;
 	uint32_t top_debug[CAM_SFE_TOP_DBG_REG_MAX];
 };
 
 struct cam_sfe_modules_common_reg_offset {
 	uint32_t demux_module_cfg;
-	uint32_t demux_qcfa_cfg;
+	uint32_t demux_xcfa_cfg;
 	uint32_t demux_hdr_cfg;
 	uint32_t demux_lcr_sel;
 	uint32_t hdrc_remo_mod_cfg;
-	uint32_t hdrc_remo_qcfa_bin_cfg;
-	uint32_t qcfa_hdrc_remo_out_mux_cfg;
+	uint32_t hdrc_remo_xcfa_bin_cfg;
+	uint32_t xcfa_hdrc_remo_out_mux_cfg;
 };
 
 struct cam_sfe_top_common_reg_data {
@@ -87,13 +113,17 @@ struct cam_sfe_top_hw_info {
 	struct cam_sfe_top_common_reg_offset     *common_reg;
 	struct cam_sfe_modules_common_reg_offset *modules_hw_info;
 	struct cam_sfe_top_common_reg_data       *common_reg_data;
-	struct cam_sfe_top_module_desc           *module_desc;
+	struct cam_sfe_top_module_desc           *ipp_module_desc;
 	struct cam_sfe_wr_client_desc            *wr_client_desc;
 	struct cam_sfe_path_common_reg_data      *pix_reg_data;
 	struct cam_sfe_path_common_reg_data      *rdi_reg_data[CAM_SFE_RDI_MAX];
 	uint32_t                                  num_inputs;
 	uint32_t                                  input_type[
 		CAM_SFE_TOP_IN_PORT_MAX];
+	uint32_t                                  num_top_errors;
+	struct cam_sfe_top_err_irq_desc          *top_err_desc;
+	uint32_t                                  num_clc_module;
+	struct   cam_sfe_top_debug_info         (*clc_dbg_mod_info)[CAM_SFE_TOP_DBG_REG_MAX][8];
 };
 
 int cam_sfe_top_init(
@@ -107,5 +137,19 @@ int cam_sfe_top_init(
 int cam_sfe_top_deinit(
 	uint32_t                       hw_version,
 	struct cam_sfe_top           **sfe_top);
+
+#define SFE_DBG_INFO(shift_val, name) {.shift = shift_val, .clc_name = name}
+
+#define SFE_DBG_INFO_ARRAY_4bit(name1, name2, name3, name4, name5, name6, name7, name8) \
+	{                                                                               \
+		SFE_DBG_INFO(0, name1),                                                 \
+		SFE_DBG_INFO(4, name2),                                                 \
+		SFE_DBG_INFO(8, name3),                                                 \
+		SFE_DBG_INFO(12, name4),                                                \
+		SFE_DBG_INFO(16, name5),                                                \
+		SFE_DBG_INFO(20, name6),                                                \
+		SFE_DBG_INFO(24, name7),                                                \
+		SFE_DBG_INFO(28, name8),                                                \
+	}
 
 #endif /* _CAM_SFE_TOP_H_ */

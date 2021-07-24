@@ -56,8 +56,10 @@ struct cam_sfe_top_priv {
 	void                           *priv_per_stream;
 	spinlock_t                      spin_lock;
 	cam_hw_mgr_event_cb_func        event_cb;
-	struct cam_sfe_top_module_desc *module_desc;
 	struct cam_sfe_wr_client_desc  *wr_client_desc;
+	struct cam_sfe_top_hw_info     *hw_info;
+	uint32_t                        num_clc_module;
+	struct cam_sfe_top_debug_info  (*clc_dbg_mod_info)[CAM_SFE_TOP_DBG_REG_MAX][8];
 };
 
 struct cam_sfe_path_data {
@@ -71,320 +73,6 @@ struct cam_sfe_path_data {
 	struct cam_hw_soc_info                   *soc_info;
 	uint32_t                                  min_hblank_cnt;
 	int                                       sof_eof_handle;
-};
-
-struct cam_sfe_top_debug_info {
-	uint32_t  shift;
-	char     *clc_name;
-};
-
-static const struct cam_sfe_top_debug_info sfe_dbg_list[][8] = {
-	{
-		{
-			.shift = 0,
-			.clc_name = "test_bus_reserved"
-		},
-		{
-			.shift = 4,
-			.clc_name = "test_bus_reserved"
-		},
-		{
-			.shift = 8,
-			.clc_name = "test_bus_reserved"
-		},
-		{
-			.shift = 12,
-			.clc_name = "test_bus_reserved"
-		},
-		{
-			.shift = 16,
-			.clc_name = "test_bus_reserved"
-		},
-		{
-			.shift = 20,
-			.clc_name = "test_bus_reserved"
-		},
-		{
-			.shift = 24,
-			.clc_name = "test_bus_reserved"
-		},
-		{
-			.shift = 28,
-			.clc_name = "test_bus_reserved"
-		},
-	},
-	{
-		{
-			.shift = 0,
-			.clc_name = "zsl_throttle"
-		},
-		{
-			.shift = 4,
-			.clc_name = "crc_zsl"
-		},
-		{
-			.shift = 8,
-			.clc_name = "comp_zsl"
-		},
-		{
-			.shift = 12,
-			.clc_name = "crc_prev"
-		},
-		{
-			.shift = 16,
-			.clc_name = "hdrc_ch2"
-		},
-		{
-			.shift = 20,
-			.clc_name = "hdrc_ch1"
-		},
-		{
-			.shift = 24,
-			.clc_name = "hdrc_ch0"
-		},
-		{
-			.shift = 28,
-			.clc_name = "stats_bhist_ch0"
-		},
-	},
-	{
-		{
-			.shift = 0,
-			.clc_name = "stats_bg_ch0"
-		},
-		{
-			.shift = 4,
-			.clc_name = "lsc_ch0"
-		},
-		{
-			.shift = 8,
-			.clc_name = "crc_ch0"
-		},
-		{
-			.shift = 12,
-			.clc_name = "ccif_2x2_to_2x1"
-		},
-		{
-			.shift = 16,
-			.clc_name = "decomp"
-		},
-		{
-			.shift = 20,
-			.clc_name = "msb_align_ch0"
-		},
-		{
-			.shift = 24,
-			.clc_name = "bpc_pdpc"
-		},
-		{
-			.shift = 28,
-			.clc_name = "ch0_gain"
-		},
-	},
-	{
-		{
-			.shift = 0,
-			.clc_name = "bhist_ch1"
-		},
-		{
-			.shift = 4,
-			.clc_name = "stats_bg_ch1"
-		},
-		{
-			.shift = 8,
-			.clc_name = "lsc_ch1"
-		},
-		{
-			.shift = 12,
-			.clc_name = "crc_ch1"
-		},
-		{
-			.shift = 16,
-			.clc_name = "msb_align_ch1"
-		},
-		{
-			.shift = 20,
-			.clc_name = "ch1_gain"
-		},
-		{
-			.shift = 24,
-			.clc_name = "bhist_ch2"
-		},
-		{
-			.shift = 28,
-			.clc_name = "stats_bg_ch2"
-		},
-	},
-	{
-		{
-			.shift = 0,
-			.clc_name = "lsc_ch2"
-		},
-		{
-			.shift = 4,
-			.clc_name = "crc_ch2"
-		},
-		{
-			.shift = 8,
-			.clc_name = "msb_align_ch2"
-		},
-		{
-			.shift = 12,
-			.clc_name = "ch2_gain"
-		},
-		{
-			.shift = 16,
-			.clc_name = "lcr_throttle"
-		},
-		{
-			.shift = 20,
-			.clc_name = "lcr"
-		},
-		{
-			.shift = 24,
-			.clc_name = "demux_fetch2"
-		},
-		{
-			.shift = 28,
-			.clc_name = "demux_fetch1"
-		},
-	},
-	{
-		{
-			.shift = 0,
-			.clc_name = "demux_fetch0"
-		},
-		{
-			.shift = 4,
-			.clc_name = "csid_ccif"
-		},
-		{
-			.shift = 8,
-			.clc_name = "RDI4"
-		},
-		{
-			.shift = 12,
-			.clc_name = "RDI3"
-		},
-		{
-			.shift = 16,
-			.clc_name = "RDI2"
-		},
-		{
-			.shift = 20,
-			.clc_name = "RDI1"
-		},
-		{
-			.shift = 24,
-			.clc_name = "RDI0"
-		},
-		{
-			.shift = 28,
-			.clc_name = "bhist2_bus_wr"
-		},
-	},
-	{
-		{
-			.shift = 0,
-			.clc_name = "bg2_bus_wr"
-		},
-		{
-			.shift = 4,
-			.clc_name = "bhist1_bus_wr"
-		},
-		{
-			.shift = 8,
-			.clc_name = "bg1_bus_wr"
-		},
-		{
-			.shift = 12,
-			.clc_name = "bhist0_bus_wr"
-		},
-		{
-			.shift = 16,
-			.clc_name = "bg0_bus_wr"
-		},
-		{
-			.shift = 20,
-			.clc_name = "lcr_bus_wr"
-		},
-		{
-			.shift = 24,
-			.clc_name = "zsl_bus_wr"
-		},
-		{
-			.shift = 28,
-			.clc_name = "sfe_op_throttle"
-		},
-	},
-	{
-		{
-			.shift = 0,
-			.clc_name = "line_smooth"
-		},
-		{
-			.shift = 4,
-			.clc_name = "pp"
-		},
-		{
-			.shift = 8,
-			.clc_name = "bus_conv_ch2"
-		},
-		{
-			.shift = 12,
-			.clc_name = "bus_conv_ch1"
-		},
-		{
-			.shift = 16,
-			.clc_name = "bus_conv_ch0"
-		},
-		{
-			.shift = 20,
-			.clc_name = "fe_ch2"
-		},
-		{
-			.shift = 24,
-			.clc_name = "fe_ch1"
-		},
-		{
-			.shift = 28,
-			.clc_name = "fe_ch0"
-		},
-	},
-	{
-		{
-			.shift = 0,
-			.clc_name = "rdi4"
-		},
-		{
-			.shift = 4,
-			.clc_name = "rdi3"
-		},
-		{
-			.shift = 8,
-			.clc_name = "rdi2"
-		},
-		{
-			.shift = 12,
-			.clc_name = "rdi1"
-		},
-		{
-			.shift = 16,
-			.clc_name = "rdi0"
-		},
-		{
-			.shift = 20,
-			.clc_name = "pixel"
-		},
-		{
-			.shift = 24,
-			.clc_name = "reserved"
-		},
-		{
-			.shift = 28,
-			.clc_name = "reserved"
-		},
-	},
 };
 
 static int cam_sfe_top_apply_clock_start_stop(struct cam_sfe_top_priv *top_priv);
@@ -480,7 +168,7 @@ end:
 
 static void cam_sfe_top_check_module_status(
 	uint32_t num_reg, uint32_t *reg_val,
-	const struct cam_sfe_top_debug_info status_list[][8])
+	struct cam_sfe_top_debug_info (*status_list)[CAM_SFE_TOP_DBG_REG_MAX][8])
 {
 	bool found = false;
 	uint32_t i, j, val = 0;
@@ -496,13 +184,13 @@ static void cam_sfe_top_check_module_status(
 			continue;
 
 		for (j = 0; j < 8; j++) {
-			val = reg_val[i] >> status_list[i][j].shift;
+			val = reg_val[i] >> (*status_list)[i][j].shift;
 			val &= 0xF;
 			if (val == 0 || val == 5)
 				continue;
 
 			CAM_INFO_BUF(CAM_SFE, log_buf, 1024, &len, "%s [I:%u V:%u R:%u]",
-				status_list[i][j].clc_name,
+				(*status_list)[i][j].clc_name,
 				((val >> 2) & 1), ((val >> 1) & 1), (val & 1));
 			found = true;
 		}
@@ -522,11 +210,12 @@ static void cam_sfe_top_print_debug_reg_info(
 	struct cam_sfe_top_common_data  *common_data;
 	struct cam_hw_soc_info          *soc_info;
 	uint32_t                        *reg_val = NULL;
-	uint32_t num_reg = CAM_SFE_TOP_DBG_REG_MAX;
+	uint32_t num_reg = 0;
 	int i = 0, j;
 
 	common_data = &top_priv->common_data;
 	soc_info = common_data->soc_info;
+	num_reg = common_data->common_reg->num_debug_registers;
 	mem_base = soc_info->reg_map[SFE_CORE_BASE_IDX].mem_base;
 	reg_val    = kcalloc(num_reg, sizeof(uint32_t), GFP_KERNEL);
 	if (!reg_val)
@@ -542,8 +231,8 @@ static void cam_sfe_top_print_debug_reg_info(
 			(i - 2), reg_val[i - 2], (i - 1), reg_val[i - 1]);
 	}
 
-	cam_sfe_top_check_module_status(num_reg,
-		reg_val, sfe_dbg_list);
+	cam_sfe_top_check_module_status(top_priv->num_clc_module,
+		reg_val, top_priv->clc_dbg_mod_info);
 
 	kfree(reg_val);
 }
@@ -1483,8 +1172,8 @@ static int cam_sfe_top_handle_err_irq_top_half(
 
 	cam_isp_hw_get_timestamp(&evt_payload->ts);
 	evt_payload->violation_status =
-		cam_io_r(base +
-		top_priv->common_data.common_reg->violation_status);
+	cam_io_r(base +
+		top_priv->common_data.common_reg->ipp_violation_status);
 
 	th_payload->evt_payload_priv = evt_payload;
 
@@ -1580,6 +1269,45 @@ void cam_sfe_top_sel_frame_counter(
 	}
 }
 
+static void cam_sfe_top_print_ipp_violation_info(
+	struct cam_sfe_top_priv *top_priv,
+	uint32_t violation_status)
+{
+	struct cam_sfe_top_common_data *common_data = &top_priv->common_data;
+	struct cam_hw_soc_info         *soc_info = common_data->soc_info;
+	uint32_t val = violation_status;
+
+	CAM_INFO(CAM_SFE, "SFE[%u] IPP Violation status 0x%x",
+	     soc_info->index, val);
+
+	if (top_priv->hw_info->ipp_module_desc)
+		CAM_ERR(CAM_SFE, "SFE[%u] IPP Violation Module id: [%u %s]",
+			soc_info->index,
+			top_priv->hw_info->ipp_module_desc[val].id,
+			top_priv->hw_info->ipp_module_desc[val].desc);
+
+}
+
+static void cam_sfe_top_print_top_irq_error(
+	struct cam_sfe_top_priv *top_priv,
+	uint32_t irq_status,
+	uint32_t violation_status)
+{
+	uint32_t i = 0;
+
+	for (i = 0; i < top_priv->hw_info->num_top_errors; i++) {
+		if (top_priv->hw_info->top_err_desc[i].bitmask &
+			irq_status) {
+			CAM_ERR(CAM_SFE, "%s %s",
+				top_priv->hw_info->top_err_desc[i].err_name,
+				top_priv->hw_info->top_err_desc[i].desc);
+		}
+	}
+
+	if (irq_status & top_priv->common_data.common_reg->ipp_violation_mask)
+		cam_sfe_top_print_ipp_violation_info(top_priv, violation_status);
+
+}
 
 static int cam_sfe_top_handle_err_irq_bottom_half(
 	void *handler_priv, void *evt_payload_priv)
@@ -1602,24 +1330,11 @@ static int cam_sfe_top_handle_err_irq_bottom_half(
 
 	if (irq_status[0] &
 		top_priv->common_data.common_reg_data->error_irq_mask) {
-		if (irq_status[0] & 0x4000)
-			CAM_ERR(CAM_SFE, "PP VIOLATION");
-
-		if (irq_status[0] & 0x8000)
-			CAM_ERR(CAM_SFE, "DIAG VIOLATION");
-
-		if (irq_status[0] & 0x10000)
-			CAM_ERR(CAM_SFE, "LINE SMOOTH VIOLATION");
-
 		viol_sts = payload->violation_status;
 		CAM_INFO(CAM_SFE, "Violation status 0x%x",
 			viol_sts);
-		if (top_priv->module_desc)
-			CAM_ERR(CAM_ISP, "SFE:%u Violating Module [ID: %d name: %s]",
-				evt_info.hw_idx,
-				top_priv->module_desc[viol_sts].id,
-				top_priv->module_desc[viol_sts].desc);
-
+		cam_sfe_top_print_top_irq_error(top_priv,
+			irq_status[0], viol_sts);
 		evt_info.err_type = CAM_SFE_IRQ_STATUS_VIOLATION;
 		cam_sfe_top_print_debug_reg_info(top_priv);
 		if (top_priv->event_cb)
@@ -1705,6 +1420,7 @@ int cam_sfe_top_start(
 	struct cam_sfe_soc_private           *soc_private = NULL;
 	uint32_t   error_mask[CAM_SFE_IRQ_REGISTERS_MAX];
 	uint32_t   sof_eof_mask[CAM_SFE_IRQ_REGISTERS_MAX];
+	uint32_t core_cfg = 0, i = 0;
 
 	if (!priv || !start_args) {
 		CAM_ERR(CAM_SFE, "Invalid args");
@@ -1744,11 +1460,22 @@ int cam_sfe_top_start(
 		return rc;
 	}
 
+	core_cfg = cam_io_r_mb(path_data->mem_base +
+			path_data->common_reg->core_cfg);
+
 	/* core cfg updated via CDM */
 	CAM_DBG(CAM_SFE, "SFE HW [%u] core_cfg: 0x%x",
-		hw_info->soc_info.index,
-		cam_io_r_mb(path_data->mem_base +
-			path_data->common_reg->core_cfg));
+		hw_info->soc_info.index, core_cfg);
+
+	for (i = 0; i < path_data->common_reg->num_sfe_mode; i++) {
+		if (path_data->common_reg->sfe_mode[i].value ==
+			core_cfg) {
+			CAM_DBG(CAM_SFE, "SFE HW [%u] : [%s]",
+				hw_info->soc_info.index,
+				path_data->common_reg->sfe_mode[i].desc);
+			break;
+		}
+	}
 
 	/* Enable debug cfg registers */
 	cam_io_w(path_data->common_reg_data->top_debug_cfg_en,
@@ -2055,10 +1782,10 @@ int cam_sfe_top_init(
 	top_priv->common_data.hw_intf = hw_intf;
 	top_priv->common_data.common_reg =
 		sfe_top_hw_info->common_reg;
-	top_priv->common_data.common_reg_data =
-		sfe_top_hw_info->common_reg_data;
-	top_priv->module_desc = sfe_top_hw_info->module_desc;
-	top_priv->wr_client_desc = sfe_top_hw_info->wr_client_desc;
+	top_priv->hw_info = sfe_top_hw_info;
+	top_priv->wr_client_desc  = sfe_top_hw_info->wr_client_desc;
+	top_priv->num_clc_module   = sfe_top_hw_info->num_clc_module;
+	top_priv->clc_dbg_mod_info = sfe_top_hw_info->clc_dbg_mod_info;
 	top_priv->sfe_debug_cfg = 0;
 
 	sfe_top->hw_ops.process_cmd = cam_sfe_top_process_cmd;
