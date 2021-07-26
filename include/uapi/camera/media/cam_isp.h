@@ -857,7 +857,7 @@ struct cam_fps_config {
  * @offset           : Write master offset
  * @addr_reuse_en    : Enabling addr-reuse will write output to the same addr
  *                     after the last addr that was read from FIFO.
- * @reserved_2       : Reserved field for Write master config
+ * @packer_format    : Update packer format for Write master config
  * @reserved_3       : Reserved field for Write master config
  * @reserved_4       : Reserved field for Write master config
  */
@@ -871,7 +871,7 @@ struct cam_isp_vfe_wm_config {
 	__u32                      stride;
 	__u32                      offset;
 	__u32                      addr_reuse_en;
-	__u32                      reserved_2;
+	__u32                      packer_format;
 	__u32                      reserved_3;
 	__u32                      reserved_4;
 };
