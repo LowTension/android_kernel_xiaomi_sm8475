@@ -63,7 +63,7 @@ enum cam_sfe_bus_wr_packer_format {
 };
 
 enum cam_sfe_bus_wr_wm_mode {
-	CAM_SFE_WM_LINE_BASED_MODE  = 1,
+	CAM_SFE_WM_LINE_BASED_MODE,
 	CAM_SFE_WM_FRAME_BASED_MODE,
 	CAM_SFE_WM_INDEX_BASED_MODE,
 };
@@ -492,6 +492,15 @@ static void cam_sfe_bus_wr_get_constraint_errors(
 	}
 }
 
+static inline void cam_sfe_bus_config_rdi_wm_frame_based_mode(
+	struct cam_sfe_bus_wr_wm_resource_data  *rsrc_data)
+{
+	rsrc_data->width = CAM_SFE_RDI_BUS_DEFAULT_WIDTH;
+	rsrc_data->height = 0;
+	rsrc_data->stride = CAM_SFE_RDI_BUS_DEFAULT_STRIDE;
+	rsrc_data->en_cfg = (0x1 << 16) | 0x1;
+}
+
 static int cam_sfe_bus_config_rdi_wm(
 	struct cam_sfe_bus_wr_wm_resource_data  *rsrc_data)
 {
@@ -502,11 +511,11 @@ static int cam_sfe_bus_config_rdi_wm(
 			rsrc_data->en_cfg = 0x1;
 			rsrc_data->width =
 				ALIGNUP((rsrc_data->width * 5) / 4, 16) / 16;
+		} else if (rsrc_data->wm_mode == CAM_SFE_WM_FRAME_BASED_MODE) {
+			cam_sfe_bus_config_rdi_wm_frame_based_mode(rsrc_data);
 		} else {
-			rsrc_data->width = CAM_SFE_RDI_BUS_DEFAULT_WIDTH;
-			rsrc_data->height = 0;
-			rsrc_data->stride = CAM_SFE_RDI_BUS_DEFAULT_STRIDE;
-			rsrc_data->en_cfg = (0x1 << 16) | 0x1;
+			CAM_WARN(CAM_SFE, "No index mode support for SFE WM: %u",
+				rsrc_data->index);
 		}
 		break;
 	case CAM_FORMAT_MIPI_RAW_6:
@@ -514,11 +523,11 @@ static int cam_sfe_bus_config_rdi_wm(
 			rsrc_data->en_cfg = 0x1;
 			rsrc_data->width =
 				ALIGNUP((rsrc_data->width * 3) / 4, 16) / 16;
+		} else if (rsrc_data->wm_mode == CAM_SFE_WM_FRAME_BASED_MODE) {
+			cam_sfe_bus_config_rdi_wm_frame_based_mode(rsrc_data);
 		} else {
-			rsrc_data->width = CAM_SFE_RDI_BUS_DEFAULT_WIDTH;
-			rsrc_data->height = 0;
-			rsrc_data->stride = CAM_SFE_RDI_BUS_DEFAULT_STRIDE;
-			rsrc_data->en_cfg = (0x1 << 16) | 0x1;
+			CAM_WARN(CAM_SFE, "No index mode support for SFE WM: %u",
+				rsrc_data->index);
 		}
 		break;
 	case CAM_FORMAT_MIPI_RAW_8:
@@ -526,11 +535,11 @@ static int cam_sfe_bus_config_rdi_wm(
 			rsrc_data->en_cfg = 0x1;
 			rsrc_data->width =
 				ALIGNUP(rsrc_data->width, 16) / 16;
+		} else if (rsrc_data->wm_mode == CAM_SFE_WM_FRAME_BASED_MODE) {
+			cam_sfe_bus_config_rdi_wm_frame_based_mode(rsrc_data);
 		} else {
-			rsrc_data->width = CAM_SFE_RDI_BUS_DEFAULT_WIDTH;
-			rsrc_data->height = 0;
-			rsrc_data->stride = CAM_SFE_RDI_BUS_DEFAULT_STRIDE;
-			rsrc_data->en_cfg = (0x1 << 16) | 0x1;
+			CAM_WARN(CAM_SFE, "No index mode support for SFE WM: %u",
+				rsrc_data->index);
 		}
 		break;
 	case CAM_FORMAT_MIPI_RAW_12:
@@ -538,11 +547,11 @@ static int cam_sfe_bus_config_rdi_wm(
 			rsrc_data->en_cfg = 0x1;
 			rsrc_data->width =
 				ALIGNUP((rsrc_data->width * 3) / 2, 16) / 16;
+		} else if (rsrc_data->wm_mode == CAM_SFE_WM_FRAME_BASED_MODE) {
+			cam_sfe_bus_config_rdi_wm_frame_based_mode(rsrc_data);
 		} else {
-			rsrc_data->width = CAM_SFE_RDI_BUS_DEFAULT_WIDTH;
-			rsrc_data->height = 0;
-			rsrc_data->stride = CAM_SFE_RDI_BUS_DEFAULT_STRIDE;
-			rsrc_data->en_cfg = (0x1 << 16) | 0x1;
+			CAM_WARN(CAM_SFE, "No index mode support for SFE WM: %u",
+				rsrc_data->index);
 		}
 		break;
 	case CAM_FORMAT_MIPI_RAW_14:
@@ -550,11 +559,11 @@ static int cam_sfe_bus_config_rdi_wm(
 			rsrc_data->en_cfg = 0x1;
 			rsrc_data->width =
 				ALIGNUP((rsrc_data->width * 7) / 2, 16) / 16;
+		} else if (rsrc_data->wm_mode == CAM_SFE_WM_FRAME_BASED_MODE) {
+			cam_sfe_bus_config_rdi_wm_frame_based_mode(rsrc_data);
 		} else {
-			rsrc_data->width = CAM_SFE_RDI_BUS_DEFAULT_WIDTH;
-			rsrc_data->height = 0;
-			rsrc_data->stride = CAM_SFE_RDI_BUS_DEFAULT_STRIDE;
-			rsrc_data->en_cfg = (0x1 << 16) | 0x1;
+			CAM_WARN(CAM_SFE, "No index mode support for SFE WM: %u",
+				rsrc_data->index);
 		}
 		break;
 	case CAM_FORMAT_MIPI_RAW_16:
@@ -562,11 +571,11 @@ static int cam_sfe_bus_config_rdi_wm(
 			rsrc_data->en_cfg = 0x1;
 			rsrc_data->width =
 				ALIGNUP((rsrc_data->width * 2), 16) / 16;
+		} else if (rsrc_data->wm_mode == CAM_SFE_WM_FRAME_BASED_MODE) {
+			cam_sfe_bus_config_rdi_wm_frame_based_mode(rsrc_data);
 		} else {
-			rsrc_data->width = CAM_SFE_RDI_BUS_DEFAULT_WIDTH;
-			rsrc_data->height = 0;
-			rsrc_data->stride = CAM_SFE_RDI_BUS_DEFAULT_STRIDE;
-			rsrc_data->en_cfg = (0x1 << 16) | 0x1;
+			CAM_WARN(CAM_SFE, "No index mode support for SFE WM: %u",
+				rsrc_data->index);
 		}
 		break;
 	case CAM_FORMAT_MIPI_RAW_20:
@@ -574,11 +583,11 @@ static int cam_sfe_bus_config_rdi_wm(
 			rsrc_data->en_cfg = 0x1;
 			rsrc_data->width =
 				ALIGNUP((rsrc_data->width * 5) / 2, 16) / 16;
+		} else if (rsrc_data->wm_mode == CAM_SFE_WM_FRAME_BASED_MODE) {
+			cam_sfe_bus_config_rdi_wm_frame_based_mode(rsrc_data);
 		} else {
-			rsrc_data->width = CAM_SFE_RDI_BUS_DEFAULT_WIDTH;
-			rsrc_data->height = 0;
-			rsrc_data->stride = CAM_SFE_RDI_BUS_DEFAULT_STRIDE;
-			rsrc_data->en_cfg = (0x1 << 16) | 0x1;
+			CAM_WARN(CAM_SFE, "No index mode support for SFE WM: %u",
+				rsrc_data->index);
 		}
 		break;
 	case CAM_FORMAT_PLAIN128:
@@ -586,11 +595,11 @@ static int cam_sfe_bus_config_rdi_wm(
 			rsrc_data->en_cfg = 0x1;
 			rsrc_data->width =
 				ALIGNUP((rsrc_data->width * 16), 16) / 16;
+		} else if (rsrc_data->wm_mode == CAM_SFE_WM_FRAME_BASED_MODE) {
+			cam_sfe_bus_config_rdi_wm_frame_based_mode(rsrc_data);
 		} else {
-			rsrc_data->width = CAM_SFE_RDI_BUS_DEFAULT_WIDTH;
-			rsrc_data->height = 0;
-			rsrc_data->stride = CAM_SFE_RDI_BUS_DEFAULT_STRIDE;
-			rsrc_data->en_cfg = (0x1 << 16) | 0x1;
+			CAM_WARN(CAM_SFE, "No index mode support for SFE WM: %u",
+				rsrc_data->index);
 		}
 		break;
 	case CAM_FORMAT_PLAIN32_20:
@@ -598,29 +607,50 @@ static int cam_sfe_bus_config_rdi_wm(
 			rsrc_data->en_cfg = 0x1;
 			rsrc_data->width =
 				ALIGNUP((rsrc_data->width * 4), 16) / 16;
+		} else if (rsrc_data->wm_mode == CAM_SFE_WM_FRAME_BASED_MODE) {
+			cam_sfe_bus_config_rdi_wm_frame_based_mode(rsrc_data);
 		} else {
-			rsrc_data->width = CAM_SFE_RDI_BUS_DEFAULT_WIDTH;
-			rsrc_data->height = 0;
-			rsrc_data->stride = CAM_SFE_RDI_BUS_DEFAULT_STRIDE;
-			rsrc_data->en_cfg = (0x1 << 16) | 0x1;
+			CAM_WARN(CAM_SFE, "No index mode support for SFE WM: %u",
+				rsrc_data->index);
 		}
 		break;
 	case CAM_FORMAT_PLAIN8:
-		rsrc_data->en_cfg = 0x1;
-		rsrc_data->stride = rsrc_data->width * 2;
+		if (rsrc_data->wm_mode == CAM_SFE_WM_LINE_BASED_MODE) {
+			rsrc_data->en_cfg = 0x1;
+			rsrc_data->stride = rsrc_data->width * 2;
+		} else if (rsrc_data->wm_mode == CAM_SFE_WM_FRAME_BASED_MODE) {
+			cam_sfe_bus_config_rdi_wm_frame_based_mode(rsrc_data);
+		} else {
+			CAM_WARN(CAM_SFE, "No index mode support for SFE WM: %u",
+				rsrc_data->index);
+		}
 		break;
 	case CAM_FORMAT_PLAIN16_10:
 	case CAM_FORMAT_PLAIN16_12:
 	case CAM_FORMAT_PLAIN16_14:
 	case CAM_FORMAT_PLAIN16_16:
-		rsrc_data->width =
-			ALIGNUP(rsrc_data->width * 2, 16) / 16;
-		rsrc_data->en_cfg = 0x1;
+		if (rsrc_data->wm_mode == CAM_SFE_WM_LINE_BASED_MODE) {
+			rsrc_data->width =
+				ALIGNUP(rsrc_data->width * 2, 16) / 16;
+			rsrc_data->en_cfg = 0x1;
+		} else if (rsrc_data->wm_mode == CAM_SFE_WM_FRAME_BASED_MODE) {
+			cam_sfe_bus_config_rdi_wm_frame_based_mode(rsrc_data);
+		} else {
+			CAM_WARN(CAM_SFE, "No index mode support for SFE WM: %u",
+				rsrc_data->index);
+		}
 		break;
 	case CAM_FORMAT_PLAIN64:
-		rsrc_data->width =
-			ALIGNUP(rsrc_data->width * 8, 16) / 16;
-		rsrc_data->en_cfg = 0x1;
+		if (rsrc_data->wm_mode == CAM_SFE_WM_LINE_BASED_MODE) {
+			rsrc_data->width =
+				ALIGNUP(rsrc_data->width * 8, 16) / 16;
+			rsrc_data->en_cfg = 0x1;
+		} else if (rsrc_data->wm_mode == CAM_SFE_WM_FRAME_BASED_MODE) {
+			cam_sfe_bus_config_rdi_wm_frame_based_mode(rsrc_data);
+		} else {
+			CAM_WARN(CAM_SFE, "No index mode support for SFE WM: %u",
+				rsrc_data->index);
+		}
 		break;
 	default:
 		CAM_ERR(CAM_SFE, "Unsupported RDI format %d",
@@ -2699,7 +2729,7 @@ static int cam_sfe_bus_wr_update_wm_config(
 	for (i = 0; i < sfe_out_data->num_wm; i++) {
 		wm_data = sfe_out_data->wm_res[i].res_priv;
 
-		if (wm_config->wm_mode > 0x2) {
+		if (wm_config->wm_mode > CAM_SFE_WM_INDEX_BASED_MODE) {
 			CAM_ERR(CAM_SFE, "Invalid wm_mode: 0x%X WM:%d",
 				wm_config->wm_mode, wm_data->index);
 			return -EINVAL;
@@ -2709,9 +2739,15 @@ static int cam_sfe_bus_wr_update_wm_config(
 		wm_data->width  = wm_config->width;
 		if ((sfe_out_data->out_type >= CAM_SFE_BUS_SFE_OUT_RDI0) &&
 			(sfe_out_data->out_type <= CAM_SFE_BUS_SFE_OUT_RDI4)) {
-			/* WM mode enum starts at 1, userland to send based on HW desc */
-			wm_data->wm_mode = wm_config->wm_mode + 1;
-			cam_sfe_bus_config_rdi_wm(wm_data);
+			wm_data->wm_mode = wm_config->wm_mode;
+
+			/*
+			 * Update width based on format for line based mode only
+			 * Image size ignored for frame based mode
+			 * Index based not supported currently
+			 */
+			if (wm_data->wm_mode == CAM_SFE_WM_LINE_BASED_MODE)
+				cam_sfe_bus_config_rdi_wm(wm_data);
 		}
 
 		if (i == PLANE_C)
