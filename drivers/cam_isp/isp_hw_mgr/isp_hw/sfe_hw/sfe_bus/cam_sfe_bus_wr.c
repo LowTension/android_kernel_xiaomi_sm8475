@@ -90,6 +90,7 @@ struct cam_sfe_bus_wr_common_data {
 	uint32_t                                    addr_no_sync;
 	uint32_t                                    comp_done_shift;
 	uint32_t                                    line_done_cfg;
+	uint32_t                                    pack_align_shift;
 	uint32_t                                    max_bw_counter_limit;
 	bool                                        err_irq_subscribe;
 	cam_hw_mgr_event_cb_func                    event_cb;
@@ -724,7 +725,8 @@ static int cam_sfe_bus_acquire_wm(
 		case CAM_FORMAT_PLAIN16_14:
 		case CAM_FORMAT_PLAIN16_16:
 			/* LSB aligned */
-			rsrc_data->pack_fmt |= 0x20;
+			rsrc_data->pack_fmt |=
+				(1 << bus_priv->common_data.pack_align_shift);
 			break;
 		default:
 			break;
@@ -738,7 +740,8 @@ static int cam_sfe_bus_acquire_wm(
 		case CAM_FORMAT_PLAIN16_14:
 		case CAM_FORMAT_PLAIN16_16:
 			/* LSB aligned */
-			rsrc_data->pack_fmt |= 0x20;
+			rsrc_data->pack_fmt |=
+				(1 << bus_priv->common_data.pack_align_shift);
 			break;
 		default:
 			break;
@@ -759,7 +762,8 @@ static int cam_sfe_bus_acquire_wm(
 			rsrc_data->stride = ALIGNUP(rsrc_data->width * 2, 8);
 			rsrc_data->en_cfg = 0x1;
 			/* LSB aligned */
-			rsrc_data->pack_fmt |= 0x20;
+			rsrc_data->pack_fmt |=
+				(1 << bus_priv->common_data.pack_align_shift);
 			break;
 		default:
 			CAM_ERR(CAM_SFE, "Invalid format %d out_type:%d",
@@ -2266,6 +2270,11 @@ static int cam_sfe_bus_wr_update_wm(void *priv, void *cmd_args,
 		CAM_DBG(CAM_SFE, "WM:%d %s en_cfg 0x%X",
 			wm_data->index, sfe_out_data->wm_res[i].res_name,
 			reg_val_pair[j-1]);
+		CAM_SFE_ADD_REG_VAL_PAIR(reg_val_pair, j,
+			wm_data->hw_regs->packer_cfg, wm_data->pack_fmt);
+		CAM_DBG(CAM_SFE, "WM:%d %s packer_fmt 0x%X",
+			wm_data->index, sfe_out_data->wm_res[i].res_name,
+			reg_val_pair[j-1]);
 
 		wm_data->cache_cfg = 0;
 		if (wm_data->enable_caching) {
@@ -2539,6 +2548,12 @@ static int cam_sfe_bus_wr_config_wm(void *priv, void *cmd_args,
 		CAM_DBG(CAM_SFE, "WM:%d cache_cfg:0x%x",
 			wm_data->index, wm_data->cache_cfg);
 
+		cam_io_w_mb(wm_data->pack_fmt,
+			wm_data->common_data->mem_base +
+			wm_data->hw_regs->packer_cfg);
+		CAM_DBG(CAM_SFE, "WM:%d packer_cfg 0x%X",
+			wm_data->index, wm_data->pack_fmt);
+
 		/* enable the WM */
 		cam_io_w_mb(wm_data->en_cfg,
 			wm_data->common_data->mem_base +
@@ -2729,6 +2744,7 @@ static int cam_sfe_bus_wr_update_wm_config(
 	void                                        *cmd_args)
 {
 	int                                          i;
+	enum cam_sfe_bus_wr_packer_format            packer_fmt = PACKER_FMT_MAX;
 	struct cam_isp_hw_get_cmd_update            *wm_config_update;
 	struct cam_sfe_bus_wr_out_data              *sfe_out_data = NULL;
 	struct cam_sfe_bus_wr_wm_resource_data      *wm_data = NULL;
@@ -2760,6 +2776,28 @@ static int cam_sfe_bus_wr_update_wm_config(
 
 		wm_data->en_cfg = (wm_config->wm_mode << 16) | 0x1;
 		wm_data->width  = wm_config->width;
+
+		if (wm_config->packer_format) {
+			packer_fmt = cam_sfe_bus_get_packer_fmt(sfe_out_data->bus_priv,
+				wm_config->packer_format, wm_data->index);
+
+			/* Reconfigure only for valid packer fmt */
+			if (packer_fmt != PACKER_FMT_MAX) {
+				switch (wm_config->packer_format) {
+				case CAM_FORMAT_PLAIN16_10:
+				case CAM_FORMAT_PLAIN16_12:
+				case CAM_FORMAT_PLAIN16_14:
+				case CAM_FORMAT_PLAIN16_16:
+					packer_fmt |=
+						(1 << wm_data->common_data->pack_align_shift);
+					break;
+				default:
+					break;
+				}
+				wm_data->pack_fmt = packer_fmt;
+			}
+		}
+
 		if ((sfe_out_data->out_type >= CAM_SFE_BUS_SFE_OUT_RDI0) &&
 			(sfe_out_data->out_type <= CAM_SFE_BUS_SFE_OUT_RDI4)) {
 			wm_data->wm_mode = wm_config->wm_mode;
@@ -3120,6 +3158,7 @@ int cam_sfe_bus_wr_init(
 	bus_priv->common_data.common_reg           = &hw_info->common_reg;
 	bus_priv->common_data.comp_done_shift      = hw_info->comp_done_shift;
 	bus_priv->common_data.line_done_cfg        = hw_info->line_done_cfg;
+	bus_priv->common_data.pack_align_shift     = hw_info->pack_align_shift;
 	bus_priv->common_data.max_bw_counter_limit = hw_info->max_bw_counter_limit;
 	bus_priv->common_data.err_irq_subscribe    = false;
 	bus_priv->common_data.sfe_irq_controller   = sfe_irq_controller;

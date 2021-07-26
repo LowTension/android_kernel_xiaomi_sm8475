@@ -156,6 +156,7 @@ struct cam_sfe_bus_sfe_out_hw_info {
  * @comp_done_shift:       Mask shift for comp done mask
  * @line_done_cfg:         Line done cfg for wr/rd sync
  * @top_irq_shift:         Mask shift for top level BUS WR irq
+ * @pack_align_shift:      Packer format alignment bit shift
  * @max_bw_counter_limit:  Max BW counter limit
  */
 struct cam_sfe_bus_wr_hw_info {
@@ -173,6 +174,7 @@ struct cam_sfe_bus_wr_hw_info {
 	uint32_t comp_done_shift;
 	uint32_t line_done_cfg;
 	uint32_t top_irq_shift;
+	uint32_t pack_align_shift;
 	uint32_t max_bw_counter_limit;
 };
 
