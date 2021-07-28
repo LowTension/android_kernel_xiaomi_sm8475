@@ -15,6 +15,7 @@
 enum cam_lx7_reg_base {
 	LX7_CSR_BASE,
 	LX7_CIRQ_BASE,
+	LX7_WD0_BASE,
 	LX7_SYS_BASE,
 	LX7_BASE_MAX,
 };
