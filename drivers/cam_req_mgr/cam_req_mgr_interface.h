@@ -213,6 +213,9 @@ enum cam_req_mgr_device_id {
  * @CAM_REQ_MGR_LINK_EVT_RESUME          : resumes the link which was paused
  * @CAM_REQ_MGR_LINK_EVT_SOF_FREEZE      : request manager has detected an
  *                                         sof freeze
+ * @CAM_REQ_MGR_LINK_EVT_STALLED         : Indicate to all connected devices
+ *                                         that the pipeline is stalled.
+ *                                         Devices can handle accordingly
  * @CAM_REQ_MGR_LINK_EVT_MAX             : invalid event type
  */
 enum cam_req_mgr_link_evt_type {
@@ -220,6 +223,7 @@ enum cam_req_mgr_link_evt_type {
 	CAM_REQ_MGR_LINK_EVT_PAUSE,
 	CAM_REQ_MGR_LINK_EVT_RESUME,
 	CAM_REQ_MGR_LINK_EVT_SOF_FREEZE,
+	CAM_REQ_MGR_LINK_EVT_STALLED,
 	CAM_REQ_MGR_LINK_EVT_MAX,
 };
 
