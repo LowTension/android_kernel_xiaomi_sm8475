@@ -77,6 +77,7 @@ struct crm_workq_task {
  * @lock_bh     : lock for task structs
  * @in_irq      : set true if workque can be used in irq context
  * @flush       : used to track if flush has been called on workqueue
+ * @work_q_name : name of the workq
  * task -
  * @lock        : Current task's lock handle
  * @pending_cnt : # of tasks left in queue
@@ -94,6 +95,7 @@ struct cam_req_mgr_core_workq {
 	uint32_t                   in_irq;
 	ktime_t                    workq_scheduled_ts;
 	atomic_t                   flush;
+	char                       workq_name[128];
 
 	/* tasks */
 	struct {
@@ -155,9 +157,10 @@ int cam_req_mgr_workq_enqueue_task(struct crm_workq_task *task,
 /**
  * cam_req_mgr_thread_switch_delay_detect()
  * @brief: Detects if workq delay has occurred or not
+ * @name : Name of the workq
  * @timestamp: workq scheduled timestamp
  */
-void cam_req_mgr_thread_switch_delay_detect(
+void cam_req_mgr_thread_switch_delay_detect(const char *name,
 	ktime_t timestamp);
 
 /**

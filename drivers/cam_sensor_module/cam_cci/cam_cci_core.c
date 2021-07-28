@@ -1506,7 +1506,7 @@ static void cam_cci_write_async_helper(struct work_struct *work)
 	enum cci_i2c_master_t master;
 	struct cam_cci_master_info *cci_master_info;
 
-	cam_req_mgr_thread_switch_delay_detect(
+	cam_req_mgr_thread_switch_delay_detect(CAM_CCI_WORKQUEUE_NAME,
 		write_async->workq_scheduled_ts);
 	cci_dev = write_async->cci_dev;
 	i2c_msg = &write_async->c_ctrl.cfg.cci_i2c_write_cfg;

@@ -3006,7 +3006,7 @@ int cam_cpas_hw_probe(struct platform_device *pdev,
 	cpas_hw_intf->hw_ops.write = NULL;
 	cpas_hw_intf->hw_ops.process_cmd = cam_cpas_hw_process_cmd;
 
-	cpas_core->work_queue = alloc_workqueue("cam-cpas",
+	cpas_core->work_queue = alloc_workqueue(CAM_CPAS_WORKQUEUE_NAME,
 		WQ_UNBOUND | WQ_MEM_RECLAIM, CAM_CPAS_INFLIGHT_WORKS);
 	if (!cpas_core->work_queue) {
 		rc = -ENOMEM;

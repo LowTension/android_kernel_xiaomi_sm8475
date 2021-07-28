@@ -114,7 +114,7 @@ void cam_req_mgr_process_workq(struct work_struct *w)
 	workq = (struct cam_req_mgr_core_workq *)
 		container_of(w, struct cam_req_mgr_core_workq, work);
 
-	cam_req_mgr_thread_switch_delay_detect(workq->workq_scheduled_ts);
+	cam_req_mgr_thread_switch_delay_detect(workq->workq_name, workq->workq_scheduled_ts);
 	while (i < CRM_TASK_PRIORITY_MAX) {
 		WORKQ_ACQUIRE_LOCK(workq, flags);
 		while (!list_empty(&workq->task.process_head[i])) {
@@ -217,6 +217,7 @@ int cam_req_mgr_workq_create(char *name, int32_t num_tasks,
 		}
 
 		/* Workq attributes initialization */
+		strlcpy(crm_workq->workq_name, buf, sizeof(crm_workq->workq_name));
 		INIT_WORK(&crm_workq->work, func);
 		spin_lock_init(&crm_workq->lock_bh);
 		CAM_DBG(CAM_CRM, "LOCK_DBG workq %s lock %pK",
@@ -282,7 +283,7 @@ void cam_req_mgr_workq_destroy(struct cam_req_mgr_core_workq **crm_workq)
 	}
 }
 
-void cam_req_mgr_thread_switch_delay_detect(ktime_t workq_scheduled)
+void cam_req_mgr_thread_switch_delay_detect(const char *name, ktime_t workq_scheduled)
 {
 	uint64_t                         diff;
 	ktime_t                          cur_time;
@@ -296,7 +297,8 @@ void cam_req_mgr_thread_switch_delay_detect(ktime_t workq_scheduled)
 
 	if (diff > CAM_WORKQ_RESPONSE_TIME_THRESHOLD) {
 		CAM_WARN_RATE_LIMIT(CAM_CRM,
-			"Workq delay detected %ld:%06ld %ld:%06ld %ld:",
+			"Workq %s delay detected %ld:%06ld %ld:%06ld %ld:",
+			name,
 			workq_scheduled_ts.tv_sec,
 			workq_scheduled_ts.tv_nsec/NSEC_PER_USEC,
 			cur_ts.tv_sec, cur_ts.tv_nsec/NSEC_PER_USEC,

@@ -31,6 +31,8 @@
 #define CAM_CPAS_GET_CLIENT_IDX(handle) (handle)
 #define CAM_CPAS_GET_CLIENT_HANDLE(indx) (indx)
 
+#define CAM_CPAS_WORKQUEUE_NAME "cam-cpas"
+
 #define CAM_CPAS_CLIENT_VALID(indx) \
 	((indx >= 0) && (indx < CAM_CPAS_MAX_CLIENTS))
 #define CAM_CPAS_CLIENT_REGISTERED(cpas_core, indx)        \

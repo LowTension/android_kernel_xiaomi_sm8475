@@ -57,6 +57,8 @@
 
 #define CAMX_CCI_DEV_NAME "cam-cci-driver"
 
+#define CAM_CCI_WORKQUEUE_NAME "cam_cci_wq"
+
 #define MAX_CCI 2
 
 #define PRIORITY_QUEUE (QUEUE_0)
