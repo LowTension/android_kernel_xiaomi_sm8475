@@ -82,6 +82,7 @@ struct cam_vfe_bus_ver3_common_data {
 	void                                       *rup_irq_controller;
 	void                                       *vfe_irq_controller;
 	void                                       *buf_done_controller;
+	void                                       *priv;
 	struct cam_vfe_bus_ver3_reg_offset_common  *common_reg;
 	uint32_t                                    io_buf_update[
 		MAX_REG_VAL_PAIR_SIZE];
@@ -1932,6 +1933,7 @@ static int cam_vfe_bus_ver3_acquire_vfe_out(void *bus_priv, void *acquire_args,
 
 	rsrc_data = rsrc_node->res_priv;
 	rsrc_data->common_data->event_cb = acq_args->event_cb;
+	rsrc_data->common_data->priv = acq_args->priv;
 	rsrc_data->common_data->disable_ubwc_comp =
 		out_acquire_args->disable_ubwc_comp;
 	rsrc_data->priv = acq_args->priv;
@@ -2778,9 +2780,10 @@ static int cam_vfe_bus_ver3_err_irq_bottom_half(
 	evt_info.res_type = CAM_ISP_RESOURCE_VFE_OUT;
 	evt_info.res_id = CAM_VFE_BUS_VER3_VFE_OUT_MAX;
 	evt_info.err_type = CAM_VFE_IRQ_STATUS_VIOLATION;
+	evt_info.hw_type = CAM_ISP_HW_TYPE_VFE;
 
 	if (common_data->event_cb)
-		common_data->event_cb(NULL, CAM_ISP_HW_EVENT_ERROR,
+		common_data->event_cb(common_data->priv, CAM_ISP_HW_EVENT_ERROR,
 			(void *)&evt_info);
 	return 0;
 }
