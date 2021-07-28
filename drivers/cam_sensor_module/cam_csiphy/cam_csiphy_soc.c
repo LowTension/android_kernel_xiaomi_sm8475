@@ -16,54 +16,62 @@
 #include "include/cam_csiphy_2_1_0_hwreg.h"
 
 /* Clock divide factor for CPHY spec v1.0 */
-#define CSIPHY_DIVISOR_16           16
+#define CSIPHY_DIVISOR_16                    16
 /* Clock divide factor for CPHY spec v1.2 and up */
-#define CSIPHY_DIVISOR_32           32
+#define CSIPHY_DIVISOR_32                    32
 /* Clock divide factor for DPHY */
-#define CSIPHY_DIVISOR_8             8
+#define CSIPHY_DIVISOR_8                     8
+#define CSIPHY_LOG_BUFFER_SIZE_IN_BYTES      250
+#define ONE_LOG_LINE_MAX_SIZE                20
 
-#define BYTES_PER_REGISTER           4
-#define NUM_REGISTER_PER_LINE        4
-#define REG_OFFSET(__start, __i)    ((__start) + ((__i) * BYTES_PER_REGISTER))
-
-static int cam_io_phy_dump(void __iomem *base_addr,
-	uint32_t start_offset, int size)
+static int cam_csiphy_io_dump(void __iomem *base_addr, uint16_t num_regs, int csiphy_idx)
 {
-	char          line_str[128];
-	char         *p_str;
-	int           i;
-	uint32_t      data;
+	char                                    *buffer;
+	uint8_t                                  buffer_offset = 0;
+	uint8_t                                  rem_buffer_size = CSIPHY_LOG_BUFFER_SIZE_IN_BYTES;
+	uint16_t                                 i;
+	uint32_t                                 reg_offset;
 
-	CAM_INFO(CAM_CSIPHY, "addr=%pK offset=0x%x size=%d",
-		base_addr, start_offset, size);
-
-	if (!base_addr || (size <= 0))
+	if (!base_addr || !num_regs) {
+		CAM_ERR(CAM_CSIPHY, "Invalid params. base_addr: 0x%p num_regs: %u",
+			base_addr, num_regs);
 		return -EINVAL;
+	}
 
-	line_str[0] = '\0';
-	p_str = line_str;
-	for (i = 0; i < size; i++) {
-		if (i % NUM_REGISTER_PER_LINE == 0) {
-			snprintf(p_str, 12, "0x%08x: ",
-				REG_OFFSET(start_offset, i));
-			p_str += 11;
-		}
-		data = readl_relaxed(base_addr + REG_OFFSET(start_offset, i));
-		snprintf(p_str, 9, "%08x ", data);
-		p_str += 8;
-		if ((i + 1) % NUM_REGISTER_PER_LINE == 0) {
-			CAM_ERR(CAM_CSIPHY, "%s", line_str);
-			line_str[0] = '\0';
-			p_str = line_str;
+	buffer = kzalloc(CSIPHY_LOG_BUFFER_SIZE_IN_BYTES, GFP_KERNEL);
+	if (!buffer) {
+		CAM_ERR(CAM_CSIPHY, "Could not allocate the memory for buffer");
+		return -ENOMEM;
+	}
+
+	CAM_INFO(CAM_CSIPHY, "Base: 0x%pK num_regs: %u", base_addr, num_regs);
+	CAM_INFO(CAM_CSIPHY, "CSIPHY:%d Dump", csiphy_idx);
+	for (i = 0; i < num_regs; i++) {
+		reg_offset = i << 2;
+		buffer_offset += scnprintf(buffer + buffer_offset, rem_buffer_size, "0x%x=0x%x\n",
+			reg_offset, cam_io_r_mb(base_addr + reg_offset));
+
+		rem_buffer_size = CSIPHY_LOG_BUFFER_SIZE_IN_BYTES - buffer_offset;
+
+		if (rem_buffer_size <= ONE_LOG_LINE_MAX_SIZE) {
+			buffer[buffer_offset - 1] = '\0';
+			pr_info("%s\n", buffer);
+			buffer_offset = 0;
+			rem_buffer_size = CSIPHY_LOG_BUFFER_SIZE_IN_BYTES;
 		}
 	}
-	if (line_str[0] != '\0')
-		CAM_ERR(CAM_CSIPHY, "%s", line_str);
+
+	if (buffer_offset) {
+		buffer[buffer_offset - 1] = '\0';
+		pr_info("%s\n", buffer);
+	}
+
+	kfree(buffer);
 
 	return 0;
 }
 
-int32_t cam_csiphy_mem_dmp(struct cam_hw_soc_info *soc_info)
+int32_t cam_csiphy_reg_dump(struct cam_hw_soc_info *soc_info)
 {
 	int32_t rc = 0;
 	resource_size_t size = 0;
@@ -76,7 +84,7 @@ int32_t cam_csiphy_mem_dmp(struct cam_hw_soc_info *soc_info)
 	}
 	addr = soc_info->reg_map[0].mem_base;
 	size = resource_size(soc_info->mem_block[0]);
-	rc = cam_io_phy_dump(addr, 0, (size >> 2));
+	rc = cam_csiphy_io_dump(addr, (size >> 2), soc_info->index);
 	if (rc < 0) {
 		CAM_ERR(CAM_CSIPHY, "generating dump failed %d", rc);
 		return rc;
@@ -84,7 +92,7 @@ int32_t cam_csiphy_mem_dmp(struct cam_hw_soc_info *soc_info)
 	return rc;
 }
 
-int32_t cam_csiphy_status_dmp(struct csiphy_device *csiphy_dev)
+int32_t cam_csiphy_irq_status_reg_dmp(struct csiphy_device *csiphy_dev)
 {
 	struct csiphy_reg_parms_t *csiphy_reg = NULL;
 	int32_t                    rc = 0;

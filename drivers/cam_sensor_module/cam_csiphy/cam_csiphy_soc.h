@@ -68,12 +68,12 @@ int cam_csiphy_disable_hw(struct csiphy_device *csiphy_dev);
  * This API dumps memory for the entire mapped region
  * (needs to be macro enabled before use)
  */
-int cam_csiphy_mem_dmp(struct cam_hw_soc_info *soc_info);
+int cam_csiphy_reg_dump(struct cam_hw_soc_info *soc_info);
 
 /**
  * @csiphy_dev: CSIPhy device structure
  *
  * This API dumps memory for the entire status region
  */
-int32_t cam_csiphy_status_dmp(struct csiphy_device *csiphy_dev);
+int32_t cam_csiphy_irq_status_reg_dmp(struct csiphy_device *csiphy_dev);
 #endif /* _CAM_CSIPHY_SOC_H_ */
