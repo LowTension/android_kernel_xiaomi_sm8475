@@ -598,122 +598,103 @@ end:
 	return rc;
 }
 
-static const char *__cam_isp_resource_handle_id_to_type(
+static char *__cam_isp_ife_sfe_resource_handle_id_to_type(
 	uint32_t resource_handle)
 {
 	switch (resource_handle) {
-	case CAM_ISP_IFE_OUT_RES_FULL:
-		return "FULL";
-	case CAM_ISP_IFE_OUT_RES_DS4:
-		return "DS4";
-	case CAM_ISP_IFE_OUT_RES_DS16:
-		return "DS16";
-	case CAM_ISP_IFE_OUT_RES_RAW_DUMP:
-		return "RAW_DUMP";
-	case CAM_ISP_IFE_OUT_RES_FD:
-		return "FD";
-	case CAM_ISP_IFE_OUT_RES_PDAF:
-		return "PDAF";
-	case CAM_ISP_IFE_OUT_RES_RDI_0:
-		return "RDI_0";
-	case CAM_ISP_IFE_OUT_RES_RDI_1:
-		return "RDI_1";
-	case CAM_ISP_IFE_OUT_RES_RDI_2:
-		return "RDI_2";
-	case CAM_ISP_IFE_OUT_RES_RDI_3:
-		return "RDI_3";
-	case CAM_ISP_IFE_OUT_RES_STATS_HDR_BE:
-		return "STATS_HDR_BE";
-	case CAM_ISP_IFE_OUT_RES_STATS_HDR_BHIST:
-		return "STATS_HDR_BHIST";
-	case CAM_ISP_IFE_OUT_RES_STATS_TL_BG:
-		return "STATS_TL_BG";
-	case CAM_ISP_IFE_OUT_RES_STATS_BF:
-		return "STATS_BF";
-	case CAM_ISP_IFE_OUT_RES_STATS_AWB_BG:
-		return "STATS_AWB_BG";
-	case CAM_ISP_IFE_OUT_RES_STATS_BHIST:
-		return "STATS_BHIST";
-	case CAM_ISP_IFE_OUT_RES_STATS_RS:
-		return "STATS_RS";
-	case CAM_ISP_IFE_OUT_RES_STATS_CS:
-		return "STATS_CS";
-	case CAM_ISP_IFE_OUT_RES_STATS_IHIST:
-		return "STATS_IHIST";
-	case CAM_ISP_IFE_OUT_RES_FULL_DISP:
-		return "FULL_DISP";
-	case CAM_ISP_IFE_OUT_RES_DS4_DISP:
-		return "DS4_DISP";
-	case CAM_ISP_IFE_OUT_RES_DS16_DISP:
-		return "DS16_DISP";
-	case CAM_ISP_IFE_OUT_RES_2PD:
-		return "2PD";
-	case CAM_ISP_IFE_OUT_RES_RDI_RD:
-		return "RDI_RD";
-	case CAM_ISP_IFE_OUT_RES_LCR:
-		return "LCR";
-	case CAM_ISP_IFE_OUT_RES_AWB_BFW:
-		return "AWB_BFW";
-	case CAM_ISP_IFE_OUT_RES_PREPROCESS_2PD:
-		return "PREPROCESS_2PD";
-	case CAM_ISP_IFE_OUT_RES_STATS_AEC_BE:
-		return "STATS_AEC_BE";
-	case CAM_ISP_IFE_OUT_RES_LTM_STATS:
-		return "LTM_STATS";
-	case CAM_ISP_IFE_OUT_RES_STATS_GTM_BHIST:
-		return "STATS_GTM_BHIST";
-	case CAM_ISP_IFE_LITE_OUT_RES_STATS_BG:
-		return "STATS_BG";
-	case CAM_ISP_IFE_LITE_OUT_RES_PREPROCESS_RAW:
-		return "PREPROCESS_RAW";
-	case CAM_ISP_IFE_OUT_RES_SPARSE_PD:
-		return "SPARSE_PD";
-	case CAM_ISP_IFE_OUT_RES_STATS_CAF:
-		return "STATS_CAF";
-	case CAM_ISP_IFE_OUT_RES_STATS_BAYER_RS:
-		return "STATS_BAYER_RS";
-	default:
-		return "CAM_ISP_Invalid_Resource_Type";
+	/* IFE output ports */
+	case CAM_ISP_IFE_OUT_RES_FULL:                  return "IFE_FULL";
+	case CAM_ISP_IFE_OUT_RES_DS4:                   return "IFE_DS4";
+	case CAM_ISP_IFE_OUT_RES_DS16:                  return "IFE_DS16";
+	case CAM_ISP_IFE_OUT_RES_RAW_DUMP:              return "IFE_RAW_DUMP";
+	case CAM_ISP_IFE_OUT_RES_FD:                    return "IFE_FD";
+	case CAM_ISP_IFE_OUT_RES_PDAF:                  return "IFE_PDAF";
+	case CAM_ISP_IFE_OUT_RES_RDI_0:                 return "IFE_RDI_0";
+	case CAM_ISP_IFE_OUT_RES_RDI_1:                 return "IFE_RDI_1";
+	case CAM_ISP_IFE_OUT_RES_RDI_2:                 return "IFE_RDI_2";
+	case CAM_ISP_IFE_OUT_RES_RDI_3:                 return "IFE_RDI_3";
+	case CAM_ISP_IFE_OUT_RES_STATS_HDR_BE:          return "IFE_STATS_HDR_BE";
+	case CAM_ISP_IFE_OUT_RES_STATS_HDR_BHIST:       return "IFE_STATS_HDR_BHIST";
+	case CAM_ISP_IFE_OUT_RES_STATS_TL_BG:           return "IFE_STATS_TL_BG";
+	case CAM_ISP_IFE_OUT_RES_STATS_BF:              return "IFE_STATS_BF";
+	case CAM_ISP_IFE_OUT_RES_STATS_AWB_BG:          return "IFE_STATS_AWB_BG";
+	case CAM_ISP_IFE_OUT_RES_STATS_BHIST:           return "IFE_STATS_BHIST";
+	case CAM_ISP_IFE_OUT_RES_STATS_RS:              return "IFE_STATS_RS";
+	case CAM_ISP_IFE_OUT_RES_STATS_CS:              return "IFE_STATS_CS";
+	case CAM_ISP_IFE_OUT_RES_STATS_IHIST:           return "IFE_STATS_IHIST";
+	case CAM_ISP_IFE_OUT_RES_FULL_DISP:             return "IFE_FULL_DISP";
+	case CAM_ISP_IFE_OUT_RES_DS4_DISP:              return "IFE_DS4_DISP";
+	case CAM_ISP_IFE_OUT_RES_DS16_DISP:             return "IFE_DS16_DISP";
+	case CAM_ISP_IFE_OUT_RES_2PD:                   return "IFE_2PD";
+	case CAM_ISP_IFE_OUT_RES_LCR:                   return "IFE_LCR";
+	case CAM_ISP_IFE_OUT_RES_AWB_BFW:               return "IFE_AWB_BFW";
+	case CAM_ISP_IFE_OUT_RES_PREPROCESS_2PD:        return "IFE_PREPROCESS_2PD";
+	case CAM_ISP_IFE_OUT_RES_STATS_AEC_BE:          return "IFE_STATS_AEC_BE";
+	case CAM_ISP_IFE_OUT_RES_LTM_STATS:             return "IFE_LTM_STATS";
+	case CAM_ISP_IFE_OUT_RES_STATS_GTM_BHIST:       return "IFE_STATS_GTM_BHIST";
+	case CAM_ISP_IFE_LITE_OUT_RES_STATS_BG:         return "IFE_STATS_BG";
+	case CAM_ISP_IFE_LITE_OUT_RES_PREPROCESS_RAW:   return "IFE_PREPROCESS_RAW";
+	case CAM_ISP_IFE_OUT_RES_SPARSE_PD:             return "IFE_SPARSE_PD";
+	case CAM_ISP_IFE_OUT_RES_STATS_CAF:             return "IFE_STATS_CAF";
+	case CAM_ISP_IFE_OUT_RES_STATS_BAYER_RS:        return "IFE_STATS_BAYER_RS";
+	/* SFE output ports */
+	case CAM_ISP_SFE_OUT_RES_RDI_0:                 return "SFE_RDI_0";
+	case CAM_ISP_SFE_OUT_RES_RDI_1:                 return "SFE_RDI_1";
+	case CAM_ISP_SFE_OUT_RES_RDI_2:                 return "SFE_RDI_2";
+	case CAM_ISP_SFE_OUT_RES_RDI_3:                 return "SFE_RDI_3";
+	case CAM_ISP_SFE_OUT_RES_RDI_4:                 return "SFE_RDI_4";
+	case CAM_ISP_SFE_OUT_BE_STATS_0:                return "SFE_BE_STATS_0";
+	case CAM_ISP_SFE_OUT_BE_STATS_1:                return "SFE_BE_STATS_1";
+	case CAM_ISP_SFE_OUT_BE_STATS_2:                return "SFE_BE_STATS_2";
+	case CAM_ISP_SFE_OUT_BHIST_STATS_0:             return "SFE_BHIST_STATS_0";
+	case CAM_ISP_SFE_OUT_BHIST_STATS_1:             return "SFE_BHIST_STATS_1";
+	case CAM_ISP_SFE_OUT_BHIST_STATS_2:             return "SFE_BHIST_STATS_2";
+	case CAM_ISP_SFE_OUT_RES_LCR:                   return "SFE_LCR";
+	case CAM_ISP_SFE_OUT_RES_RAW_DUMP:              return "SFE_PROCESSED_RAW";
+	case CAM_ISP_SFE_OUT_RES_IR:                    return "SFE_IR";
+	case CAM_ISP_SFE_OUT_BAYER_RS_STATS_0:          return "SFE_RS_STATS_0";
+	case CAM_ISP_SFE_OUT_BAYER_RS_STATS_1:          return "SFE_RS_STATS_1";
+	case CAM_ISP_SFE_OUT_BAYER_RS_STATS_2:          return "SFE_RS_STATS_2";
+	/* Handle invalid type */
+	default:                                        return "Invalid_Resource_Type";
 	}
 }
 
 static const char *__cam_isp_tfe_resource_handle_id_to_type(
 	uint32_t resource_handle)
 {
-
 	switch (resource_handle) {
-	case CAM_ISP_TFE_OUT_RES_FULL:
-		return "FULL";
-	case CAM_ISP_TFE_OUT_RES_RAW_DUMP:
-		return "RAW_DUMP";
-	case CAM_ISP_TFE_OUT_RES_PDAF:
-		return "PDAF";
-	case CAM_ISP_TFE_OUT_RES_RDI_0:
-		return "RDI_0";
-	case CAM_ISP_TFE_OUT_RES_RDI_1:
-		return "RDI_1";
-	case CAM_ISP_TFE_OUT_RES_RDI_2:
-		return "RDI_2";
-	case CAM_ISP_TFE_OUT_RES_STATS_HDR_BE:
-		return "STATS_HDR_BE";
-	case CAM_ISP_TFE_OUT_RES_STATS_HDR_BHIST:
-		return "STATS_HDR_BHIST";
-	case CAM_ISP_TFE_OUT_RES_STATS_TL_BG:
-		return "STATS_TL_BG";
-	case CAM_ISP_TFE_OUT_RES_STATS_BF:
-		return "STATS_BF";
-	case CAM_ISP_TFE_OUT_RES_STATS_AWB_BG:
-		return "STATS_AWB_BG";
-	case CAM_ISP_TFE_OUT_RES_STATS_RS:
-		return "STATS_RS";
-	case CAM_ISP_TFE_OUT_RES_DS4:
-		return "DS_4";
-	case CAM_ISP_TFE_OUT_RES_DS16:
-		return "DS_16";
-	case CAM_ISP_TFE_OUT_RES_AI:
-		return "AI";
+	/* TFE output ports */
+	case CAM_ISP_TFE_OUT_RES_FULL:                  return "TFE_FULL";
+	case CAM_ISP_TFE_OUT_RES_RAW_DUMP:              return "TFE_RAW_DUMP";
+	case CAM_ISP_TFE_OUT_RES_PDAF:                  return "TFE_PDAF";
+	case CAM_ISP_TFE_OUT_RES_RDI_0:                 return "TFE_RDI_0";
+	case CAM_ISP_TFE_OUT_RES_RDI_1:                 return "TFE_RDI_1";
+	case CAM_ISP_TFE_OUT_RES_RDI_2:                 return "TFE_RDI_2";
+	case CAM_ISP_TFE_OUT_RES_STATS_HDR_BE:          return "TFE_STATS_HDR_BE";
+	case CAM_ISP_TFE_OUT_RES_STATS_HDR_BHIST:       return "TFE_STATS_HDR_BHIST";
+	case CAM_ISP_TFE_OUT_RES_STATS_TL_BG:           return "TFE_STATS_TL_BG";
+	case CAM_ISP_TFE_OUT_RES_STATS_BF:              return "TFE_STATS_BF";
+	case CAM_ISP_TFE_OUT_RES_STATS_AWB_BG:          return "TFE_STATS_AWB_BG";
+	case CAM_ISP_TFE_OUT_RES_STATS_RS:              return "TFE_STATS_RS";
+	case CAM_ISP_TFE_OUT_RES_DS4:                   return "TFE_DS_4";
+	case CAM_ISP_TFE_OUT_RES_DS16:                  return "TFE_DS_16";
+	case CAM_ISP_TFE_OUT_RES_AI:                    return "TFE_AI";
+	/* Handle invalid type */
+	default:                                        return "Invalid_Resource_Type";
+	}
+}
+
+static const char *__cam_isp_resource_handle_id_to_type(
+	uint32_t device_type, uint32_t resource_handle)
+{
+	switch (device_type) {
+	case CAM_IFE_DEVICE_TYPE:
+		return __cam_isp_ife_sfe_resource_handle_id_to_type(resource_handle);
+	case CAM_TFE_DEVICE_TYPE:
+		return __cam_isp_tfe_resource_handle_id_to_type(resource_handle);
 	default:
-		return "CAM_ISP_Invalid_Resource_Type";
+		return "INVALID_DEV_TYPE";
 	}
 }
 
@@ -872,31 +853,17 @@ static void __cam_isp_ctx_handle_buf_done_fail_log(
 		"Resource Handles that fail to generate buf_done in prev frame");
 	for (i = 0; i < req_isp->num_fence_map_out; i++) {
 		if (req_isp->fence_map_out[i].sync_id != -1) {
-			if (isp_device_type == CAM_IFE_DEVICE_TYPE) {
-				handle_type =
-				__cam_isp_resource_handle_id_to_type(
-				req_isp->fence_map_out[i].resource_handle);
+			handle_type = __cam_isp_resource_handle_id_to_type(
+				isp_device_type, req_isp->fence_map_out[i].resource_handle);
 
-				trace_cam_log_event("Buf_done Congestion",
-				__cam_isp_resource_handle_id_to_type(
-				req_isp->fence_map_out[i].resource_handle),
-				request_id, req_isp->fence_map_out[i].sync_id);
-			} else {
-				handle_type =
-				__cam_isp_tfe_resource_handle_id_to_type(
-				req_isp->fence_map_out[i].resource_handle);
-
-				trace_cam_log_event("Buf_done Congestion",
-				__cam_isp_tfe_resource_handle_id_to_type(
-				req_isp->fence_map_out[i].resource_handle),
-				request_id, req_isp->fence_map_out[i].sync_id);
-			}
+			trace_cam_log_event("Buf_done Congestion",
+				handle_type, request_id, req_isp->fence_map_out[i].sync_id);
 
 			CAM_WARN_RATE_LIMIT(CAM_ISP,
-			"Resource_Handle: [%s][0x%x] Sync_ID: [0x%x]",
-			handle_type,
-			req_isp->fence_map_out[i].resource_handle,
-			req_isp->fence_map_out[i].sync_id);
+				"Resource_Handle: [%s][0x%x] Sync_ID: [0x%x]",
+				handle_type,
+				req_isp->fence_map_out[i].resource_handle,
+				req_isp->fence_map_out[i].sync_id);
 		}
 	}
 }
@@ -1032,6 +999,7 @@ static int __cam_isp_ctx_handle_buf_done_for_request(
 			CAM_WARN(CAM_ISP,
 				"BUF_DONE for res %s not found in Req %lld ",
 				__cam_isp_resource_handle_id_to_type(
+				ctx_isp->isp_device_type,
 				done->resource_handle[i]),
 				req->request_id);
 
@@ -1042,13 +1010,9 @@ static int __cam_isp_ctx_handle_buf_done_for_request(
 		}
 
 		if (req_isp->fence_map_out[j].sync_id == -1) {
-			if (ctx_isp->isp_device_type == CAM_IFE_DEVICE_TYPE)
-				handle_type =
+			handle_type =
 				__cam_isp_resource_handle_id_to_type(
-				req_isp->fence_map_out[i].resource_handle);
-			else
-				handle_type =
-				__cam_isp_tfe_resource_handle_id_to_type(
+				ctx_isp->isp_device_type,
 				req_isp->fence_map_out[i].resource_handle);
 
 			CAM_WARN(CAM_ISP,
@@ -1256,19 +1220,14 @@ static int __cam_isp_ctx_handle_buf_done_for_request_verify_addr(
 			CAM_DBG(CAM_ISP,
 				"BUF_DONE for res %s not found in Req %lld ",
 				__cam_isp_resource_handle_id_to_type(
-				done->resource_handle[i]),
+				ctx_isp->isp_device_type, done->resource_handle[i]),
 				req->request_id);
 			continue;
 		}
 
 		if (req_isp->fence_map_out[j].sync_id == -1) {
-			if (ctx_isp->isp_device_type == CAM_IFE_DEVICE_TYPE)
-				handle_type =
-				__cam_isp_resource_handle_id_to_type(
-				req_isp->fence_map_out[i].resource_handle);
-			else
-				handle_type =
-				__cam_isp_tfe_resource_handle_id_to_type(
+			handle_type = __cam_isp_resource_handle_id_to_type(
+				ctx_isp->isp_device_type,
 				req_isp->fence_map_out[i].resource_handle);
 
 			CAM_WARN(CAM_ISP,
@@ -6199,10 +6158,8 @@ static int __cam_isp_ctx_link_pause(struct cam_context *ctx)
 	int rc = 0;
 	struct cam_hw_cmd_args       hw_cmd_args;
 	struct cam_isp_hw_cmd_args   isp_hw_cmd_args;
-	struct cam_isp_context      *ctx_isp =
-		(struct cam_isp_context *) ctx->ctx_priv;
 
-	hw_cmd_args.ctxt_to_hw_map = ctx_isp->hw_ctx;
+	hw_cmd_args.ctxt_to_hw_map = ctx->ctxt_to_hw_map;
 	hw_cmd_args.cmd_type = CAM_HW_MGR_CMD_INTERNAL;
 	isp_hw_cmd_args.cmd_type = CAM_ISP_HW_MGR_CMD_PAUSE_HW;
 	hw_cmd_args.u.internal_args = (void *)&isp_hw_cmd_args;
@@ -6217,10 +6174,8 @@ static int __cam_isp_ctx_link_resume(struct cam_context *ctx)
 	int rc = 0;
 	struct cam_hw_cmd_args       hw_cmd_args;
 	struct cam_isp_hw_cmd_args   isp_hw_cmd_args;
-	struct cam_isp_context      *ctx_isp =
-		(struct cam_isp_context *) ctx->ctx_priv;
 
-	hw_cmd_args.ctxt_to_hw_map = ctx_isp->hw_ctx;
+	hw_cmd_args.ctxt_to_hw_map = ctx->ctxt_to_hw_map;
 	hw_cmd_args.cmd_type = CAM_HW_MGR_CMD_INTERNAL;
 	isp_hw_cmd_args.cmd_type = CAM_ISP_HW_MGR_CMD_RESUME_HW;
 	hw_cmd_args.u.internal_args = (void *)&isp_hw_cmd_args;
@@ -6236,10 +6191,8 @@ static int __cam_isp_ctx_handle_sof_freeze_evt(
 	int rc = 0;
 	struct cam_hw_cmd_args       hw_cmd_args;
 	struct cam_isp_hw_cmd_args   isp_hw_cmd_args;
-	struct cam_isp_context      *ctx_isp =
-		(struct cam_isp_context *) ctx->ctx_priv;
 
-	hw_cmd_args.ctxt_to_hw_map = ctx_isp->hw_ctx;
+	hw_cmd_args.ctxt_to_hw_map = ctx->ctxt_to_hw_map;
 	hw_cmd_args.cmd_type = CAM_HW_MGR_CMD_INTERNAL;
 	isp_hw_cmd_args.cmd_type = CAM_ISP_HW_MGR_CMD_SOF_DEBUG;
 	isp_hw_cmd_args.u.sof_irq_enable = 1;
@@ -6251,29 +6204,54 @@ static int __cam_isp_ctx_handle_sof_freeze_evt(
 	return rc;
 }
 
-static int __cam_isp_ctx_process_evt(struct cam_context *ctx,
+static int __cam_isp_ctx_trigger_reg_dump(
+	struct cam_context *ctx,
 	struct cam_req_mgr_link_evt_data *link_evt_data)
 {
 	int rc = 0;
+	struct cam_hw_cmd_args       hw_cmd_args;
 
+	if (ctx->state != CAM_CTX_ACTIVATED) {
+		CAM_WARN(CAM_ISP,
+			"Reg dump on stalled link: 0x%x not supported in state: %d",
+			link_evt_data->link_hdl, ctx->state);
+		return 0;
+	}
+
+	/*
+	 * If RT pipeline is stuck, dump IFE registers on
+	 * CRM notification
+	 */
+	hw_cmd_args.ctxt_to_hw_map = ctx->ctxt_to_hw_map;
+	hw_cmd_args.cmd_type = CAM_HW_MGR_CMD_REG_DUMP_ON_ERROR;
+	rc = ctx->hw_mgr_intf->hw_cmd(ctx->hw_mgr_intf->hw_mgr_priv,
+		&hw_cmd_args);
+	if (rc)
+		CAM_ERR(CAM_ISP, "Reg dump on error failed rc: %d", rc);
+
+	return rc;
+}
+
+static int __cam_isp_ctx_process_evt(struct cam_context *ctx,
+	struct cam_req_mgr_link_evt_data *link_evt_data)
+{
 	switch (link_evt_data->evt_type) {
 	case CAM_REQ_MGR_LINK_EVT_ERR:
-		/* No need to handle this message now */
-		break;
+		/* No handling */
+		return 0;
 	case CAM_REQ_MGR_LINK_EVT_PAUSE:
-		__cam_isp_ctx_link_pause(ctx);
-		break;
+		return __cam_isp_ctx_link_pause(ctx);
 	case CAM_REQ_MGR_LINK_EVT_RESUME:
-		__cam_isp_ctx_link_resume(ctx);
-		break;
+		return __cam_isp_ctx_link_resume(ctx);
 	case CAM_REQ_MGR_LINK_EVT_SOF_FREEZE:
-		__cam_isp_ctx_handle_sof_freeze_evt(ctx);
-		break;
+		return __cam_isp_ctx_handle_sof_freeze_evt(ctx);
+	case CAM_REQ_MGR_LINK_EVT_STALLED:
+		return __cam_isp_ctx_trigger_reg_dump(ctx, link_evt_data);
 	default:
-		CAM_WARN(CAM_ISP, "Unknown event from CRM");
-		break;
+		CAM_WARN(CAM_ISP, "Unsupported event type: 0x%x",
+			link_evt_data->evt_type);
+		return -EINVAL;
 	}
-	return rc;
 }
 
 static int __cam_isp_ctx_unlink_in_activated(struct cam_context *ctx,
@@ -6665,23 +6643,12 @@ static int cam_isp_context_dump_requests(void *data,
 
 	if (resource_type) {
 		ctx_isp = (struct cam_isp_context *) ctx->ctx_priv;
-		if (ctx_isp->isp_device_type == CAM_IFE_DEVICE_TYPE)
-			CAM_ERR(CAM_ISP,
-				"Page fault on resource id:%s (0x%x) ctx id:%d frame id:%d reported id:%lld applied id:%lld",
-				__cam_isp_resource_handle_id_to_type(
-				resource_type),
-				resource_type, ctx->ctx_id, ctx_isp->frame_id,
-				ctx_isp->reported_req_id,
-				ctx_isp->last_applied_req_id);
-		else
-			CAM_ERR(CAM_ISP,
-				"Page fault on resource id:%s (0x%x) ctx id:%d frame id:%d reported id:%lld applied id:%lld",
-				__cam_isp_tfe_resource_handle_id_to_type(
-				resource_type),
-				resource_type, ctx->ctx_id, ctx_isp->frame_id,
-				ctx_isp->reported_req_id,
-				ctx_isp->last_applied_req_id);
-
+		CAM_ERR(CAM_ISP,
+			"Page fault on resource:%s (0x%x) ctx id:%d frame id:%d reported id:%lld applied id:%lld",
+			__cam_isp_resource_handle_id_to_type(
+			ctx_isp->isp_device_type, resource_type),
+			resource_type, ctx->ctx_id, ctx_isp->frame_id,
+			ctx_isp->reported_req_id, ctx_isp->last_applied_req_id);
 	}
 
 	if (send_error) {

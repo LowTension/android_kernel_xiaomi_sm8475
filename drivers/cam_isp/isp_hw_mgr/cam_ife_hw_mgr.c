@@ -10784,6 +10784,7 @@ static int cam_ife_mgr_cmd(void *hw_mgr_priv, void *cmd_args)
 		if (ctx->flags.dump_on_flush)
 			return 0;
 
+		ctx->flags.dump_on_flush = true;
 		rem_jiffies = cam_common_wait_for_completion_timeout(
 			&ctx->config_done_complete, msecs_to_jiffies(30));
 		if (rem_jiffies == 0)
@@ -10800,13 +10801,12 @@ static int cam_ife_mgr_cmd(void *hw_mgr_priv, void *cmd_args)
 				ctx->applied_req_id, rc);
 			return rc;
 		}
-
-		ctx->flags.dump_on_flush = true;
 		break;
 	case CAM_HW_MGR_CMD_REG_DUMP_ON_ERROR:
 		if (ctx->flags.dump_on_error)
 			return 0;
 
+		ctx->flags.dump_on_error = true;
 		rc = cam_ife_mgr_handle_reg_dump(ctx, ctx->reg_dump_buf_desc,
 			ctx->num_reg_dump_buf,
 			CAM_ISP_PACKET_META_REG_DUMP_ON_ERROR, NULL, false);
@@ -10816,7 +10816,6 @@ static int cam_ife_mgr_cmd(void *hw_mgr_priv, void *cmd_args)
 				ctx->applied_req_id, rc);
 			return rc;
 		}
-		ctx->flags.dump_on_error = true;
 		break;
 	case CAM_HW_MGR_CMD_DUMP_ACQ_INFO:
 		cam_ife_hw_mgr_dump_acq_data(ctx);
