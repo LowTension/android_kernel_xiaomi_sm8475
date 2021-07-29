@@ -56,8 +56,8 @@ int cam_sync_create(int32_t *sync_obj, const char *name)
 		idx = find_first_zero_bit(sync_dev->bitmap, CAM_SYNC_MAX_OBJS);
 		if (idx >= CAM_SYNC_MAX_OBJS) {
 			CAM_ERR(CAM_SYNC,
-				"Error: Unable to create sync idx = %d reached max!",
-				idx);
+				"Error: Unable to create sync idx = %d sync name = %s reached max!",
+				idx, name);
 			cam_sync_print_fence_table();
 			return -ENOMEM;
 		}
@@ -77,7 +77,7 @@ int cam_sync_create(int32_t *sync_obj, const char *name)
 	}
 
 	*sync_obj = idx;
-	CAM_DBG(CAM_SYNC, "sync_obj: %i", *sync_obj);
+	CAM_DBG(CAM_SYNC, "sync_obj: %s[%i]", name, *sync_obj);
 	spin_unlock_bh(&sync_dev->row_spinlocks[idx]);
 
 	return rc;
@@ -98,7 +98,8 @@ int cam_sync_register_callback(sync_callback cb_func,
 
 	if (row->state == CAM_SYNC_STATE_INVALID) {
 		CAM_ERR(CAM_SYNC,
-			"Error: accessing an uninitialized sync obj %d",
+			"Error: accessing an uninitialized sync obj %s[%d]",
+			row->name,
 			sync_obj);
 		spin_unlock_bh(&sync_dev->row_spinlocks[sync_obj]);
 		return -EINVAL;
@@ -116,7 +117,8 @@ int cam_sync_register_callback(sync_callback cb_func,
 		(row->state == CAM_SYNC_STATE_SIGNALED_CANCEL)) &&
 		(!row->remaining)) {
 		if (trigger_cb_without_switch) {
-			CAM_DBG(CAM_SYNC, "Invoke callback for sync object:%d",
+			CAM_DBG(CAM_SYNC, "Invoke callback for sync object:%s[%d]",
+				row->name,
 				sync_obj);
 			status = row->state;
 			kfree(sync_cb);
@@ -129,7 +131,8 @@ int cam_sync_register_callback(sync_callback cb_func,
 			INIT_WORK(&sync_cb->cb_dispatch_work,
 				cam_sync_util_cb_dispatch);
 			sync_cb->status = row->state;
-			CAM_DBG(CAM_SYNC, "Enqueue callback for sync object:%d",
+			CAM_DBG(CAM_SYNC, "Enqueue callback for sync object:%s[%d]",
+				row->name,
 				sync_cb->sync_obj);
 			sync_cb->workq_scheduled_ts = ktime_get();
 			queue_work(sync_dev->work_queue,
@@ -165,13 +168,15 @@ int cam_sync_deregister_callback(sync_callback cb_func,
 
 	if (row->state == CAM_SYNC_STATE_INVALID) {
 		CAM_ERR(CAM_SYNC,
-			"Error: accessing an uninitialized sync obj = %d",
+			"Error: accessing an uninitialized sync obj = %s[%d]",
+			row->name,
 			sync_obj);
 		spin_unlock_bh(&sync_dev->row_spinlocks[sync_obj]);
 		return -EINVAL;
 	}
 
-	CAM_DBG(CAM_SYNC, "deregistered callback for sync object:%d",
+	CAM_DBG(CAM_SYNC, "deregistered callback for sync object:%s[%d]",
+		row->name,
 		sync_obj);
 	list_for_each_entry_safe(sync_cb, temp, &row->callback_list, list) {
 		if (sync_cb->callback_func == cb_func &&
@@ -204,7 +209,8 @@ int cam_sync_signal(int32_t sync_obj, uint32_t status, uint32_t event_cause)
 	if (row->state == CAM_SYNC_STATE_INVALID) {
 		spin_unlock_bh(&sync_dev->row_spinlocks[sync_obj]);
 		CAM_ERR(CAM_SYNC,
-			"Error: accessing an uninitialized sync obj = %d",
+			"Error: accessing an uninitialized sync obj = %s[%d]",
+			row->name,
 			sync_obj);
 		return -EINVAL;
 	}
@@ -212,7 +218,8 @@ int cam_sync_signal(int32_t sync_obj, uint32_t status, uint32_t event_cause)
 	if (row->type == CAM_SYNC_TYPE_GROUP) {
 		spin_unlock_bh(&sync_dev->row_spinlocks[sync_obj]);
 		CAM_ERR(CAM_SYNC,
-			"Error: Signaling a GROUP sync object = %d",
+			"Error: Signaling a GROUP sync object = %s[%d]",
+			row->name,
 			sync_obj);
 		return -EINVAL;
 	}
@@ -220,7 +227,8 @@ int cam_sync_signal(int32_t sync_obj, uint32_t status, uint32_t event_cause)
 	if (row->state != CAM_SYNC_STATE_ACTIVE) {
 		spin_unlock_bh(&sync_dev->row_spinlocks[sync_obj]);
 		CAM_ERR(CAM_SYNC,
-			"Error: Sync object already signaled sync_obj = %d",
+			"Error: Sync object already signaled sync_obj = %s[%d]",
+			row->name,
 			sync_obj);
 		return -EALREADY;
 	}
@@ -358,7 +366,8 @@ int cam_sync_get_obj_ref(int32_t sync_obj)
 	if (row->state != CAM_SYNC_STATE_ACTIVE) {
 		spin_unlock(&sync_dev->row_spinlocks[sync_obj]);
 		CAM_ERR(CAM_SYNC,
-			"Error: accessing an uninitialized sync obj = %d",
+			"Error: accessing an uninitialized sync obj = %s[%d]",
+			row->name,
 			sync_obj);
 		return -EINVAL;
 	}
@@ -386,7 +395,6 @@ int cam_sync_put_obj_ref(int32_t sync_obj)
 
 int cam_sync_destroy(int32_t sync_obj)
 {
-	CAM_DBG(CAM_SYNC, "sync_obj: %i", sync_obj);
 	return cam_sync_deinit_object(sync_dev->sync_table, sync_obj);
 }
 
@@ -400,14 +408,16 @@ int cam_sync_check_valid(int32_t sync_obj)
 	row = sync_dev->sync_table + sync_obj;
 
 	if (!test_bit(sync_obj, sync_dev->bitmap)) {
-		CAM_ERR(CAM_SYNC, "Error: Released sync obj received %d",
+		CAM_ERR(CAM_SYNC, "Error: Released sync obj received %s[%d]",
+			row->name,
 			sync_obj);
 		return -EINVAL;
 	}
 
 	if (row->state == CAM_SYNC_STATE_INVALID) {
 		CAM_ERR(CAM_SYNC,
-			"Error: accessing an uninitialized sync obj = %d",
+			"Error: accessing an uninitialized sync obj = %s[%d]",
+			row->name,
 			sync_obj);
 		return -EINVAL;
 	}
@@ -427,7 +437,8 @@ int cam_sync_wait(int32_t sync_obj, uint64_t timeout_ms)
 
 	if (row->state == CAM_SYNC_STATE_INVALID) {
 		CAM_ERR(CAM_SYNC,
-			"Error: accessing an uninitialized sync obj = %d",
+			"Error: accessing an uninitialized sync obj = %s[%d]",
+			row->name,
 			sync_obj);
 		return -EINVAL;
 	}
@@ -437,7 +448,7 @@ int cam_sync_wait(int32_t sync_obj, uint64_t timeout_ms)
 
 	if (!timeleft) {
 		CAM_ERR(CAM_SYNC,
-			"Error: timed out for sync obj = %d", sync_obj);
+			"Error: timed out for sync obj = %s[%d]", row->name, sync_obj);
 		rc = -ETIMEDOUT;
 	} else {
 		switch (row->state) {
@@ -446,8 +457,8 @@ int cam_sync_wait(int32_t sync_obj, uint64_t timeout_ms)
 		case CAM_SYNC_STATE_SIGNALED_ERROR:
 		case CAM_SYNC_STATE_SIGNALED_CANCEL:
 			CAM_ERR(CAM_SYNC,
-				"Error: Wait on invalid state = %d, obj = %d",
-				row->state, sync_obj);
+				"Error: Wait on invalid state = %d, obj = %d, name = %s",
+				row->state, sync_obj, row->name);
 			rc = -EINVAL;
 			break;
 		case CAM_SYNC_STATE_SIGNALED_SUCCESS:
@@ -653,7 +664,8 @@ static int cam_sync_handle_register_user_payload(
 
 	if (row->state == CAM_SYNC_STATE_INVALID) {
 		CAM_ERR(CAM_SYNC,
-			"Error: accessing an uninitialized sync obj = %d",
+			"Error: accessing an uninitialized sync obj = %s[%d]",
+			row->name,
 			sync_obj);
 		spin_unlock_bh(&sync_dev->row_spinlocks[sync_obj]);
 		kfree(user_payload_kernel);
@@ -728,7 +740,8 @@ static int cam_sync_handle_deregister_user_payload(
 
 	if (row->state == CAM_SYNC_STATE_INVALID) {
 		CAM_ERR(CAM_SYNC,
-			"Error: accessing an uninitialized sync obj = %d",
+			"Error: accessing an uninitialized sync obj = %s[%d]",
+			row->name,
 			sync_obj);
 		spin_unlock_bh(&sync_dev->row_spinlocks[sync_obj]);
 		return -EINVAL;

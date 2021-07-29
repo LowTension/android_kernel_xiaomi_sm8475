@@ -35,8 +35,7 @@ int cam_sync_init_row(struct sync_table_row *table,
 
 	memset(row, 0, sizeof(*row));
 
-	if (name)
-		strlcpy(row->name, name, SYNC_DEBUG_NAME_LEN);
+	strlcpy(row->name, name, SYNC_DEBUG_NAME_LEN);
 	INIT_LIST_HEAD(&row->parents_list);
 	INIT_LIST_HEAD(&row->children_list);
 	row->type = type;
@@ -168,8 +167,9 @@ int cam_sync_deinit_object(struct sync_table_row *table, uint32_t idx)
 	if (row->state == CAM_SYNC_STATE_INVALID) {
 		spin_unlock_bh(&sync_dev->row_spinlocks[idx]);
 		CAM_ERR(CAM_SYNC,
-			"Error: accessing an uninitialized sync obj: idx = %d",
-			idx);
+			"Error: accessing an uninitialized sync obj: idx = %d name = %s",
+			idx,
+			row->name);
 		return -EINVAL;
 	}
 
@@ -222,7 +222,8 @@ int cam_sync_deinit_object(struct sync_table_row *table, uint32_t idx)
 
 		if (child_row->state == CAM_SYNC_STATE_ACTIVE)
 			CAM_DBG(CAM_SYNC,
-				"Warning: destroying active child sync obj = %d",
+				"Warning: destroying active child sync obj = %s[%d]",
+				child_row->name,
 				child_info->sync_id);
 
 		cam_sync_util_cleanup_parents_list(child_row,
@@ -251,7 +252,8 @@ int cam_sync_deinit_object(struct sync_table_row *table, uint32_t idx)
 
 		if (parent_row->state == CAM_SYNC_STATE_ACTIVE)
 			CAM_DBG(CAM_SYNC,
-				"Warning: destroying active parent sync obj = %d",
+				"Warning: destroying active parent sync obj = %s[%d]",
+				parent_row->name,
 				parent_info->sync_id);
 
 		cam_sync_util_cleanup_children_list(parent_row,
@@ -283,7 +285,6 @@ int cam_sync_deinit_object(struct sync_table_row *table, uint32_t idx)
 	INIT_LIST_HEAD(&row->user_payload_list);
 	spin_unlock_bh(&sync_dev->row_spinlocks[idx]);
 
-	CAM_DBG(CAM_SYNC, "Destroying sync obj:%d successful", idx);
 	return 0;
 }
 
@@ -313,7 +314,8 @@ void cam_sync_util_dispatch_signaled_cb(int32_t sync_obj,
 	signalable_row = sync_dev->sync_table + sync_obj;
 	if (signalable_row->state == CAM_SYNC_STATE_INVALID) {
 		CAM_DBG(CAM_SYNC,
-			"Accessing invalid sync object:%i", sync_obj);
+			"Accessing invalid sync object:%s[%i]", signalable_row->name,
+			sync_obj);
 		return;
 	}
 
