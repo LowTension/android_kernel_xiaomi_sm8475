@@ -674,6 +674,33 @@ int cam_context_handle_dump_dev(struct cam_context *ctx,
 	return rc;
 }
 
+int cam_context_handle_hw_recovery(void *priv, void *data)
+{
+	struct cam_context *ctx = priv;
+	int rc = 0;
+
+	if (!ctx) {
+		CAM_ERR(CAM_CORE, "null context");
+		return -EINVAL;
+	}
+
+	mutex_lock(&ctx->ctx_mutex);
+	if (ctx->state != CAM_CTX_ACTIVATED) {
+		CAM_DBG(CAM_CORE, "skipping recovery for ctx:%d dev:%s in state:%d", ctx->ctx_id,
+			ctx->dev_name, ctx->state);
+		goto end;
+	}
+	CAM_DBG(CAM_CORE, "try hw recovery for ctx:%d dev:%s", ctx->ctx_id, ctx->dev_name);
+	if (ctx->state_machine[ctx->state].recovery_ops)
+		rc = ctx->state_machine[ctx->state].recovery_ops(priv, data);
+	else
+		CAM_WARN(CAM_CORE, "no recovery op in state:%d for ctx:%d dev:%s",
+			ctx->state, ctx->ctx_id, ctx->dev_name);
+end:
+	mutex_unlock(&ctx->ctx_mutex);
+	return rc;
+}
+
 int cam_context_init(struct cam_context *ctx,
 	const char *dev_name,
 	uint64_t dev_id,

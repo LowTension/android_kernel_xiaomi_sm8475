@@ -167,6 +167,7 @@ struct cam_ctx_crm_ops {
  * @pagefault_ops:         Function to be called on page fault
  * @dumpinfo_ops:          Function to be invoked for dumping any
  *                         context info
+ * @recovery_ops:          Function to be invoked to try hardware recovery
  *
  */
 struct cam_ctx_ops {
@@ -175,6 +176,7 @@ struct cam_ctx_ops {
 	cam_hw_event_cb_func         irq_ops;
 	cam_hw_pagefault_cb_func     pagefault_ops;
 	cam_ctx_info_dump_cb_func    dumpinfo_ops;
+	cam_ctx_recovery_cb_func     recovery_ops;
 };
 
 /**
@@ -538,6 +540,18 @@ int cam_context_handle_dump_dev(struct cam_context *ctx,
  */
 int cam_context_handle_info_dump(void *context,
 	enum cam_context_dump_id id);
+
+/**
+ * cam_context_handle_hw_recovery()
+ *
+ * @brief:        Handle hardware recovery. This function can be scheduled in
+ *                cam_req_mgr_workq.
+ *
+ * @context:      Object pointer for cam_context
+ * @data:         Recovery data that is to be passsed to hw mgr
+ *
+ */
+int cam_context_handle_hw_recovery(void *context, void *data);
 
 /**
  * cam_context_deinit()
