@@ -40,6 +40,8 @@
 #define CAM_IFE_CSID_CAP_MIPI14_UNPACK                    0x10
 #define CAM_IFE_CSID_CAP_MIPI16_UNPACK                    0x20
 #define CAM_IFE_CSID_CAP_MIPI20_UNPACK                    0x40
+#define CAM_IFE_CSID_CAP_LINE_SMOOTHING_IN_RDI            0x80
+
 /*
  * Debug values enable the corresponding interrupts and debug logs provide
  * necessary information

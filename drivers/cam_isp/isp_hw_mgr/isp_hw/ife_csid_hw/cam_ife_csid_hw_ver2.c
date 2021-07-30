@@ -2827,6 +2827,12 @@ static int cam_ife_csid_ver2_init_config_rdi_path(
 			(cmn_reg->timestamp_strobe_val <<
 				cmn_reg->timestamp_stb_sel_shift_val);
 
+	/* We use line smoothting only on RDI_0 in all usecases */
+	if ((path_reg->capabilities &
+		CAM_IFE_CSID_CAP_LINE_SMOOTHING_IN_RDI) &&
+		(res->res_id == CAM_IFE_PIX_PATH_RES_RDI_0))
+		cfg1 |= 1 << path_reg->pix_store_en_shift_val;
+
 	cam_io_w_mb(cfg1, mem_base + path_reg->cfg1_addr);
 
 	/* set frame drop pattern to 0 and period to 1 */
