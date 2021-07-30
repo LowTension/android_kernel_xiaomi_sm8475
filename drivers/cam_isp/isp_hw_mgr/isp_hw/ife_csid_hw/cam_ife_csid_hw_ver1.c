@@ -2172,7 +2172,7 @@ static int cam_ife_csid_ver1_init_config_rdi_path(
 	mem_base = soc_info->reg_map[0].mem_base;
 	is_rpp = path_cfg->crop_enable || path_cfg->drop_enable;
 	rc = cam_ife_csid_get_format_rdi(path_cfg->in_format,
-		path_cfg->out_format, &path_format, is_rpp);
+		path_cfg->out_format, &path_format, is_rpp, false);
 	if (rc)
 		return rc;
 
@@ -2330,7 +2330,7 @@ static int cam_ife_csid_ver1_init_config_udi_path(
 	mem_base = soc_info->reg_map[0].mem_base;
 	is_rpp = path_cfg->crop_enable || path_cfg->drop_enable;
 	rc = cam_ife_csid_get_format_rdi(path_cfg->in_format,
-		path_cfg->out_format, &path_format, is_rpp);
+		path_cfg->out_format, &path_format, is_rpp, false);
 	if (rc)
 		return rc;
 

@@ -33,6 +33,13 @@
 
 #define CAM_IFE_CSID_LOG_BUF_LEN                          512
 
+#define CAM_IFE_CSID_CAP_INPUT_LCR                        0x1
+#define CAM_IFE_CSID_CAP_MIPI8_UNPACK                     0x2
+#define CAM_IFE_CSID_CAP_MIPI10_UNPACK                    0x4
+#define CAM_IFE_CSID_CAP_MIPI12_UNPACK                    0x8
+#define CAM_IFE_CSID_CAP_MIPI14_UNPACK                    0x10
+#define CAM_IFE_CSID_CAP_MIPI16_UNPACK                    0x20
+#define CAM_IFE_CSID_CAP_MIPI20_UNPACK                    0x40
 /*
  * Debug values enable the corresponding interrupts and debug logs provide
  * necessary information
@@ -283,6 +290,8 @@ struct cam_ife_csid_debug_info {
  * @tpg_configured:         flag to indicate if internal_tpg is configured
  * @reset_awaited:          flag to indicate if reset is awaited
  * @offline_mode:           flag to indicate if csid in offline mode
+ * @rdi_lcr_en:             flag to indicate if RDI to lcr is enabled
+ * @sfe_en:                 flag to indicate if SFE is enabled
  */
 struct cam_ife_csid_hw_flags {
 	bool                  device_enabled;
@@ -295,10 +304,12 @@ struct cam_ife_csid_hw_flags {
 	bool                  tpg_configured;
 	bool                  reset_awaited;
 	bool                  offline_mode;
+	bool                  rdi_lcr_en;
+	bool                  sfe_en;
 };
 
 /*
- * struct cam_ife_csid_hw_flags: place holder for flags
+ * struct am_ife_csid_cid_data: place holder for cid data
  *
  * @vc_dt:        vc_dt structure
  * @cid_cnt:      count of cid acquired
@@ -311,7 +322,7 @@ struct cam_ife_csid_cid_data {
 };
 
 /*
- * struct cam_ife_csid_hw_flags: place holder for flags
+ * struct cam_ife_csid_rx_cfg: place holder for rx cfg
  *
  * @phy_sel:                  Selected phy
  * @lane_type:                type of lane selected
@@ -344,7 +355,8 @@ int cam_ife_csid_is_pix_res_format_supported(
 
 int cam_ife_csid_get_format_rdi(
 	uint32_t in_format, uint32_t out_format,
-	struct cam_ife_csid_path_format *path_format, bool rpp);
+	struct cam_ife_csid_path_format *path_format, bool rpp,
+	bool mipi_unpacked);
 
 int cam_ife_csid_get_format_ipp_ppp(
 	uint32_t in_format,

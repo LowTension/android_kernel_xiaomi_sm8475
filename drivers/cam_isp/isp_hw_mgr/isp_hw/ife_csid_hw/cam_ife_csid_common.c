@@ -96,7 +96,8 @@ int cam_ife_csid_is_pix_res_format_supported(
 
 int cam_ife_csid_get_format_rdi(
 	uint32_t in_format, uint32_t out_format,
-	struct cam_ife_csid_path_format *path_format, bool rpp)
+	struct cam_ife_csid_path_format *path_format, bool rpp,
+	bool mipi_unpacked)
 {
 	int rc = 0;
 
@@ -109,10 +110,17 @@ int cam_ife_csid_get_format_rdi(
 				path_format->decode_fmt = 0x0;
 				path_format->packing_fmt = 0x1;
 			}
+
+			if (mipi_unpacked) {
+				path_format->decode_fmt = 0x0;
+				path_format->packing_fmt = 0x0;
+				path_format->plain_fmt = 0x0;
+			}
 			break;
 		case CAM_FORMAT_PLAIN8:
 			path_format->decode_fmt = 0x0;
 			path_format->plain_fmt = 0x0;
+			path_format->packing_fmt = 0;
 			break;
 		default:
 			rc = -EINVAL;
@@ -129,9 +137,16 @@ int cam_ife_csid_get_format_rdi(
 				path_format->decode_fmt = 0x1;
 				path_format->packing_fmt = 0x1;
 			}
+
+			if (mipi_unpacked) {
+				path_format->decode_fmt = 0x1;
+				path_format->packing_fmt = 0x0;
+				path_format->plain_fmt = 0x0;
+			}
 			break;
 		case CAM_FORMAT_PLAIN8:
 			path_format->decode_fmt = 0x1;
+			path_format->packing_fmt = 0;
 			path_format->plain_fmt = 0x0;
 			break;
 		default:
@@ -149,10 +164,17 @@ int cam_ife_csid_get_format_rdi(
 				path_format->decode_fmt = 0x2;
 				path_format->packing_fmt = 0x1;
 			}
+
+			if (mipi_unpacked) {
+				path_format->decode_fmt = 0x2;
+				path_format->packing_fmt = 0x0;
+				path_format->plain_fmt = 0x1;
+			}
 			break;
 		case CAM_FORMAT_PLAIN16_10:
 			path_format->decode_fmt = 0x2;
 			path_format->plain_fmt = 0x1;
+			path_format->packing_fmt = 0;
 			break;
 		default:
 			rc = -EINVAL;
@@ -168,10 +190,17 @@ int cam_ife_csid_get_format_rdi(
 				path_format->decode_fmt = 0x3;
 				path_format->packing_fmt = 0x1;
 			}
+
+			if (mipi_unpacked) {
+				path_format->decode_fmt = 0x3;
+				path_format->packing_fmt = 0x0;
+				path_format->plain_fmt = 0x1;
+			}
 			break;
 		case CAM_FORMAT_PLAIN16_12:
 			path_format->decode_fmt = 0x3;
 			path_format->plain_fmt = 0x1;
+			path_format->packing_fmt = 0;
 			break;
 		default:
 			rc = -EINVAL;
@@ -187,10 +216,17 @@ int cam_ife_csid_get_format_rdi(
 				path_format->decode_fmt = 0x4;
 				path_format->packing_fmt = 0x1;
 			}
+
+			if (mipi_unpacked) {
+				path_format->decode_fmt = 0x4;
+				path_format->packing_fmt = 0x0;
+				path_format->plain_fmt = 0x1;
+			}
 			break;
 		case CAM_FORMAT_PLAIN16_14:
 			path_format->decode_fmt = 0x4;
 			path_format->plain_fmt = 0x1;
+			path_format->packing_fmt = 0;
 			break;
 		default:
 			rc = -EINVAL;
@@ -206,10 +242,17 @@ int cam_ife_csid_get_format_rdi(
 				path_format->decode_fmt = 0x5;
 				path_format->packing_fmt = 0x1;
 			}
+
+			if (mipi_unpacked) {
+				path_format->decode_fmt = 0x5;
+				path_format->packing_fmt = 0x0;
+				path_format->plain_fmt = 0x1;
+			}
 			break;
 		case CAM_FORMAT_PLAIN16_16:
 			path_format->decode_fmt = 0x5;
 			path_format->plain_fmt = 0x1;
+			path_format->packing_fmt = 0;
 			break;
 		default:
 			rc = -EINVAL;
@@ -225,10 +268,17 @@ int cam_ife_csid_get_format_rdi(
 				path_format->decode_fmt = 0x6;
 				path_format->packing_fmt = 0x1;
 			}
+
+			if (mipi_unpacked) {
+				path_format->decode_fmt = 0x6;
+				path_format->packing_fmt = 0x0;
+				path_format->plain_fmt = 0x2;
+			}
 			break;
 		case CAM_FORMAT_PLAIN32_20:
 			path_format->decode_fmt = 0x6;
 			path_format->plain_fmt = 0x2;
+			path_format->packing_fmt = 0;
 			break;
 		default:
 			rc = -EINVAL;
@@ -239,30 +289,37 @@ int cam_ife_csid_get_format_rdi(
 	case CAM_FORMAT_DPCM_10_6_10:
 		path_format->decode_fmt  = 0x7;
 		path_format->plain_fmt = 0x1;
+		path_format->packing_fmt = 0;
 		break;
 	case CAM_FORMAT_DPCM_10_8_10:
 		path_format->decode_fmt  = 0x8;
 		path_format->plain_fmt = 0x1;
+		path_format->packing_fmt = 0;
 		break;
 	case CAM_FORMAT_DPCM_12_6_12:
 		path_format->decode_fmt  = 0x9;
 		path_format->plain_fmt = 0x1;
+		path_format->packing_fmt = 0;
 		break;
 	case CAM_FORMAT_DPCM_12_8_12:
 		path_format->decode_fmt  = 0xA;
 		path_format->plain_fmt = 0x1;
+		path_format->packing_fmt = 0;
 		break;
 	case CAM_FORMAT_DPCM_14_8_14:
 		path_format->decode_fmt  = 0xB;
 		path_format->plain_fmt = 0x1;
+		path_format->packing_fmt = 0;
 		break;
 	case CAM_FORMAT_DPCM_14_10_14:
 		path_format->decode_fmt  = 0xC;
 		path_format->plain_fmt = 0x1;
+		path_format->packing_fmt = 0;
 		break;
 	case CAM_FORMAT_DPCM_12_10_12:
 		path_format->decode_fmt  = 0xD;
 		path_format->plain_fmt = 0x1;
+		path_format->packing_fmt = 0;
 		break;
 	case CAM_FORMAT_YUV422:
 		path_format->decode_fmt  = 0x1;

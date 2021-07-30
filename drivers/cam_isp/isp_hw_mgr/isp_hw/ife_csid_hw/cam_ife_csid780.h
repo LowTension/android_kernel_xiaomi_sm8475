@@ -625,6 +625,10 @@ static struct cam_ife_csid_ver2_path_reg_info
 		/* configurations */
 		.resume_frame_boundary            = 1,
 		.overflow_ctrl_en                 = 1,
+		.capabilities                     = CAM_IFE_CSID_CAP_INPUT_LCR |
+							CAM_IFE_CSID_CAP_MIPI10_UNPACK |
+							CAM_IFE_CSID_CAP_MIPI12_UNPACK |
+							CAM_IFE_CSID_CAP_MIPI14_UNPACK,
 		.overflow_ctrl_mode_val           = 0x8,
 		.offline_mode_supported           = 1,
 		.mipi_pack_supported              = 1,
@@ -719,6 +723,10 @@ static struct cam_ife_csid_ver2_path_reg_info
 		/* configurations */
 		.resume_frame_boundary            = 1,
 		.overflow_ctrl_en                 = 1,
+		.capabilities                     = CAM_IFE_CSID_CAP_INPUT_LCR |
+							CAM_IFE_CSID_CAP_MIPI10_UNPACK |
+							CAM_IFE_CSID_CAP_MIPI12_UNPACK |
+							CAM_IFE_CSID_CAP_MIPI14_UNPACK,
 		.overflow_ctrl_mode_val           = 0x8,
 		.mipi_pack_supported              = 1,
 		.offline_mode_supported           = 1,
@@ -813,6 +821,10 @@ static struct cam_ife_csid_ver2_path_reg_info
 		/* configurations */
 		.resume_frame_boundary            = 1,
 		.overflow_ctrl_en                 = 1,
+		.capabilities                     = CAM_IFE_CSID_CAP_INPUT_LCR |
+							CAM_IFE_CSID_CAP_MIPI10_UNPACK |
+							CAM_IFE_CSID_CAP_MIPI12_UNPACK |
+							CAM_IFE_CSID_CAP_MIPI14_UNPACK,
 		.overflow_ctrl_mode_val           = 0x8,
 		.mipi_pack_supported              = 1,
 		.offline_mode_supported           = 1,
@@ -907,6 +919,7 @@ static struct cam_ife_csid_ver2_path_reg_info
 		/* configurations */
 		.resume_frame_boundary            = 1,
 		.overflow_ctrl_en                 = 1,
+		.capabilities                     = 0,
 		.overflow_ctrl_mode_val           = 0x8,
 		.offline_mode_supported           = 1,
 		.mipi_pack_supported              = 1,
@@ -1001,6 +1014,7 @@ static struct cam_ife_csid_ver2_path_reg_info
 		/* configurations */
 		.resume_frame_boundary           = 1,
 		.overflow_ctrl_en                = 1,
+		.capabilities                    = 0,
 		.overflow_ctrl_mode_val          = 0x8,
 		.offline_mode_supported          = 1,
 		.mipi_pack_supported             = 1,
@@ -1142,6 +1156,7 @@ static struct cam_ife_csid_ver2_common_reg_info
 	.timestamp_stb_sel_shift_val             = 8,
 	.vfr_en_shift_val                        = 0,
 	.mup_shift_val                           = 28,
+	.shdr_slave_ppp_shift                    = 20,
 	.shdr_slave_rdi2_shift                   = 22,
 	.shdr_slave_rdi1_shift                   = 21,
 	.shdr_master_rdi0_shift                  = 5,
@@ -1203,6 +1218,7 @@ static struct cam_ife_csid_ver2_top_reg_info
 	.dual_sync_sel_shift_val        = 8,
 	.dual_en_shift_val              = 0,
 	.master_slave_sel_shift_val     = 1,
+	.rdi_lcr_shift_val              = 16,
 	.master_sel_val                 = 0,
 	.slave_sel_val                  = 1,
 	.io_path_cfg_rst_val            = 1,

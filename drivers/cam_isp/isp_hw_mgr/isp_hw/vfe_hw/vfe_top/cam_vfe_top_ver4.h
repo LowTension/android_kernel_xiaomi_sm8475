@@ -57,6 +57,8 @@ struct cam_vfe_top_ver4_reg_offset_common {
 	uint32_t epoch1_pattern_cfg;
 	uint32_t epoch_height_cfg;
 	uint32_t top_debug_cfg;
+	uint32_t pdaf_input_cfg_0;
+	uint32_t pdaf_input_cfg_1;
 	uint32_t num_top_debug_reg;
 	uint32_t top_debug[CAM_VFE_TOP_DBG_REG_MAX];
 };
@@ -93,6 +95,11 @@ struct cam_vfe_top_ver4_pdaf_violation_desc {
 	char     *desc;
 };
 
+struct cam_vfe_top_ver4_pdaf_lcr_res_info {
+	uint32_t  res_id;
+	uint32_t  val;
+};
+
 struct cam_vfe_ver4_path_hw_info {
 	struct cam_vfe_top_ver4_reg_offset_common  *common_reg;
 	struct cam_vfe_ver4_path_reg_data          *reg_data;
@@ -121,6 +128,8 @@ struct cam_vfe_top_ver4_hw_info {
 	struct cam_vfe_top_ver4_top_err_irq_desc    *top_err_desc;
 	uint32_t                                     num_pdaf_violation_errors;
 	struct cam_vfe_top_ver4_pdaf_violation_desc *pdaf_violation_desc;
+	struct cam_vfe_top_ver4_pdaf_lcr_res_info   *pdaf_lcr_res_mask;
+	uint32_t                                     num_pdaf_lcr_res;
 };
 
 struct cam_vfe_ver4_path_reg_data {
