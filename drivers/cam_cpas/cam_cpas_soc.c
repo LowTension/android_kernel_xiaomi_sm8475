@@ -1243,8 +1243,11 @@ release_res:
 
 int cam_cpas_soc_deinit_resources(struct cam_hw_soc_info *soc_info)
 {
-	int rc;
+	int rc, i;
 	struct cam_cpas_private_soc *soc_private = soc_info->soc_private;
+
+	for (i = 0; i < soc_private->num_caches; i++)
+		llcc_slice_putd(soc_private->llcc_info[i].slic_desc);
 
 	rc = cam_soc_util_release_platform_resource(soc_info);
 	if (rc)
