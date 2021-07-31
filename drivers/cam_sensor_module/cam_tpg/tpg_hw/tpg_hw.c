@@ -31,7 +31,7 @@ static int cam_io_tpg_dump(void __iomem *base_addr,
 				REG_OFFSET(start_offset, i));
 			p_str += 11;
 		}
-		data = readl_relaxed(base_addr + REG_OFFSET(start_offset, i));
+		data = cam_io_r(base_addr + REG_OFFSET(start_offset, i));
 		snprintf(p_str, 9, "%08x ", data);
 		p_str += 8;
 		if ((i + 1) % NUM_REGISTER_PER_LINE == 0) {
