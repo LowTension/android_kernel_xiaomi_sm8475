@@ -1580,7 +1580,7 @@ static int cam_ife_csid_ver2_rdi_bottom_half(
 
 	/* Check for secondary evt */
 	if ((path_cfg->en_secondary_evt) &&
-		(irq_status_rdi & IFE_CSID_VER2_PATH_INFO_INPUT_SOF)) {
+		(irq_status_rdi & IFE_CSID_VER2_PATH_CAMIF_SOF)) {
 		evt_info.is_secondary_evt = true;
 		CAM_DBG(CAM_ISP,
 			"CSID[%u] RDI:%u notify CAMIF SOF as secondary evt",
