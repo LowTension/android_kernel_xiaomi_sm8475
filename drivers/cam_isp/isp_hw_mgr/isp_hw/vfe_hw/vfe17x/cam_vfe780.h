@@ -11,6 +11,7 @@
 #include "cam_irq_controller.h"
 
 #define CAM_VFE_BUS_VER3_780_MAX_CLIENTS     27
+#define CAM_VFE_780_NUM_DBG_REG              17
 
 static struct cam_vfe_top_ver4_module_desc vfe780_ipp_mod_desc[] = {
 	{
@@ -527,7 +528,7 @@ static struct cam_vfe_top_ver4_reg_offset_common vfe780_top_common_reg = {
 	.bus_violation_status     = 0x00000C64,
 	.bus_overflow_status      = 0x00000C68,
 	.top_debug_cfg            = 0x000000FC,
-	.num_top_debug_reg        = 17,
+	.num_top_debug_reg        = CAM_VFE_780_NUM_DBG_REG,
 	.top_debug = {
 		0x000000A0,
 		0x000000A4,
@@ -609,6 +610,179 @@ struct cam_vfe_ver4_path_hw_info
 	},
 };
 
+static struct cam_vfe_top_ver4_debug_reg_info vfe780_dbg_reg_info[CAM_VFE_780_NUM_DBG_REG][8] = {
+	VFE_DBG_INFO_ARRAY_4bit("test_bus_reserved",
+		"test_bus_reserved",
+		"test_bus_reserved",
+		"test_bus_reserved",
+		"test_bus_reserved",
+		"test_bus_reserved",
+		"test_bus_reserved",
+		"test_bus_reserved"
+	),
+	VFE_DBG_INFO_ARRAY_4bit(
+		"STATS_IHIST",
+		"STATS_RS",
+		"STATS_CAF",
+		"GTM_BHIST",
+		"TINTLESS_BG",
+		"STATS_BFW",
+		"STATS_BG",
+		"STATS_BHIST"
+	),
+	VFE_DBG_INFO_ARRAY_4bit(
+		"STATS_BE",
+		"R2PD_DS16_C_VID",
+		"R2PD_DS16_Y_VID",
+		"crop_rnd_clamp_post_downscale_C_DS16_VID",
+		"4to1_C_DS16_VID",
+		"crop_rnd_clamp_post_downscale_Y_DS16_VID",
+		"4to1_Y_DS16_VID",
+		"crop_rnd_clamp_post_dsx_C_VID"
+	),
+	VFE_DBG_INFO_ARRAY_4bit(
+		"R2PD_DS4_VID_C",
+		"R2PD_DS4_VID_Y",
+		"DSX_C",
+		"crop_rnd_clamp_post_dsx_Y_VID",
+		"DSX_Y",
+		"crop_rnd_clamp_post_downscale_mn_C_VID",
+		"downscale_mn_C_VID",
+		"crop_rnd_clamp_post_downscale_mn_Y_VID"
+	),
+	VFE_DBG_INFO_ARRAY_4bit(
+		"MNDS_Y_VID",
+		"R2PD_DS16_C_DISP",
+		"R2PD_DS16_Y_DISP",
+		"crop_rnd_clamp_post_downscale_C_DS16_DISP",
+		"4to1_C_DS16_DISP",
+		"crop_rnd_clamp_post_downscale_Y_DS16_DISP",
+		"4to1_Y_DS16_DISP",
+		"R2PD_DS4_C_DISP"
+	),
+	VFE_DBG_INFO_ARRAY_4bit(
+		"R2PD_DS4_Y_DISP",
+		"crop_rnd_clamp_post_downscale_C_DS4_DISP",
+		"4to1_C_DS4_DISP",
+		"crop_rnd_clamp_post_downscale_Y_DS4_DISP",
+		"4to1_Y_DS4_DISP",
+		"crop_rnd_clamp_post_downscale_mn_C_DISP",
+		"downscale_mn_C_DISP",
+		"crop_rnd_clamp_post_downscale_mn_Y_DISP"
+	),
+	VFE_DBG_INFO_ARRAY_4bit(
+		"downscale_mn_Y_DISP",
+		"crop_rnd_clamp_post_downscale_mn_C_FD",
+		"downscale_mn_C_FD",
+		"crop_rnd_clamp_post_downscale_mn_Y_FD",
+		"downscale_mn_Y_FD",
+		"gtm_fd_out",
+		"uvg",
+		"color_xform"
+	),
+	VFE_DBG_INFO_ARRAY_4bit(
+		"glut",
+		"gtm",
+		"color_correct",
+		"demosaic",
+		"hvx_tap2",
+		"lcac",
+		"bayer_ltm",
+		"bayer_gtm"
+	),
+	VFE_DBG_INFO_ARRAY_4bit(
+		"bls",
+		"bpc_abf",
+		"gic",
+		"wb_gain",
+		"lsc",
+		"compdecomp_hxv_rx",
+		"compdecomp_hxv_tx",
+		"hvx_tap1"
+	),
+	VFE_DBG_INFO_ARRAY_4bit(
+		"decompand",
+		"reserved",
+		"bincorrect",
+		"bpc_pdpc",
+		"channel_gain",
+		"bayer_argb_ccif_converter",
+		"crop_rnd_clamp_pre_argb_packer",
+		"chroma_up_uv"
+	),
+	VFE_DBG_INFO_ARRAY_4bit(
+		"chroma_up_y",
+		"demux",
+		"hxv_tap0",
+		"preprocess",
+		"reserved",
+		"reserved",
+		"bayer_ltm_bus_wr",
+		"RDI2"
+	),
+	VFE_DBG_INFO_ARRAY_4bit(
+		"RDI1",
+		"RDI0",
+		"reserved",
+		"pdaf_2_bus_wr",
+		"pdaf_1_bus_wr",
+		"pdaf_1_bus_wr",
+		"ihist_bus_wr",
+		"flicker_rs_bus_wr"
+	),
+	VFE_DBG_INFO_ARRAY_4bit(
+		"gtm_bhist_bus_wr",
+		"caf_bus_wr",
+		"bfw_bus_wr",
+		"bg_bus_wr",
+		"tintless_bg_bus_wr",
+		"bhist_bus_wr",
+		"be_bus_wr",
+		"pixel_raw_bus_wr"
+	),
+	VFE_DBG_INFO_ARRAY_4bit(
+		"fd_c_bus_wr",
+		"fd_y_bus_wr",
+		"disp_ds16_bus_wr",
+		"disp_ds4_bus_wr",
+		"disp_c_bus_wr",
+		"disp_y_bus_wr",
+		"vid_ds16_bus_Wr",
+		"vid_ds4_bus_Wr"
+	),
+	VFE_DBG_INFO_ARRAY_4bit(
+		"vid_c_bus_wr",
+		"vid_y_bus_wr",
+		"CLC_PDAF",
+		"PIX_PP",
+		"reserved",
+		"reserved",
+		"reserved",
+		"reserved"
+	),
+	{
+		/* needs to be parsed separately, doesn't conform to I, V, R */
+		VFE_DBG_INFO(32, "lcr_pd_timing_debug"),
+		VFE_DBG_INFO(32, "lcr_pd_timing_debug"),
+		VFE_DBG_INFO(32, "lcr_pd_timing_debug"),
+		VFE_DBG_INFO(32, "lcr_pd_timing_debug"),
+		VFE_DBG_INFO(32, "lcr_pd_timing_debug"),
+		VFE_DBG_INFO(32, "lcr_pd_timing_debug"),
+		VFE_DBG_INFO(32, "lcr_pd_timing_debug"),
+		VFE_DBG_INFO(32, "lcr_pd_timing_debug"),
+	},
+	VFE_DBG_INFO_ARRAY_4bit(
+		"r2pd_reserved",
+		"r2pd_reserved",
+		"r2pd_reserved",
+		"r2pd_reserved",
+		"r2pd_reserved",
+		"r2pd_reserved",
+		"r2pd_reserved",
+		"r2pd_reserved"
+	),
+};
+
 static struct cam_vfe_top_ver4_hw_info vfe780_top_hw_info = {
 	.common_reg = &vfe780_top_common_reg,
 	.vfe_full_hw_info = {
@@ -642,6 +816,7 @@ static struct cam_vfe_top_ver4_hw_info vfe780_top_hw_info = {
 	.top_err_desc                    = vfe780_top_irq_err_desc,
 	.num_pdaf_violation_errors       = ARRAY_SIZE(vfe780_pdaf_violation_desc),
 	.pdaf_violation_desc             = vfe780_pdaf_violation_desc,
+	.debug_reg_info                  = &vfe780_dbg_reg_info,
 };
 
 static struct cam_irq_register_set vfe780_bus_irq_reg[2] = {

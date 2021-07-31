@@ -25,7 +25,7 @@ static struct cam_irq_register_set vfe480_top_irq_reg_set[3] = {
 		.clear_reg_offset  = 0x0000004C,
 		.status_reg_offset = 0x00000058,
 	},
-		{
+	{
 		.mask_reg_offset   = 0x00000044,
 		.clear_reg_offset  = 0x00000050,
 		.status_reg_offset = 0x0000005C,

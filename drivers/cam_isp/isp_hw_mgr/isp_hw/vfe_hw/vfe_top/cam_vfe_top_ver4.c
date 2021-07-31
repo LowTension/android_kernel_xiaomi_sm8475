@@ -32,6 +32,7 @@ struct cam_vfe_top_ver4_priv {
 	struct cam_vfe_top_priv_common      top_common;
 	atomic_t                            overflow_pending;
 	uint8_t                             log_buf[CAM_VFE_LEN_LOG_BUF];
+	uint32_t                            sof_cnt;
 };
 
 struct cam_vfe_mux_ver4_data {
@@ -80,592 +81,6 @@ struct cam_vfe_mux_ver4_data {
 	struct timespec64                     epoch_ts;
 	struct timespec64                     eof_ts;
 	struct timespec64                     error_ts;
-};
-
-struct cam_vfe_top_debug_info {
-	uint32_t  shift;
-	char     *clc_name;
-};
-
-static const struct cam_vfe_top_debug_info vfe_dbg_list[][8] = {
-	{
-		{
-			.shift = 0,
-			.clc_name = "test_bus_reserved"
-		},
-		{
-			.shift = 4,
-			.clc_name = "test_bus_reserved"
-		},
-		{
-			.shift = 8,
-			.clc_name = "test_bus_reserved"
-		},
-		{
-			.shift = 12,
-			.clc_name = "test_bus_reserved"
-		},
-		{
-			.shift = 16,
-			.clc_name = "test_bus_reserved"
-		},
-		{
-			.shift = 20,
-			.clc_name = "test_bus_reserved"
-		},
-		{
-			.shift = 24,
-			.clc_name = "test_bus_reserved"
-		},
-		{
-			.shift = 28,
-			.clc_name = "test_bus_reserved"
-		},
-	},
-	{
-		{
-			.shift = 0,
-			.clc_name = "STATS_IHIST"
-		},
-		{
-			.shift = 4,
-			.clc_name = "STATS_RS"
-		},
-		{
-			.shift = 8,
-			.clc_name = "STATS_BAF"
-		},
-		{
-			.shift = 12,
-			.clc_name = "GTM_BHIST"
-		},
-		{
-			.shift = 16,
-			.clc_name = "TINTLESS_BG"
-		},
-		{
-			.shift = 20,
-			.clc_name = "STATS_BFW"
-		},
-		{
-			.shift = 24,
-			.clc_name = "STATS_BG"
-		},
-		{
-			.shift = 28,
-			.clc_name = "STATS_BHIST"
-		},
-	},
-	{
-		{
-			.shift = 0,
-			.clc_name = "STATS_BE"
-		},
-		{
-			.shift = 4,
-			.clc_name = "R2PD_DS16_C_VID"
-		},
-		{
-			.shift = 8,
-			.clc_name = "R2PD_DS16_Y_VID"
-		},
-		{
-			.shift = 12,
-			.clc_name = "crop_rnd_clamp_post_downscale_C_DS16_VID"
-		},
-		{
-			.shift = 16,
-			.clc_name = "4to1_C_DS16_VID"
-		},
-		{
-			.shift = 20,
-			.clc_name = "crop_rnd_clamp_post_downscale_Y_DS16_VID"
-		},
-		{
-			.shift = 24,
-			.clc_name = "4to1_Y_DS16_VID"
-		},
-		{
-			.shift = 28,
-			.clc_name = "crop_rnd_clamp_post_dsx_C_VID"
-		},
-	},
-	{
-		{
-			.shift = 0,
-			.clc_name = "R2PD_DS4_VID_C"
-		},
-		{
-			.shift = 4,
-			.clc_name = "R2PD_DS4_VID_Y"
-		},
-		{
-			.shift = 8,
-			.clc_name = "DSX_C"
-		},
-		{
-			.shift = 12,
-			.clc_name = "crop_rnd_clamp_post_dsx_Y_VID"
-		},
-		{
-			.shift = 16,
-			.clc_name = "DSX_Y"
-		},
-		{
-			.shift = 20,
-			.clc_name = "crop_rnd_clamp_post_downscale_mn_C_VID"
-		},
-		{
-			.shift = 24,
-			.clc_name = "downscale_mn_C_VID"
-		},
-		{
-			.shift = 28,
-			.clc_name = "crop_rnd_clamp_post_downscale_mn_Y_VID"
-		},
-	},
-	{
-		{
-			.shift = 0,
-			.clc_name = "MNDS_Y_VID"
-		},
-		{
-			.shift = 4,
-			.clc_name = "R2PD_DS16_C_DISP"
-		},
-		{
-			.shift = 8,
-			.clc_name = "R2PD_DS16_Y_DISP"
-		},
-		{
-			.shift = 12,
-			.clc_name = "crop_rnd_clamp_post_downscale_C_DS16_DISP"
-		},
-		{
-			.shift = 16,
-			.clc_name = "4to1_C_DS16_DISP"
-		},
-		{
-			.shift = 20,
-			.clc_name = "crop_rnd_clamp_post_downscale_Y_DS16_DISP"
-		},
-		{
-			.shift = 24,
-			.clc_name = "4to1_Y_DS16_DISP"
-		},
-		{
-			.shift = 28,
-			.clc_name = "R2PD_DS4_C_DISP"
-		},
-	},
-	{
-		{
-			.shift = 0,
-			.clc_name = "R2PD_DS4_Y_DISP"
-		},
-		{
-			.shift = 4,
-			.clc_name = "crop_rnd_clamp_post_downscale_C_DS4_DISP"
-		},
-		{
-			.shift = 8,
-			.clc_name = "4to1_C_DS4_DISP"
-		},
-		{
-			.shift = 12,
-			.clc_name = "crop_rnd_clamp_post_downscale_Y_DS4_DISP"
-		},
-		{
-			.shift = 16,
-			.clc_name = "4to1_Y_DS4_DISP"
-		},
-		{
-			.shift = 20,
-			.clc_name = "crop_rnd_clamp_post_downscale_mn_C_DISP"
-		},
-		{
-			.shift = 24,
-			.clc_name = "downscale_mn_C_DISP"
-		},
-		{
-			.shift = 28,
-			.clc_name = "crop_rnd_clamp_post_downscale_mn_Y_DISP"
-		},
-	},
-	{
-		{
-			.shift = 0,
-			.clc_name = "downscale_mn_Y_DISP"
-		},
-		{
-			.shift = 4,
-			.clc_name = "crop_rnd_clamp_post_downscale_mn_C_FD"
-		},
-		{
-			.shift = 8,
-			.clc_name = "downscale_mn_C_FD"
-		},
-		{
-			.shift = 12,
-			.clc_name = "crop_rnd_clamp_post_downscale_mn_Y_FD"
-		},
-		{
-			.shift = 16,
-			.clc_name = "downscale_mn_Y_FD"
-		},
-		{
-			.shift = 20,
-			.clc_name = "gtm_fd_out"
-		},
-		{
-			.shift = 24,
-			.clc_name = "uvg"
-		},
-		{
-			.shift = 28,
-			.clc_name = "color_xform"
-		},
-	},
-	{
-		{
-			.shift = 0,
-			.clc_name = "glut"
-		},
-		{
-			.shift = 4,
-			.clc_name = "gtm"
-		},
-		{
-			.shift = 8,
-			.clc_name = "color_correct"
-		},
-		{
-			.shift = 12,
-			.clc_name = "demosaic"
-		},
-		{
-			.shift = 16,
-			.clc_name = "hvx_tap2"
-		},
-		{
-			.shift = 20,
-			.clc_name = "lcac"
-		},
-		{
-			.shift = 24,
-			.clc_name = "bayer_ltm"
-		},
-		{
-			.shift = 28,
-			.clc_name = "bayer_gtm"
-		},
-	},
-	{
-		{
-			.shift = 0,
-			.clc_name = "bls"
-		},
-		{
-			.shift = 4,
-			.clc_name = "bpc_abf"
-		},
-		{
-			.shift = 8,
-			.clc_name = "gic"
-		},
-		{
-			.shift = 12,
-			.clc_name = "wb_gain"
-		},
-		{
-			.shift = 16,
-			.clc_name = "lsc"
-		},
-		{
-			.shift = 20,
-			.clc_name = "compdecomp_hxv_rx"
-		},
-		{
-			.shift = 24,
-			.clc_name = "compdecomp_hxv_tx"
-		},
-		{
-			.shift = 28,
-			.clc_name = "hvx_tap1"
-		},
-	},
-	{
-		{
-			.shift = 0,
-			.clc_name = "decompand"
-		},
-		{
-			.shift = 4,
-			.clc_name = "reserved"
-		},
-		{
-			.shift = 8,
-			.clc_name = "bincorrect"
-		},
-		{
-			.shift = 12,
-			.clc_name = "bpc_pdpc"
-		},
-		{
-			.shift = 16,
-			.clc_name = "channel_gain"
-		},
-		{
-			.shift = 20,
-			.clc_name = "bayer_argb_ccif_converter"
-		},
-		{
-			.shift = 24,
-			.clc_name = "crop_rnd_clamp_pre_argb_packer"
-		},
-		{
-			.shift = 28,
-			.clc_name = "chroma_up_uv"
-		},
-	},
-	{
-		{
-			.shift = 0,
-			.clc_name = "chroma_up_y"
-		},
-		{
-			.shift = 4,
-			.clc_name = "demux"
-		},
-		{
-			.shift = 8,
-			.clc_name = "hxv_tap0"
-		},
-		{
-			.shift = 12,
-			.clc_name = "preprocess"
-		},
-		{
-			.shift = 16,
-			.clc_name = "sparse_pd_ext"
-		},
-		{
-			.shift = 20,
-			.clc_name = "lcr"
-		},
-		{
-			.shift = 24,
-			.clc_name = "bayer_ltm_bus_wr"
-		},
-		{
-			.shift = 28,
-			.clc_name = "RDI2"
-		},
-	},
-	{
-		{
-			.shift = 0,
-			.clc_name = "RDI1"
-		},
-		{
-			.shift = 4,
-			.clc_name = "RDI0"
-		},
-		{
-			.shift = 8,
-			.clc_name = "lcr_bus_wr"
-		},
-		{
-			.shift = 12,
-			.clc_name = "pdaf_sad_bus_wr"
-		},
-		{
-			.shift = 16,
-			.clc_name = "pd_data_bus_wr"
-		},
-		{
-			.shift = 20,
-			.clc_name = "sparse_pd_bus_wr"
-		},
-		{
-			.shift = 24,
-			.clc_name = "ihist_bus_wr"
-		},
-		{
-			.shift = 28,
-			.clc_name = "flicker_rs_bus_wr"
-		},
-	},
-	{
-		{
-			.shift = 0,
-			.clc_name = "gtm_bhist_bus_wr"
-		},
-		{
-			.shift = 4,
-			.clc_name = "baf_bus_wr"
-		},
-		{
-			.shift = 8,
-			.clc_name = "bfw_bus_wr"
-		},
-		{
-			.shift = 12,
-			.clc_name = "bg_bus_wr"
-		},
-		{
-			.shift = 16,
-			.clc_name = "tintless_bg_bus_wr"
-		},
-		{
-			.shift = 20,
-			.clc_name = "bhist_bus_wr"
-		},
-		{
-			.shift = 24,
-			.clc_name = "be_bus_wr"
-		},
-		{
-			.shift = 28,
-			.clc_name = "pixel_raw_bus_wr"
-		},
-	},
-	{
-		{
-			.shift = 0,
-			.clc_name = "fd_c_bus_wr"
-		},
-		{
-			.shift = 4,
-			.clc_name = "fd_y_bus_wr"
-		},
-		{
-			.shift = 8,
-			.clc_name = "disp_ds16_bus_wr"
-		},
-		{
-			.shift = 12,
-			.clc_name = "disp_ds4_bus_wr"
-		},
-		{
-			.shift = 16,
-			.clc_name = "disp_c_bus_wr"
-		},
-		{
-			.shift = 20,
-			.clc_name = "disp_y_bus_wr"
-		},
-		{
-			.shift = 24,
-			.clc_name = "vid_ds16_bus_Wr"
-		},
-		{
-			.shift = 28,
-			.clc_name = "vid_ds4_bus_Wr"
-		},
-	},
-	{
-		{
-			.shift = 0,
-			.clc_name = "vid_c_bus_wr"
-		},
-		{
-			.shift = 4,
-			.clc_name = "vid_y_bus_wr"
-		},
-		{
-			.shift = 8,
-			.clc_name = "CLC_PDAF"
-		},
-		{
-			.shift = 12,
-			.clc_name = "PIX_PP"
-		},
-		{
-			.shift = 16,
-			.clc_name = "reserved"
-		},
-		{
-			.shift = 20,
-			.clc_name = "reserved"
-		},
-		{
-			.shift = 24,
-			.clc_name = "reserved"
-		},
-		{
-			.shift = 28,
-			.clc_name = "reserved"
-		},
-	},
-	{
-		{
-			.shift = 0,
-			.clc_name = "r2pd_reserved"
-		},
-		{
-			.shift = 4,
-			.clc_name = "r2pd_reserved"
-		},
-		{
-			.shift = 8,
-			.clc_name = "r2pd_reserved"
-		},
-		{
-			.shift = 12,
-			.clc_name = "r2pd_reserved"
-		},
-		{
-			.shift = 16,
-			.clc_name = "r2pd_reserved"
-		},
-		{
-			.shift = 20,
-			.clc_name = "r2pd_reserved"
-		},
-		{
-			.shift = 24,
-			.clc_name = "r2pd_reserved"
-		},
-		{
-			.shift = 28,
-			.clc_name = "r2pd_reserved"
-		},
-	},
-	{
-		{
-			.shift = 0,
-			.clc_name = "r2pd_reserved"
-		},
-		{
-			.shift = 4,
-			.clc_name = "r2pd_reserved"
-		},
-		{
-			.shift = 8,
-			.clc_name = "r2pd_reserved"
-		},
-		{
-			.shift = 12,
-			.clc_name = "r2pd_reserved"
-		},
-		{
-			.shift = 16,
-			.clc_name = "r2pd_reserved"
-		},
-		{
-			.shift = 20,
-			.clc_name = "r2pd_reserved"
-		},
-		{
-			.shift = 24,
-			.clc_name = "r2pd_reserved"
-		},
-		{
-			.shift = 28,
-			.clc_name = "r2pd_reserved"
-		},
-	},
 };
 
 static int cam_vfe_top_ver4_get_path_port_map(struct cam_vfe_top_ver4_priv *top_priv,
@@ -751,7 +166,7 @@ static int cam_vfe_top_fs_update(
 
 static void cam_vfe_top_ver4_check_module_status(
 	uint32_t num_reg, uint32_t *reg_val,
-	const struct cam_vfe_top_debug_info status_list[][8])
+	struct cam_vfe_top_ver4_debug_reg_info (*status_list)[][8])
 {
 	bool found = false;
 	uint32_t i, j, val = 0;
@@ -767,13 +182,13 @@ static void cam_vfe_top_ver4_check_module_status(
 			continue;
 
 		for (j = 0; j < 8; j++) {
-			val = reg_val[i] >> status_list[i][j].shift;
+			val = reg_val[i] >> (*status_list)[i][j].shift;
 			val &= 0xF;
 			if (val == 0 || val == 5)
 				continue;
 
 			CAM_INFO_BUF(CAM_ISP, log_buf, 1024, &len, "%s [I:%u V:%u R:%u]",
-				status_list[i][j].clc_name,
+				(*status_list)[i][j].clc_name,
 				((val >> 2) & 1), ((val >> 1) & 1), (val & 1));
 			found = true;
 		}
@@ -877,21 +292,15 @@ static void cam_vfe_top_ver4_print_debug_reg_status(
 	uint32_t                                    i = 0, j;
 	size_t                                      len = 0;
 	uint8_t                                    *log_buf;
-	uint32_t                                   *reg_val = NULL;
+	uint32_t                                   reg_val[CAM_VFE_TOP_DBG_REG_MAX] = {0};
 	struct cam_hw_soc_info                     *soc_info;
-	struct cam_vfe_soc_private                 *soc_priv;
 	void __iomem                               *base;
 
 	soc_info   =  top_priv->top_common.soc_info;
-	soc_priv   =  soc_info->soc_private;
 	common_reg =  top_priv->common_data.common_reg;
 	num_reg    =  common_reg->num_top_debug_reg;
 	base       =  soc_info->reg_map[VFE_CORE_BASE_IDX].mem_base;
 	log_buf    =  top_priv->log_buf;
-	reg_val    = kcalloc(num_reg, sizeof(uint32_t), GFP_KERNEL);
-
-	if (!reg_val)
-		return;
 
 	while (i < num_reg) {
 		for(j = 0; j < 4 && i < num_reg; j++, i++) {
@@ -907,16 +316,7 @@ static void cam_vfe_top_ver4_print_debug_reg_status(
 	}
 
 	cam_vfe_top_ver4_check_module_status(num_reg, reg_val,
-		((soc_priv->is_ife_lite) ? NULL : vfe_dbg_list));
-	CAM_ERR(CAM_ISP, "VFE[%u] Bus overflow status 0x%x",
-		soc_info->index,
-		cam_io_r(base + common_reg->bus_overflow_status));
-
-	CAM_ERR(CAM_ISP, "VFE[%u] Bus  Violation status 0x%x",
-		soc_info->index,
-		cam_io_r(base + common_reg->bus_violation_status));
-
-	kfree(reg_val);
+		top_priv->common_data.hw_info->debug_reg_info);
 }
 
 int cam_vfe_top_ver4_dump_timestamps(
@@ -986,27 +386,31 @@ static int cam_vfe_top_ver4_print_overflow_debug_info(
 	struct cam_vfe_top_ver4_common_data *common_data;
 	struct cam_hw_soc_info              *soc_info;
 	struct cam_vfe_soc_private *soc_private = NULL;
-	uint32_t                             status = 0, bus_overflow_status = 0;
+	uint32_t                             violation_status = 0, bus_overflow_status = 0, tmp;
 	uint32_t                             i = 0;
-	int                                  res_id;
+	int                                  res_id = *((int *)(cmd_args));
 
 	common_data = &top_priv->common_data;
 	soc_info = top_priv->top_common.soc_info;
 	soc_private = soc_info->soc_private;
 
-	status  = cam_io_r(soc_info->reg_map[VFE_CORE_BASE_IDX].mem_base +
+	bus_overflow_status  = cam_io_r(soc_info->reg_map[VFE_CORE_BASE_IDX].mem_base +
 		    common_data->common_reg->bus_overflow_status);
-	bus_overflow_status = status;
-	res_id = *((int *)(cmd_args));
-	CAM_ERR_RATE_LIMIT(CAM_ISP, "VFE[%d] src_clk_rate:%luHz res: %u overflow_status 0x%x",
-		soc_info->index, soc_info->applied_src_clk_rate,
-		res_id, status);
+	violation_status = cam_io_r(soc_info->reg_map[VFE_CORE_BASE_IDX].mem_base +
+		    common_data->common_reg->bus_violation_status);
 
-	while (status) {
-		if (status & 0x1)
-			CAM_ERR_RATE_LIMIT(CAM_ISP, "VFE Bus Overflow %s",
-				common_data->hw_info->wr_client_desc[i].desc);
-		status = status >> 1;
+	CAM_ERR_RATE_LIMIT(CAM_ISP, "VFE[%d] sof_cnt:%d src_clk:%luMHz overflow:%s violation:%s",
+		top_priv->sof_cnt, soc_info->index, soc_info->applied_src_clk_rate / 1000000,
+		CAM_BOOL_TO_YESNO(bus_overflow_status), CAM_BOOL_TO_YESNO(violation_status));
+
+	if (bus_overflow_status)
+		CAM_INFO_RATE_LIMIT(CAM_ISP, "VFE[%d] Bus overflow status: 0x%x",
+			soc_info->index, bus_overflow_status);
+	while (bus_overflow_status) {
+		if (bus_overflow_status & 0x1)
+			CAM_ERR_RATE_LIMIT(CAM_ISP, "VFE[%d] Bus Overflow %s",
+				soc_info->index, common_data->hw_info->wr_client_desc[i].desc);
+		bus_overflow_status = bus_overflow_status >> 1;
 		i++;
 	}
 
@@ -1015,17 +419,17 @@ static int cam_vfe_top_ver4_print_overflow_debug_info(
 	if (bus_overflow_status)
 		cam_cpas_log_votes();
 
-	status  = cam_io_r(soc_info->reg_map[VFE_CORE_BASE_IDX].mem_base +
-		    common_data->common_reg->bus_violation_status);
-	CAM_ERR_RATE_LIMIT(CAM_ISP, "VFE[%d] Bus violation_status 0x%x",
-		soc_info->index,  status);
+	if (violation_status)
+		CAM_INFO_RATE_LIMIT(CAM_ISP, "VFE[%d] Bus violation status: 0x%x",
+			soc_info->index, violation_status);
 
 	i = 0;
-	while (status) {
-		if (status & 0x1)
-			CAM_INFO_RATE_LIMIT(CAM_ISP, "VFE Bus Violation %s",
-				common_data->hw_info->wr_client_desc[i].desc);
-		status = status >> 1;
+	tmp = violation_status;
+	while (violation_status) {
+		if (tmp & 0x1)
+			CAM_ERR_RATE_LIMIT(CAM_ISP, "VFE[%d] Bus Violation %s",
+				soc_info->index, common_data->hw_info->wr_client_desc[i].desc);
+		tmp = tmp >> 1;
 		i++;
 	}
 
@@ -1146,24 +550,6 @@ int cam_vfe_top_ver4_init_hw(void *device_priv,
 
 	top_priv->top_common.applied_clk_rate = 0;
 
-	/**
-	 * Auto clock gating is enabled by default, but no harm
-	 * in setting the value we expect.
-	 */
-	CAM_DBG(CAM_ISP, "Enabling clock gating at IFE top");
-
-	cam_soc_util_w_mb(top_priv->top_common.soc_info, VFE_CORE_BASE_IDX,
-		common_data.common_reg->core_cgc_ovd_0, 0x0);
-
-	cam_soc_util_w_mb(top_priv->top_common.soc_info, VFE_CORE_BASE_IDX,
-		common_data.common_reg->core_cgc_ovd_1, 0x0);
-
-	cam_soc_util_w_mb(top_priv->top_common.soc_info, VFE_CORE_BASE_IDX,
-		common_data.common_reg->ahb_cgc_ovd, 0x0);
-
-	cam_soc_util_w_mb(top_priv->top_common.soc_info, VFE_CORE_BASE_IDX,
-		common_data.common_reg->noc_cgc_ovd, 0x0);
-
 	top_priv->top_common.hw_version = cam_io_r_mb(
 		top_priv->top_common.soc_info->reg_map[0].mem_base +
 		common_data.common_reg->hw_version);
@@ -1218,11 +604,11 @@ int cam_vfe_top_acquire_resource(
 
 config_done:
 	CAM_DBG(CAM_ISP,
-		"VFE:%d Res:[id:%d name:%s] pix_pattern:%d dsp_mode=%d is_dual:%d dual_hw_idx:%d",
+		"VFE:%d Res:[id:%d name:%s] dsp_mode:%d is_dual:%d dual_hw_idx:%d",
 		vfe_full_res->hw_intf->hw_idx,
 		vfe_full_res->res_id,
 		vfe_full_res->res_name,
-		res_data->pix_pattern, res_data->dsp_mode,
+		res_data->dsp_mode,
 		res_data->is_dual, res_data->dual_hw_idx);
 
 	return rc;
@@ -1677,6 +1063,7 @@ static int cam_vfe_handle_irq_bottom_half(void *handler_priv,
 			vfe_priv->sof_ts.tv_nsec =
 				payload->ts.mono_time.tv_nsec;
 		}
+		vfe_priv->top_priv->sof_cnt++;
 
 		cam_cpas_notify_event("IFE SOF", evt_info.hw_idx);
 
@@ -1869,6 +1256,9 @@ static int cam_vfe_resource_start(
 
 skip_core_cfg:
 	vfe_res->res_state = CAM_ISP_RESOURCE_STATE_STREAMING;
+
+	/* reset sof count */
+	rsrc_data->top_priv->sof_cnt = 0;
 
 	/* disable sof irq debug flag */
 	rsrc_data->enable_sof_irq_debug = false;

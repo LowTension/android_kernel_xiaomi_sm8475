@@ -591,6 +591,15 @@ int cam_ife_csid_convert_res_to_irq_reg(uint32_t res_id)
 	}
 }
 
+const char *cam_ife_csid_reset_type_to_string(enum cam_ife_csid_reset_type reset_type)
+{
+	switch (reset_type) {
+	case CAM_IFE_CSID_RESET_GLOBAL: return "global";
+	case CAM_IFE_CSID_RESET_PATH: return "path";
+	default: return "invalid";
+	}
+}
+
 int cam_ife_csid_get_base(struct cam_hw_soc_info *soc_info,
 	uint32_t base_id, void *cmd_args, size_t arg_size)
 {

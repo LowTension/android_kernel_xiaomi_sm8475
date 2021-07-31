@@ -3059,6 +3059,7 @@ static int cam_ife_hw_mgr_acquire_csid_hw(
 	struct cam_isp_out_port_generic_info *out_port = NULL;
 	struct cam_ife_csid_hw_caps *csid_caps = NULL;
 	bool can_use_lite = false;
+	int busy_count = 0, compat_count = 0;
 
 	if (!ife_ctx || !csid_acquire) {
 		CAM_ERR(CAM_ISP,
@@ -3124,10 +3125,9 @@ static int cam_ife_hw_mgr_acquire_csid_hw(
 		}
 	}
 
-	if (is_start_lower_idx)
-		goto start_acquire_lower_idx;
-
-	for (i = CAM_IFE_CSID_HW_NUM_MAX - 1; i >= 0; i--) {
+	for (i = (is_start_lower_idx) ? 0 : (CAM_IFE_CSID_HW_NUM_MAX - 1);
+		(is_start_lower_idx) ? (i < CAM_IFE_CSID_HW_NUM_MAX) : (i >= 0);
+		(is_start_lower_idx) ? i++ : i--) {
 		if (!ife_hw_mgr->csid_devices[i])
 			continue;
 		hw_intf = ife_hw_mgr->csid_devices[i];
@@ -3139,30 +3139,7 @@ static int cam_ife_hw_mgr_acquire_csid_hw(
 			continue;
 		}
 
-		rc = hw_intf->hw_ops.reserve(hw_intf->hw_priv,
-			csid_acquire,
-			sizeof(struct
-				cam_csid_hw_reserve_resource_args));
-		if (!rc)
-			return rc;
-	}
-
-	return rc;
-
-start_acquire_lower_idx:
-
-	for (i =  0; i < CAM_IFE_CSID_HW_NUM_MAX; i++) {
-		if (!ife_hw_mgr->csid_devices[i])
-			continue;
-
-		hw_intf = ife_hw_mgr->csid_devices[i];
-
-		if (ife_hw_mgr->csid_hw_caps[hw_intf->hw_idx].is_lite &&
-			!can_use_lite) {
-			CAM_DBG(CAM_ISP, "CSID[%u] cannot use lite",
-				hw_intf->hw_idx);
-			continue;
-		}
+		compat_count++;
 
 		rc = hw_intf->hw_ops.reserve(hw_intf->hw_priv,
 			csid_acquire,
@@ -3170,7 +3147,15 @@ start_acquire_lower_idx:
 				cam_csid_hw_reserve_resource_args));
 		if (!rc)
 			return rc;
+
+		if (rc == -EBUSY)
+			busy_count++;
+		else
+			CAM_ERR(CAM_ISP, "CSID[%d] acquire failed (rc=%d)", i, rc);
 	}
+
+	if (compat_count == busy_count)
+		CAM_ERR(CAM_ISP, "all compatible CSIDs are busy");
 
 acquire_successful:
 	return rc;
