@@ -2739,7 +2739,7 @@ static int cam_vfe_bus_ver3_err_irq_bottom_half(
 	struct cam_vfe_bus_ver3_priv *bus_priv = handler_priv;
 	struct cam_vfe_bus_ver3_common_data *common_data;
 	struct cam_isp_hw_event_info evt_info;
-	uint32_t status = 0, image_size_violation = 0, ccif_violation = 0;
+	uint32_t status = 0, image_size_violation = 0, ccif_violation = 0, constraint_violation = 0;
 
 	if (!handler_priv || !evt_payload_priv)
 		return -EINVAL;
@@ -2749,17 +2749,18 @@ static int cam_vfe_bus_ver3_err_irq_bottom_half(
 	status = evt_payload->irq_reg_val[CAM_IFE_IRQ_BUS_VER3_REG_STATUS0];
 	image_size_violation = (status >> 31) & 0x1;
 	ccif_violation = (status >> 30) & 0x1;
+	constraint_violation = (status >> 28) & 0x1;
 
 	CAM_ERR(CAM_ISP,
-		"VFE:%d BUS error image size violation %d CCIF violation %d",
+		"VFE:%d BUS error image size violation %d CCIF violation %d constraint violation %d",
 		bus_priv->common_data.core_index, image_size_violation,
-		ccif_violation);
+		ccif_violation, constraint_violation);
 	CAM_INFO(CAM_ISP,
 		"Image Size violation status 0x%X CCIF violation status 0x%X",
 		evt_payload->image_size_violation_status,
 		evt_payload->ccif_violation_status);
 
-	if (image_size_violation) {
+	if (image_size_violation || constraint_violation) {
 		status = evt_payload->image_size_violation_status;
 		if (!status)
 			cam_vfe_bus_ver3_get_constraint_errors(bus_priv);
