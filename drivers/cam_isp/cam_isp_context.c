@@ -5794,6 +5794,11 @@ static int __cam_isp_ctx_get_isp_info(int32_t dev_hdl, void *data)
 
 	ctx = (struct cam_context *)cam_get_device_priv(dev_hdl);
 
+	if (!ctx) {
+		CAM_ERR(CAM_ISP, "Cannot get context for handle %d", dev_hdl);
+		return -EINVAL;
+	}
+
 	isp_ctx = (struct cam_isp_context *)ctx->ctx_priv;
 
 	isp_dev->state = isp_ctx->substate_activated;
