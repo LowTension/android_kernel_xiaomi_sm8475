@@ -83,6 +83,7 @@ static int cam_cci_init_master(struct cci_device *cci_dev,
 
 		cci_dev->cci_master_info[master].status = 0;
 		cci_dev->cci_master_info[master].is_initilized = true;
+		cci_dev->is_burst_read[master] = false;
 	}
 
 	return 0;
