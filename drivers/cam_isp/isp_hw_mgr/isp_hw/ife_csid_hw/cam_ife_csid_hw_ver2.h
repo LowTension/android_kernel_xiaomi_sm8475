@@ -128,37 +128,42 @@ struct cam_ife_csid_ver2_camif_data {
 /*
  * struct cam_ife_csid_ver2_path_cfg: place holder for path parameters
  *
- * @camif_data:          CAMIF data
- * @error_ts:            Error timestamp
- * @cid:                 cid value for path
- * @in_format:           input format
- * @out_format:          output format
- * @start_pixel:         start pixel for horizontal crop
- * @end_pixel:           end pixel for horizontal  crop
- * @start_line:          start line for vertical crop
- * @end_line:            end line for vertical crop
- * @width:               width of incoming data
- * @height:              height of incoming data
- * @master_idx:          master idx
- * @horizontal_bin:      horizontal binning enable/disable on path
- * @vertical_bin:        vertical binning enable/disable on path
- * @qcfa_bin    :        qcfa binning enable/disable on path
- * @hor_ver_bin :        horizontal vertical binning enable/disable on path
- * @num_bytes_out:       Number of bytes out
- * @irq_handle:          IRQ handle
- * @err_irq_handle:      Error IRQ handle
- * @discard_irq_handle:  IRQ handle for SOF when discarding initial frames
- * @irq_reg_idx:         IRQ Reg index
- * @sof_cnt:             SOF counter
- * @num_frames_discard:  number of frames to discard
- * @sync_mode   :        Sync mode--> master/slave/none
- * @vfr_en   :           flag to indicate if variable frame rate is enabled
- * @frame_id_dec_en:     flag to indicate if frame id decoding is enabled
- * @crop_enable:         flag to indicate crop enable
- * @drop_enable:         flag to indicate drop enable
- * @discard_init_frames: discard initial frames
- * @en_secondary_evt:    Enable secondary evt for this path, to notify
- *                       hw manager
+ * @camif_data:             CAMIF data
+ * @error_ts:               Error timestamp
+ * @cid:                    cid value for path
+ * @in_format:              input format
+ * @out_format:             output format
+ * @start_pixel:            start pixel for horizontal crop
+ * @end_pixel:              end pixel for horizontal  crop
+ * @start_line:             start line for vertical crop
+ * @end_line:               end line for vertical crop
+ * @width:                  width of incoming data
+ * @height:                 height of incoming data
+ * @master_idx:             master idx
+ * @horizontal_bin:         horizontal binning enable/disable on path
+ * @vertical_bin:           vertical binning enable/disable on path
+ * @qcfa_bin    :           qcfa binning enable/disable on path
+ * @hor_ver_bin :           horizontal vertical binning enable/disable on path
+ * @num_bytes_out:          Number of bytes out
+ * @irq_handle:             IRQ handle
+ * @err_irq_handle:         Error IRQ handle
+ * @discard_irq_handle:     IRQ handle for SOF when discarding initial frames
+ * @irq_reg_idx:            IRQ Reg index
+ * @sof_cnt:                SOF counter
+ * @num_frames_discard:     number of frames to discard
+ * @sync_mode   :           Sync mode--> master/slave/none
+ * @vfr_en   :              flag to indicate if variable frame rate is enabled
+ * @frame_id_dec_en:        flag to indicate if frame id decoding is enabled
+ * @crop_enable:            flag to indicate crop enable
+ * @drop_enable:            flag to indicate drop enable
+ * @discard_init_frames:    discard initial frames
+ * @skip_discard_frame_cfg: Skip handling discard config, the blob order between
+ *                          discard config and dynamic switch update cannot be gauranteed
+ *                          If we know the number of paths to avoid configuring discard
+ *                          for before processing discard config we can skip it for
+ *                          the corresponding paths
+ * @en_secondary_evt:       Enable secondary evt for this path, to notify
+ *                          hw manager
  *
  */
 struct cam_ife_csid_ver2_path_cfg {
@@ -193,6 +198,7 @@ struct cam_ife_csid_ver2_path_cfg {
 	bool                                drop_enable;
 	bool                                handle_camif_irq;
 	bool                                discard_init_frames;
+	bool                                skip_discard_frame_cfg;
 	bool                                en_secondary_evt;
 };
 

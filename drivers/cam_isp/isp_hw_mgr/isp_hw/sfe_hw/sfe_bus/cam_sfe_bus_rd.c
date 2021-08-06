@@ -80,10 +80,10 @@ struct cam_sfe_bus_rd_common_data {
 };
 
 struct cam_sfe_bus_rd_rm_resource_data {
-	uint32_t             index;
 	struct cam_sfe_bus_rd_common_data            *common_data;
 	struct cam_sfe_bus_rd_reg_offset_bus_client  *hw_regs;
 	void                *ctx;
+	uint32_t             index;
 	uint32_t             min_vbi;
 	uint32_t             fs_mode;
 	uint32_t             hbi_count;
@@ -96,10 +96,11 @@ struct cam_sfe_bus_rd_rm_resource_data {
 	uint32_t             burst_len;
 	uint32_t             en_cfg;
 	uint32_t             input_if_cmd;
-	bool                 enable_caching;
 	uint32_t             cache_cfg;
 	uint32_t             current_scid;
 	uint32_t             offset;
+	bool                 enable_caching;
+	bool                 enable_disable_cfg_done;
 };
 
 struct cam_sfe_bus_rd_data {
@@ -405,6 +406,7 @@ static int cam_sfe_bus_acquire_rm(
 	rsrc_data->latency_buf_allocation =
 		BUS_RD_DEFAULT_LATENCY_BUF_ALLOC;
 	rsrc_data->enable_caching =  false;
+	rsrc_data->enable_disable_cfg_done = false;
 	rsrc_data->offset = 0;
 	/* Default register value */
 	rsrc_data->cache_cfg = 0x20;
@@ -460,7 +462,10 @@ static int cam_sfe_bus_start_rm(struct cam_isp_resource_node *rm_res)
 		rm_data->hw_regs->unpacker_cfg);
 	cam_io_w_mb(rm_data->latency_buf_allocation, common_data->mem_base +
 		rm_data->hw_regs->latency_buf_allocation);
-	cam_io_w_mb(0x1, common_data->mem_base + rm_data->hw_regs->cfg);
+
+	/* Ignore if already configured via CDM */
+	if (!rm_data->enable_disable_cfg_done)
+		cam_io_w_mb(0x1, common_data->mem_base + rm_data->hw_regs->cfg);
 
 	rm_res->res_state = CAM_ISP_RESOURCE_STATE_STREAMING;
 
@@ -487,6 +492,7 @@ static int cam_sfe_bus_stop_rm(struct cam_isp_resource_node *rm_res)
 
 	rm_res->res_state = CAM_ISP_RESOURCE_STATE_RESERVED;
 	rsrc_data->enable_caching =  false;
+	rsrc_data->enable_disable_cfg_done = false;
 	rsrc_data->offset = 0;
 
 	CAM_DBG(CAM_SFE, "SFE:%d RM:%d stopped",
@@ -1474,6 +1480,9 @@ static int cam_sfe_bus_rd_update_rm_core_cfg(
 		}
 
 		rm_data = sfe_bus_rd_data->rm_res[i]->res_priv;
+		/* To avoid AHB write @ stream on */
+		rm_data->enable_disable_cfg_done = true;
+
 		CAM_SFE_ADD_REG_VAL_PAIR(reg_val_pair, j,
 			rm_data->hw_regs->cfg, enable_disable);
 		CAM_DBG(CAM_SFE, "SFE:%d RM:%d cfg:0x%x",

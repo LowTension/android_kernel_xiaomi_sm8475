@@ -390,7 +390,30 @@ struct cam_ife_csid_offline_cmd_update_args {
  * @mup:                MUP for incoming VC of next frame
  */
 struct cam_ife_csid_mup_update_args {
-	uint32_t                           mup;
+	uint32_t mup;
+};
+
+/*
+ * struct cam_ife_csid_discard_frame_cfg_update:
+ *
+ * @reset_discard_cfg:  Set if discard config needs to be reset
+ * @num_exposures:      Number of current exposures for sHDR
+ */
+struct cam_ife_csid_discard_frame_cfg_update {
+	uint32_t num_exposures;
+	bool     reset_discard_cfg;
+};
+
+
+/*
+ * struct cam_ife_csid_mode_switch_update_args:
+ *
+ * @mup_args:         MUP related arguments
+ * @exp_update_args:  Exposure update arguments
+ */
+struct cam_ife_csid_mode_switch_update_args {
+	struct cam_ife_csid_mup_update_args          mup_args;
+	struct cam_ife_csid_discard_frame_cfg_update exp_update_args;
 };
 
 /*

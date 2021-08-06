@@ -7566,22 +7566,21 @@ static int cam_isp_blob_csid_discard_init_frame_update(
 }
 
 
-static int cam_isp_blob_csid_mup_update(
+static int cam_isp_blob_csid_dynamic_switch_update(
 	uint32_t                               blob_type,
 	struct cam_isp_generic_blob_info      *blob_info,
 	struct cam_isp_mode_switch_info       *mup_config,
 	struct cam_hw_prepare_update_args     *prepare)
 {
-	struct cam_ife_hw_mgr_ctx             *ctx = NULL;
-	struct cam_isp_hw_mgr_res             *hw_mgr_res;
-	struct cam_hw_intf                    *hw_intf;
-	struct cam_ife_csid_mup_update_args    csid_mup_upd_args;
-	struct cam_isp_prepare_hw_update_data *prepare_hw_data;
-	uint64_t                               mup_val = 0;
-	int                                    rc = -EINVAL;
-	uint32_t                               i;
+	struct cam_ife_hw_mgr_ctx                  *ctx = NULL;
+	struct cam_hw_intf                         *hw_intf;
+	struct cam_ife_csid_mode_switch_update_args csid_mup_upd_args;
+	struct cam_ife_hw_mgr                      *ife_hw_mgr;
+	struct cam_isp_prepare_hw_update_data      *prepare_hw_data;
+	int                                         i, rc = -EINVAL;
 
 	ctx = prepare->ctxt_to_hw_map;
+	ife_hw_mgr = ctx->hw_mgr;
 
 	CAM_DBG(CAM_ISP,
 		"csid mup value=%u", mup_config->mup);
@@ -7590,30 +7589,31 @@ static int cam_isp_blob_csid_mup_update(
 			prepare->priv;
 	prepare_hw_data->mup_en = true;
 
-	list_for_each_entry(hw_mgr_res, &ctx->res_list_ife_csid, list) {
-		for (i = 0; i < CAM_ISP_HW_SPLIT_MAX; i++) {
-			mup_val = 0;
-			if (!hw_mgr_res->hw_res[i])
-				continue;
-			if (i == CAM_ISP_HW_SPLIT_RIGHT)
-				continue;
-			mup_val = mup_config->mup;
-			hw_intf = hw_mgr_res->hw_res[i]->hw_intf;
-			if (hw_intf && hw_intf->hw_ops.process_cmd) {
-				csid_mup_upd_args.mup = mup_val;
-				CAM_DBG(CAM_ISP, "i= %d mup=%llu\n ctx %d",
-				i, csid_mup_upd_args.mup, ctx->ctx_index);
+	csid_mup_upd_args.mup_args.mup = mup_config->mup;
+	for (i = 0; i < ctx->num_base; i++) {
+		if (ctx->base[i].hw_type != CAM_ISP_HW_TYPE_CSID)
+			continue;
 
-				rc = hw_intf->hw_ops.process_cmd(
-					hw_intf->hw_priv,
-					CAM_ISP_HW_CMD_CSID_MUP_UPDATE,
-					&csid_mup_upd_args,
-					sizeof(
-					struct cam_ife_csid_mup_update_args));
-				if (rc)
-					CAM_ERR(CAM_ISP, "MUP Update failed");
-			} else
-				CAM_ERR(CAM_ISP, "NULL hw_intf!");
+		if (ctx->base[i].split_id != CAM_ISP_HW_SPLIT_LEFT)
+			continue;
+
+		/* For sHDR dynamic switch update num starting exposures to CSID for INIT */
+		if ((prepare_hw_data->packet_opcode_type == CAM_ISP_PACKET_INIT_DEV) &&
+			(ctx->flags.is_sfe_shdr)) {
+			csid_mup_upd_args.exp_update_args.reset_discard_cfg = true;
+			csid_mup_upd_args.exp_update_args.num_exposures =
+				mup_config->num_expoures;
+		}
+
+		hw_intf = ife_hw_mgr->csid_devices[ctx->base[i].idx];
+		if (hw_intf && hw_intf->hw_ops.process_cmd) {
+			rc = hw_intf->hw_ops.process_cmd(
+				hw_intf->hw_priv,
+				CAM_ISP_HW_CMD_CSID_DYNAMIC_SWITCH_UPDATE,
+				&csid_mup_upd_args,
+				sizeof(struct cam_ife_csid_mode_switch_update_args));
+			if (rc)
+				CAM_ERR(CAM_ISP, "Dynamic switch update failed");
 		}
 	}
 
@@ -8962,8 +8962,8 @@ static int cam_isp_packet_generic_blob_handler(void *user_data,
 
 		mup_config = (struct cam_isp_mode_switch_info *)blob_data;
 
-		rc = cam_isp_blob_csid_mup_update(blob_type, blob_info,
-			mup_config, prepare);
+		rc = cam_isp_blob_csid_dynamic_switch_update(
+			blob_type, blob_info, mup_config, prepare);
 		if (rc)
 			CAM_ERR(CAM_ISP, "MUP Update Failed");
 	}

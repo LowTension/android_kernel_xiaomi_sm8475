@@ -410,6 +410,7 @@ static inline void cam_ife_csid_ver2_reset_discard_frame_cfg(
 
 	/* Reset discard config params */
 	path_cfg->discard_init_frames = false;
+	path_cfg->skip_discard_frame_cfg = false;
 	path_cfg->num_frames_discard = 0;
 	path_cfg->sof_cnt = 0;
 
@@ -1873,6 +1874,7 @@ static int cam_ife_csid_ver2_disable_path(
 
 	/* Reset frame drop fields at stream off */
 	path_cfg->discard_init_frames = false;
+	path_cfg->skip_discard_frame_cfg = false;
 	path_cfg->num_frames_discard = 0;
 	path_cfg->sof_cnt = 0;
 	return rc;
@@ -4428,21 +4430,45 @@ static int cam_ife_csid_ver2_print_hbi_vbi(
 	return 0;
 }
 
-static int cam_ife_csid_ver2_set_mup_config(
-	struct cam_ife_csid_ver2_hw          *csid_hw,
-	void *cmd_args)
+static int cam_ife_csid_ver2_set_dynamic_switch_config(
+	struct cam_ife_csid_ver2_hw *csid_hw,
+	void                        *cmd_args)
 {
-	struct cam_ife_csid_mup_update_args *mup_update = NULL;
+	struct cam_ife_csid_mode_switch_update_args *switch_update = NULL;
 
 	if (!csid_hw)
 		return -EINVAL;
 
-	mup_update =
-		(struct cam_ife_csid_mup_update_args *)cmd_args;
+	switch_update =
+		(struct cam_ife_csid_mode_switch_update_args *)cmd_args;
 
-	csid_hw->rx_cfg.mup = mup_update->mup;
-	CAM_INFO(CAM_ISP, "CSID[%u] MUP %u", csid_hw->hw_intf->hw_idx,
-		csid_hw->rx_cfg.mup);
+	csid_hw->rx_cfg.mup = switch_update->mup_args.mup;
+	CAM_DBG(CAM_ISP, "CSID[%u] MUP %u",
+		csid_hw->hw_intf->hw_idx, csid_hw->rx_cfg.mup);
+
+	/* Handle number of frames to initially drop based on num starting exposures */
+	if (switch_update->exp_update_args.reset_discard_cfg) {
+		struct cam_ife_csid_discard_frame_cfg_update *exp_update_args;
+		struct cam_ife_csid_ver2_path_cfg            *path_cfg;
+		struct cam_isp_resource_node                 *res;
+		int i;
+
+		exp_update_args = &switch_update->exp_update_args;
+		for (i = CAM_IFE_PIX_PATH_RES_RDI_0; i <= CAM_IFE_PIX_PATH_RES_RDI_2; i++) {
+			res = &csid_hw->path_res[i];
+			path_cfg = (struct cam_ife_csid_ver2_path_cfg *)res->res_priv;
+			if ((i - CAM_IFE_PIX_PATH_RES_RDI_0) >= exp_update_args->num_exposures) {
+				path_cfg->skip_discard_frame_cfg = true;
+				if (path_cfg->discard_init_frames) {
+					path_cfg->discard_init_frames = false;
+					path_cfg->num_frames_discard = 0;
+					atomic_dec(&csid_hw->discard_frame_per_path);
+					CAM_DBG(CAM_ISP, "CSID[%u] Reset discard config for %s",
+						csid_hw->hw_intf->hw_idx, res->res_name);
+				}
+			}
+		}
+	}
 
 	return 0;
 }
@@ -4524,9 +4550,9 @@ static int cam_ife_csid_ver2_set_discard_frame_cfg(
 	/* Handle first stream on and consecutive streamons post flush */
 	if ((res->res_state == CAM_ISP_RESOURCE_STATE_RESERVED) ||
 		(res->res_state == CAM_ISP_RESOURCE_STATE_INIT_HW)) {
-		/* Skip if already set */
+		/* Skip if already set or need to skip based on stream on exposures */
 		path_cfg = (struct cam_ife_csid_ver2_path_cfg *)res->res_priv;
-		if (path_cfg->discard_init_frames)
+		if (path_cfg->skip_discard_frame_cfg || path_cfg->discard_init_frames)
 			goto end;
 
 		path_cfg->discard_init_frames = true;
@@ -4602,8 +4628,8 @@ static int cam_ife_csid_ver2_process_cmd(void *hw_priv,
 		rc = cam_ife_csid_ver2_program_offline_go_cmd(
 			csid_hw, cmd_args, arg_size);
 		break;
-	case CAM_ISP_HW_CMD_CSID_MUP_UPDATE:
-		rc = cam_ife_csid_ver2_set_mup_config(csid_hw, cmd_args);
+	case CAM_ISP_HW_CMD_CSID_DYNAMIC_SWITCH_UPDATE:
+		rc = cam_ife_csid_ver2_set_dynamic_switch_config(csid_hw, cmd_args);
 		break;
 	case CAM_ISP_HW_CMD_CSID_CHANGE_HALT_MODE:
 		break;
