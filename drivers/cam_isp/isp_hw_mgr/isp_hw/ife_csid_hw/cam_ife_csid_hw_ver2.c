@@ -502,6 +502,13 @@ static int cam_ife_csid_ver2_discard_sof_pix_bottom_half(
 	CAM_DBG(CAM_ISP, "CSID[%u] Discard frame on %s path, num SOFs: %u",
 		csid_hw->hw_intf->hw_idx, res->res_name, path_cfg->sof_cnt);
 
+	spin_lock(&csid_hw->lock_state);
+	if (csid_hw->hw_info->hw_state != CAM_HW_STATE_POWER_UP) {
+		CAM_ERR(CAM_ISP, "CSID[%d] powered down state",
+			csid_hw->hw_intf->hw_idx);
+		goto end;
+	}
+
 	/* Check with requested number of frames to be dropped */
 	if (path_cfg->sof_cnt == path_cfg->num_frames_discard) {
 		if (path_cfg->sync_mode == CAM_ISP_HW_SYNC_MASTER ||
@@ -517,7 +524,8 @@ static int cam_ife_csid_ver2_discard_sof_pix_bottom_half(
 		}
 		cam_ife_csid_ver2_reset_discard_frame_cfg(res->res_name, csid_hw, path_cfg);
 	}
-
+end:
+	spin_unlock(&csid_hw->lock_state);
 	return 0;
 }
 
@@ -555,6 +563,13 @@ static int cam_ife_csid_ver2_discard_sof_rdi_bottom_half(
 	CAM_DBG(CAM_ISP, "CSID[%u] Discard frame on %s path, num SOFs: %u",
 		csid_hw->hw_intf->hw_idx, res->res_name, path_cfg->sof_cnt);
 
+	spin_lock(&csid_hw->lock_state);
+	if (csid_hw->hw_info->hw_state != CAM_HW_STATE_POWER_UP) {
+		CAM_ERR(CAM_ISP, "CSID[%d] powered down state",
+			csid_hw->hw_intf->hw_idx);
+		goto end;
+	}
+
 	/* Check with requested number of frames to be dropped */
 	if (path_cfg->sof_cnt == path_cfg->num_frames_discard) {
 		val = cam_io_r_mb(base + path_reg->ctrl_addr);
@@ -567,7 +582,8 @@ static int cam_ife_csid_ver2_discard_sof_rdi_bottom_half(
 
 		cam_ife_csid_ver2_reset_discard_frame_cfg(res->res_name, csid_hw, path_cfg);
 	}
-
+end:
+	spin_unlock(&csid_hw->lock_state);
 	return 0;
 }
 
@@ -958,6 +974,12 @@ static int cam_ife_csid_ver2_rx_err_bottom_half(
 
 	irq_status = payload->irq_reg_val[CAM_IFE_CSID_IRQ_REG_RX] &
 			csi2_reg->fatal_err_mask;
+	spin_lock(&csid_hw->lock_state);
+	if (csid_hw->hw_info->hw_state != CAM_HW_STATE_POWER_UP) {
+		CAM_ERR(CAM_ISP, "CSID[%d] powered down state",
+			csid_hw->hw_intf->hw_idx);
+		goto end;
+	}
 
 	if (irq_status) {
 		bool lane_overflow = false;
@@ -1088,7 +1110,8 @@ static int cam_ife_csid_ver2_rx_err_bottom_half(
 	if (event_type)
 		cam_ife_csid_ver2_handle_event_err(csid_hw,
 			rx_irq_status, event_type, NULL);
-
+end:
+	spin_unlock(&csid_hw->lock_state);
 	cam_ife_csid_ver2_put_evt_payload(csid_hw, &payload,
 		&csid_hw->rx_free_payload_list,
 		&csid_hw->rx_payload_lock);
@@ -1428,6 +1451,12 @@ static int cam_ife_csid_ver2_ipp_bottom_half(
 
 	path_reg = csid_reg->path_reg[res->res_id];
 	err_mask = path_reg->fatal_err_mask | path_reg->non_fatal_err_mask;
+	spin_lock(&csid_hw->lock_state);
+	if (csid_hw->hw_info->hw_state != CAM_HW_STATE_POWER_UP) {
+		CAM_ERR(CAM_ISP, "CSID[%d] powered down state",
+			csid_hw->hw_intf->hw_idx);
+		goto end;
+	}
 
 	cam_ife_csid_ver2_parse_path_irq_status(
 		csid_hw,
@@ -1464,7 +1493,8 @@ static int cam_ife_csid_ver2_ipp_bottom_half(
 			irq_status_ipp,
 			err_type,
 			res);
-
+end:
+	spin_unlock(&csid_hw->lock_state);
 	cam_ife_csid_ver2_put_evt_payload(csid_hw, &payload,
 			&csid_hw->path_free_payload_list,
 			&csid_hw->path_payload_lock);
@@ -1515,6 +1545,12 @@ static int cam_ife_csid_ver2_ppp_bottom_half(
 	CAM_DBG(CAM_ISP, "CSID[%u] PPP status:0x%x", csid_hw->hw_intf->hw_idx,
 		irq_status_ppp);
 
+	spin_lock(&csid_hw->lock_state);
+	if (csid_hw->hw_info->hw_state != CAM_HW_STATE_POWER_UP) {
+		CAM_ERR(CAM_ISP, "CSID[%d] powered down state",
+			csid_hw->hw_intf->hw_idx);
+		goto end;
+	}
 	cam_ife_csid_ver2_parse_path_irq_status(
 		csid_hw, CAM_IFE_CSID_IRQ_REG_PPP,
 		err_mask, irq_status_ppp);
@@ -1548,7 +1584,8 @@ static int cam_ife_csid_ver2_ppp_bottom_half(
 			irq_status_ppp,
 			err_type,
 			res);
-
+end:
+	spin_unlock(&csid_hw->lock_state);
 	cam_ife_csid_ver2_put_evt_payload(csid_hw, &payload,
 			&csid_hw->path_free_payload_list,
 			&csid_hw->path_payload_lock);
@@ -1606,6 +1643,14 @@ static int cam_ife_csid_ver2_rdi_bottom_half(
 	err_mask = rdi_reg->non_fatal_err_mask |
 		rdi_reg->fatal_err_mask;
 
+	spin_lock(&csid_hw->lock_state);
+	if (csid_hw->hw_info->hw_state != CAM_HW_STATE_POWER_UP) {
+		CAM_ERR(CAM_ISP, "CSID[%d] powered down state",
+			csid_hw->hw_intf->hw_idx);
+		spin_unlock(&csid_hw->lock_state);
+		goto end;
+	}
+
 	cam_ife_csid_ver2_parse_path_irq_status(csid_hw,
 		path_cfg->irq_reg_idx,
 		err_mask, irq_status_rdi);
@@ -1636,6 +1681,7 @@ static int cam_ife_csid_ver2_rdi_bottom_half(
 		err_type |= CAM_ISP_HW_ERROR_CSID_FRAME_SIZE;
 	}
 
+	spin_unlock(&csid_hw->lock_state);
 	if (err_type) {
 
 		cam_ife_csid_ver2_handle_event_err(csid_hw,
@@ -3887,7 +3933,6 @@ static int cam_ife_csid_ver2_disable_core(
 	struct cam_hw_soc_info                   *soc_info;
 	struct cam_csid_soc_private              *soc_private;
 	int rc = 0;
-	unsigned long                             flags;
 
 	/* Check for refcount */
 	if (!csid_hw->hw_info->open_count) {
@@ -3938,15 +3983,15 @@ static int cam_ife_csid_ver2_disable_core(
 			top_reg->dual_csid_cfg0_addr[csid_hw->hw_intf->hw_idx]);
 	}
 
+	spin_lock_bh(&csid_hw->lock_state);
+	csid_hw->flags.device_enabled = false;
+	csid_hw->hw_info->hw_state = CAM_HW_STATE_POWER_DOWN;
+	spin_unlock_bh(&csid_hw->lock_state);
 	rc = cam_ife_csid_disable_soc_resources(soc_info);
 	if (rc)
 		CAM_ERR(CAM_ISP, "CSID:%d Disable CSID SOC failed",
 			csid_hw->hw_intf->hw_idx);
 
-	spin_lock_irqsave(&csid_hw->lock_state, flags);
-	csid_hw->flags.device_enabled = false;
-	spin_unlock_irqrestore(&csid_hw->lock_state, flags);
-	csid_hw->hw_info->hw_state = CAM_HW_STATE_POWER_DOWN;
 	csid_hw->counters.error_irq_count = 0;
 
 	return rc;
@@ -4139,6 +4184,11 @@ int cam_ife_csid_ver2_stop(void *hw_priv,
 	CAM_DBG(CAM_ISP, "CSID:%d num_res %d", csid_hw->hw_intf->hw_idx,
 		csid_stop->num_res);
 
+	reset.reset_type = (csid_hw->flags.fatal_err_detected) ? CAM_IFE_CSID_RESET_GLOBAL :
+		CAM_IFE_CSID_RESET_PATH;
+	cam_ife_csid_ver2_reset(hw_priv, &reset,
+		sizeof(struct cam_csid_reset_cfg_args));
+
 	atomic_set(&csid_hw->discard_frame_per_path, 0);
 	mutex_lock(&csid_hw->hw_info->hw_mutex);
 	for (i = 0; i < csid_stop->num_res; i++) {
@@ -4168,11 +4218,6 @@ int cam_ife_csid_ver2_stop(void *hw_priv,
 
 	cam_ife_csid_ver2_disable_csi2(csid_hw);
 	mutex_unlock(&csid_hw->hw_info->hw_mutex);
-
-	reset.reset_type = (csid_hw->flags.fatal_err_detected) ? CAM_IFE_CSID_RESET_GLOBAL :
-		CAM_IFE_CSID_RESET_PATH;
-	cam_ife_csid_ver2_reset(hw_priv, &reset,
-		sizeof(struct cam_csid_reset_cfg_args));
 
 	csid_hw->flags.device_enabled = false;
 	return rc;
