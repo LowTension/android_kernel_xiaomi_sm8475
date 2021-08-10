@@ -35,7 +35,8 @@ static int32_t cam_flash_driver_cmd(struct cam_flash_ctrl *fctrl,
 		struct cam_sensor_acquire_dev flash_acq_dev;
 		struct cam_create_dev_hdl bridge_params;
 
-		CAM_DBG(CAM_FLASH, "CAM_ACQUIRE_DEV");
+		CAM_INFO(CAM_FLASH, "CAM_ACQUIRE_DEV for dev_hdl: 0x%x",
+			fctrl->bridge_intf.device_hdl);
 
 		if (fctrl->flash_state != CAM_FLASH_STATE_INIT) {
 			CAM_ERR(CAM_FLASH,
@@ -86,7 +87,8 @@ static int32_t cam_flash_driver_cmd(struct cam_flash_ctrl *fctrl,
 		break;
 	}
 	case CAM_RELEASE_DEV: {
-		CAM_DBG(CAM_FLASH, "CAM_RELEASE_DEV");
+		CAM_INFO(CAM_FLASH, "CAM_RELEASE_DEV for dev_hdl: 0x%x",
+			fctrl->bridge_intf.device_hdl);
 		if ((fctrl->flash_state == CAM_FLASH_STATE_INIT) ||
 			(fctrl->flash_state == CAM_FLASH_STATE_START)) {
 			CAM_WARN(CAM_FLASH,
@@ -154,7 +156,8 @@ static int32_t cam_flash_driver_cmd(struct cam_flash_ctrl *fctrl,
 		break;
 	}
 	case CAM_START_DEV: {
-		CAM_DBG(CAM_FLASH, "CAM_START_DEV");
+		CAM_INFO(CAM_FLASH, "CAM_START_DEV for dev_hdl: 0x%x",
+			fctrl->bridge_intf.device_hdl);
 		if ((fctrl->flash_state == CAM_FLASH_STATE_INIT) ||
 			(fctrl->flash_state == CAM_FLASH_STATE_START)) {
 			CAM_WARN(CAM_FLASH,
@@ -168,7 +171,8 @@ static int32_t cam_flash_driver_cmd(struct cam_flash_ctrl *fctrl,
 		break;
 	}
 	case CAM_STOP_DEV: {
-		CAM_DBG(CAM_FLASH, "CAM_STOP_DEV ENTER");
+		CAM_INFO(CAM_FLASH, "CAM_STOP_DEV ENTER for dev_hdl: 0x%x",
+			fctrl->bridge_intf.device_hdl);
 		if (fctrl->flash_state != CAM_FLASH_STATE_START) {
 			CAM_WARN(CAM_FLASH,
 				"Cannot apply Stop dev: Prev state is: %d",
