@@ -957,7 +957,7 @@ static int cam_custom_hw_mgr_acquire_get_unified_dev_str(
 	port_info->vc[0]           =  in->vc[0];
 	port_info->dt[0]           =  in->dt[0];
 	port_info->num_valid_vc_dt =  in->num_valid_vc_dt;
-	port_info->format          =  in->format;
+	port_info->format[0]       =  in->format;
 	port_info->test_pattern    =  in->test_pattern;
 	port_info->usage_type      =  in->usage_type;
 	port_info->left_start      =  in->left_start;

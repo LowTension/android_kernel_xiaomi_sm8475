@@ -4456,7 +4456,7 @@ static int cam_ife_mgr_acquire_get_unified_structure_v0(
 	in_port->vc[0]           =  in->vc;
 	in_port->dt[0]           =  in->dt;
 	in_port->num_valid_vc_dt = 1;
-	in_port->format          =  in->format;
+	in_port->format[0]       =  in->format;
 	in_port->test_pattern    =  in->test_pattern;
 	in_port->usage_type      =  in->usage_type;
 	in_port->left_start      =  in->left_start;
@@ -4580,7 +4580,11 @@ static int cam_ife_mgr_acquire_get_unified_structure_v2(
 		in_port->dt[i]        =  in->dt[i];
 	}
 
-	in_port->format                   =  in->format;
+	for (i = 0; i < in_port->num_valid_vc_dt; i++) {
+		in_port->format[i] = (in->format >> (i * CAM_IFE_DECODE_FORMAT_SHIFT_VAL)) &
+			CAM_IFE_DECODE_FORMAT_MASK;
+	}
+
 	in_port->test_pattern             =  in->test_pattern;
 	in_port->usage_type               =  in->usage_type;
 	in_port->left_start               =  in->left_start;
@@ -4935,7 +4939,7 @@ void cam_ife_mgr_acquire_get_unified_dev_str(struct cam_isp_in_port_info *in,
 	gen_port_info->vc[0]           =  in->vc;
 	gen_port_info->dt[0]           =  in->dt;
 	gen_port_info->num_valid_vc_dt = 1;
-	gen_port_info->format          =  in->format;
+	gen_port_info->format[0]       =  in->format;
 	gen_port_info->test_pattern    =  in->test_pattern;
 	gen_port_info->usage_type      =  in->usage_type;
 	gen_port_info->left_start      =  in->left_start;

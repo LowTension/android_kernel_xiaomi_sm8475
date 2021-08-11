@@ -100,7 +100,7 @@ struct cam_isp_in_port_generic_info {
 	uint32_t                        vc[CAM_ISP_VC_DT_CFG];
 	uint32_t                        dt[CAM_ISP_VC_DT_CFG];
 	uint32_t                        num_valid_vc_dt;
-	uint32_t                        format;
+	uint32_t                        format[CAM_ISP_VC_DT_CFG];
 	uint32_t                        test_pattern;
 	uint32_t                        usage_type;
 	uint32_t                        left_start;

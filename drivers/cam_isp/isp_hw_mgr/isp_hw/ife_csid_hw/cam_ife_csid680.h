@@ -1105,6 +1105,7 @@ static struct cam_ife_csid_ver2_common_reg_info
 	.dt_shift_val                            = 16,
 	.crop_shift_val                          = 16,
 	.decode_format_shift_val                 = 12,
+	.decode_format1_supported                = false,
 	.frame_id_decode_en_shift_val            = 1,
 	.multi_vcdt_vc1_shift_val                = 2,
 	.multi_vcdt_dt1_shift_val                = 7,

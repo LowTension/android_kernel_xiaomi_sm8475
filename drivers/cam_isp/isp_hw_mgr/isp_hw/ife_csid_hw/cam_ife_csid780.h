@@ -1130,6 +1130,8 @@ static struct cam_ife_csid_ver2_common_reg_info
 	.dt_shift_val                            = 16,
 	.crop_shift_val                          = 16,
 	.decode_format_shift_val                 = 12,
+	.decode_format1_shift_val                = 16,
+	.decode_format1_supported                = true,
 	.frame_id_decode_en_shift_val            = 1,
 	.multi_vcdt_vc1_shift_val                = 2,
 	.multi_vcdt_dt1_shift_val                = 7,
@@ -1176,6 +1178,7 @@ static struct cam_ife_csid_ver2_common_reg_info
 	.format_measure_width_mask_val           = 0xFFFF,
 	.format_measure_width_shift_val          = 0x0,
 	.top_buf_done_irq_mask                   = 0x2000,
+	.decode_format_payload_only              = 0xF,
 };
 
 static struct cam_ife_csid_ver2_top_reg_info
