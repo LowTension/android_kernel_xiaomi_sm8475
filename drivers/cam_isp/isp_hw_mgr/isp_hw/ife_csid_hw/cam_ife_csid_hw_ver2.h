@@ -40,6 +40,7 @@
 
 #define CAM_IFE_CSID_VER2_PAYLOAD_MAX           256
 
+#define IFE_CSID_VER2_PATH_ERROR_ILLEGAL_PROGRAM                 BIT(0)
 #define IFE_CSID_VER2_PATH_ERROR_FIFO_OVERFLOW                   BIT(2)
 #define IFE_CSID_VER2_PATH_CAMIF_EOF                             BIT(3)
 #define IFE_CSID_VER2_PATH_CAMIF_SOF                             BIT(4)
@@ -378,12 +379,15 @@ struct cam_ife_csid_ver2_common_reg_info {
 	uint32_t decode_format_shift_val;
 	uint32_t decode_format1_shift_val;
 	bool     decode_format1_supported;
+	uint32_t decode_format_mask;
 	uint32_t start_mode_shift_val;
 	uint32_t start_cmd_shift_val;
 	uint32_t path_en_shift_val;
 	uint32_t dt_id_shift_val;
 	uint32_t vc_shift_val;
+	uint32_t vc_mask;
 	uint32_t dt_shift_val;
+	uint32_t dt_mask;
 	uint32_t crop_shift_val;
 	uint32_t debug_frm_drop_rst_shift_val;
 	uint32_t debug_timestamp_rst_shift_val;
@@ -447,6 +451,7 @@ struct cam_ife_csid_ver2_common_reg_info {
 	uint32_t global_reset;
 	uint32_t rup_supported;
 	uint32_t only_master_rup;
+
 	/* Masks */
 	uint32_t pxl_cnt_mask;
 	uint32_t line_cnt_mask;
