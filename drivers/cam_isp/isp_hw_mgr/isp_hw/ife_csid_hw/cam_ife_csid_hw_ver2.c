@@ -55,6 +55,28 @@ static void cam_ife_csid_ver2_print_debug_reg_status(
 	struct cam_ife_csid_ver2_hw *csid_hw,
 	struct cam_isp_resource_node    *res);
 
+static bool cam_ife_csid_ver2_disable_sof_retime(
+	struct cam_ife_csid_ver2_hw     *csid_hw,
+	struct cam_isp_resource_node    *res)
+{
+	struct cam_ife_csid_ver2_reg_info  *csid_reg = (struct cam_ife_csid_ver2_reg_info *)
+							    csid_hw->core_info->csid_reg;
+	struct cam_ife_csid_ver2_path_cfg  *path_cfg = (struct cam_ife_csid_ver2_path_cfg *)
+							    res->res_priv;
+	const struct cam_ife_csid_ver2_path_reg_info *path_reg = csid_reg->path_reg[res->res_id];
+
+	if (!(path_reg->capabilities & CAM_IFE_CSID_CAP_SOF_RETIME_DIS))
+		return false;
+
+	if (path_cfg->sfe_shdr || path_cfg->lcr_en)
+		return true;
+
+	if (csid_hw->flags.rdi_lcr_en && res->res_id == CAM_IFE_PIX_PATH_RES_PPP)
+		return true;
+
+	return false;
+}
+
 static int cam_ife_csid_ver2_set_debug(
 	struct cam_ife_csid_ver2_hw *csid_hw,
 	uint32_t debug_val)
@@ -2778,7 +2800,13 @@ static int cam_ife_csid_ver2_init_config_rdi_path(
 			(cmn_reg->timestamp_strobe_val <<
 				cmn_reg->timestamp_stb_sel_shift_val);
 
+	if (cam_ife_csid_ver2_disable_sof_retime(csid_hw, res))
+		cfg0 |= 1 << path_reg->sof_retiming_dis_shift;
+
 	cam_io_w_mb(cfg0, mem_base + path_reg->cfg0_addr);
+
+	CAM_DBG(CAM_ISP, "CSID[%d] %s cfg0_addr 0x%x",
+		csid_hw->hw_intf->hw_idx, res->res_name, cfg0);
 
 	/*Configure Multi VC DT combo */
 	if (cid_data->vc_dt[CAM_IFE_CSID_MULTI_VC_DT_GRP_1].valid) {
@@ -2937,6 +2965,9 @@ static int cam_ife_csid_ver2_init_config_pxl_path(
 		cfg0 |= (1 << path_reg->timestamp_en_shift_val) |
 			(cmn_reg->timestamp_strobe_val <<
 				cmn_reg->timestamp_stb_sel_shift_val);
+
+	if (cam_ife_csid_ver2_disable_sof_retime(csid_hw, res))
+		cfg0 |= 1 << path_reg->sof_retiming_dis_shift;
 
 	CAM_DBG(CAM_ISP, "CSID[%d] res:%d cfg0_addr 0x%x",
 		csid_hw->hw_intf->hw_idx, res->res_id, cfg0);
@@ -5015,6 +5046,7 @@ static int cam_ife_csid_ver2_rdi_lcr_cfg(
 			csid_reg->top_reg->rdi_lcr_shift_val;
 
 	csid_hw->flags.rdi_lcr_en = true;
+	path_cfg->lcr_en = true;
 
 	CAM_DBG(CAM_ISP, "CSID[%u] %s top_cfg %u",
 		csid_hw->hw_intf->hw_idx, res->res_name, csid_hw->top_cfg.rdi_lcr);
