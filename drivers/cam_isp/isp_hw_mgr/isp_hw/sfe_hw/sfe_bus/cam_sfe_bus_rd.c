@@ -1648,7 +1648,7 @@ static int cam_sfe_bus_rd_process_cmd(
 	case CAM_ISP_HW_CMD_BUF_UPDATE_RM:
 		rc = cam_sfe_bus_rd_config_rm(priv, cmd_args, arg_size);
 		break;
-	case CAM_ISP_HW_CMD_GET_SECURE_MODE:
+	case CAM_ISP_HW_CMD_GET_RM_SECURE_MODE:
 		rc = cam_sfe_bus_rd_get_secure_mode(priv, cmd_args, arg_size);
 		break;
 	case CAM_ISP_HW_CMD_FE_UPDATE_BUS_RD:
