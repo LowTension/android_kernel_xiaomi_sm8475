@@ -52,10 +52,11 @@
 #define V4L_EVENT_CAM_REQ_MGR_EVENT       (V4L2_EVENT_PRIVATE_START + 0)
 
 /* Specific event ids to get notified in user space */
-#define V4L_EVENT_CAM_REQ_MGR_SOF            0
-#define V4L_EVENT_CAM_REQ_MGR_ERROR          1
-#define V4L_EVENT_CAM_REQ_MGR_SOF_BOOT_TS    2
-#define V4L_EVENT_CAM_REQ_MGR_CUSTOM_EVT     3
+#define V4L_EVENT_CAM_REQ_MGR_SOF                                       0
+#define V4L_EVENT_CAM_REQ_MGR_ERROR                                     1
+#define V4L_EVENT_CAM_REQ_MGR_SOF_BOOT_TS                               2
+#define V4L_EVENT_CAM_REQ_MGR_CUSTOM_EVT                                3
+#define V4L_EVENT_CAM_REQ_MGR_NODE_EVENT                                4
 
 /* SOF Event status */
 #define CAM_REQ_MGR_SOF_EVENT_SUCCESS           0
@@ -519,10 +520,46 @@ struct cam_req_mgr_custom_msg {
 };
 
 /**
+ * Request Manager Node Msg Event Types
+ * @CAM_REQ_MGR_NO_EVENT                    : Event type not reported by the hardware
+ * @CAM_REQ_MGR_RETRY_EVENT                 : Retry request reported from the hardware
+ */
+#define CAM_REQ_MGR_NO_EVENT                             0
+#define CAM_REQ_MGR_RETRY_EVENT                          1
+
+/**
+ * Request Manager Node Msg Event Cause
+ * @CAM_REQ_MGR_CAUSE_UNREPORTED           : Event cause not reported by the hardware
+ * @CAM_REQ_MGR_JPEG_THUBNAIL_SIZE_ERROR   : JPEG Thumbnail encode size exceeds the threshold size
+ */
+#define CAM_REQ_MGR_CAUSE_UNREPORTED                     0
+#define CAM_REQ_MGR_JPEG_THUBNAIL_SIZE_ERROR             1
+
+/**
+* struct cam_req_mgr_node_msg
+* @device_hdl          : Device handle of the device reporting the error
+* @link_hdl            : link hdl for real time devices
+* @event_type          : Type of the event
+* @event_cause         : Cause of the event
+* @request_id          : Request id
+* @custom_data         : custom data
+* @reserved            : Reserved field
+*/
+struct cam_req_mgr_node_msg {
+	__s32 device_hdl;
+	__s32 link_hdl;
+	__u32 event_type;
+	__u32 event_cause;
+	__u64 request_id;
+	__u64 custom_data;
+	__u32 reserved[2];
+};
+
+/**
  * struct cam_req_mgr_message
  * @session_hdl: session to which the frame belongs to
  * @reserved: reserved field
- * @u: union which can either be error/frame/custom message
+ * @u: union which can either be error/frame/custom/node message
  */
 struct cam_req_mgr_message {
 	__s32 session_hdl;
@@ -531,6 +568,7 @@ struct cam_req_mgr_message {
 		struct cam_req_mgr_error_msg err_msg;
 		struct cam_req_mgr_frame_msg frame_msg;
 		struct cam_req_mgr_custom_msg custom_msg;
+		struct cam_req_mgr_node_msg node_msg;
 	} u;
 };
 #endif /* __UAPI_LINUX_CAM_REQ_MGR_H */
