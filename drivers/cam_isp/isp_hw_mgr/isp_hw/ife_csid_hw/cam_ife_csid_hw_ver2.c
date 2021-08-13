@@ -684,21 +684,7 @@ static int cam_ife_csid_ver2_rx_err_top_half(
 		return -ENODEV;
 	}
 
-	rc  = cam_ife_csid_ver2_get_evt_payload(csid_hw, &evt_payload,
-			&csid_hw->rx_free_payload_list,
-			&csid_hw->rx_payload_lock);
-	if (rc) {
-		for (i = 0; i < th_payload->num_registers; i++)
-			CAM_INFO(CAM_ISP, "CSID:%d status_%d: 0x%X",
-				csid_hw->hw_intf->hw_idx, i,
-				th_payload->evt_status_arr[i]);
-		return rc;
-	}
-
-	evt_payload->irq_reg_val[CAM_IFE_CSID_IRQ_REG_RX] =
-			th_payload->evt_status_arr[CAM_IFE_CSID_IRQ_REG_RX];
-
-	status = evt_payload->irq_reg_val[CAM_IFE_CSID_IRQ_REG_RX];
+	status = th_payload->evt_status_arr[CAM_IFE_CSID_IRQ_REG_RX];
 
 	if (status & csi2_reg->fatal_err_mask) {
 		csid_hw->flags.fatal_err_detected = true;
@@ -730,9 +716,20 @@ static int cam_ife_csid_ver2_rx_err_top_half(
 		}
 	}
 end:
-	th_payload->evt_payload_priv = evt_payload;
-
-	return 0;
+	rc  = cam_ife_csid_ver2_get_evt_payload(csid_hw, &evt_payload,
+			&csid_hw->rx_free_payload_list,
+			&csid_hw->rx_payload_lock);
+	if (rc) {
+		for (i = 0; i < th_payload->num_registers; i++)
+			CAM_INFO_RATE_LIMIT(CAM_ISP, "CSID:%d status_%d: 0x%X",
+				csid_hw->hw_intf->hw_idx, i,
+				th_payload->evt_status_arr[i]);
+	} else {
+		evt_payload->irq_reg_val[CAM_IFE_CSID_IRQ_REG_RX] =
+			th_payload->evt_status_arr[CAM_IFE_CSID_IRQ_REG_RX];
+		th_payload->evt_payload_priv = evt_payload;
+	}
+	return rc;
 }
 
 static int cam_ife_csid_ver2_handle_rx_debug_event(
