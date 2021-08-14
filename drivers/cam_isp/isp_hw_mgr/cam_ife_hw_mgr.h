@@ -214,6 +214,7 @@ struct cam_ife_hw_mgr_ctx_flags {
  * @sfe_info                SFE info pertaining to this stream
  * @flags                   Flags pertainting to this ctx
  * @bw_config_version       BW Config version
+ * @recovery_id:            Unique ID of the current valid scheduled recovery
  *
  */
 struct cam_ife_hw_mgr_ctx {
@@ -264,6 +265,7 @@ struct cam_ife_hw_mgr_ctx {
 	struct cam_ife_hw_mgr_sfe_info  sfe_info;
 	struct cam_ife_hw_mgr_ctx_flags flags;
 	uint32_t                        bw_config_version;
+	atomic_t                        recovery_id;
 };
 
 /**
@@ -352,6 +354,7 @@ struct cam_ife_hw_mgr {
  * @affected_core:            Array of the hardware cores that are affected
  * @affected_ctx:             Array of the hardware contexts that are affected
  * @no_of_context:            Actual number of the affected context
+ * @id:                       Unique ID associated with this recovery data (per HW context)
  *
  */
 struct cam_ife_hw_event_recovery_data {
@@ -359,6 +362,7 @@ struct cam_ife_hw_event_recovery_data {
 	uint32_t                   affected_core[CAM_ISP_HW_NUM_MAX];
 	struct cam_ife_hw_mgr_ctx *affected_ctx[CAM_IFE_CTX_MAX];
 	uint32_t                   no_of_context;
+	uint32_t                   id[CAM_IFE_CTX_MAX];
 };
 
 /**

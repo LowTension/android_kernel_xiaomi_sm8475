@@ -33,6 +33,8 @@ static struct cam_isp_ctx_debug isp_ctx_debug;
 static int cam_isp_context_dump_requests(void *data,
 	struct cam_smmu_pf_info *pf_info);
 
+static int cam_isp_context_hw_recovery(void *priv, void *data);
+
 static int __cam_isp_ctx_start_dev_in_ready(struct cam_context *ctx,
 	struct cam_start_stop_dev_cmd *cmd);
 
@@ -6530,8 +6532,22 @@ static struct cam_ctx_ops
 		.irq_ops = __cam_isp_ctx_handle_irq_in_activated,
 		.pagefault_ops = cam_isp_context_dump_requests,
 		.dumpinfo_ops = cam_isp_context_info_dump,
+		.recovery_ops = cam_isp_context_hw_recovery,
 	},
 };
+
+static int cam_isp_context_hw_recovery(void *priv, void *data)
+{
+	struct cam_context *ctx = priv;
+	int rc = -EPERM;
+
+	if (ctx->hw_mgr_intf->hw_recovery)
+		rc = ctx->hw_mgr_intf->hw_recovery(ctx->hw_mgr_intf->hw_mgr_priv, data);
+	else
+		CAM_ERR(CAM_ISP, "hw mgr doesn't support recovery");
+
+	return rc;
+}
 
 static int cam_isp_context_dump_requests(void *data,
 	struct cam_smmu_pf_info *pf_info)

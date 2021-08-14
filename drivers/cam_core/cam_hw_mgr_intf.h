@@ -53,6 +53,10 @@ typedef int (*cam_hw_pagefault_cb_func)(void *context,
 typedef int (*cam_ctx_info_dump_cb_func)(void *context,
 	enum cam_context_dump_id dump_id);
 
+/* ctx recovery callback function type */
+typedef int (*cam_ctx_recovery_cb_func)(void *context,
+	void *recovery_data);
+
 /**
  * struct cam_hw_update_entry - Entry for hardware config
  *
@@ -421,6 +425,7 @@ struct cam_hw_cmd_args {
  * @hw_flush:                  Function pointer for HW flush
  * @hw_reset:                  Function pointer for HW reset
  * @hw_dump:                   Function pointer for HW dump
+ * @hw_recovery:               Function pointer for HW recovery callback
  *
  */
 struct cam_hw_mgr_intf {
@@ -443,6 +448,7 @@ struct cam_hw_mgr_intf {
 	int (*hw_flush)(void *hw_priv, void *hw_flush_args);
 	int (*hw_reset)(void *hw_priv, void *hw_reset_args);
 	int (*hw_dump)(void *hw_priv, void *hw_dump_args);
+	int (*hw_recovery)(void *hw_priv, void *hw_recovery_args);
 };
 
 #endif /* _CAM_HW_MGR_INTF_H_ */

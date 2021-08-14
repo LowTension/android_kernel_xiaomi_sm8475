@@ -5980,6 +5980,14 @@ static int cam_ife_mgr_stop_hw(void *hw_mgr_priv, void *stop_hw_args)
 		return -EPERM;
 	}
 
+	if (!ctx->num_base) {
+		CAM_ERR(CAM_ISP, "number of bases are zero");
+		return -EINVAL;
+	}
+
+	/* Cancel all scheduled recoveries without affecting future recoveries */
+	atomic_inc(&ctx->recovery_id);
+
 	CAM_DBG(CAM_ISP, " Enter...ctx id:%d", ctx->ctx_index);
 	stop_isp = (struct cam_isp_stop_args    *)stop_args->args;
 
@@ -5991,11 +5999,6 @@ static int cam_ife_mgr_stop_hw(void *hw_mgr_priv, void *stop_hw_args)
 		csid_halt_type = CAM_CSID_HALT_IMMEDIATELY;
 
 	/* Note:stop resource will remove the irq mask from the hardware */
-
-	if (!ctx->num_base) {
-		CAM_ERR(CAM_ISP, "number of bases are zero");
-		return -EINVAL;
-	}
 
 	CAM_DBG(CAM_ISP, "Halting CSIDs");
 
@@ -11033,7 +11036,7 @@ static int cam_ife_mgr_cmd_get_sof_timestamp(
 	return rc;
 }
 
-static int cam_ife_mgr_process_recovery_cb(void *priv, void *data)
+static int cam_ife_mgr_recover_hw(void *priv, void *data)
 {
 	int32_t rc = 0;
 	struct cam_ife_hw_event_recovery_data   *recovery_data = data;
@@ -11041,9 +11044,20 @@ static int cam_ife_mgr_process_recovery_cb(void *priv, void *data)
 	struct cam_hw_stop_args                  stop_args;
 	struct cam_ife_hw_mgr                   *ife_hw_mgr = priv;
 	uint32_t                                 i = 0;
-
+	bool cancel = false;
 	uint32_t error_type = recovery_data->error_type;
 	struct cam_ife_hw_mgr_ctx        *ctx = NULL;
+
+	for (i = 0; i < recovery_data->no_of_context; i++) {
+		ctx = recovery_data->affected_ctx[i];
+		if (recovery_data->id[i] != atomic_read(&ctx->recovery_id)) {
+			CAM_INFO(CAM_ISP, "recovery for ctx:%d error-type:%d cancelled",
+				ctx->ctx_index, error_type);
+			cancel = true;
+		}
+	}
+	if (cancel)
+		goto end;
 
 	/* Here recovery is performed */
 	CAM_DBG(CAM_ISP, "ErrorType = %d", error_type);
@@ -11121,6 +11135,7 @@ static int cam_ife_mgr_process_recovery_cb(void *priv, void *data)
 	}
 	CAM_DBG(CAM_ISP, "Exit: ErrorType = %d", error_type);
 
+end:
 	kfree(recovery_data);
 	return rc;
 }
@@ -11128,9 +11143,10 @@ static int cam_ife_mgr_process_recovery_cb(void *priv, void *data)
 static int cam_ife_hw_mgr_do_error_recovery(
 	struct cam_ife_hw_event_recovery_data  *ife_mgr_recovery_data)
 {
-	int32_t                                 rc = 0;
+	int32_t                                 rc, i;
 	struct crm_workq_task                  *task = NULL;
 	struct cam_ife_hw_event_recovery_data  *recovery_data = NULL;
+	struct cam_ife_hw_mgr_ctx *ctx;
 
 	recovery_data = kmemdup(ife_mgr_recovery_data,
 		sizeof(struct cam_ife_hw_event_recovery_data), GFP_ATOMIC);
@@ -11146,12 +11162,16 @@ static int cam_ife_hw_mgr_do_error_recovery(
 		return -ENOMEM;
 	}
 
-	task->process_cb = &cam_ife_mgr_process_recovery_cb;
+	task->process_cb = &cam_context_handle_hw_recovery;
 	task->payload = recovery_data;
-	rc = cam_req_mgr_workq_enqueue_task(task,
-		recovery_data->affected_ctx[0]->hw_mgr,
-		CRM_TASK_PRIORITY_0);
+	for (i = 0; i < recovery_data->no_of_context; i++) {
+		ctx = recovery_data->affected_ctx[i];
+		recovery_data->id[i] = atomic_inc_return(&ctx->recovery_id);
+	}
 
+	rc = cam_req_mgr_workq_enqueue_task(task,
+		recovery_data->affected_ctx[0]->common.cb_priv,
+		CRM_TASK_PRIORITY_0);
 	return rc;
 }
 
@@ -12456,6 +12476,7 @@ int cam_ife_hw_mgr_init(struct cam_hw_mgr_intf *hw_mgr_intf, int *iommu_hdl)
 	hw_mgr_intf->hw_cmd = cam_ife_mgr_cmd;
 	hw_mgr_intf->hw_reset = cam_ife_mgr_reset;
 	hw_mgr_intf->hw_dump = cam_ife_mgr_dump;
+	hw_mgr_intf->hw_recovery = cam_ife_mgr_recover_hw;
 
 	if (iommu_hdl)
 		*iommu_hdl = g_ife_hw_mgr.mgr_common.img_iommu_hdl;
