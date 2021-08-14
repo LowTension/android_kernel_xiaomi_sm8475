@@ -79,6 +79,9 @@ static int cam_sfe_top_apply_clock_start_stop(struct cam_sfe_top_priv *top_priv)
 
 static int cam_sfe_top_apply_bw_start_stop(struct cam_sfe_top_priv *top_priv);
 
+static void cam_sfe_top_print_ipp_violation_info(struct cam_sfe_top_priv *top_priv,
+	uint32_t violation_status);
+
 static const char *cam_sfe_top_clk_bw_state_to_string(uint32_t state)
 {
 	switch (state) {
@@ -699,28 +702,31 @@ static int cam_sfe_top_handle_overflow(
 {
 	struct cam_sfe_top_common_data      *common_data;
 	struct cam_hw_soc_info              *soc_info;
-	uint32_t                             status = 0;
+	uint32_t                             overflow_status, violation_status;
 	uint32_t                             i = 0;
 
 	common_data = &top_priv->common_data;
 	soc_info = common_data->soc_info;
 
-	status  = cam_io_r(soc_info->reg_map[SFE_CORE_BASE_IDX].mem_base +
-		    top_priv->common_data.common_reg->bus_overflow_status);
+	overflow_status = cam_io_r(soc_info->reg_map[SFE_CORE_BASE_IDX].mem_base +
+		top_priv->common_data.common_reg->bus_overflow_status);
+	violation_status = cam_io_r(soc_info->reg_map[SFE_CORE_BASE_IDX].mem_base +
+		top_priv->common_data.common_reg->ipp_violation_status);
 
-	CAM_INFO_RATE_LIMIT(CAM_ISP,
-		"SFE%d src_clk_rate:%luHz overflow_status 0x%x",
+	CAM_ERR_RATE_LIMIT(CAM_ISP,
+		"SFE%d src_clk_rate:%luHz overflow:%s violation: %s",
 		soc_info->index, soc_info->applied_src_clk_rate,
-		status);
+		CAM_BOOL_TO_YESNO(overflow_status), CAM_BOOL_TO_YESNO(violation_status));
 
-	while (status) {
-		if (status & 0x1)
-			CAM_INFO_RATE_LIMIT(CAM_ISP, "SFE Overflow %s ",
+	while (overflow_status) {
+		if (overflow_status & 0x1)
+			CAM_ERR(CAM_ISP, "SFE Overflow %s ",
 				top_priv->wr_client_desc[i].desc);
-		status = status >> 1;
+		overflow_status = overflow_status >> 1;
 		i++;
 	}
 
+	cam_sfe_top_print_ipp_violation_info(top_priv, violation_status);
 	cam_sfe_top_print_debug_reg_info(top_priv);
 
 	return 0;
@@ -1782,6 +1788,7 @@ int cam_sfe_top_init(
 	top_priv->common_data.hw_intf = hw_intf;
 	top_priv->common_data.common_reg =
 		sfe_top_hw_info->common_reg;
+	top_priv->common_data.common_reg_data = sfe_top_hw_info->common_reg_data;
 	top_priv->hw_info = sfe_top_hw_info;
 	top_priv->wr_client_desc  = sfe_top_hw_info->wr_client_desc;
 	top_priv->num_clc_module   = sfe_top_hw_info->num_clc_module;
