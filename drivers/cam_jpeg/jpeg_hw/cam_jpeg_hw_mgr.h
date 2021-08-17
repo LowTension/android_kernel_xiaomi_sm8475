@@ -16,10 +16,10 @@
 #include "cam_req_mgr_workq.h"
 #include "cam_mem_mgr.h"
 
-#define CAM_JPEG_WORKQ_NUM_TASK      30
-#define CAM_JPEG_WORKQ_TASK_CMD_TYPE 1
-#define CAM_JPEG_WORKQ_TASK_MSG_TYPE 2
-#define CAM_JPEG_HW_CFG_Q_MAX        50
+#define CAM_JPEG_WORKQ_NUM_TASK             30
+#define CAM_JPEG_WORKQ_TASK_CMD_TYPE        1
+#define CAM_JPEG_WORKQ_TASK_MSG_TYPE        2
+#define CAM_JPEG_HW_CFG_Q_MAX               50
 
 /*
  * Response time threshold in ms beyond which a request is not expected
@@ -43,16 +43,21 @@ struct cam_jpeg_process_frame_work_data_t {
 /**
  * struct cam_jpeg_process_irq_work_data_t
  *
- * @type: Task type
- * @data: Pointer to message data
- * @result_size: Result size of enc/dma
- * @irq_status: IRQ status
+ * @type                   : Task type
+ * @output_encode_size     : Result size of encoder
+ * @is_dma_frame_done      : Flag to indicate whther the dma fram done was recived or not.
+ * @irq_status             : IRQ status
+ * @data                   : Pointer to message data
  */
 struct cam_jpeg_process_irq_work_data_t {
-	uint32_t type;
-	void *data;
-	int32_t result_size;
-	uint32_t irq_status;
+	uint32_t       type;
+	union core_data {
+		int32_t        output_encode_size;
+		int32_t        is_dma_frame_done;
+		int32_t        irq_data;
+	} u;
+	uint32_t       irq_status;
+	void          *data;
 };
 
 /**

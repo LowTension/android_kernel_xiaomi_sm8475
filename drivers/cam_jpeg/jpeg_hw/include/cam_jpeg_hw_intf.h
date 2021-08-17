@@ -19,15 +19,20 @@
 #define CAM_JPEG_HW_DUMP_NUM_WORDS   5
 #define CAM_JPEG_HW_MAX_NUM_PID      2
 
-enum cam_jpeg_hw_type {
-	CAM_JPEG_DEV_ENC,
-	CAM_JPEG_DEV_DMA,
+
+/**
+ * struct cam_jpeg_irq_cb_data - Data that gets passed from IRQ when the cb function is called
+ * @private_data      : Void * for privat data
+ * @jpeg_req          : Jpeg reguest data stored during prepare update
+ */
+struct cam_jpeg_irq_cb_data {
+	void                         *private_data;
+	struct cam_jpeg_request_data *jpeg_req;
 };
 
 struct cam_jpeg_set_irq_cb {
-	int32_t (*jpeg_hw_mgr_cb)(uint32_t irq_status,
-		int32_t result_size, void *data);
-	void *data;
+	int32_t (*jpeg_hw_mgr_cb)(uint32_t irq_status, int32_t result_size, void *data);
+	struct cam_jpeg_irq_cb_data irq_cb_data;
 	uint32_t b_set_cb;
 };
 
