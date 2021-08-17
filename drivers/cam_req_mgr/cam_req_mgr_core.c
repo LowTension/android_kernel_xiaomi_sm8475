@@ -2396,7 +2396,7 @@ int cam_req_mgr_process_sched_req(void *priv, void *data)
 	 */
 
 	if (link->sync_data.is_sync_req && tmp_slot->sync_mode == CAM_REQ_MGR_SYNC_MODE_SYNC
-		&& ((link->sync_data.initial_sync_req + 5) > tmp_slot->req_id)) {
+		&& ((link->sync_data.initial_sync_req + 6) > tmp_slot->req_id)) {
 		slot->sync_mode = CAM_REQ_MGR_SYNC_MODE_TRANSITION_SYNC;
 	} else if (tmp_slot->sync_mode == CAM_REQ_MGR_SYNC_MODE_SYNC) {
 		if (link->sync_data.is_sync_req && (link->initial_skip == 0)) {
