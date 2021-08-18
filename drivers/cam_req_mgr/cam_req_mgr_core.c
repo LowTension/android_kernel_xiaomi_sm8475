@@ -53,10 +53,10 @@ void cam_req_mgr_core_link_reset(struct cam_req_mgr_core_link *link)
 	link->sync_data.initial_sync_req = -1;
 	link->sync_data.modified_init_sync_req = -1;
 	link->dual_trigger = false;
-	link->trigger_cnt[0][0] = 0;
-	link->trigger_cnt[0][1] = 0;
-	link->trigger_cnt[1][0] = 0;
-	link->trigger_cnt[1][1] = 0;
+	link->trigger_cnt[0][CAM_TRIGGER_POINT_SOF] = 0;
+	link->trigger_cnt[0][CAM_TRIGGER_POINT_EOF] = 0;
+	link->trigger_cnt[1][CAM_TRIGGER_POINT_SOF] = 0;
+	link->trigger_cnt[1][CAM_TRIGGER_POINT_EOF] = 0;
 	link->in_msync_mode = false;
 	link->retry_cnt = 0;
 	link->is_shutdown = false;
@@ -662,10 +662,10 @@ static void __cam_req_mgr_flush_req_slot(
 	in_q->wr_idx = 0;
 	in_q->rd_idx = 0;
 	link->sync_data.sync_frame_id = 0;
-	link->trigger_cnt[0][0] = 0;
-	link->trigger_cnt[0][1] = 0;
-	link->trigger_cnt[1][0] = 0;
-	link->trigger_cnt[1][1] = 0;
+	link->trigger_cnt[0][CAM_TRIGGER_POINT_SOF] = 0;
+	link->trigger_cnt[0][CAM_TRIGGER_POINT_EOF] = 0;
+	link->trigger_cnt[1][CAM_TRIGGER_POINT_SOF] = 0;
+	link->trigger_cnt[1][CAM_TRIGGER_POINT_EOF] = 0;
 }
 
 /**
@@ -4726,10 +4726,10 @@ int cam_req_mgr_link_v2(struct cam_req_mgr_ver_info *link_info)
 		goto setup_failed;
 	}
 
-	link->trigger_cnt[0][0] = 0;
-	link->trigger_cnt[0][1] = 0;
-	link->trigger_cnt[1][0] = 0;
-	link->trigger_cnt[1][1] = 0;
+	link->trigger_cnt[0][CAM_TRIGGER_POINT_SOF] = 0;
+	link->trigger_cnt[0][CAM_TRIGGER_POINT_EOF] = 0;
+	link->trigger_cnt[1][CAM_TRIGGER_POINT_SOF] = 0;
+	link->trigger_cnt[1][CAM_TRIGGER_POINT_EOF] = 0;
 
 	mutex_unlock(&link->lock);
 	mutex_unlock(&g_crm_core_dev->crm_lock);

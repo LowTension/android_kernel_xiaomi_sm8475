@@ -450,7 +450,8 @@ struct cam_req_mgr_core_link {
 	uint32_t                             retry_cnt;
 	bool                                 is_shutdown;
 	bool                                 dual_trigger;
-	uint32_t trigger_cnt[CAM_REQ_MGR_MAX_TRIGGERS][CAM_TRIGGER_MAX_POINTS];
+	uint32_t trigger_cnt[CAM_REQ_MGR_MAX_TRIGGERS]
+				[CAM_TRIGGER_MAX_POINTS + 1];
 	atomic_t                             eof_event_cnt;
 	bool                                 skip_init_frame;
 	bool                                 wq_congestion;
