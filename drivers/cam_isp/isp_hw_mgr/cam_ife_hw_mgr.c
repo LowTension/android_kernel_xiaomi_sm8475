@@ -7108,12 +7108,10 @@ static int cam_isp_blob_sfe_scratch_buf_update(
 
 	ctx = prepare->ctxt_to_hw_map;
 	ife_hw_mgr = ctx->hw_mgr;
-	if (ctx->sfe_info.scratch_config->config_done) {
-		CAM_ERR(CAM_ISP,
-			"Scratch buffers already configured on ctx: %u",
-			ctx->ctx_index);
-		return -EINVAL;
-	}
+	if (scratch_config->num_ports != ctx->sfe_info.num_fetches)
+		CAM_WARN(CAM_ISP,
+			"Getting scratch buffer for %u ports on ctx: %u with num_fetches: %u",
+			scratch_config->num_ports, ctx->ctx_index, ctx->sfe_info.num_fetches);
 
 	CAM_DBG(CAM_ISP, "num_ports: %u", scratch_config->num_ports);
 
@@ -7165,6 +7163,7 @@ static int cam_isp_blob_sfe_scratch_buf_update(
 		port_info->stride = buffer_info->stride;
 		port_info->slice_height = buffer_info->slice_height;
 		port_info->offset = 0;
+		port_info->config_done = true;
 		CAM_DBG(CAM_ISP,
 			"res_id: 0x%x w: 0x%x h: 0x%x s: 0x%x sh: 0x%x addr: 0x%x",
 			port_info->res_id, port_info->width,
@@ -7173,7 +7172,6 @@ static int cam_isp_blob_sfe_scratch_buf_update(
 	}
 
 	ctx->sfe_info.scratch_config->num_config = scratch_config->num_ports;
-	ctx->sfe_info.scratch_config->config_done = true;
 	return 0;
 }
 
@@ -7222,6 +7220,11 @@ static int cam_isp_blob_sfe_exp_order_update(
 		return 0;
 	}
 
+	if (!exp_config->num_ports) {
+		CAM_ERR(CAM_ISP, "Invalid number of ports: %d", exp_config->num_ports);
+		return -EINVAL;
+	}
+
 	/*
 	 *  The last resource in the array will be considered as
 	 *  last exposure
@@ -7240,14 +7243,16 @@ static int cam_isp_blob_sfe_exp_order_update(
 
 		if ((order_cfg->res_type - CAM_ISP_SFE_OUT_RES_RDI_0) >=
 			ctx->sfe_info.num_fetches) {
-			CAM_ERR(CAM_ISP, "resource 0x%x active fetches: %u mismatch",
-				order_cfg->res_type, ctx->sfe_info.num_fetches);
-			return -EINVAL;
+			CAM_DBG(CAM_ISP,
+				"Skip cache config for resource: 0x%x, active fetches: %u [exp_order: %d %d] in %u ctx",
+				order_cfg->res_type, ctx->sfe_info.num_fetches,
+				i, exp_order_max, ctx->ctx_index);
+			continue;
 		}
 
 		/* Add more params if needed */
-		wm_rm_cache_cfg.wr_enabled = false;
-		wm_rm_cache_cfg.rd_enabled = false;
+		wm_rm_cache_cfg.wr_cfg_done = false;
+		wm_rm_cache_cfg.rd_cfg_done = false;
 		wm_rm_cache_cfg.use_cache =
 			(exp_order_max == i) ? true : false;
 		wm_rm_cache_cfg.scid = 0;
@@ -7334,7 +7339,7 @@ static int cam_isp_blob_sfe_exp_order_update(
 			return -EINVAL;
 		}
 
-		if (!wm_rm_cache_cfg.rd_enabled && !wm_rm_cache_cfg.wr_enabled) {
+		if (!wm_rm_cache_cfg.rd_cfg_done && !wm_rm_cache_cfg.wr_cfg_done) {
 			wm_rm_cache_cfg.use_cache = false;
 			if (base_idx == CAM_SFE_CORE_0)
 				ctx->flags.sys_cache_usage[CAM_LLCC_SMALL_1] = false;
@@ -8060,18 +8065,18 @@ static int cam_ife_hw_mgr_update_scratch_offset(
 	uint32_t res_id;
 	struct cam_sfe_scratch_buf_info       *port_info;
 
-	if (!ctx->sfe_info.scratch_config->config_done) {
-		CAM_ERR(CAM_ISP,
-			"Scratch buffers not configured on ctx: %u",
-			ctx->ctx_index);
-		return -EINVAL;
-	}
-
 	if ((wm_config->port_type - CAM_ISP_SFE_OUT_RES_RDI_0) >=
 		ctx->sfe_info.num_fetches)
 		return 0;
 
 	res_id = wm_config->port_type & 0xFF;
+	if (!ctx->sfe_info.scratch_config->buf_info[res_id].config_done) {
+		CAM_ERR(CAM_ISP,
+			"Scratch buffer not configured on ctx: %u for res: %u",
+			ctx->ctx_index, res_id);
+		return -EINVAL;
+	}
+
 	port_info = &ctx->sfe_info.scratch_config->buf_info[res_id];
 	port_info->offset = wm_config->offset;
 
@@ -9621,12 +9626,6 @@ static int cam_isp_sfe_add_scratch_buffer_cfg(
 	struct cam_sfe_scratch_buf_info   *buf_info;
 	struct cam_isp_hw_mgr_res         *hw_mgr_res;
 
-	if (!ctx || !ctx->sfe_info.scratch_config->config_done) {
-		CAM_ERR(CAM_ISP, "Scratch buffer info invalid");
-		rc = -EINVAL;
-		return rc;
-	}
-
 	if (prepare->num_hw_update_entries + 1 >=
 			prepare->max_hw_update_entries) {
 		CAM_ERR(CAM_ISP, "Insufficient  HW entries :%d %d",
@@ -9676,6 +9675,14 @@ static int cam_isp_sfe_add_scratch_buffer_cfg(
 				kmd_buf_info->used_bytes / 4 + io_cfg_used_bytes / 4;
 			buf_info = &ctx->sfe_info.scratch_config->buf_info[
 				res_id - CAM_ISP_SFE_OUT_RES_RDI_0];
+
+			/* Check if scratch available for this resource */
+			if (!buf_info->config_done) {
+				CAM_ERR(CAM_ISP,
+					"No scratch buffer config found for res: %u on ctx: %u",
+					res_id, ctx->ctx_index);
+				return -EFAULT;
+			}
 
 			CAM_DBG(CAM_ISP, "WM res_id: 0x%x idx: %u io_addr: %pK",
 				hw_mgr_res->hw_res[j]->res_id,
@@ -10625,12 +10632,6 @@ static int cam_ife_mgr_prog_default_settings(
 	res_list_in_rd = &ctx->res_list_ife_in_rd;
 	res_list_sfe_out = ctx->res_list_sfe_out;
 
-	if (!ctx->sfe_info.scratch_config->config_done) {
-		CAM_ERR(CAM_ISP, "No scratch config on ctx: %u",
-			ctx->ctx_index);
-		return -EINVAL;
-	}
-
 	for (i = 0; i < CAM_SFE_FE_RDI_NUM_MAX; i++) {
 		hw_mgr_res = &res_list_sfe_out[i];
 		for (j = 0; j < CAM_ISP_HW_SPLIT_MAX; j++) {
@@ -10646,6 +10647,14 @@ static int cam_ife_mgr_prog_default_settings(
 
 			buf_info = &ctx->sfe_info.scratch_config->buf_info[
 				res_id - CAM_ISP_SFE_OUT_RES_RDI_0];
+
+			/* Check if scratch available for this resource */
+			if (!buf_info->config_done) {
+				CAM_ERR(CAM_ISP,
+					"No scratch buffer config found for res: %u on ctx: %u",
+					res_id, ctx->ctx_index);
+				return -EFAULT;
+			}
 
 			CAM_DBG(CAM_ISP,
 				"RDI%d res_id 0x%x idx %u io_addr %pK",
@@ -11878,16 +11887,14 @@ static int cam_ife_hw_mgr_check_rdi_scratch_buf_done(
 	dma_addr_t final_addr;
 	uint32_t cmp_addr = 0;
 
-	if (!scratch_cfg->config_done) {
-		CAM_DBG(CAM_ISP, "No scratch config for ctx: %u", ctx_index);
-		return 0;
-	}
-
 	switch (res_id) {
 	case CAM_ISP_SFE_OUT_RES_RDI_0:
 	case CAM_ISP_SFE_OUT_RES_RDI_1:
 	case CAM_ISP_SFE_OUT_RES_RDI_2:
 		buf_info = &scratch_cfg->buf_info[res_id - CAM_ISP_SFE_OUT_RES_RDI_0];
+		if (!buf_info->config_done)
+			return 0;
+
 		final_addr = buf_info->io_addr + buf_info->offset;
 		cmp_addr = cam_smmu_is_expanded_memory() ?
 			CAM_36BIT_INTF_GET_IOVA_BASE(final_addr) : final_addr;

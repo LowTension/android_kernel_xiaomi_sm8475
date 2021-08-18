@@ -1597,7 +1597,7 @@ static int cam_sfe_bus_rd_cache_config(void *priv, void *cmd_args,
 			sfe_bus_rd_data->rm_res[i]->res_priv;
 		rm_data->enable_caching = cache_cfg->use_cache;
 		rm_data->current_scid = cache_cfg->scid;
-		cache_cfg->rd_enabled = true;
+		cache_cfg->rd_cfg_done = true;
 
 		CAM_DBG(CAM_SFE, "SFE:%d RM:%d cache_enable:%s scid:%u",
 			rm_data->common_data->core_index,
