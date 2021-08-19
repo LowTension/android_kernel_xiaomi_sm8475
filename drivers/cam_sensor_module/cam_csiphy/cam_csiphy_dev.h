@@ -48,6 +48,9 @@
 #define CSIPHY_2PH_REGS                  5
 #define CSIPHY_3PH_REGS                  6
 #define CSIPHY_SKEW_CAL                  7
+#define CSIPHY_2PH_COMBO_REGS            8
+#define CSIPHY_3PH_COMBO_REGS            9
+#define CSIPHY_2PH_3PH_COMBO_REGS        10
 
 #define CSIPHY_MAX_INSTANCES_PER_PHY     3
 
@@ -111,7 +114,8 @@ struct cam_cphy_dphy_status_reg_params_t {
  * @mipi_csiphy_interrupt_clear0_addr : CSIPhy interrupt clear addr
  * @csiphy_version                    : CSIPhy Version
  * @csiphy_common_array_size          : CSIPhy common array size
- * @csiphy_reset_array_size           : CSIPhy reset array size
+ * @csiphy_reset_enter_array_size     : CSIPhy reset array size
+ * @csiphy_reset_exit_array_size      : CSIPhy reset release array size
  * @csiphy_2ph_config_array_size      : 2ph settings size
  * @csiphy_3ph_config_array_size      : 3ph settings size
  * @csiphy_cpas_cp_bits_per_phy       : CP bits per phy
@@ -136,7 +140,8 @@ struct csiphy_reg_parms_t {
 	uint32_t csiphy_version;
 	uint32_t csiphy_interrupt_status_size;
 	uint32_t csiphy_common_array_size;
-	uint32_t csiphy_reset_array_size;
+	uint32_t csiphy_reset_enter_array_size;
+	uint32_t csiphy_reset_exit_array_size;
 	uint32_t csiphy_2ph_config_array_size;
 	uint32_t csiphy_3ph_config_array_size;
 	uint32_t csiphy_2ph_3ph_config_array_size;
@@ -220,7 +225,8 @@ struct bist_reg_settings_t {
  * struct csiphy_ctrl_t
  * @csiphy_reg                : Register address
  * @csiphy_common_reg         : Common register set
- * @csiphy_reset_reg          : Reset register set
+ * @csiphy_reset_enter_regs   : Reset register set
+ * @csiphy_reset_exit_regs    : Reset release registers
  * @csiphy_2ph_reg            : 2phase register set
  * @csiphy_2ph_combo_mode_reg : 2phase combo register set
  * @csiphy_3ph_reg            : 3phase register set
@@ -234,7 +240,8 @@ struct csiphy_ctrl_t {
 	struct csiphy_reg_parms_t csiphy_reg;
 	struct csiphy_reg_t *csiphy_common_reg;
 	struct csiphy_reg_t *csiphy_irq_reg;
-	struct csiphy_reg_t *csiphy_reset_reg;
+	struct csiphy_reg_t *csiphy_reset_enter_regs;
+	struct csiphy_reg_t *csiphy_reset_exit_regs;
 	struct csiphy_reg_t (*csiphy_2ph_reg)[MAX_SETTINGS_PER_LANE];
 	struct csiphy_reg_t (*csiphy_2ph_combo_mode_reg)[MAX_SETTINGS_PER_LANE];
 	struct csiphy_reg_t (*csiphy_3ph_reg)[MAX_SETTINGS_PER_LANE];
