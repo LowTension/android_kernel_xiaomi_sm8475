@@ -32,10 +32,11 @@ struct csiphy_reg_parms_t csiphy_v2_1_0 = {
 	.csiphy_reset_enter_array_size = 2,
 	.csiphy_reset_exit_array_size = 3,
 	.csiphy_2ph_config_array_size = 23,
-	.csiphy_3ph_config_array_size = 38,
+	.csiphy_3ph_config_array_size = 37,
 	.csiphy_2ph_clock_lane = 0x1,
 	.csiphy_2ph_combo_ck_ln = 0x10,
 	.csiphy_interrupt_status_size = 11,
+	.csiphy_num_common_status_regs = 20,
 	.aon_sel_params = &aon_cam_select_params,
 };
 
@@ -338,7 +339,6 @@ struct csiphy_reg_t csiphy_3ph_v2_1_0_reg[MAX_LANES][MAX_SETTINGS_PER_LANE] = {
 		{0x02F0, 0x00, 0x02, CSIPHY_DEFAULT_PARAMS},
 		{0x02F0, 0xEF, 0x64, CSIPHY_DEFAULT_PARAMS},
 		{0x0294, 0x09, 0x00, CSIPHY_DEFAULT_PARAMS},
-		{0x0290, 0x02, 0x00, CSIPHY_DEFAULT_PARAMS},
 		{0x0204, 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
 		{0x020C, 0x10, 0x00, CSIPHY_SETTLE_CNT_LOWER_BYTE},
 		{0x0208, 0x00, 0x00, CSIPHY_SETTLE_CNT_HIGHER_BYTE},
@@ -378,7 +378,6 @@ struct csiphy_reg_t csiphy_3ph_v2_1_0_reg[MAX_LANES][MAX_SETTINGS_PER_LANE] = {
 		{0x06F0, 0x00, 0x02, CSIPHY_DEFAULT_PARAMS},
 		{0x06F0, 0xEF, 0x64, CSIPHY_DEFAULT_PARAMS},
 		{0x0694, 0x09, 0x00, CSIPHY_DEFAULT_PARAMS},
-		{0x0690, 0x02, 0x00, CSIPHY_DEFAULT_PARAMS},
 		{0x0604, 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
 		{0x060C, 0x10, 0x00, CSIPHY_SETTLE_CNT_LOWER_BYTE},
 		{0x0608, 0x00, 0x00, CSIPHY_SETTLE_CNT_HIGHER_BYTE},
@@ -418,7 +417,6 @@ struct csiphy_reg_t csiphy_3ph_v2_1_0_reg[MAX_LANES][MAX_SETTINGS_PER_LANE] = {
 		{0x0AF0, 0x00, 0x02, CSIPHY_DEFAULT_PARAMS},
 		{0x0AF0, 0xEF, 0x64, CSIPHY_DEFAULT_PARAMS},
 		{0x0A94, 0x09, 0x00, CSIPHY_DEFAULT_PARAMS},
-		{0x0A90, 0x02, 0x00, CSIPHY_DEFAULT_PARAMS},
 		{0x0A04, 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
 		{0x0A0C, 0x10, 0x00, CSIPHY_SETTLE_CNT_LOWER_BYTE},
 		{0x0A08, 0x00, 0x00, CSIPHY_SETTLE_CNT_HIGHER_BYTE},
@@ -504,101 +502,280 @@ struct bist_reg_settings_t bist_setting_2_1_0 = {
 };
 
 struct data_rate_settings_t data_rate_delta_table_2_1_0 = {
-	.num_data_rate_settings = 3,
+	.num_data_rate_settings = 12,
 	.data_rate_settings = {
 		{
 			/* ((1 GSpS) * (10^9) * (2.28 bits/symbol)) rounded value*/
 			.bandwidth = 2280000000,
-			.data_rate_reg_array_size = 6,
+			.data_rate_reg_array_size = 7,
 			.per_lane_info = {
 				{
 					.lane_identifier = CPHY_LANE_0,
 					.csiphy_data_rate_regs = {
 						{0x0274, 0x07, 0x00, CSIPHY_DEFAULT_PARAMS},
-						{0x0278, 0x40, 0x00, CSIPHY_DEFAULT_PARAMS},
-						{0x0288, 0xA0, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0278, 0x4D, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0288, 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
 						{0x028C, 0xE0, 0x00, CSIPHY_DEFAULT_PARAMS},
-						{0x026C, 0x2B, 0x00, CSIPHY_DEFAULT_PARAMS},
-						{0x0214, 0x0F, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x026C, 0x1B, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0290, 0x03, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0214, 0x10, 0x00, CSIPHY_DEFAULT_PARAMS},
 					},
 				},
 				{
 					.lane_identifier = CPHY_LANE_1,
 					.csiphy_data_rate_regs = {
 						{0x0674, 0x07, 0x00, CSIPHY_DEFAULT_PARAMS},
-						{0x0678, 0x40, 0x00, CSIPHY_DEFAULT_PARAMS},
-						{0x0688, 0xA0, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0678, 0x4D, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0688, 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
 						{0x068C, 0xE0, 0x00, CSIPHY_DEFAULT_PARAMS},
-						{0x066C, 0x2B, 0x00, CSIPHY_DEFAULT_PARAMS},
-						{0x0614, 0x0F, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x066C, 0x1B, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0690, 0x03, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0614, 0x10, 0x00, CSIPHY_DEFAULT_PARAMS},
 					},
 				},
 				{
 					.lane_identifier = CPHY_LANE_2,
 					.csiphy_data_rate_regs = {
 						{0x0A74, 0x07, 0x00, CSIPHY_DEFAULT_PARAMS},
-						{0x0A78, 0x40, 0x00, CSIPHY_DEFAULT_PARAMS},
-						{0x0A88, 0xA0, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0A78, 0x4D, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0A88, 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
 						{0x0A8C, 0xE0, 0x00, CSIPHY_DEFAULT_PARAMS},
-						{0x0A6C, 0x2B, 0x00, CSIPHY_DEFAULT_PARAMS},
-						{0x0A14, 0x0F, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0A6C, 0x1B, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0A90, 0x03, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0A14, 0x10, 0x00, CSIPHY_DEFAULT_PARAMS},
 					},
 				},
 			},
 		},
 		{
-			/* ((2 GSpS) * (10^9) * (2.28 bits/symbol)) rounded value */
-			.bandwidth = 4560000000,
-			.data_rate_reg_array_size = 6,
+			/* ((1.5 GSpS) * (10^9) * (2.28 bits/symbol)) rounded value*/
+			.bandwidth = 3420000000,
+			.data_rate_reg_array_size = 7,
 			.per_lane_info = {
 				{
 					.lane_identifier = CPHY_LANE_0,
 					.csiphy_data_rate_regs = {
 						{0x0274, 0x07, 0x00, CSIPHY_DEFAULT_PARAMS},
-						{0x0278, 0x40, 0x00, CSIPHY_DEFAULT_PARAMS},
-						{0x0288, 0xA0, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0278, 0x4D, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0288, 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
 						{0x028C, 0xE0, 0x00, CSIPHY_DEFAULT_PARAMS},
-						{0x026C, 0x2B, 0x00, CSIPHY_DEFAULT_PARAMS},
-						{0x0214, 0x08, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x026C, 0x1B, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0290, 0x03, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0214, 0x09, 0x00, CSIPHY_DEFAULT_PARAMS},
 					},
 				},
 				{
 					.lane_identifier = CPHY_LANE_1,
 					.csiphy_data_rate_regs = {
 						{0x0674, 0x07, 0x00, CSIPHY_DEFAULT_PARAMS},
-						{0x0678, 0x40, 0x00, CSIPHY_DEFAULT_PARAMS},
-						{0x0688, 0xA0, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0678, 0x4D, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0688, 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
 						{0x068C, 0xE0, 0x00, CSIPHY_DEFAULT_PARAMS},
-						{0x066C, 0x2B, 0x00, CSIPHY_DEFAULT_PARAMS},
-						{0x0614, 0x08, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x066C, 0x1B, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0690, 0x03, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0614, 0x09, 0x00, CSIPHY_DEFAULT_PARAMS},
 					},
 				},
 				{
 					.lane_identifier = CPHY_LANE_2,
 					.csiphy_data_rate_regs = {
 						{0x0A74, 0x07, 0x00, CSIPHY_DEFAULT_PARAMS},
-						{0x0A78, 0x40, 0x00, CSIPHY_DEFAULT_PARAMS},
-						{0x0A88, 0xA0, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0A78, 0x4D, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0A88, 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
 						{0x0A8C, 0xE0, 0x00, CSIPHY_DEFAULT_PARAMS},
-						{0x0A6C, 0x2B, 0x00, CSIPHY_DEFAULT_PARAMS},
-						{0x0A14, 0x08, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0A6C, 0x1B, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0A90, 0x03, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0A14, 0x09, 0x00, CSIPHY_DEFAULT_PARAMS},
 					},
 				},
 			},
 		},
 		{
-			/* ((3.5 GSpS) * (10^9) * (2.28 bits/symbol)) rounded value */
-			.bandwidth = 7980000000,
-			.data_rate_reg_array_size = 6,
+			/* ((1.7 GSpS) * (10^9) * (2.28 bits/symbol)) rounded value*/
+			.bandwidth = 3876000000,
+			.data_rate_reg_array_size = 7,
+			.per_lane_info = {
+				{
+					.lane_identifier = CPHY_LANE_0,
+					.csiphy_data_rate_regs = {
+						{0x0274, 0x07, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0278, 0x43, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0288, 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x028C, 0xE0, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x026C, 0x1B, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0290, 0x03, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0214, 0x06, 0x00, CSIPHY_DEFAULT_PARAMS},
+					},
+				},
+				{
+					.lane_identifier = CPHY_LANE_1,
+					.csiphy_data_rate_regs = {
+						{0x0674, 0x07, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0678, 0x43, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0688, 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x068C, 0xE0, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x066C, 0x1B, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0690, 0x03, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0614, 0x06, 0x00, CSIPHY_DEFAULT_PARAMS},
+					},
+				},
+				{
+					.lane_identifier = CPHY_LANE_2,
+					.csiphy_data_rate_regs = {
+						{0x0A74, 0x07, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0A78, 0x43, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0A88, 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0A8C, 0xE0, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0A6C, 0x1B, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0A90, 0x03, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0A14, 0x06, 0x00, CSIPHY_DEFAULT_PARAMS},
+					},
+				},
+			},
+		},
+		{
+			/* ((2.1 GSpS) * (10^9) * (2.28 bits/symbol)) rounded value*/
+			.bandwidth = 4788000000,
+			.data_rate_reg_array_size = 7,
+			.per_lane_info = {
+				{
+					.lane_identifier = CPHY_LANE_0,
+					.csiphy_data_rate_regs = {
+						{0x0274, 0x07, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0278, 0x32, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0288, 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x028C, 0xE0, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x026C, 0x1B, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0290, 0x03, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0214, 0x01, 0x00, CSIPHY_DEFAULT_PARAMS},
+					},
+				},
+				{
+					.lane_identifier = CPHY_LANE_1,
+					.csiphy_data_rate_regs = {
+						{0x0674, 0x07, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0678, 0x32, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0688, 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x068C, 0xE0, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x066C, 0x1B, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0690, 0x03, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0614, 0x01, 0x00, CSIPHY_DEFAULT_PARAMS},
+					},
+				},
+				{
+					.lane_identifier = CPHY_LANE_2,
+					.csiphy_data_rate_regs = {
+						{0x0A74, 0x07, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0A78, 0x32, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0A88, 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0A8C, 0xE0, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0A6C, 0x1B, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0A90, 0x03, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0A14, 0x01, 0x00, CSIPHY_DEFAULT_PARAMS},
+					},
+				},
+			},
+		},
+		{
+			/* ((2.35 GSpS) * (10^9) * (2.28 bits/symbol)) rounded value*/
+			.bandwidth = 5358000000,
+			.data_rate_reg_array_size = 7,
+			.per_lane_info = {
+				{
+					.lane_identifier = CPHY_LANE_0,
+					.csiphy_data_rate_regs = {
+						{0x0274, 0x07, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0278, 0x2E, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0288, 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x028C, 0xE0, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x026C, 0x1B, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0290, 0x02, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0214, 0x01, 0x00, CSIPHY_DEFAULT_PARAMS},
+					},
+				},
+				{
+					.lane_identifier = CPHY_LANE_1,
+					.csiphy_data_rate_regs = {
+						{0x0674, 0x07, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0678, 0x2E, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0688, 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x068C, 0xE0, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x066C, 0x1B, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0690, 0x02, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0614, 0x01, 0x00, CSIPHY_DEFAULT_PARAMS},
+					},
+				},
+				{
+					.lane_identifier = CPHY_LANE_2,
+					.csiphy_data_rate_regs = {
+						{0x0A74, 0x07, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0A78, 0x2E, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0A88, 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0A8C, 0xE0, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0A6C, 0x1B, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0A90, 0x02, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0A14, 0x01, 0x00, CSIPHY_DEFAULT_PARAMS},
+					},
+				},
+			},
+		},
+		{
+			/* ((2.6 GSpS) * (10^9) * (2.28 bits/symbol)) rounded value*/
+			.bandwidth = 5928000000,
+			.data_rate_reg_array_size = 7,
+			.per_lane_info = {
+				{
+					.lane_identifier = CPHY_LANE_0,
+					.csiphy_data_rate_regs = {
+						{0x0274, 0x07, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0278, 0x24, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0288, 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x028C, 0xE0, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x026C, 0x1B, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0290, 0x03, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0214, 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
+					},
+				},
+				{
+					.lane_identifier = CPHY_LANE_1,
+					.csiphy_data_rate_regs = {
+						{0x0674, 0x07, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0678, 0x24, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0688, 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x068C, 0xE0, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x066C, 0x1B, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0690, 0x03, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0614, 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
+					},
+				},
+				{
+					.lane_identifier = CPHY_LANE_2,
+					.csiphy_data_rate_regs = {
+						{0x0A74, 0x07, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0A78, 0x24, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0A88, 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0A8C, 0xE0, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0A6C, 0x1B, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0A90, 0x03, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0A14, 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
+					},
+				},
+			},
+		},
+		{
+			/* ((2.8 GSpS) * (10^9) * (2.28 bits/symbol)) rounded value */
+			.bandwidth = 6384000000,
+			.data_rate_reg_array_size = 7,
 			.per_lane_info = {
 				{
 					.lane_identifier = CPHY_LANE_0,
 					.csiphy_data_rate_regs = {
 						{0x0274, 0x05, 0x00, CSIPHY_DEFAULT_PARAMS},
-						{0x0278, 0x13, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0278, 0x22, 0x00, CSIPHY_DEFAULT_PARAMS},
 						{0x0288, 0x04, 0x00, CSIPHY_DEFAULT_PARAMS},
 						{0x028C, 0xC1, 0x00, CSIPHY_DEFAULT_PARAMS},
-						{0x026C, 0x28, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x026C, 0x18, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0290, 0x02, 0x00, CSIPHY_DEFAULT_PARAMS},
 						{0x0214, 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
 					},
 				},
@@ -606,10 +783,11 @@ struct data_rate_settings_t data_rate_delta_table_2_1_0 = {
 					.lane_identifier = CPHY_LANE_1,
 					.csiphy_data_rate_regs = {
 						{0x0674, 0x05, 0x00, CSIPHY_DEFAULT_PARAMS},
-						{0x0678, 0x13, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0678, 0x22, 0x00, CSIPHY_DEFAULT_PARAMS},
 						{0x0688, 0x04, 0x00, CSIPHY_DEFAULT_PARAMS},
 						{0x068C, 0xC1, 0x00, CSIPHY_DEFAULT_PARAMS},
-						{0x066C, 0x28, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x066C, 0x18, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0690, 0x02, 0x00, CSIPHY_DEFAULT_PARAMS},
 						{0x0614, 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
 					},
 				},
@@ -617,10 +795,226 @@ struct data_rate_settings_t data_rate_delta_table_2_1_0 = {
 					.lane_identifier = CPHY_LANE_2,
 					.csiphy_data_rate_regs = {
 						{0x0A74, 0x05, 0x00, CSIPHY_DEFAULT_PARAMS},
-						{0x0A78, 0x13, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0A78, 0x22, 0x00, CSIPHY_DEFAULT_PARAMS},
 						{0x0A88, 0x04, 0x00, CSIPHY_DEFAULT_PARAMS},
 						{0x0A8C, 0xC1, 0x00, CSIPHY_DEFAULT_PARAMS},
-						{0x0A6C, 0x28, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0A6C, 0x18, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0A90, 0x02, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0A14, 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
+					},
+				},
+			},
+		},
+		{
+			/* ((3.3 GSpS) * (10^9) * (2.28 bits/symbol)) rounded value */
+			.bandwidth = 7524000000,
+			.data_rate_reg_array_size = 7,
+			.per_lane_info = {
+				{
+					.lane_identifier = CPHY_LANE_0,
+					.csiphy_data_rate_regs = {
+						{0x0274, 0x05, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0278, 0x1D, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0288, 0x04, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x028C, 0xC1, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x026C, 0x18, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0290, 0x02, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0214, 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
+					},
+				},
+				{
+					.lane_identifier = CPHY_LANE_1,
+					.csiphy_data_rate_regs = {
+						{0x0674, 0x05, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0678, 0x1D, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0688, 0x04, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x068C, 0xC1, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x066C, 0x18, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0690, 0x02, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0614, 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
+					},
+				},
+				{
+					.lane_identifier = CPHY_LANE_2,
+					.csiphy_data_rate_regs = {
+						{0x0A74, 0x05, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0A78, 0x1D, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0A88, 0x04, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0A8C, 0xC1, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0A6C, 0x18, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0A90, 0x02, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0A14, 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
+					},
+				},
+			},
+		},
+		{
+			/* ((3.5 GSpS) * (10^9) * (2.28 bits/symbol)) rounded value */
+			.bandwidth = 7980000000,
+			.data_rate_reg_array_size = 7,
+			.per_lane_info = {
+				{
+					.lane_identifier = CPHY_LANE_0,
+					.csiphy_data_rate_regs = {
+						{0x0274, 0x05, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0278, 0x15, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0288, 0x04, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x028C, 0xC1, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x026C, 0x18, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0290, 0x02, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0214, 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
+					},
+				},
+				{
+					.lane_identifier = CPHY_LANE_1,
+					.csiphy_data_rate_regs = {
+						{0x0674, 0x05, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0678, 0x15, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0688, 0x04, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x068C, 0xC1, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x066C, 0x18, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0690, 0x02, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0614, 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
+					},
+				},
+				{
+					.lane_identifier = CPHY_LANE_2,
+					.csiphy_data_rate_regs = {
+						{0x0A74, 0x05, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0A78, 0x15, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0A88, 0x04, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0A8C, 0xC1, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0A6C, 0x18, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0A90, 0x02, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0A14, 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
+					},
+				},
+			},
+		},
+		{
+			/* ((4 GSpS) * (10^9) * (2.28 bits/symbol)) rounded value */
+			.bandwidth = 9120000000,
+			.data_rate_reg_array_size = 7,
+			.per_lane_info = {
+				{
+					.lane_identifier = CPHY_LANE_0,
+					.csiphy_data_rate_regs = {
+						{0x0274, 0x05, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0278, 0x12, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0288, 0x04, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x028C, 0xC1, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x026C, 0x18, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0290, 0x02, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0214, 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
+					},
+				},
+				{
+					.lane_identifier = CPHY_LANE_1,
+					.csiphy_data_rate_regs = {
+						{0x0674, 0x05, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0678, 0x12, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0688, 0x04, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x068C, 0xC1, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x066C, 0x18, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0690, 0x02, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0614, 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
+					},
+				},
+				{
+					.lane_identifier = CPHY_LANE_2,
+					.csiphy_data_rate_regs = {
+						{0x0A74, 0x05, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0A78, 0x12, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0A88, 0x04, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0A8C, 0xC1, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0A6C, 0x18, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0A90, 0x02, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0A14, 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
+					},
+				},
+			},
+		},
+		{
+			/* ((4.5 GSpS) * (10^9) * (2.28 bits/symbol)) rounded value */
+			.bandwidth = 10260000000,
+			.data_rate_reg_array_size = 7,
+			.per_lane_info = {
+				{
+					.lane_identifier = CPHY_LANE_0,
+					.csiphy_data_rate_regs = {
+						{0x0274, 0x05, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0278, 0x0C, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0288, 0x04, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x028C, 0xC1, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x026C, 0x18, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0290, 0x02, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0214, 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
+					},
+				},
+				{
+					.lane_identifier = CPHY_LANE_1,
+					.csiphy_data_rate_regs = {
+						{0x0674, 0x05, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0678, 0x0C, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0688, 0x04, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x068C, 0xC1, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x066C, 0x18, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0690, 0x02, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0614, 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
+					},
+				},
+				{
+					.lane_identifier = CPHY_LANE_2,
+					.csiphy_data_rate_regs = {
+						{0x0A74, 0x05, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0A78, 0x0C, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0A88, 0x04, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0A8C, 0xC1, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0A6C, 0x18, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0A90, 0x02, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0A14, 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
+					},
+				},
+			},
+		},
+		{
+			/* ((5.0 GSpS) * (10^9) * (2.28 bits/symbol)) rounded value */
+			.bandwidth = 11400000000,
+			.data_rate_reg_array_size = 7,
+			.per_lane_info = {
+				{
+					.lane_identifier = CPHY_LANE_0,
+					.csiphy_data_rate_regs = {
+						{0x0274, 0x05, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0278, 0x0A, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0288, 0x04, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x028C, 0xC1, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x026C, 0x18, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0290, 0x02, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0214, 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
+					},
+				},
+				{
+					.lane_identifier = CPHY_LANE_1,
+					.csiphy_data_rate_regs = {
+						{0x0674, 0x05, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0678, 0x0A, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0688, 0x04, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x068C, 0xC1, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x066C, 0x18, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0690, 0x02, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0614, 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
+					},
+				},
+				{
+					.lane_identifier = CPHY_LANE_2,
+					.csiphy_data_rate_regs = {
+						{0x0A74, 0x05, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0A78, 0x0A, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0A88, 0x04, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0A8C, 0xC1, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0A6C, 0x18, 0x00, CSIPHY_DEFAULT_PARAMS},
+						{0x0A90, 0x02, 0x00, CSIPHY_DEFAULT_PARAMS},
 						{0x0A14, 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
 					},
 				},

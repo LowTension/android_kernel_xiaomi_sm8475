@@ -15,6 +15,7 @@ struct csiphy_reg_parms_t csiphy_v1_0 = {
 	.status_reg_params = NULL,
 	.size_offset_betn_lanes = 0x200,
 	.csiphy_interrupt_status_size = 11,
+	.csiphy_num_common_status_regs = 11,
 	.csiphy_common_array_size = 5,
 	.csiphy_reset_enter_array_size = 5,
 	.csiphy_reset_exit_array_size = 0,
