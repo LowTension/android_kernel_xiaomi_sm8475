@@ -344,6 +344,7 @@ static int cam_jpeg_mgr_bottom_half_irq(void *priv, void *data)
 	struct cam_jpeg_process_frame_work_data_t               *wq_task_data;
 	struct cam_jpeg_request_data                            *jpeg_req;
 	struct cam_req_mgr_message                               v4l2_msg = {0};
+	struct cam_ctx_request                                  *req;
 
 	if (!data || !priv) {
 		CAM_ERR(CAM_JPEG, "Invalid data");
@@ -429,6 +430,15 @@ static int cam_jpeg_mgr_bottom_half_irq(void *priv, void *data)
 					cam_sync_put_obj_ref(
 						p_cfg_req->hw_cfg_args.out_map_entries[i].sync_id);
 				}
+
+				spin_lock(&cam_ctx->lock);
+				if (!list_empty(&cam_ctx->active_req_list)) {
+					req = list_first_entry(&cam_ctx->active_req_list,
+						struct cam_ctx_request, list);
+					list_del_init(&req->list);
+					list_add_tail(&req->list, &cam_ctx->free_req_list);
+				}
+				spin_unlock(&cam_ctx->lock);
 
 				goto exit;
 			}
