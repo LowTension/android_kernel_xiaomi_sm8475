@@ -193,6 +193,8 @@ struct cam_ife_hw_mgr_ctx_flags {
  * @res_list_ife_in_rd      IFE/SFE input resource list for read path
  * @res_list_ife_out:       IFE output resoruces array
  * @res_list_sfe_out:       SFE output resources array
+ * @num_acq_vfe_out:        Number of acquired VFE out resources
+ * @num_acq_sfe_out:        Number of acquired SFE out resources
  * @free_res_list:          Free resources list for the branch node
  * @res_pool:               memory storage for the free resource list
  * @irq_status0_mask:       irq_status0_mask for the context
@@ -247,6 +249,8 @@ struct cam_ife_hw_mgr_ctx {
 						CAM_SFE_HW_OUT_RES_MAX];
 	struct list_head                  free_res_list;
 	struct cam_isp_hw_mgr_res         res_pool[CAM_IFE_HW_RES_POOL_MAX];
+	uint32_t                          num_acq_vfe_out;
+	uint32_t                          num_acq_sfe_out;
 
 	uint32_t                          irq_status0_mask[CAM_IFE_HW_NUM_MAX];
 	uint32_t                          irq_status1_mask[CAM_IFE_HW_NUM_MAX];

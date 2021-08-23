@@ -84,22 +84,33 @@ static int cam_ife_mgr_finish_clk_bw_update(
 	clk_bw_args.request_id = request_id;
 	for (i = 0; i < ctx->num_base; i++) {
 		clk_bw_args.hw_intf = NULL;
-		if (ctx->base[i].hw_type == CAM_ISP_HW_TYPE_VFE)
+		CAM_DBG(CAM_PERF,
+			"Clock/BW Update for req_id:%d i:%d num_vfe_out:%d num_sfe_out:%d in_rd:%d",
+			request_id, i, ctx->num_acq_vfe_out, ctx->num_acq_sfe_out,
+			!list_empty(&ctx->res_list_ife_in_rd));
+		if ((ctx->base[i].hw_type == CAM_ISP_HW_TYPE_VFE) &&
+			(ctx->num_acq_vfe_out || (!list_empty(&ctx->res_list_ife_in_rd))))
 			clk_bw_args.hw_intf = g_ife_hw_mgr.ife_devices[ctx->base[i].idx]->hw_intf;
-		else if (ctx->base[i].hw_type == CAM_ISP_HW_TYPE_SFE)
+		else if ((ctx->base[i].hw_type == CAM_ISP_HW_TYPE_SFE) &&
+			(ctx->num_acq_sfe_out || (!list_empty(&ctx->res_list_ife_in_rd))))
 			clk_bw_args.hw_intf = g_ife_hw_mgr.sfe_devices[ctx->base[i].idx];
 		else
 			continue;
 
-		CAM_DBG(CAM_PERF, "Apply Clock/BW for req_id:%d i:%d hw_idx=%d hw_type:%d",
-			request_id, i, clk_bw_args.hw_intf->hw_idx, clk_bw_args.hw_intf->hw_type);
-		rc |= clk_bw_args.hw_intf->hw_ops.process_cmd(clk_bw_args.hw_intf->hw_priv,
+		CAM_DBG(CAM_PERF,
+			"Apply Clock/BW for req_id:%d i:%d hw_idx=%d hw_type:%d num_vfe_out:%d num_sfe_out:%d in_rd:%d",
+			request_id, i, clk_bw_args.hw_intf->hw_idx, clk_bw_args.hw_intf->hw_type,
+			ctx->num_acq_vfe_out, ctx->num_acq_sfe_out,
+			!list_empty(&ctx->res_list_ife_in_rd));
+		rc = clk_bw_args.hw_intf->hw_ops.process_cmd(clk_bw_args.hw_intf->hw_priv,
 			CAM_ISP_HW_CMD_APPLY_CLK_BW_UPDATE, &clk_bw_args,
 			sizeof(struct cam_isp_apply_clk_bw_args));
-		if (rc)
+		if (rc) {
 			CAM_ERR(CAM_PERF,
-				"Finish Clock/BW Update failed i:%d hw_idx=%d hw_type:%d rc:%d",
-				i, ctx->base[i].idx, ctx->base[i].hw_type, rc);
+				"Finish Clock/BW Update failed req_id:%d i:%d hw_idx=%d hw_type:%d rc:%d",
+				request_id, i, ctx->base[i].idx, ctx->base[i].hw_type, rc);
+			break;
+		}
 	}
 
 	return rc;
@@ -1527,8 +1538,10 @@ static int cam_ife_hw_mgr_release_hw_for_ctx(
 	struct cam_isp_hw_mgr_res        *hw_mgr_res_temp;
 
 	/* ife leaf resource */
-	for (i = 0; i < max_ife_out_res; i++)
+	for (i = 0; i < max_ife_out_res; i++) {
 		cam_ife_hw_mgr_free_hw_res(&ife_ctx->res_list_ife_out[i]);
+		ife_ctx->num_acq_vfe_out--;
+	}
 
 	/* fetch rd resource */
 	list_for_each_entry_safe(hw_mgr_res, hw_mgr_res_temp,
@@ -1546,9 +1559,11 @@ static int cam_ife_hw_mgr_release_hw_for_ctx(
 
 	if (ife_ctx->ctx_type == CAM_IFE_CTX_TYPE_SFE) {
 		/* sfe leaf resource */
-		for (i = 0; i < CAM_SFE_HW_OUT_RES_MAX; i++)
+		for (i = 0; i < CAM_SFE_HW_OUT_RES_MAX; i++) {
 			cam_ife_hw_mgr_free_hw_res(
 				&ife_ctx->res_list_sfe_out[i]);
+			ife_ctx->num_acq_sfe_out--;
+		}
 
 		/* sfe source resource */
 		list_for_each_entry_safe(hw_mgr_res, hw_mgr_res_temp,
@@ -1830,6 +1845,7 @@ static int cam_ife_hw_mgr_acquire_res_ife_out_rdi(
 	ife_out_res->res_id = vfe_out_res_id;
 	ife_out_res->res_type = CAM_ISP_RESOURCE_VFE_OUT;
 	ife_src_res->num_children++;
+	ife_ctx->num_acq_vfe_out++;
 
 	return 0;
 err:
@@ -1925,6 +1941,7 @@ static int cam_ife_hw_mgr_acquire_res_ife_out_pixel(
 		ife_out_res->res_type = CAM_ISP_RESOURCE_VFE_OUT;
 		ife_out_res->res_id = out_port->res_type;
 		ife_src_res->num_children++;
+		ife_ctx->num_acq_vfe_out++;
 	}
 
 	return 0;
@@ -2021,6 +2038,7 @@ static int cam_ife_hw_mgr_acquire_res_sfe_out_rdi(
 	sfe_out_res->res_id = sfe_out_res_id;
 	sfe_out_res->res_type = CAM_ISP_RESOURCE_SFE_OUT;
 	sfe_src_res->num_children++;
+	ife_ctx->num_acq_sfe_out++;
 	return 0;
 
 err:
@@ -2104,6 +2122,7 @@ static int cam_ife_hw_mgr_acquire_res_sfe_out_pix(
 		sfe_out_res->res_type = CAM_ISP_RESOURCE_SFE_OUT;
 		sfe_out_res->res_id = out_port->res_type;
 		sfe_src_res->num_children++;
+		ife_ctx->num_acq_sfe_out++;
 	}
 
 	return 0;
@@ -4699,6 +4718,8 @@ static int cam_ife_mgr_acquire_hw(void *hw_mgr_priv, void *acquire_hw_args)
 	ife_ctx->ctx_config = 0;
 	ife_ctx->cdm_handle = 0;
 	ife_ctx->ctx_type = CAM_IFE_CTX_TYPE_NONE;
+	ife_ctx->num_acq_vfe_out = 0;
+	ife_ctx->num_acq_sfe_out = 0;
 
 	ife_ctx->common.cb_priv = acquire_args->context_data;
 	ife_ctx->common.mini_dump_cb = acquire_args->mini_dump_cb;
@@ -6719,6 +6740,8 @@ static int cam_ife_mgr_release_hw(void *hw_mgr_priv,
 	ctx->left_hw_idx = 0;
 	ctx->right_hw_idx = 0;
 	ctx->sfe_info.num_fetches = 0;
+	ctx->num_acq_vfe_out = 0;
+	ctx->num_acq_sfe_out = 0;
 
 	kfree(ctx->sfe_info.scratch_config);
 	ctx->sfe_info.scratch_config = NULL;
