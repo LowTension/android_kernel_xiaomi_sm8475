@@ -1211,7 +1211,7 @@ void cam_csiphy_shutdown(struct csiphy_device *csiphy_dev)
 			cam_csiphy_reset_phyconfig_param(csiphy_dev, i);
 		}
 
-		if (csiphy_reg->prgm_cmn_reg_across_csiphy) {
+		if (csiphy_dev->prgm_cmn_reg_across_csiphy) {
 			mutex_lock(&active_csiphy_cnt_mutex);
 			active_csiphy_hw_cnt--;
 			mutex_unlock(&active_csiphy_cnt_mutex);
@@ -1884,7 +1884,7 @@ int32_t cam_csiphy_core_cfg(void *phy_dev,
 
 		csiphy_dev->csiphy_info[offset].csiphy_cpas_cp_reg_mask = 0x0;
 
-		if (csiphy_reg->prgm_cmn_reg_across_csiphy) {
+		if (csiphy_dev->prgm_cmn_reg_across_csiphy) {
 			mutex_lock(&active_csiphy_cnt_mutex);
 			active_csiphy_hw_cnt--;
 			mutex_unlock(&active_csiphy_cnt_mutex);
@@ -2121,7 +2121,7 @@ int32_t cam_csiphy_core_cfg(void *phy_dev,
 			goto cpas_stop;
 		}
 
-		if (csiphy_reg->prgm_cmn_reg_across_csiphy) {
+		if (csiphy_dev->prgm_cmn_reg_across_csiphy) {
 			cam_csiphy_prgm_cmn_data(csiphy_dev, false);
 
 			mutex_lock(&active_csiphy_cnt_mutex);
@@ -2229,7 +2229,7 @@ int32_t cam_csiphy_core_cfg(void *phy_dev,
 	return rc;
 
 hw_cnt_decrement:
-	if (csiphy_reg->prgm_cmn_reg_across_csiphy) {
+	if (csiphy_dev->prgm_cmn_reg_across_csiphy) {
 		mutex_lock(&active_csiphy_cnt_mutex);
 		active_csiphy_hw_cnt--;
 		mutex_unlock(&active_csiphy_cnt_mutex);
