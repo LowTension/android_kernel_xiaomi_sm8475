@@ -153,21 +153,17 @@ int cam_req_mgr_workq_enqueue_task(struct crm_workq_task *task,
 
 	if (!task) {
 		CAM_WARN(CAM_CRM, "NULL task pointer can not schedule");
-		rc = -EINVAL;
-		goto end;
+		return -EINVAL;
 	}
 	workq = (struct cam_req_mgr_core_workq *)task->parent;
 	if (!workq) {
 		CAM_DBG(CAM_CRM, "NULL workq pointer suspect mem corruption");
-		rc = -EINVAL;
-		goto end;
+		return -EINVAL;
 	}
 
 	if (task->cancel == 1 || atomic_read(&workq->flush)) {
-		cam_req_mgr_workq_put_task(task);
-		CAM_INFO(CAM_CRM, "task aborted and queued back to pool");
 		rc = 0;
-		goto end;
+		goto abort;
 	}
 	task->priv = priv;
 	task->priority =
@@ -175,11 +171,11 @@ int cam_req_mgr_workq_enqueue_task(struct crm_workq_task *task,
 		? prio : CRM_TASK_PRIORITY_0;
 
 	WORKQ_ACQUIRE_LOCK(workq, flags);
-		if (!workq->job) {
-			rc = -EINVAL;
-			WORKQ_RELEASE_LOCK(workq, flags);
-			goto end;
-		}
+	if (!workq->job) {
+		rc = -EINVAL;
+		WORKQ_RELEASE_LOCK(workq, flags);
+		goto abort;
+	}
 
 	list_add_tail(&task->entry,
 		&workq->task.process_head[task->priority]);
@@ -191,7 +187,11 @@ int cam_req_mgr_workq_enqueue_task(struct crm_workq_task *task,
 	workq->workq_scheduled_ts = ktime_get();
 	queue_work(workq->job, &workq->work);
 	WORKQ_RELEASE_LOCK(workq, flags);
-end:
+
+	return rc;
+abort:
+	cam_req_mgr_workq_put_task(task);
+	CAM_INFO(CAM_CRM, "task aborted and queued back to pool");
 	return rc;
 }
 
@@ -271,24 +271,32 @@ void cam_req_mgr_workq_destroy(struct cam_req_mgr_core_workq **crm_workq)
 {
 	unsigned long flags = 0;
 	struct workqueue_struct   *job;
+	struct cam_req_mgr_core_workq *workq;
+	int i;
 
-	CAM_DBG(CAM_CRM, "destroy workque %pK", crm_workq);
-	if (*crm_workq) {
-		WORKQ_ACQUIRE_LOCK(*crm_workq, flags);
-		if ((*crm_workq)->job) {
-			job = (*crm_workq)->job;
-			(*crm_workq)->job = NULL;
-			WORKQ_RELEASE_LOCK(*crm_workq, flags);
+	if (crm_workq && *crm_workq) {
+		workq = *crm_workq;
+		CAM_DBG(CAM_CRM, "destroy workque %s", workq->workq_name);
+		WORKQ_ACQUIRE_LOCK(workq, flags);
+		/* prevent any processing of callbacks */
+		atomic_set(&workq->flush, 1);
+		if (workq->job) {
+			job = workq->job;
+			workq->job = NULL;
+			WORKQ_RELEASE_LOCK(workq, flags);
 			destroy_workqueue(job);
-		} else {
-			WORKQ_RELEASE_LOCK(*crm_workq, flags);
+			WORKQ_ACQUIRE_LOCK(workq, flags);
 		}
-
 		/* Destroy workq payload data */
-		kfree((*crm_workq)->task.pool[0].payload);
-		(*crm_workq)->task.pool[0].payload = NULL;
-		kfree((*crm_workq)->task.pool);
-		kfree(*crm_workq);
+		kfree(workq->task.pool[0].payload);
+		kfree(workq->task.pool);
+
+		/* Leave lists in stable state after freeing pool */
+		INIT_LIST_HEAD(&workq->task.empty_head);
+		for (i = 0; i < CRM_TASK_PRIORITY_MAX; i++)
+			INIT_LIST_HEAD(&workq->task.process_head[i]);
 		*crm_workq = NULL;
+		WORKQ_RELEASE_LOCK(workq, flags);
+		kfree(workq);
 	}
 }
