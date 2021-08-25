@@ -345,6 +345,125 @@ struct cam_isp_context_dump_header {
 	uint32_t  word_size;
 };
 
+/** * struct cam_isp_ctx_req_mini_dump - ISP mini dumprequest
+ *
+ * @map_out:                   Output fence mapping
+ * @map_in:                    Input fence mapping
+ * @io_cfg:                    IO buffer configuration
+ * @request_id:                Request ID
+ * @num_fence_map_out:         Number of the output fence map
+ * @num_fence_map_in:          Number of input fence map
+ * @num_io_cfg:                Number of ISP hardware configuration entries
+ * @num_acked:                 Count to track acked entried for output.
+ * @num_deferred_acks:         Number of buf_dones/acks that are deferred to
+ *                             handle or signalled in special scenarios.
+ *                             Increment this count instead of num_acked and
+ *                             handle the events later where eventually
+ *                             increment num_acked.
+ * @bubble_report:             Flag to track if bubble report is active on
+ *                             current request
+ * @bubble_detected:           Flag to track if bubble is detected
+ * @reapply:                   True if reapplying after bubble
+ * @cdm_reset_before_apply:    For bubble re-apply when buf done not coming set
+ *                             to True
+ *
+ */
+struct cam_isp_ctx_req_mini_dump {
+	struct cam_hw_fence_map_entry   *map_out;
+	struct cam_hw_fence_map_entry   *map_in;
+	struct cam_buf_io_cfg           *io_cfg;
+	uint64_t                         request_id;
+	uint8_t                          num_fence_map_in;
+	uint8_t                          num_fence_map_out;
+	uint8_t                          num_io_cfg;
+	uint8_t                          num_acked;
+	uint8_t                          num_deferred_acks;
+	bool                             bubble_report;
+	bool                             bubble_detected;
+	bool                             reapply;
+	bool                             cdm_reset_before_apply;
+};
+
+/**
+ * struct cam_isp_ctx_mini_dump_info - Isp context mini dump data
+ *
+ * @active_list:               Active Req list
+ * @pending_list:              Pending req list
+ * @wait_list:                 Wait Req List
+ * @event_record:              Event record
+ * @sof_timestamp_val:         Captured time stamp value at sof hw event
+ * @boot_timestamp:            Boot time stamp for a given req_id
+ * @last_sof_timestamp:        SOF timestamp of the last frame
+ * @init_timestamp:            Timestamp at which this context is initialized
+ * @frame_id:                  Frame id read every epoch for the ctx
+ * @reported_req_id:           Last reported request id
+ * @last_applied_req_id:       Last applied request id
+ * @frame_id_meta:             Frame id for meta
+ * @ctx_id:                    Context id
+ * @subscribe_event:           The irq event mask that CRM subscribes to, IFE
+ *                             will invoke CRM cb at those event.
+ * @bubble_frame_cnt:          Count of the frame after bubble
+ * @isp_device_type:           ISP device type
+ * @active_req_cnt:            Counter for the active request
+ * @trigger_id:                ID provided by CRM for each ctx on the link
+ * @substate_actiavted:        Current substate for the activated state.
+ * @rxd_epoch:                 Indicate whether epoch has been received. Used to
+ *                             decide whether to apply request in offline ctx
+ * @process_bubble:            Atomic variable to check if ctx is still
+ *                             processing bubble.
+ * @apply_in_progress          Whether request apply is in progress
+ * @rdi_only_context:          Get context type information.
+ *                             true, if context is rdi only context
+ * @offline_context:           Indicate whether context is for offline IFE
+ * @hw_acquired:               Indicate whether HW resources are acquired
+ * @init_received:             Indicate whether init config packet is received
+ *                             meta from the sensor
+ * @split_acquire:             Indicate whether a separate acquire is expected
+ * @custom_enabled:            Custom HW enabled for this ctx
+ * @use_frame_header_ts:       Use frame header for qtimer ts
+ * @support_consumed_addr:     Indicate whether HW has last consumed addr reg
+ * @use_default_apply:         Use default settings in case of frame skip
+ *
+ */
+struct cam_isp_ctx_mini_dump_info {
+	struct cam_isp_ctx_req_mini_dump      *active_list;
+	struct cam_isp_ctx_req_mini_dump      *pending_list;
+	struct cam_isp_ctx_req_mini_dump      *wait_list;
+	struct cam_isp_context_event_record    event_record[
+		CAM_ISP_CTX_EVENT_MAX][CAM_ISP_CTX_EVENT_RECORD_MAX_ENTRIES];
+	uint64_t                               sof_timestamp_val;
+	uint64_t                               boot_timestamp;
+	uint64_t                               last_sof_timestamp;
+	uint64_t                               init_timestamp;
+	int64_t                                frame_id;
+	int64_t                                reported_req_id;
+	int64_t                                last_applied_req_id;
+	int64_t                                last_bufdone_err_apply_req_id;
+	uint32_t                               frame_id_meta;
+	uint8_t                                ctx_id;
+	uint8_t                                subscribe_event;
+	uint8_t                                bubble_frame_cnt;
+	uint8_t                                isp_device_type;
+	uint8_t                                active_req_cnt;
+	uint8_t                                trigger_id;
+	uint8_t                                substate_activated;
+	uint8_t                                rxd_epoch;
+	uint8_t                                process_bubble;
+	uint8_t                                active_cnt;
+	uint8_t                                pending_cnt;
+	uint8_t                                wait_cnt;
+	bool                                   apply_in_progress;
+	bool                                   rdi_only_context;
+	bool                                   offline_context;
+	bool                                   hw_acquired;
+	bool                                   init_received;
+	bool                                   split_acquire;
+	bool                                   custom_enabled;
+	bool                                   use_frame_header_ts;
+	bool                                   support_consumed_addr;
+	bool                                   use_default_apply;
+};
+
 /**
  * cam_isp_context_init()
  *

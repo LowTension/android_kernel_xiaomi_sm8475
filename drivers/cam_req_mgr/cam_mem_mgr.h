@@ -105,6 +105,25 @@ struct cam_mem_table {
 };
 
 /**
+ * struct cam_mem_table_mini_dump
+ *
+ * @bufq: array of buffers
+ * @dbg_buf_idx: debug buffer index to get usecases info
+ * @alloc_profile_enable: Whether to enable alloc profiling
+ * @dbg_buf_idx: debug buffer index to get usecases info
+ * @force_cache_allocs: Force all internal buffer allocations with cache
+ * @need_shared_buffer_padding: Whether padding is needed for shared buffer
+ *                              allocations.
+ */
+struct cam_mem_table_mini_dump {
+	struct cam_mem_buf_queue bufq[CAM_MEM_BUFQ_MAX];
+	size_t dbg_buf_idx;
+	bool   alloc_profile_enable;
+	bool   force_cache_allocs;
+	bool   need_shared_buffer_padding;
+};
+
+/**
  * @brief: Allocates and maps buffer
  *
  * @cmd:   Allocation information

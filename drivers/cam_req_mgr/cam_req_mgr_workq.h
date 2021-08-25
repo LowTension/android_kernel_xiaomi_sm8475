@@ -14,8 +14,6 @@
 #include <linux/slab.h>
 #include <linux/timer.h>
 
-#include "cam_req_mgr_core.h"
-
 /* Threshold for scheduling delay in ms */
 #define CAM_WORKQ_SCHEDULE_TIME_THRESHOLD   5
 
@@ -110,6 +108,23 @@ struct cam_req_mgr_core_workq {
 	} task;
 };
 
+/**
+ * struct cam_req_mgr_core_workq_mini_dump
+ * @workq_scheduled_ts: scheduled ts
+ * task -
+ * @pending_cnt : # of tasks left in queue
+ * @free_cnt    : # of free/available tasks
+ * @num_task    : size of tasks pool
+ */
+struct cam_req_mgr_core_workq_mini_dump {
+	ktime_t                    workq_scheduled_ts;
+	/* tasks */
+	struct {
+		uint32_t               pending_cnt;
+		uint32_t               free_cnt;
+		uint32_t               num_task;
+	} task;
+};
 /**
  * cam_req_mgr_process_workq() - main loop handling
  * @w: workqueue task pointer

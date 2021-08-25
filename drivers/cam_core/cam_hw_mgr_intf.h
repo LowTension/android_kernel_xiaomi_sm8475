@@ -57,6 +57,10 @@ typedef int (*cam_ctx_info_dump_cb_func)(void *context,
 typedef int (*cam_ctx_recovery_cb_func)(void *context,
 	void *recovery_data);
 
+/* ctx mini dump callback function type */
+typedef int (*cam_ctx_mini_dump_cb_func)(void *context,
+	void *args);
+
 /**
  * struct cam_hw_update_entry - Entry for hardware config
  *
@@ -138,6 +142,7 @@ struct cam_hw_acquire_stream_caps {
  *                         its updated per hardware
  * @valid_acquired_hw:     Valid num of acquired hardware
  * @op_params:             OP Params from hw_mgr to ctx
+ * @mini_dump_cb:          Mini dump callback function
  *
  */
 struct cam_hw_acquire_args {
@@ -156,6 +161,7 @@ struct cam_hw_acquire_args {
 	uint32_t    valid_acquired_hw;
 
 	struct cam_hw_acquire_stream_caps op_params;
+	cam_ctx_mini_dump_cb_func    mini_dump_cb;
 };
 
 /**
@@ -394,6 +400,19 @@ struct cam_hw_cmd_args {
 		void                       *internal_args;
 		struct cam_hw_dump_pf_args  pf_args;
 	} u;
+};
+
+/**
+ * struct cam_hw_mini_dump_args - Mini Dump arguments
+ *
+ * @start_addr:          Start address of buffer
+ * @len:                 Len of Buffer
+ * @bytes_written:       Bytes written
+ */
+struct cam_hw_mini_dump_args {
+	void             *start_addr;
+	unsigned long     len;
+	unsigned long     bytes_written;
 };
 
 /**
