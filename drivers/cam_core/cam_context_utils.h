@@ -36,4 +36,5 @@ int32_t cam_context_dump_dev_to_hw(struct cam_context *ctx,
 	struct cam_dump_req_cmd *cmd);
 size_t cam_context_parse_config_cmd(struct cam_context *ctx, struct cam_config_dev_cmd *cmd,
 	struct cam_packet **packet);
+int cam_context_mini_dump(struct cam_context *ctx, void *args);
 #endif /* _CAM_CONTEXT_UTILS_H_ */

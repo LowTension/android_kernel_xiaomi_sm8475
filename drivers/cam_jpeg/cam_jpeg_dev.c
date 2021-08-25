@@ -38,6 +38,19 @@ static void cam_jpeg_dev_iommu_fault_handler(
 		cam_context_dump_pf_info(&(node->ctx_list[i]), pf_info);
 }
 
+static void cam_jpeg_dev_mini_dump_cb(void *priv, void *args)
+{
+	struct cam_context *ctx = NULL;
+
+	if (!priv || !args) {
+		CAM_ERR(CAM_JPEG, "Invalid param priv %pK %pK args", priv, args);
+		return;
+	}
+
+	ctx = (struct cam_context *)priv;
+	cam_context_mini_dump_from_hw(ctx, args);
+}
+
 static const struct of_device_id cam_jpeg_dt_match[] = {
 	{
 		.compatible = "qcom,cam-jpeg"
@@ -123,7 +136,8 @@ static int cam_jpeg_dev_component_bind(struct device *dev,
 	node = (struct cam_node *)g_jpeg_dev.sd.token;
 
 	rc = cam_jpeg_hw_mgr_init(pdev->dev.of_node,
-		(uint64_t *)&hw_mgr_intf, &iommu_hdl);
+		(uint64_t *)&hw_mgr_intf, &iommu_hdl,
+		cam_jpeg_dev_mini_dump_cb);
 	if (rc) {
 		CAM_ERR(CAM_JPEG, "Can not initialize JPEG HWmanager %d", rc);
 		goto unregister;

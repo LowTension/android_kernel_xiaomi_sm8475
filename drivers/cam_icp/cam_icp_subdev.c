@@ -66,6 +66,19 @@ static void cam_icp_dev_iommu_fault_handler(struct cam_smmu_pf_info *pf_info)
 		cam_context_dump_pf_info(&(node->ctx_list[i]), pf_info);
 }
 
+static void cam_icp_dev_mini_dump_cb(void *priv, void *args)
+{
+	struct cam_context *ctx = NULL;
+
+	if (!priv || !args) {
+		CAM_ERR(CAM_ICP, "Invalid param priv: %pK args %pK", priv, args);
+		return;
+	}
+
+	ctx = (struct cam_context *)priv;
+	cam_context_mini_dump_from_hw(ctx, args);
+}
+
 static int cam_icp_subdev_open(struct v4l2_subdev *sd,
 	struct v4l2_subdev_fh *fh)
 {
@@ -187,7 +200,7 @@ static int cam_icp_component_bind(struct device *dev,
 	}
 
 	rc = cam_icp_hw_mgr_init(pdev->dev.of_node, (uint64_t *)hw_mgr_intf,
-		&iommu_hdl);
+		&iommu_hdl, cam_icp_dev_mini_dump_cb);
 	if (rc) {
 		CAM_ERR(CAM_ICP, "ICP HW manager init failed: %d", rc);
 		goto hw_init_fail;

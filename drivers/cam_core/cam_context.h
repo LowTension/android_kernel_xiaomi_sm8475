@@ -168,6 +168,7 @@ struct cam_ctx_crm_ops {
  * @dumpinfo_ops:          Function to be invoked for dumping any
  *                         context info
  * @recovery_ops:          Function to be invoked to try hardware recovery
+ * @mini_dump_ops:         Function for mini dump
  *
  */
 struct cam_ctx_ops {
@@ -177,6 +178,7 @@ struct cam_ctx_ops {
 	cam_hw_pagefault_cb_func     pagefault_ops;
 	cam_ctx_info_dump_cb_func    dumpinfo_ops;
 	cam_ctx_recovery_cb_func     recovery_ops;
+	cam_ctx_mini_dump_cb_func    mini_dump_ops;
 };
 
 /**
@@ -218,6 +220,7 @@ struct cam_ctx_ops {
  * @hw_updater_entry:      Hw update entry
  * @in_map_entries:        In map update entry
  * @out_map_entries:       Out map entry
+ * @mini dump cb:          Mini dump cb
  *
  */
 struct cam_context {
@@ -262,6 +265,7 @@ struct cam_context {
 	struct cam_hw_update_entry    *hw_update_entry;
 	struct cam_hw_fence_map_entry *in_map_entries;
 	struct cam_hw_fence_map_entry *out_map_entries;
+	cam_ctx_mini_dump_cb_func      mini_dump_cb;
 
 };
 
@@ -407,6 +411,18 @@ int cam_context_handle_crm_process_evt(struct cam_context *ctx,
  */
 int cam_context_handle_crm_dump_req(struct cam_context *ctx,
 	struct cam_req_mgr_dump_info *dump);
+
+/**
+ * cam_context_mini_dump_from_hw()
+ *
+ * @brief:        Handle mini dump request command
+ *
+ * @ctx:          Object pointer for cam_context
+ * @args:         Args to be passed
+ *
+ */
+int cam_context_mini_dump_from_hw(struct cam_context *ctx,
+	void  *args);
 
 /**
  * cam_context_dump_pf_info()

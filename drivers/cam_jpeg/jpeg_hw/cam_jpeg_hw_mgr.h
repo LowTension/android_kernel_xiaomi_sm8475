@@ -103,6 +103,7 @@ struct cam_jpeg_hw_cfg_req {
  * @in_use: Flag for context usage
  * @wait_complete: Completion info
  * @cdm_cmd: Cdm cmd submitted for that context.
+ * @mini_dump_cb: Mini dump cb
  */
 struct cam_jpeg_hw_ctx_data {
 	void *context_priv;
@@ -112,6 +113,7 @@ struct cam_jpeg_hw_ctx_data {
 	bool in_use;
 	struct completion wait_complete;
 	struct cam_cdm_bl_request *cdm_cmd;
+	cam_ctx_mini_dump_cb_func      mini_dump_cb;
 };
 
 /**
@@ -138,6 +140,7 @@ struct cam_jpeg_hw_ctx_data {
  * @free_req_list: Free nodes for above list
  * @req_list: Nodes of hw update list
  * @num_pid: num of pids supported in the device
+ * @mini_dump_cb: Mini dump cb
  */
 struct cam_jpeg_hw_mgr {
 	struct mutex hw_mgr_mutex;
@@ -167,6 +170,49 @@ struct cam_jpeg_hw_mgr {
 	struct list_head free_req_list;
 	struct cam_jpeg_hw_cfg_req req_list[CAM_JPEG_HW_CFG_Q_MAX];
 	uint32_t num_pid[CAM_JPEG_DEV_TYPE_MAX];
+	cam_jpeg_mini_dump_cb      mini_dump_cb;
 };
 
+/**
+ * struct cam_jpeg_hw_mini_dump_req
+ *
+ * @submit_timestamp:        Time stamp of request submit
+ * @req_id:                  Request Id
+ * @dev_type:                Dev type
+ * @num_hw_entry_processed:  Num of hw entry processed
+ */
+struct cam_jpeg_hw_mini_dump_req {
+	ktime_t    submit_timestamp;
+	uintptr_t  req_id;
+	uint32_t   dev_type;
+	uint32_t   num_hw_entry_processed;
+};
+
+/**
+ * struct cam_jpeg_hw_ctx_mini_dump
+ *
+ * @acquire_info:        Acquire info
+ * @hw_ctx:              hw context info
+ * @in_use:              flag to indicate if in use
+ */
+struct cam_jpeg_hw_ctx_mini_dump {
+	struct cam_jpeg_acquire_dev_info        acquire_info;
+	struct cam_hw_mini_dump_info            hw_ctx;
+	bool                                    in_use;
+};
+
+/**
+ * struct cam_jpeg_hw_mgr_mini_dump
+ *
+ * @ctx:               Context info array
+ * @cfg_req:           Cfg req
+ * @core:              core info
+ * @num_context:       Num of context
+ */
+struct cam_jpeg_hw_mgr_mini_dump {
+	struct cam_jpeg_hw_ctx_mini_dump      *ctx[CAM_JPEG_CTX_MAX];
+	struct cam_jpeg_hw_mini_dump_req       cfg_req[CAM_JPEG_DEV_TYPE_MAX];
+	struct cam_jpeg_mini_dump_core_info    core[CAM_JPEG_RES_TYPE_MAX];
+	uint32_t                               num_context;
+};
 #endif /* CAM_JPEG_HW_MGR_H */
