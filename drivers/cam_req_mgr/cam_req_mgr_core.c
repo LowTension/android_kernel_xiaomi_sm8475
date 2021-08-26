@@ -914,7 +914,9 @@ static int __cam_req_mgr_check_next_req_slot(
 		if (in_q->wr_idx != idx)
 			CAM_WARN(CAM_CRM,
 				"CHECK here wr %d, rd %d", in_q->wr_idx, idx);
-		__cam_req_mgr_inc_idx(&in_q->wr_idx, 1, in_q->num_slots);
+		if (slot->sync_mode != CAM_REQ_MGR_SYNC_MODE_SYNC ||
+			(slot->sync_mode == CAM_REQ_MGR_SYNC_MODE_SYNC && !link->is_master))
+			__cam_req_mgr_inc_idx(&in_q->wr_idx, 1, in_q->num_slots);
 	}
 
 	return rc;
@@ -3920,9 +3922,17 @@ static int cam_req_mgr_cb_notify_trigger(
 	slot = &in_q->slot[slot_rd_idx];
 	tmp_slot = &in_q->slot[slot_rd_idx];
 
-	if (slot->status == CRM_SLOT_STATUS_REQ_APPLIED) {
+	if (slot->sync_mode != CAM_REQ_MGR_SYNC_MODE_NO_SYNC &&
+		slot->status == CRM_SLOT_STATUS_REQ_APPLIED) {
 		__cam_req_mgr_inc_idx(&slot_rd_idx, 1, in_q->num_slots);
 		slot = &in_q->slot[slot_rd_idx];
+
+		if (slot->status == CRM_SLOT_STATUS_NO_REQ &&
+			in_q->wr_idx == slot_rd_idx) {
+			if (link->is_master)
+				__cam_req_mgr_inc_idx(&in_q->wr_idx, 1, in_q->num_slots);
+			slot->sync_mode = tmp_slot->sync_mode;
+		}
 	}
 
 	CAM_DBG(CAM_CRM,
@@ -3967,26 +3977,28 @@ static int cam_req_mgr_cb_notify_trigger(
 				trigger_data->fps,
 				link->fps);
 
-			rc = __cam_req_mgr_check_link_is_ready(
-				link, slot->idx, true);
+			if (slot->status != CRM_SLOT_STATUS_NO_REQ) {
+				rc = __cam_req_mgr_check_link_is_ready(
+					link, slot->idx, true);
 
-			if (rc) {
-				CAM_DBG(CAM_CRM,
-					"Req:%lld [Master] not ready on link: %x, rc=%d",
-					slot->req_id, link->link_hdl, rc);
-				return rc;
-			}
+				if (rc) {
+					CAM_DBG(CAM_CRM,
+						"Req:%lld [Master] not ready on link: %x, rc=%d",
+						slot->req_id, link->link_hdl, rc);
+					return rc;
+				}
 
-			/* Checking each sync link if they are ready to apply
-			 * on this epoch, if not then skip apply on this epoch
-			 */
+				/* Checking each sync link if they are ready to apply
+				 * on this epoch, if not then skip apply on this epoch
+				 */
 
-			rc = cam_req_mgr_is_slave_link_ready(
-				link, slot, trigger_data->fps, frame_duration,
-				curr_boot_timestamp_ns);
-			if (rc) {
-				CAM_DBG(CAM_CRM, "Sync link not ready");
-				return rc;
+				rc = cam_req_mgr_is_slave_link_ready(
+					link, slot, trigger_data->fps, frame_duration,
+					curr_boot_timestamp_ns);
+				if (rc) {
+					CAM_DBG(CAM_CRM, "Sync link not ready");
+					return rc;
+				}
 			}
 		}
 	}
