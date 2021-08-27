@@ -3104,9 +3104,8 @@ static int cam_vfe_bus_ver3_update_wm(void *priv, void *cmd_args,
 	struct cam_cdm_utils_ops                       *cdm_util_ops;
 	uint32_t *reg_val_pair;
 	uint32_t num_regval_pairs = 0;
-	uint32_t i, j, k, size = 0;
+	uint32_t i, j, size = 0;
 	uint32_t frame_inc = 0, val;
-	uint32_t loop_size = 0;
 	uint32_t iova_addr, iova_offset, image_buf_offset = 0;
 	dma_addr_t iova;
 
@@ -3250,12 +3249,6 @@ static int cam_vfe_bus_ver3_update_wm(void *priv, void *cmd_args,
 				wm_data->index, reg_val_pair[j-1]);
 		}
 
-		if ((!bus_priv->common_data.is_lite && wm_data->index > 22) ||
-			bus_priv->common_data.is_lite)
-			loop_size = wm_data->irq_subsample_period + 1;
-		else
-			loop_size = 1;
-
 		if (wm_data->en_ubwc)
 			image_buf_offset = io_cfg->planes[i].meta_size;
 		else if (wm_data->en_cfg & (0x3 << 16))
@@ -3264,31 +3257,29 @@ static int cam_vfe_bus_ver3_update_wm(void *priv, void *cmd_args,
 			image_buf_offset = 0;
 
 		/* WM Image address */
-		for (k = 0; k < loop_size; k++) {
-			iova = update_buf->wm_update->image_buf[i] +
-				image_buf_offset + (k * frame_inc);
+		iova = update_buf->wm_update->image_buf[i] +
+			image_buf_offset;
 
-			if (cam_smmu_is_expanded_memory()) {
-				iova_addr = CAM_36BIT_INTF_GET_IOVA_BASE(iova);
-				iova_offset = CAM_36BIT_INTF_GET_IOVA_OFFSET(iova);
+		if (cam_smmu_is_expanded_memory()) {
+			iova_addr = CAM_36BIT_INTF_GET_IOVA_BASE(iova);
+			iova_offset = CAM_36BIT_INTF_GET_IOVA_OFFSET(iova);
 
-				CAM_VFE_ADD_REG_VAL_PAIR(reg_val_pair, j,
-					wm_data->hw_regs->image_addr, iova_addr);
+			CAM_VFE_ADD_REG_VAL_PAIR(reg_val_pair, j,
+				wm_data->hw_regs->image_addr, iova_addr);
 
-				CAM_VFE_ADD_REG_VAL_PAIR(reg_val_pair, j,
-					wm_data->hw_regs->addr_cfg, iova_offset);
+			CAM_VFE_ADD_REG_VAL_PAIR(reg_val_pair, j,
+				wm_data->hw_regs->addr_cfg, iova_offset);
 
-				CAM_DBG(CAM_ISP, "WM:%d image address 0x%X 0x%X",
-					wm_data->index, reg_val_pair[j-2], reg_val_pair[j-1]);
-			} else {
-				iova_addr = iova;
+			CAM_DBG(CAM_ISP, "WM:%d image address 0x%X 0x%X",
+				wm_data->index, reg_val_pair[j-2], reg_val_pair[j-1]);
+		} else {
+			iova_addr = iova;
 
-				CAM_VFE_ADD_REG_VAL_PAIR(reg_val_pair, j,
-					wm_data->hw_regs->image_addr, iova_addr);
+			CAM_VFE_ADD_REG_VAL_PAIR(reg_val_pair, j,
+				wm_data->hw_regs->image_addr, iova_addr);
 
-				CAM_DBG(CAM_ISP, "WM:%d image address 0x%X",
-					wm_data->index, reg_val_pair[j-1]);
-			}
+			CAM_DBG(CAM_ISP, "WM:%d image address 0x%X",
+				wm_data->index, reg_val_pair[j-1]);
 		}
 
 		update_buf->wm_update->image_buf_offset[i] = image_buf_offset;
