@@ -319,6 +319,7 @@ static struct cam_sfe_top_common_reg_offset  sfe680_top_commong_reg  = {
 	.sfe_mode                      = sfe_680_mode,
 	.ipp_violation_mask            = 0x4000,
 	.num_debug_registers           = 12,
+	.top_cc_test_bus_supported     = false,
 	.top_debug = {
 		0x0000004C,
 		0x00000050,

@@ -125,4 +125,17 @@ int cam_common_read_poll_timeout(
  */
 int cam_common_modify_timer(struct timer_list *timer, int32_t timeout_val);
 
+/**
+ * cam_common_util_thread_switch_delay_detect()
+ *
+ * @brief                  Detect if there is any scheduling delay
+ *
+ * @token:                 String identifier to print workq name or tasklet
+ * @scheduled_time:        Time when workq or tasklet was scheduled
+ * @threshold:             Threshold time
+ *
+ */
+void cam_common_util_thread_switch_delay_detect(const char *token,
+	ktime_t scheduled_time, uint32_t threshold);
+
 #endif /* _CAM_COMMON_UTIL_H_ */

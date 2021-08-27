@@ -42,6 +42,10 @@
 #define VERSION_2  2
 #define CAM_REQ_MGR_MAX_TRIGGERS   2
 
+#define CAM_REQ_MGR_INIT_SYNC_REQ_NUM 5
+
+#define CAM_REQ_MGR_SYNC_MISMATCH_THRESHOLD 3
+
 /**
  * enum crm_req_eof_trigger_type
  * @codes: to identify which type of eof trigger for next slot
@@ -362,6 +366,7 @@ struct cam_req_mgr_sof_time {
  * @sync_frame_id          : current frame id of sync link
  * @sof_time               : sof timing value in different format
  * @is_sync_req            : flag used for deciding sync and non-sync
+ * @sync_mismatch_count    : counter to store number of frame sync mismatch
  */
 struct cam_req_mgr_sync_data {
 	int32_t                        num_sync_link;
@@ -372,6 +377,7 @@ struct cam_req_mgr_sync_data {
 	uint64_t                       sync_frame_id;
 	struct cam_req_mgr_sof_time    sof_time;
 	bool                           is_sync_req;
+	int32_t                        sync_mismatch_count;
 };
 
 /**
@@ -420,7 +426,7 @@ struct cam_req_mgr_sync_data {
  * @wq_congestion        : Indicates if WQ congestion is detected or not
  * @activate_seq         : sequence in which link is activated
  * @frame_id             : current frame id
- * @bubble_skip          : req to skip on bubble
+ * @skip_apply_count     : Counter that track number of frames to skip apply request
  * @num_isp_dev          : number of isp dev in a link
  * @retry_threshold      : number of times to retry apply on increased threshold
  * @fps                  : current frame rate
@@ -450,13 +456,14 @@ struct cam_req_mgr_core_link {
 	uint32_t                             retry_cnt;
 	bool                                 is_shutdown;
 	bool                                 dual_trigger;
-	uint32_t trigger_cnt[CAM_REQ_MGR_MAX_TRIGGERS][CAM_TRIGGER_MAX_POINTS];
+	uint32_t trigger_cnt[CAM_REQ_MGR_MAX_TRIGGERS]
+				[CAM_TRIGGER_MAX_POINTS + 1];
 	atomic_t                             eof_event_cnt;
 	bool                                 skip_init_frame;
 	bool                                 wq_congestion;
 	int32_t                              activate_seq;
 	uint64_t                             frame_id;
-	int32_t                              bubble_skip;
+	int32_t                              skip_apply_count;
 	bool                                 skip_sync_apply;
 	uint32_t                             num_isp_dev;
 	uint32_t                             retry_threshold;

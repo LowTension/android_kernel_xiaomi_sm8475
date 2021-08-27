@@ -88,6 +88,114 @@ static void cam_csiphy_reset_phyconfig_param(struct csiphy_device *csiphy_dev,
 	csiphy_dev->csiphy_info[index].hdl_data.device_hdl = -1;
 }
 
+static inline void cam_csiphy_apply_onthego_reg_values(void __iomem *csiphybase, uint8_t csiphy_idx)
+{
+	int                                                      i;
+
+	CAM_DBG(CAM_CSIPHY, "csiphy: %d, onthego_reg_count: %d",
+		csiphy_idx,
+		csiphy_onthego_reg_count);
+
+	if (csiphy_onthego_reg_count % 3)
+		csiphy_onthego_reg_count -= (csiphy_onthego_reg_count % 3);
+
+	for (i = 0; i < csiphy_onthego_reg_count; i += 3) {
+		cam_io_w_mb(csiphy_onthego_regs[i+1],
+			csiphybase + csiphy_onthego_regs[i]);
+
+		if (csiphy_onthego_regs[i+2])
+			usleep_range(csiphy_onthego_regs[i+2], csiphy_onthego_regs[i+2] + 5);
+
+		CAM_INFO(CAM_CSIPHY, "Offset: 0x%x, Val: 0x%x Delay(us): %u",
+			csiphy_onthego_regs[i],
+			cam_io_r_mb(csiphybase + csiphy_onthego_regs[i]),
+			csiphy_onthego_regs[i+2]);
+	}
+}
+
+static inline int cam_csiphy_release_from_reset_state(struct csiphy_device *csiphy_dev,
+	void __iomem *csiphybase, int32_t instance)
+{
+	int                                                  i;
+	struct csiphy_reg_parms_t                           *csiphy_reg;
+	struct csiphy_reg_t                                 *csiphy_reset_release_reg;
+	bool                                                 config_found = false;
+
+	if (!csiphy_dev || !csiphybase) {
+		CAM_ERR(CAM_CSIPHY, "Invalid input params: csiphy_dev: %p, csiphybase: %p",
+			csiphy_dev, csiphybase);
+		return -EINVAL;
+	}
+
+	CAM_DBG(CAM_CSIPHY, "Csiphy idx: %d", csiphy_dev->soc_info.index);
+
+	csiphy_reg = &csiphy_dev->ctrl_reg->csiphy_reg;
+	for (i = 0; i < csiphy_reg->csiphy_reset_exit_array_size; i++) {
+		csiphy_reset_release_reg = &csiphy_dev->ctrl_reg->csiphy_reset_exit_regs[i];
+
+		switch (csiphy_reset_release_reg->csiphy_param_type) {
+		case CSIPHY_2PH_REGS:
+			if (!g_phy_data[csiphy_dev->soc_info.index].is_3phase &&
+				!csiphy_dev->combo_mode &&
+				!csiphy_dev->cphy_dphy_combo_mode) {
+				cam_io_w_mb(csiphy_reset_release_reg->reg_data,
+					csiphybase + csiphy_reset_release_reg->reg_addr);
+				config_found = true;
+			}
+			break;
+		case CSIPHY_3PH_REGS:
+			if (g_phy_data[csiphy_dev->soc_info.index].is_3phase &&
+				!csiphy_dev->combo_mode  &&
+				!csiphy_dev->cphy_dphy_combo_mode) {
+				cam_io_w_mb(csiphy_reset_release_reg->reg_data,
+					csiphybase + csiphy_reset_release_reg->reg_addr);
+				config_found = true;
+			}
+			break;
+		case CSIPHY_2PH_COMBO_REGS:
+			if (!csiphy_dev->csiphy_info[instance].csiphy_3phase &&
+					csiphy_dev->combo_mode &&
+					!csiphy_dev->cphy_dphy_combo_mode) {
+				cam_io_w_mb(csiphy_reset_release_reg->reg_data,
+					csiphybase + csiphy_reset_release_reg->reg_addr);
+				config_found = true;
+			}
+			break;
+		case CSIPHY_3PH_COMBO_REGS:
+			if (csiphy_dev->csiphy_info[instance].csiphy_3phase &&
+					csiphy_dev->combo_mode &&
+					!csiphy_dev->cphy_dphy_combo_mode) {
+				cam_io_w_mb(csiphy_reset_release_reg->reg_data,
+					csiphybase + csiphy_reset_release_reg->reg_addr);
+				config_found = true;
+			}
+			break;
+		case CSIPHY_2PH_3PH_COMBO_REGS:
+			if (!csiphy_dev->combo_mode && csiphy_dev->cphy_dphy_combo_mode) {
+				cam_io_w_mb(csiphy_reset_release_reg->reg_data,
+					csiphybase + csiphy_reset_release_reg->reg_addr);
+				config_found = true;
+			}
+			break;
+		default:
+			CAM_ERR(CAM_CSIPHY, "Invalid combination");
+			return -EINVAL;
+			break;
+		}
+
+		if (config_found) {
+			if (csiphy_reset_release_reg->delay) {
+				usleep_range(csiphy_reset_release_reg->delay,
+					csiphy_reset_release_reg->delay + 5);
+			}
+
+			break;
+		}
+	}
+
+	return 0;
+}
+
 void cam_csiphy_query_cap(struct csiphy_device *csiphy_dev,
 	struct cam_csiphy_query_cap *csiphy_cap)
 {
@@ -174,20 +282,20 @@ void cam_csiphy_reset(struct csiphy_device *csiphy_dev)
 	int32_t  i;
 	void __iomem *base = NULL;
 	uint32_t size =
-		csiphy_dev->ctrl_reg->csiphy_reg.csiphy_reset_array_size;
+		csiphy_dev->ctrl_reg->csiphy_reg.csiphy_reset_enter_array_size;
 	struct cam_hw_soc_info *soc_info = &csiphy_dev->soc_info;
 
 	base = soc_info->reg_map[0].mem_base;
 
 	for (i = 0; i < size; i++) {
 		cam_io_w_mb(
-			csiphy_dev->ctrl_reg->csiphy_reset_reg[i].reg_data,
+			csiphy_dev->ctrl_reg->csiphy_reset_enter_regs[i].reg_data,
 			base +
-			csiphy_dev->ctrl_reg->csiphy_reset_reg[i].reg_addr);
-		if (csiphy_dev->ctrl_reg->csiphy_reset_reg[i].delay > 0)
+			csiphy_dev->ctrl_reg->csiphy_reset_enter_regs[i].reg_addr);
+		if (csiphy_dev->ctrl_reg->csiphy_reset_enter_regs[i].delay > 0)
 			usleep_range(
-			csiphy_dev->ctrl_reg->csiphy_reset_reg[i].delay,
-			csiphy_dev->ctrl_reg->csiphy_reset_reg[i].delay
+			csiphy_dev->ctrl_reg->csiphy_reset_enter_regs[i].delay,
+			csiphy_dev->ctrl_reg->csiphy_reset_enter_regs[i].delay
 			+ 5);
 	}
 
@@ -1050,6 +1158,7 @@ int32_t cam_csiphy_config_dev(struct csiphy_device *csiphy_dev,
 				CAM_DBG(CAM_CSIPHY, "Do Nothing");
 			break;
 			}
+
 			if (reg_array[lane_pos][i].delay > 0) {
 				usleep_range(reg_array[lane_pos][i].delay,
 					reg_array[lane_pos][i].delay + 5);
@@ -1189,11 +1298,9 @@ static int cam_csiphy_update_lane(
 
 	for (i = 0; i < size; i++) {
 		csiphy_common_reg = &csiphy->ctrl_reg->csiphy_common_reg[i];
-		switch (csiphy_common_reg->csiphy_param_type) {
-		case CSIPHY_LANE_ENABLE:
+		if (csiphy_common_reg->csiphy_param_type == CSIPHY_LANE_ENABLE) {
 			CAM_DBG(CAM_CSIPHY, "LANE_ENABLE: %d", lane_enable);
-			lane_enable = cam_io_r(base_address +
-				csiphy_common_reg->reg_addr);
+			lane_enable = cam_io_r(base_address + csiphy_common_reg->reg_addr);
 			break;
 		}
 	}
@@ -1207,21 +1314,16 @@ static int cam_csiphy_update_lane(
 
 	CAM_DBG(CAM_CSIPHY, "lane_assign: 0x%x, lane_enable: 0x%x",
 		lane_assign, lane_enable);
-	for (i = 0; i < size; i++) {
-		csiphy_common_reg = &csiphy->ctrl_reg->csiphy_common_reg[i];
-		switch (csiphy_common_reg->csiphy_param_type) {
-		case CSIPHY_LANE_ENABLE:
-			CAM_DBG(CAM_CSIPHY, "LANE_ENABLE: %d", lane_enable);
-			cam_io_w_mb(lane_enable,
-				base_address + csiphy_common_reg->reg_addr);
-			if (csiphy_common_reg->delay)
-				usleep_range(csiphy_common_reg->delay,
-					csiphy_common_reg->delay + 5);
-			break;
-		}
+
+	if (csiphy_common_reg->csiphy_param_type == CSIPHY_LANE_ENABLE) {
+		cam_io_w_mb(lane_enable, base_address + csiphy_common_reg->reg_addr);
+		if (csiphy_common_reg->delay)
+			usleep_range(csiphy_common_reg->delay, csiphy_common_reg->delay + 5);
+
+		return 0;
 	}
 
-	return 0;
+	return -EINVAL;
 }
 
 static int __csiphy_cpas_configure_for_main_or_aon(
@@ -2031,51 +2133,33 @@ int32_t cam_csiphy_core_cfg(void *phy_dev,
 		if (rc < 0) {
 			CAM_ERR(CAM_CSIPHY, "cam_csiphy_config_dev failed");
 			cam_csiphy_disable_hw(csiphy_dev);
-			goto cpas_stop;
+			goto hw_cnt_decrement;
 		}
 
-		if (csiphy_onthego_reg_count) {
-			CAM_DBG(CAM_CSIPHY, "csiphy_onthego_reg_count: %d",
-				csiphy_onthego_reg_count);
+		if (csiphy_onthego_reg_count)
+			cam_csiphy_apply_onthego_reg_values(csiphybase, soc_info->index);
 
-			if (csiphy_onthego_reg_count % 3)
-				csiphy_onthego_reg_count -= (csiphy_onthego_reg_count % 3);
-
-			for (i = 0; i < csiphy_onthego_reg_count; i += 3) {
-				cam_io_w_mb(csiphy_onthego_regs[i+1],
-					csiphybase + csiphy_onthego_regs[i]);
-
-				if (csiphy_onthego_regs[i+2])
-					usleep_range(csiphy_onthego_regs[i+2],
-						csiphy_onthego_regs[i+2] + 5);
-
-				CAM_INFO(CAM_CSIPHY, "Offset: 0x%x, Val: 0x%x Delay(us): %u",
-					csiphy_onthego_regs[i],
-					cam_io_r_mb(csiphybase + csiphy_onthego_regs[i]),
-					csiphy_onthego_regs[i+2]);
-			}
-		}
+		cam_csiphy_release_from_reset_state(csiphy_dev, csiphybase, offset);
 
 		if (g_phy_data[csiphy_dev->soc_info.index].is_3phase && status_reg_ptr) {
-			rc = 0;
 			for (i = 0; i < CAM_CSIPHY_MAX_CPHY_LANES; i++) {
 				if (status_reg_ptr->cphy_lane_status[i]) {
 					cphy_trio_status = cam_io_r_mb(csiphybase +
 						status_reg_ptr->cphy_lane_status[i]);
 
-					if (cphy_trio_status) {
-						CAM_ERR(CAM_CSIPHY,
+					cphy_trio_status &= 0x1F;
+					if (cphy_trio_status == 0 || cphy_trio_status == 8) {
+						CAM_DBG(CAM_CSIPHY,
+							"Reg_offset: 0x%x, cphy_trio%d_status = 0x%x",
+							status_reg_ptr->cphy_lane_status[i],
+							i, cphy_trio_status);
+					} else {
+						CAM_WARN(CAM_CSIPHY,
 							"Reg_offset: 0x%x, Cphy_trio%d_status = 0x%x",
 							status_reg_ptr->cphy_lane_status[i],
 							i, cphy_trio_status);
-						rc = -EINVAL;
 					}
 				}
-			}
-
-			if (rc) {
-				cam_csiphy_disable_hw(csiphy_dev);
-				goto cpas_stop;
 			}
 		}
 
@@ -2143,6 +2227,13 @@ int32_t cam_csiphy_core_cfg(void *phy_dev,
 
 	mutex_unlock(&csiphy_dev->mutex);
 	return rc;
+
+hw_cnt_decrement:
+	if (csiphy_reg->prgm_cmn_reg_across_csiphy) {
+		mutex_lock(&active_csiphy_cnt_mutex);
+		active_csiphy_hw_cnt--;
+		mutex_unlock(&active_csiphy_cnt_mutex);
+	}
 
 cpas_stop:
 	if (cam_csiphy_cpas_ops(csiphy_dev->cpas_handle, false))

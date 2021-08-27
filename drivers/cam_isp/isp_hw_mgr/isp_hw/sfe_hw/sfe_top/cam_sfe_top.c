@@ -50,6 +50,7 @@ struct cam_sfe_top_priv {
 	struct cam_sfe_core_cfg         core_cfg;
 	uint32_t                        sfe_debug_cfg;
 	uint32_t                        sensor_sel_diag_cfg;
+	uint32_t                        cc_testbus_sel_cfg;
 	int                             error_irq_handle;
 	uint16_t                        reserve_cnt;
 	uint16_t                        start_stop_cnt;
@@ -206,6 +207,52 @@ static void cam_sfe_top_check_module_status(
 	}
 }
 
+static void cam_sfe_top_print_cc_test_bus(
+	struct cam_sfe_top_priv *top_priv)
+{
+	struct cam_sfe_top_common_data     *common_data = &top_priv->common_data;
+	struct cam_hw_soc_info             *soc_info = common_data->soc_info;
+	void __iomem                       *mem_base =
+		soc_info->reg_map[SFE_CORE_BASE_IDX].mem_base;
+	struct cam_sfe_top_cc_testbus_info *testbus_info;
+	uint32_t dbg_testbus_reg = common_data->common_reg->top_debug_testbus_reg;
+	uint32_t size = 0, reg_val = 0, val = 0, i = 0;
+	size_t   len = 0;
+	uint8_t  log_buf[1024];
+
+	reg_val =  cam_io_r(mem_base +
+		common_data->common_reg->top_debug[dbg_testbus_reg]);
+
+	for (i = 0; i < top_priv->hw_info->num_of_testbus; i++) {
+		if (top_priv->cc_testbus_sel_cfg ==
+			top_priv->hw_info->test_bus_info[i].value) {
+			size = top_priv->hw_info->test_bus_info[i].size;
+			testbus_info =
+				top_priv->hw_info->test_bus_info[i].testbus;
+		       break;
+		}
+	}
+
+	if (i == top_priv->hw_info->num_of_testbus) {
+		CAM_WARN(CAM_SFE,
+			"Unexpected value[%d] is programed in test_bus_ctrl reg",
+			top_priv->cc_testbus_sel_cfg);
+		return;
+	}
+
+	for (i = 0; i < size; i++) {
+		val = reg_val >> testbus_info[i].shift;
+		val &= testbus_info[i].mask;
+		if (val)
+			CAM_INFO_BUF(CAM_SFE, log_buf, 1024, &len, "%s [val:%u]",
+				 testbus_info[i].clc_name, val);
+	}
+
+	CAM_INFO(CAM_SFE, "SFE_TOP_DEBUG_%d val %d  config %s",
+		common_data->common_reg->top_debug_testbus_reg,
+		reg_val, log_buf);
+}
+
 static void cam_sfe_top_print_debug_reg_info(
 	struct cam_sfe_top_priv *top_priv)
 {
@@ -236,6 +283,10 @@ static void cam_sfe_top_print_debug_reg_info(
 
 	cam_sfe_top_check_module_status(top_priv->num_clc_module,
 		reg_val, top_priv->clc_dbg_mod_info);
+
+	if (common_data->common_reg->top_cc_test_bus_supported &&
+		top_priv->cc_testbus_sel_cfg)
+		cam_sfe_top_print_cc_test_bus(top_priv);
 
 	kfree(reg_val);
 }
@@ -1488,6 +1539,24 @@ int cam_sfe_top_start(
 		path_data->mem_base +
 		path_data->common_reg->top_debug_cfg);
 
+	/* Enables the context controller testbus*/
+	if (path_data->common_reg->top_cc_test_bus_supported) {
+		for (i = 0; i < top_priv->hw_info->num_of_testbus; i++) {
+			if ((top_priv->sfe_debug_cfg &
+				top_priv->hw_info->test_bus_info[i].debugfs_val) ||
+				top_priv->hw_info->test_bus_info[i].enable) {
+				top_priv->cc_testbus_sel_cfg =
+					top_priv->hw_info->test_bus_info[i].value;
+				break;
+			}
+		}
+
+		if (top_priv->cc_testbus_sel_cfg)
+			cam_io_w(top_priv->cc_testbus_sel_cfg,
+				path_data->mem_base +
+				path_data->common_reg->top_cc_test_bus_ctrl);
+	}
+
 	/* Enable sensor diag info */
 	if (top_priv->sfe_debug_cfg &
 		SFE_DEBUG_ENABLE_SENSOR_DIAG_INFO) {
@@ -1794,6 +1863,7 @@ int cam_sfe_top_init(
 	top_priv->num_clc_module   = sfe_top_hw_info->num_clc_module;
 	top_priv->clc_dbg_mod_info = sfe_top_hw_info->clc_dbg_mod_info;
 	top_priv->sfe_debug_cfg = 0;
+	top_priv->cc_testbus_sel_cfg = 0;
 
 	sfe_top->hw_ops.process_cmd = cam_sfe_top_process_cmd;
 	sfe_top->hw_ops.start = cam_sfe_top_start;

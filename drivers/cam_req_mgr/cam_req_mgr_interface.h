@@ -470,6 +470,7 @@ struct cam_req_mgr_dump_info {
  * @timestamp   : time stamp for the sof event
  * @boot_time   : boot time stamp for the sof event
  * @frame_id    : frame id
+ * @bubble_req  : request id for which bubble is detected
  * @is_applied  : if ISP is in applied state
  *
  */
@@ -479,6 +480,7 @@ struct cam_req_mgr_dev_info {
 	uint64_t    timestamp;
 	uint64_t    boot_time;
 	uint64_t    frame_id;
+	uint64_t    bubble_req;
 	bool        is_applied;
 };
 

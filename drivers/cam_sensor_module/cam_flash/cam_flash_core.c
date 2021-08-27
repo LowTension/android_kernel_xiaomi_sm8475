@@ -757,7 +757,6 @@ int cam_flash_pmic_apply_setting(struct cam_flash_ctrl *fctrl,
 					CAM_WARN(CAM_FLASH,
 					"Wrong state :Prev state: %d",
 					fctrl->flash_state);
-					return -EINVAL;
 				}
 
 				rc = cam_flash_high(fctrl, flash_data);
@@ -772,7 +771,6 @@ int cam_flash_pmic_apply_setting(struct cam_flash_ctrl *fctrl,
 					CAM_WARN(CAM_FLASH,
 					"Wrong state :Prev state: %d",
 					fctrl->flash_state);
-					return -EINVAL;
 				}
 
 				rc = cam_flash_low(fctrl, flash_data);
@@ -1411,7 +1409,8 @@ int cam_flash_pmic_pkt_parser(struct cam_flash_ctrl *fctrl, void *arg)
 			break;
 		}
 		case CAMERA_SENSOR_FLASH_CMD_TYPE_INIT_FIRE: {
-			CAM_DBG(CAM_FLASH, "INIT_FIRE Operation");
+			CAM_INFO(CAM_FLASH, "INIT_FIRE Operation for dev_hdl: 0x%x",
+				fctrl->bridge_intf.device_hdl);
 
 			if (remain_len < sizeof(struct cam_flash_set_on_off)) {
 				CAM_ERR(CAM_FLASH, "Not enough buffer");
@@ -1450,8 +1449,6 @@ int cam_flash_pmic_pkt_parser(struct cam_flash_ctrl *fctrl, void *arg)
 				CAM_ERR(CAM_FLASH,
 					"Apply setting failed: %d",
 					rc);
-
-			fctrl->flash_state = CAM_FLASH_STATE_CONFIG;
 			break;
 		}
 		default:

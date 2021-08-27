@@ -477,6 +477,7 @@ int32_t cam_context_prepare_dev_to_hw(struct cam_context *ctx,
 	cfg.max_in_map_entries = ctx->max_in_map_entries;
 	cfg.in_map_entries = req->in_map_entries;
 	cfg.pf_data = &(req->pf_data);
+	cfg.priv = req->req_priv;
 
 	rc = ctx->hw_mgr_intf->hw_prepare_update(
 		ctx->hw_mgr_intf->hw_mgr_priv, &cfg);
