@@ -3488,8 +3488,9 @@ end:
 static int cam_ife_csid_ver2_rx_capture_config(
 	struct cam_ife_csid_ver2_hw *csid_hw)
 {
-	const struct cam_ife_csid_ver2_reg_info *csid_reg;
-	struct cam_hw_soc_info                   *soc_info;
+	const struct cam_ife_csid_ver2_reg_info   *csid_reg;
+	struct cam_hw_soc_info                    *soc_info;
+	struct cam_ife_csid_rx_cfg                *rx_cfg;
 	uint32_t vc, dt, i;
 	uint32_t val = 0;
 
@@ -3503,43 +3504,34 @@ static int cam_ife_csid_ver2_rx_capture_config(
 		return 0;
 	}
 
+	rx_cfg = &csid_hw->rx_cfg;
+
 	vc  = csid_hw->cid_data[i].vc_dt[CAM_IFE_CSID_MULTI_VC_DT_GRP_0].vc;
 	dt  = csid_hw->cid_data[i].vc_dt[CAM_IFE_CSID_MULTI_VC_DT_GRP_0].dt;
 
-	csid_reg = (struct cam_ife_csid_ver2_reg_info *)
-			csid_hw->core_info->csid_reg;
+	csid_reg = (struct cam_ife_csid_ver2_reg_info *) csid_hw->core_info->csid_reg;
 	soc_info = &csid_hw->hw_info->soc_info;
 
 	if (csid_hw->debug_info.debug_val &
 			CAM_IFE_CSID_DEBUG_ENABLE_SHORT_PKT_CAPTURE)
-		val = ((1 <<
-			csid_reg->csi2_reg->capture_short_pkt_en_shift) |
-			(vc <<
-			csid_reg->csi2_reg->capture_short_pkt_vc_shift));
+		val = ((1 << csid_reg->csi2_reg->capture_short_pkt_en_shift) |
+			(vc << csid_reg->csi2_reg->capture_short_pkt_vc_shift));
 
-	if (csid_hw->debug_info.debug_val &
-			CAM_IFE_CSID_DEBUG_ENABLE_LONG_PKT_CAPTURE)
-		val |= ((1 <<
-			csid_reg->csi2_reg->capture_long_pkt_en_shift) |
-			(dt <<
-			csid_reg->csi2_reg->capture_long_pkt_dt_shift) |
-			(vc <<
-			csid_reg->csi2_reg->capture_long_pkt_vc_shift));
+	/* CAM_IFE_CSID_DEBUG_ENABLE_LONG_PKT_CAPTURE */
+	val |= ((1 << csid_reg->csi2_reg->capture_long_pkt_en_shift) |
+		(dt << csid_reg->csi2_reg->capture_long_pkt_dt_shift) |
+		(vc << csid_reg->csi2_reg->capture_long_pkt_vc_shift));
 
-	if (csid_hw->debug_info.debug_val &
-			CAM_IFE_CSID_DEBUG_ENABLE_CPHY_PKT_CAPTURE)
-		val |= ((1 <<
-			csid_reg->csi2_reg->capture_cphy_pkt_en_shift) |
-			(dt <<
-			csid_reg->csi2_reg->capture_cphy_pkt_dt_shift) |
-			(vc <<
-			csid_reg->csi2_reg->capture_cphy_pkt_vc_shift));
+	/* CAM_IFE_CSID_DEBUG_ENABLE_CPHY_PKT_CAPTURE */
+	if (rx_cfg->lane_type == CAM_ISP_LANE_TYPE_CPHY) {
+		val |= ((1 << csid_reg->csi2_reg->capture_cphy_pkt_en_shift) |
+			(dt << csid_reg->csi2_reg->capture_cphy_pkt_dt_shift) |
+			(vc << csid_reg->csi2_reg->capture_cphy_pkt_vc_shift));
+	}
 
-	cam_io_w_mb(val, soc_info->reg_map[0].mem_base +
-		csid_reg->csi2_reg->capture_ctrl_addr);
+	cam_io_w_mb(val, soc_info->reg_map[0].mem_base + csid_reg->csi2_reg->capture_ctrl_addr);
 
-	CAM_DBG(CAM_ISP, "CSID[%d] rx capture_ctrl: 0x%x",
-		csid_hw->hw_intf->hw_idx, val);
+	CAM_DBG(CAM_ISP, "CSID[%d] rx capture_ctrl: 0x%x", csid_hw->hw_intf->hw_idx, val);
 
 	return 0;
 }
