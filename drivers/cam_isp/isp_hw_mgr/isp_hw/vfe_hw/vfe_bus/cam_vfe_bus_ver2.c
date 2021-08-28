@@ -3797,7 +3797,7 @@ static int cam_vfe_bus_process_cmd(
 	case CAM_ISP_HW_CMD_GET_HFR_UPDATE:
 		rc = cam_vfe_bus_update_hfr(priv, cmd_args, arg_size);
 		break;
-	case CAM_ISP_HW_CMD_GET_SECURE_MODE:
+	case CAM_ISP_HW_CMD_GET_WM_SECURE_MODE:
 		rc = cam_vfe_bus_get_secure_mode(priv, cmd_args, arg_size);
 		break;
 	case CAM_ISP_HW_CMD_STRIPE_UPDATE:

@@ -201,11 +201,6 @@ struct cam_sfe_bus_wr_priv {
 	struct cam_sfe_bus_sfe_out_hw_info        *sfe_out_hw_info;
 };
 
-static int cam_sfe_bus_wr_process_cmd(
-	struct cam_isp_resource_node *priv,
-	uint32_t cmd_type, void *cmd_args,
-	uint32_t arg_size);
-
 static int cam_sfe_bus_subscribe_error_irq(
 	struct cam_sfe_bus_wr_priv  *bus_priv);
 
@@ -1924,7 +1919,7 @@ static int cam_sfe_bus_init_sfe_out_resource(
 		cam_sfe_bus_handle_sfe_out_done_top_half;
 	sfe_out->bottom_half_handler =
 		cam_sfe_bus_handle_sfe_out_done_bottom_half;
-	sfe_out->process_cmd = cam_sfe_bus_wr_process_cmd;
+	sfe_out->process_cmd = NULL;
 	sfe_out->hw_intf = bus_priv->common_data.hw_intf;
 	sfe_out->irq_handle = 0;
 
@@ -2959,14 +2954,6 @@ static int cam_sfe_bus_wr_deinit_hw(void *hw_priv,
 	return 0;
 }
 
-static int __cam_sfe_bus_wr_process_cmd(
-	void *priv, uint32_t cmd_type,
-	void *cmd_args, uint32_t arg_size)
-{
-	return cam_sfe_bus_wr_process_cmd(priv, cmd_type,
-		cmd_args, arg_size);
-}
-
 static int cam_sfe_bus_wr_cache_config(
 	void *priv, void *cmd_args,
 	uint32_t arg_size)
@@ -3030,9 +3017,8 @@ static int cam_sfe_bus_wr_set_debug_cfg(
 }
 
 static int cam_sfe_bus_wr_process_cmd(
-	struct cam_isp_resource_node *priv,
-	uint32_t cmd_type, void *cmd_args,
-	uint32_t arg_size)
+	void *priv, uint32_t cmd_type,
+	void *cmd_args, uint32_t arg_size)
 {
 	int rc = -EINVAL;
 	struct cam_sfe_bus_wr_priv *bus_priv;
@@ -3052,7 +3038,7 @@ static int cam_sfe_bus_wr_process_cmd(
 	case CAM_ISP_HW_CMD_GET_HFR_UPDATE:
 		rc = cam_sfe_bus_wr_update_hfr(priv, cmd_args, arg_size);
 		break;
-	case CAM_ISP_HW_CMD_GET_SECURE_MODE:
+	case CAM_ISP_HW_CMD_GET_WM_SECURE_MODE:
 		rc = cam_sfe_bus_wr_get_secure_mode(priv, cmd_args, arg_size);
 		break;
 	case CAM_ISP_HW_CMD_STRIPE_UPDATE:
@@ -3240,7 +3226,7 @@ int cam_sfe_bus_wr_init(
 	sfe_bus_local->hw_ops.deinit       = cam_sfe_bus_wr_deinit_hw;
 	sfe_bus_local->top_half_handler    = NULL;
 	sfe_bus_local->bottom_half_handler = NULL;
-	sfe_bus_local->hw_ops.process_cmd  = __cam_sfe_bus_wr_process_cmd;
+	sfe_bus_local->hw_ops.process_cmd  = cam_sfe_bus_wr_process_cmd;
 	bus_priv->bus_irq_handle = 0;
 	bus_priv->common_data.sfe_debug_cfg = 0;
 	*sfe_bus = sfe_bus_local;

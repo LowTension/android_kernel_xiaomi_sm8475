@@ -866,12 +866,12 @@ int cam_isp_add_io_buffers(
 
 				hdl = io_cfg[i].mem_handle[plane_id];
 				secure_mode.cmd_type =
-					CAM_ISP_HW_CMD_GET_SECURE_MODE;
+					CAM_ISP_HW_CMD_GET_WM_SECURE_MODE;
 				secure_mode.res = res;
 				secure_mode.data = (void *)&mode;
 				rc = res->hw_intf->hw_ops.process_cmd(
 					res->hw_intf->hw_priv,
-					CAM_ISP_HW_CMD_GET_SECURE_MODE,
+					CAM_ISP_HW_CMD_GET_WM_SECURE_MODE,
 					&secure_mode,
 					sizeof(
 					struct cam_isp_hw_get_cmd_update));
@@ -1026,12 +1026,12 @@ int cam_isp_add_io_buffers(
 
 				hdl = io_cfg[i].mem_handle[plane_id];
 				secure_mode.cmd_type =
-					CAM_ISP_HW_CMD_GET_SECURE_MODE;
+					CAM_ISP_HW_CMD_GET_RM_SECURE_MODE;
 				secure_mode.res = res;
 				secure_mode.data = (void *)&mode;
 				rc = res->hw_intf->hw_ops.process_cmd(
 					res->hw_intf->hw_priv,
-					CAM_ISP_HW_CMD_GET_SECURE_MODE,
+					CAM_ISP_HW_CMD_GET_RM_SECURE_MODE,
 					&secure_mode,
 					sizeof(
 					struct cam_isp_hw_get_cmd_update));
