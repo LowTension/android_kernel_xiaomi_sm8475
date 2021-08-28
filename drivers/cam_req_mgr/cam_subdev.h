@@ -65,7 +65,7 @@ struct cam_subdev {
 	void                                  (*msg_cb)(
 					struct v4l2_subdev *sd,
 					enum cam_subdev_message_type_t msg_type,
-					uint32_t data);
+					void *data);
 	struct list_head                       list;
 	enum cam_subdev_close_seq_priority     close_seq_prior;
 };
@@ -82,7 +82,7 @@ struct cam_subdev {
  */
 void cam_subdev_notify_message(u32 subdev_type,
 		enum cam_subdev_message_type_t message_type,
-		uint32_t data);
+		void *data);
 
 /**
  * cam_subdev_probe()

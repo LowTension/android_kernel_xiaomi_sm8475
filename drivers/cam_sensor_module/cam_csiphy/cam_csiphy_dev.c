@@ -16,15 +16,17 @@ static struct dentry *root_dentry;
 static void cam_csiphy_subdev_handle_message(
 		struct v4l2_subdev *sd,
 		enum cam_subdev_message_type_t message_type,
-		uint32_t data)
+		void *data)
 {
 	struct csiphy_device *csiphy_dev = v4l2_get_subdevdata(sd);
+	uint32_t data_idx;
 
 	switch (message_type) {
 	case CAM_SUBDEV_MESSAGE_IRQ_ERR:
+		data_idx = *(uint32_t *)data;
 		CAM_INFO(CAM_CSIPHY, "subdev index : %d CSIPHY index: %d",
-				csiphy_dev->soc_info.index, data);
-		if (data == csiphy_dev->soc_info.index) {
+				csiphy_dev->soc_info.index, data_idx);
+		if (data_idx == csiphy_dev->soc_info.index) {
 			cam_csiphy_common_status_reg_dump(csiphy_dev);
 
 			if (csiphy_dev->en_full_phy_reg_dump)
