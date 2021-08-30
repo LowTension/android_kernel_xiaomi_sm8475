@@ -1362,8 +1362,8 @@ static void cam_ife_csid_ver2_print_format_measure_info(
 	struct cam_hw_soc_info *soc_info = &csid_hw->hw_info->soc_info;
 	void __iomem *base = soc_info->reg_map[CAM_IFE_CSID_CLC_MEM_BASE_ID].mem_base;
 
-	expected_frame = cam_io_r_mb(base + path_reg->format_measure0_addr);
-	actual_frame = cam_io_r_mb(base + path_reg->format_measure_cfg1_addr);
+	actual_frame = cam_io_r_mb(base + path_reg->format_measure0_addr);
+	expected_frame = cam_io_r_mb(base + path_reg->format_measure_cfg1_addr);
 
 	CAM_INFO(CAM_ISP, "CSID[%u] res [id :%d name : %s]",
 		csid_hw->hw_intf->hw_idx,
@@ -4611,7 +4611,7 @@ static int cam_ife_csid_ver2_print_hbi_vbi(
 
 	CAM_INFO_RATE_LIMIT(CAM_ISP,
 		"CSID[%u] Resource[id:%d name:%s hbi %u vbi %u]",
-		res->res_id, res->res_name, hbi, vbi);
+		csid_hw->hw_intf->hw_idx, res->res_id, res->res_name, hbi, vbi);
 
 	return 0;
 }
