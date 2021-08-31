@@ -179,6 +179,17 @@ struct cam_ife_hw_mgr_ctx_flags {
 };
 
 /**
+ * struct cam_ife_cdm_user_data - IFE HW user data with CDM
+ *
+ * @prepare:                   hw_update_data
+ * @request_id:                Request id
+ */
+struct cam_ife_cdm_user_data {
+	struct cam_isp_prepare_hw_update_data    *hw_update_data;
+	uint64_t                                  request_id;
+};
+
+/**
  * struct cam_ife_hw_mgr_ctx - IFE HW manager Context object
  *
  * @list:                   used by the ctx list.
@@ -276,6 +287,7 @@ struct cam_ife_hw_mgr_ctx {
 	struct cam_ife_hw_mgr_sfe_info    sfe_info;
 	struct cam_ife_hw_mgr_ctx_flags   flags;
 	struct cam_ife_hw_mgr_ctx_pf_info pf_info;
+	struct cam_ife_cdm_user_data      cdm_userdata;
 	uint32_t                          bw_config_version;
 	atomic_t                          recovery_id;
 };
