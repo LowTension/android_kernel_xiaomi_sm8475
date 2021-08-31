@@ -425,7 +425,7 @@ static int cam_vfe_top_ver4_print_overflow_debug_info(
 
 	i = 0;
 	tmp = violation_status;
-	while (violation_status) {
+	while (tmp) {
 		if (tmp & 0x1)
 			CAM_ERR_RATE_LIMIT(CAM_ISP, "VFE[%d] Bus Violation %s",
 				soc_info->index, common_data->hw_info->wr_client_desc[i].desc);
