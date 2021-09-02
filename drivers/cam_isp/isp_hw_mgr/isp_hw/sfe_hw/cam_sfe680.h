@@ -498,6 +498,13 @@ static struct cam_sfe_bus_rd_hw_info sfe680_bus_rd_hw_info = {
 		},
 	},
 	.top_irq_shift = 0x1,
+	/*
+	 * Refer to CAMNOC HPG for the updated value for a given target
+	 * 48 OTs, 2 SFEs each with 3 RDs, 48 / 6 = 8
+	 * We can allocate 256 * 8 = 2048 bytes. 256 bytes being
+	 * the minimum
+	 */
+	.latency_buf_allocation = 2048,
 };
 
 static struct cam_irq_register_set sfe680_bus_wr_irq_reg[1] = {

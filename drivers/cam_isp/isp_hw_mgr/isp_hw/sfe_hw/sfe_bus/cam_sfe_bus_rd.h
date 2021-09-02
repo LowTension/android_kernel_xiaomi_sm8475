@@ -67,12 +67,13 @@ struct cam_sfe_bus_rd_info {
  *
  * @Brief:            HW register info for entire Bus
  *
- * @common_reg:       Common register details
- * @num_client:       Number of bus rd clients
- * @bus_client_reg:   Bus client register info
- * @num_bus_rd_resc:  Number of SFE BUS RD masters
- * @sfe_bus_rd_info:  SFE bus rd client info
- * @top_irq_shift:    Top irq shift val
+ * @common_reg:             Common register details
+ * @num_client:             Number of bus rd clients
+ * @bus_client_reg:         Bus client register info
+ * @num_bus_rd_resc:        Number of SFE BUS RD masters
+ * @sfe_bus_rd_info:        SFE bus rd client info
+ * @top_irq_shift:          Top irq shift val
+ * @latency_buf_allocation: latency buf allocation
  */
 struct cam_sfe_bus_rd_hw_info {
 	struct cam_sfe_bus_rd_reg_offset_common common_reg;
@@ -83,6 +84,7 @@ struct cam_sfe_bus_rd_hw_info {
 	struct cam_sfe_bus_rd_info
 		sfe_bus_rd_info[CAM_SFE_BUS_RD_MAX];
 	uint32_t top_irq_shift;
+	uint32_t latency_buf_allocation;
 };
 
 /*
