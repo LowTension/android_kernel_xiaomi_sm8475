@@ -2264,7 +2264,9 @@ static int cam_smmu_map_buffer_validate(struct dma_buf *buf,
 	}
 
 	CAM_DBG(CAM_SMMU, "idx=%d, dma_buf=%pK, dev=%pOFfp, paddr=0x%llx, len=%zu",
-		idx, buf, iommu_cb_set.cb_info[idx].dev, *paddr_ptr, *len_ptr);
+		idx, buf,
+		iommu_cb_set.cb_info[idx].dev->of_node,
+		*paddr_ptr, *len_ptr);
 
 	/* Unmap the mapping in dma region as this is not used anyway */
 	if (region_id == CAM_SMMU_REGION_SHARED)
@@ -3012,7 +3014,8 @@ static int cam_smmu_map_stage2_buffer_and_add_to_list(int idx, int ion_fd,
 	mapping_info->buf = dmabuf;
 
 	CAM_DBG(CAM_SMMU, "idx=%d, ion_fd=%d, i_ino=%lu, dev=%pOFfp, paddr=0x%llx, len=%zu",
-		idx, ion_fd, mapping_info->i_ino, iommu_cb_set.cb_info[idx].dev,
+		idx, ion_fd, mapping_info->i_ino,
+		iommu_cb_set.cb_info[idx].dev->of_node,
 		*paddr_ptr, *len_ptr);
 
 	/* add to the list */
