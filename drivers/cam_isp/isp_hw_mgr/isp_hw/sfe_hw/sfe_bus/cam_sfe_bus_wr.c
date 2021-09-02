@@ -2769,7 +2769,8 @@ static int cam_sfe_bus_wr_update_wm_config(
 			return -EINVAL;
 		}
 
-		wm_data->en_cfg = (wm_config->wm_mode << 16) | 0x1;
+		wm_data->en_cfg = (wm_config->wm_mode << 16) |
+			(wm_config->virtual_frame_en << 1) | 0x1;
 		wm_data->width  = wm_config->width;
 
 		if (wm_config->packer_format) {
