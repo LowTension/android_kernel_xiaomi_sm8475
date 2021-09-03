@@ -151,7 +151,6 @@ struct csiphy_reg_parms_t {
 	uint32_t csiphy_cpas_cp_3ph_offset;
 	uint32_t csiphy_2ph_clock_lane;
 	uint32_t csiphy_2ph_combo_ck_ln;
-	uint32_t prgm_cmn_reg_across_csiphy;
 	struct cam_csiphy_aon_sel_params_t *aon_sel_params;
 };
 
@@ -312,6 +311,7 @@ struct csiphy_work_queue {
  * @csiphy_cpas_cp_reg_mask    : Secure csiphy lane mask
  * @ops                        : KMD operations
  * @crm_cb                     : Callback API pointers
+ * @prgm_cmn_reg_across_csiphy : Flag to decide if com settings need to be programmed for all PHYs
  * @enable_irq_status_reg_dump : Debugfs flag to enable hw IRQ status register dump
  * @en_lane_status_reg_dump    : Debugfs flag to enable cphy/dphy lane status dump
  * @en_full_phy_reg_dump       : Debugfs flag to enable the dump for all the Phy registers
@@ -346,6 +346,7 @@ struct csiphy_device {
 					CSIPHY_MAX_INSTANCES_PER_PHY];
 	struct cam_req_mgr_kmd_ops     ops;
 	struct cam_req_mgr_crm_cb     *crm_cb;
+	bool                           prgm_cmn_reg_across_csiphy;
 	bool                           enable_irq_status_reg_dump;
 	bool                           en_lane_status_reg_dump;
 	bool                           en_full_phy_reg_dump;

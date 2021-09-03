@@ -37,7 +37,6 @@ struct csiphy_reg_parms_t csiphy_v2_1_0 = {
 	.csiphy_2ph_combo_ck_ln = 0x10,
 	.csiphy_interrupt_status_size = 11,
 	.aon_sel_params = &aon_cam_select_params,
-	.prgm_cmn_reg_across_csiphy = 1,
 };
 
 struct csiphy_reg_t csiphy_common_reg_2_1_0[] = {

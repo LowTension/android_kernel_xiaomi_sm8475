@@ -255,6 +255,7 @@ int32_t cam_csiphy_parse_dt_info(struct platform_device *pdev,
 {
 	int32_t   rc = 0, i = 0;
 	uint32_t  clk_cnt = 0;
+	uint32_t   is_regulator_enable_sync;
 	char      *csi_3p_clk_name = "csi_phy_3p_clk";
 	char      *csi_3p_clk_src_name = "csiphy_3p_clk_src";
 	struct cam_hw_soc_info   *soc_info;
@@ -266,6 +267,15 @@ int32_t cam_csiphy_parse_dt_info(struct platform_device *pdev,
 		CAM_ERR(CAM_CSIPHY, "parsing common soc dt(rc %d)", rc);
 		return  rc;
 	}
+
+	rc = of_property_read_u32(soc_info->dev->of_node, "rgltr-enable-sync",
+		&is_regulator_enable_sync);
+	if (rc) {
+		rc = 0;
+		is_regulator_enable_sync = 0;
+	}
+
+	csiphy_dev->prgm_cmn_reg_across_csiphy = (bool) is_regulator_enable_sync;
 
 	if (of_device_is_compatible(soc_info->dev->of_node,
 		"qcom,csiphy-v1.0")) {
