@@ -75,5 +75,5 @@ int cam_csiphy_reg_dump(struct cam_hw_soc_info *soc_info);
  *
  * This API dumps memory for the entire status region
  */
-int32_t cam_csiphy_irq_status_reg_dmp(struct csiphy_device *csiphy_dev);
+int32_t cam_csiphy_common_status_reg_dump(struct csiphy_device *csiphy_dev);
 #endif /* _CAM_CSIPHY_SOC_H_ */
