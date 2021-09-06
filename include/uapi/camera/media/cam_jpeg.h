@@ -36,6 +36,8 @@
 #define CAM_JPEG_DMA_OUTPUT_IMAGE                             0x1
 #define CAM_JPEG_DMA_IO_IMAGES_MAX                            0x2
 
+#define CAM_JPEG_IMAGE_MAX                                    0x2
+
 /*JPEG Command Buffer Metadata types*/
 #define CAM_JPEG_ENC_PACKET_CONFIG_DATA                       0x00
 #define CAM_JPEG_DMA_PACKET_PLANE0_CONFIG_DATA                0x01
