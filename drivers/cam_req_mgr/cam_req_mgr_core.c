@@ -2878,6 +2878,62 @@ end:
 }
 
 /**
+ * cam_req_mgr_process_frame_skip()
+ *
+ * @brief: This runs in workque thread context. Call core funcs to check
+ *         notify devices of frame skip.
+ * @priv : link information.
+ * @data : contains information about notify type.
+ *
+ * @return: 0 on success.
+ */
+static int cam_req_mgr_process_frame_skip(void *priv, void *data)
+{
+	int                           i, rc = 0;
+	uint32_t                      trigger;
+	struct cam_req_mgr_core_link *link = NULL;
+	struct crm_task_payload      *task_data = NULL;
+
+	if (!data || !priv) {
+		CAM_ERR(CAM_CRM, "input args NULL %pK %pK", data, priv);
+		rc = -EINVAL;
+		return -EINVAL;
+	}
+
+	link = (struct cam_req_mgr_core_link *)priv;
+	task_data = (struct crm_task_payload *)data;
+
+	CAM_DBG(CAM_CRM, "link %x is_master:%d", link->link_hdl, link->is_master);
+
+	if (link->is_master) {
+		trigger = (task_data->type == CRM_WORKQ_TASK_NOTIFY_SOF) ?
+			CAM_TRIGGER_POINT_SOF : CAM_TRIGGER_POINT_EOF;
+
+		rc = __cam_req_mgr_notify_frame_skip(
+			link, trigger);
+		if (rc < 0) {
+			CAM_ERR(CAM_CRM, "Failed to notify frame skip on link:%x",
+				link->link_hdl);
+			goto end;
+		}
+
+		for (i = 0; i < link->sync_data.num_sync_link; i++) {
+			rc = __cam_req_mgr_notify_frame_skip(
+				link->sync_data.sync_link[i], trigger);
+			if (rc < 0) {
+				CAM_ERR(CAM_CRM,
+					"Failed to notify frame skip on link:%x",
+					link->sync_data.sync_link[i]->link_hdl);
+				goto end;
+			}
+		}
+	}
+
+end:
+	return rc;
+}
+
+/**
  * cam_req_mgr_process_trigger()
  *
  * @brief: This runs in workque thread context. Call core funcs to check
@@ -3985,7 +4041,7 @@ static int cam_req_mgr_cb_notify_trigger(
 					CAM_DBG(CAM_CRM,
 						"Req:%lld [Master] not ready on link: %x, rc=%d",
 						slot->req_id, link->link_hdl, rc);
-					return rc;
+					goto notify_frame_skip;
 				}
 
 				/* Checking each sync link if they are ready to apply
@@ -3997,7 +4053,7 @@ static int cam_req_mgr_cb_notify_trigger(
 					curr_boot_timestamp_ns);
 				if (rc) {
 					CAM_DBG(CAM_CRM, "Sync link not ready");
-					return rc;
+					goto notify_frame_skip;
 				}
 			}
 		}
@@ -4076,7 +4132,8 @@ cl:
 					"ERROR Req %lld on link %x not applied",
 					sync_slot->req_id,
 					link->sync_data.sync_link[i]->link_hdl);
-				return 0;
+				rc = 0;
+				goto notify_frame_skip;
 			}
 
 			CAM_DBG(CAM_CRM,
@@ -4095,7 +4152,6 @@ cl:
 				sync_slot->req_id, sync_slot->status,
 				link->sync_data.sync_link[i]->link_hdl, rc);
 
-
 			if (sync_slot->status != CRM_SLOT_STATUS_REQ_APPLIED) {
 				rc = __cam_req_mgr_check_link_is_ready(
 					link->sync_data.sync_link[i], sync_req_idx, true);
@@ -4106,7 +4162,8 @@ cl:
 						link->sync_data.sync_link[i]->link_hdl,
 						rc);
 					link->skip_sync_apply = true;
-					return 0;
+					rc = 0;
+					goto notify_frame_skip;
 				}
 			}
 			CAM_DBG(CAM_CRM,
@@ -4122,7 +4179,8 @@ cl:
 				"M Req:%lld not ready on link: %x, rc=%d",
 				slot->req_id, link->link_hdl, rc);
 			link->skip_sync_apply = true;
-			return 0;
+			rc = 0;
+			goto notify_frame_skip;
 		}
 	}
 
@@ -4216,6 +4274,22 @@ cl:
 	}
 
 end:
+	return rc;
+
+notify_frame_skip:
+	task = cam_req_mgr_workq_get_task(link->workq);
+	if (!task) {
+		CAM_ERR(CAM_CRM, "No empty task frame %lld",
+			trigger_data->frame_id);
+		return -EBUSY;
+	}
+
+	task_data = (struct crm_task_payload *)task->payload;
+	task_data->type = (trigger_data->trigger == CAM_TRIGGER_POINT_SOF) ?
+		CRM_WORKQ_TASK_NOTIFY_SOF : CRM_WORKQ_TASK_NOTIFY_EOF;
+	task->process_cb = &cam_req_mgr_process_frame_skip;
+	cam_req_mgr_workq_enqueue_task(task, link, CRM_TASK_PRIORITY_0);
+
 	return rc;
 }
 
