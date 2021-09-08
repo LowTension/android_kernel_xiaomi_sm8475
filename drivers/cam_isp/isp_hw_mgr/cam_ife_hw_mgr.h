@@ -90,6 +90,7 @@ struct cam_ife_hw_mgr_ctx_pf_info {
  * @io_addr: Buffer address
  * @res_id: Resource type
  * @offset: Buffer offset
+ * @config_done: To indicate if RDIx received scratch cfg
  * @is_secure: secure scratch buffer
  */
 struct cam_sfe_scratch_buf_info {
@@ -100,20 +101,19 @@ struct cam_sfe_scratch_buf_info {
 	dma_addr_t io_addr;
 	uint32_t   res_id;
 	uint32_t   offset;
+	bool       config_done;
 	bool       is_secure;
 };
 
 /**
  * struct cam_sfe_scratch_buf_cfg - Scratch buf info
  *
- * @config_done: To indicate if stream received it's scratch cfg
  * @num_configs: Number of buffer configs [max of 3 currently]
  * @curr_num_exp: Current num of exposures
  * @buf_info: Info on each of the buffers
  *
  */
 struct cam_sfe_scratch_buf_cfg {
-	bool                            config_done;
 	uint32_t                        num_config;
 	uint32_t                        curr_num_exp;
 	struct cam_sfe_scratch_buf_info buf_info[

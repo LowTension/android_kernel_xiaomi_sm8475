@@ -2985,7 +2985,7 @@ static int cam_sfe_bus_wr_cache_config(
 			sfe_out_data->wm_res[i].res_priv;
 		wm_data->enable_caching = cache_cfg->use_cache;
 		wm_data->current_scid = cache_cfg->scid;
-		cache_cfg->wr_enabled = true;
+		cache_cfg->wr_cfg_done = true;
 
 		CAM_DBG(CAM_SFE, "SFE:%d WM:%d cache_enable:%s scid:%u",
 			wm_data->common_data->core_index,
