@@ -73,7 +73,7 @@ static int cam_ife_hw_mgr_event_handler(
 	void                                *evt_info);
 
 static int cam_ife_mgr_prog_default_settings(
-	struct cam_ife_hw_mgr_ctx *ctx);
+	bool need_rup_aup, struct cam_ife_hw_mgr_ctx *ctx);
 
 static int cam_ife_mgr_finish_clk_bw_update(
 	struct cam_ife_hw_mgr_ctx             *ctx, uint64_t request_id)
@@ -6603,7 +6603,7 @@ start_only:
 
 	if ((ctx->flags.is_sfe_fs || ctx->flags.is_sfe_shdr) &&
 		(!ctx->sfe_info.skip_scratch_cfg_streamon)) {
-		rc = cam_ife_mgr_prog_default_settings(ctx);
+		rc = cam_ife_mgr_prog_default_settings(false, ctx);
 		if (rc)
 			goto err;
 		ctx->sfe_info.skip_scratch_cfg_streamon = false;
@@ -10644,7 +10644,7 @@ int cam_isp_config_csid_rup_aup(
  * to each left RDIs
  */
 static int cam_ife_mgr_prog_default_settings(
-	struct cam_ife_hw_mgr_ctx *ctx)
+	bool need_rup_aup, struct cam_ife_hw_mgr_ctx *ctx)
 {
 	int i, j, res_id, rc = 0;
 	struct cam_isp_hw_mgr_res       *hw_mgr_res;
@@ -10722,11 +10722,13 @@ static int cam_ife_mgr_prog_default_settings(
 		}
 	}
 
-	/* Program rup & aup */
-	rc = cam_isp_config_csid_rup_aup(ctx);
-	if (rc)
-		CAM_ERR(CAM_ISP,
-			"RUP/AUP update failed for scratch buffers");
+	/* Program rup & aup only at run time */
+	if (need_rup_aup) {
+		rc = cam_isp_config_csid_rup_aup(ctx);
+		if (rc)
+			CAM_ERR(CAM_ISP,
+				"RUP/AUP update failed for scratch buffers");
+	}
 
 	return rc;
 }
@@ -10801,7 +10803,7 @@ static int cam_ife_mgr_cmd(void *hw_mgr_priv, void *cmd_args)
 				ctx->last_cdm_done_req;
 			break;
 		case CAM_ISP_HW_MGR_CMD_PROG_DEFAULT_CFG:
-			rc = cam_ife_mgr_prog_default_settings(ctx);
+			rc = cam_ife_mgr_prog_default_settings(true, ctx);
 			break;
 		default:
 			CAM_ERR(CAM_ISP, "Invalid HW mgr command:0x%x",
