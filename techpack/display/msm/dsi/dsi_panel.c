@@ -851,6 +851,8 @@ int dsi_panel_set_backlight(struct dsi_panel *panel, u32 bl_lvl)
 
 	mi_dsi_panel_update_last_bl_level(panel, bl_lvl);
 
+	bl->real_bl_level = bl_lvl;
+
 	return rc;
 }
 
@@ -2956,6 +2958,7 @@ static int dsi_panel_parse_bl_config(struct dsi_panel *panel)
 	panel->bl_config.dimming_min_bl = 0;
 	panel->bl_config.dimming_status = DIMMING_ENABLE;
 	panel->bl_config.user_disable_notification = false;
+	panel->bl_config.real_bl_level = 0;
 
 	panel->bl_config.dimming_enabled = utils->read_bool(utils->data, "qcom,mdss-dsi-panel-dimming-enabled");
 	DSI_INFO("[%s] qcom,mdss-dsi-panel-dimming-enabled supported: %d\n",
