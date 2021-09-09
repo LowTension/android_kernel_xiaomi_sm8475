@@ -3013,8 +3013,9 @@ static inline int cam_ife_csid_ver2_subscribe_sof_for_discard(
 }
 
 static int cam_ife_csid_ver2_program_rdi_path(
-	struct cam_ife_csid_ver2_hw *csid_hw,
-	struct cam_isp_resource_node    *res)
+	struct cam_ife_csid_ver2_hw     *csid_hw,
+	struct cam_isp_resource_node    *res,
+	uint32_t                        *rup_aup_mask)
 {
 	int rc = 0;
 	struct cam_ife_csid_ver2_reg_info *csid_reg;
@@ -3148,20 +3149,17 @@ static int cam_ife_csid_ver2_program_rdi_path(
 		goto end;
 	}
 
-	val = cam_io_r_mb(mem_base + csid_reg->cmn_reg->rup_aup_cmd_addr);
-	val |= path_reg->rup_aup_mask;
-	cam_io_w_mb(val, mem_base + csid_reg->cmn_reg->rup_aup_cmd_addr);
-	CAM_DBG(CAM_ISP, "CSID[%d] Res: %s rup_cmd_addr %x val %x",
-		csid_hw->hw_intf->hw_idx, res->res_name,
-		csid_reg->cmn_reg->rup_aup_cmd_addr, val);
+	*rup_aup_mask |= path_reg->rup_aup_mask;
+
 end:
 	return rc;
 }
 
 
 static int cam_ife_csid_ver2_program_ipp_path(
-	struct cam_ife_csid_ver2_hw *csid_hw,
-	struct cam_isp_resource_node    *res)
+	struct cam_ife_csid_ver2_hw    *csid_hw,
+	struct cam_isp_resource_node   *res,
+	uint32_t                       *rup_aup_mask)
 {
 	int rc = 0;
 	const struct cam_ife_csid_ver2_reg_info *csid_reg;
@@ -3292,13 +3290,8 @@ static int cam_ife_csid_ver2_program_ipp_path(
 		res->res_id, val);
 
 	if (path_cfg->sync_mode == CAM_ISP_HW_SYNC_MASTER ||
-		 path_cfg->sync_mode == CAM_ISP_HW_SYNC_NONE) {
-		val = cam_io_r_mb(mem_base +
-			csid_reg->cmn_reg->rup_aup_cmd_addr);
-		val |= path_reg->rup_aup_mask;
-		cam_io_w_mb(val, mem_base +
-			csid_reg->cmn_reg->rup_aup_cmd_addr);
-	}
+		 path_cfg->sync_mode == CAM_ISP_HW_SYNC_NONE)
+		*rup_aup_mask |= path_reg->rup_aup_mask;
 
 	res->res_state = CAM_ISP_RESOURCE_STATE_STREAMING;
 end:
@@ -3363,8 +3356,9 @@ end:
 }
 
 static int cam_ife_csid_ver2_program_ppp_path(
-	struct cam_ife_csid_ver2_hw *csid_hw,
-	struct cam_isp_resource_node    *res)
+	struct cam_ife_csid_ver2_hw     *csid_hw,
+	struct cam_isp_resource_node    *res,
+	uint32_t                        *rup_aup_mask)
 {
 	int rc = 0;
 	const struct cam_ife_csid_ver2_reg_info *csid_reg;
@@ -3433,14 +3427,10 @@ static int cam_ife_csid_ver2_program_ppp_path(
 		csid_hw->hw_intf->hw_idx, res->res_id, val);
 
 	if (path_cfg->sync_mode == CAM_ISP_HW_SYNC_MASTER ||
-		 path_cfg->sync_mode == CAM_ISP_HW_SYNC_NONE) {
-		val = cam_io_r_mb(mem_base + csid_reg->cmn_reg->rup_aup_cmd_addr);
-		val |= path_reg->rup_aup_mask;
-		cam_io_w_mb(val, mem_base + csid_reg->cmn_reg->rup_aup_cmd_addr);
-	}
+		 path_cfg->sync_mode == CAM_ISP_HW_SYNC_NONE)
+		 *rup_aup_mask |= path_reg->rup_aup_mask;
 
 	val = csid_hw->debug_info.path_mask;
-
 
 	irq_mask[path_cfg->irq_reg_idx] = val;
 	irq_mask[CAM_IFE_CSID_IRQ_REG_TOP] = path_reg->top_irq_mask;
@@ -4135,11 +4125,14 @@ disable_hw:
 int cam_ife_csid_ver2_start(void *hw_priv, void *args,
 			uint32_t arg_size)
 {
-	struct cam_ife_csid_ver2_hw *csid_hw  = NULL;
+	struct cam_ife_csid_ver2_hw           *csid_hw  = NULL;
 	struct cam_isp_resource_node          *res;
 	struct cam_csid_hw_start_args         *start_args;
-	struct cam_hw_info *hw_info;
-	int rc = 0, i;
+	struct cam_ife_csid_ver2_reg_info     *csid_reg;
+	struct cam_hw_soc_info                *soc_info;
+	struct cam_hw_info                    *hw_info;
+	uint32_t                               rup_aup_mask = 0;
+	int                                    rc = 0, i;
 
 	if (!hw_priv || !args) {
 		CAM_ERR(CAM_ISP, "CSID Invalid params");
@@ -4148,6 +4141,9 @@ int cam_ife_csid_ver2_start(void *hw_priv, void *args,
 
 	hw_info = (struct cam_hw_info *)hw_priv;
 	csid_hw = (struct cam_ife_csid_ver2_hw *)hw_info->core_info;
+	soc_info = &csid_hw->hw_info->soc_info;
+	csid_reg = (struct cam_ife_csid_ver2_reg_info *)
+			csid_hw->core_info->csid_reg;
 	start_args = (struct cam_csid_hw_start_args *)args;
 
 	if (csid_hw->hw_info->hw_state == CAM_HW_STATE_POWER_DOWN) {
@@ -4180,24 +4176,41 @@ int cam_ife_csid_ver2_start(void *hw_priv, void *args,
 
 		switch (res->res_id) {
 		case  CAM_IFE_PIX_PATH_RES_IPP:
-			rc = cam_ife_csid_ver2_program_ipp_path(csid_hw, res);
+			rc = cam_ife_csid_ver2_program_ipp_path(csid_hw, res, &rup_aup_mask);
+			if (rc)
+				goto end;
+
 			break;
 		case  CAM_IFE_PIX_PATH_RES_PPP:
-			rc = cam_ife_csid_ver2_program_ppp_path(csid_hw, res);
+			rc = cam_ife_csid_ver2_program_ppp_path(csid_hw, res, &rup_aup_mask);
+			if (rc)
+				goto end;
+
 			break;
 		case CAM_IFE_PIX_PATH_RES_RDI_0:
 		case CAM_IFE_PIX_PATH_RES_RDI_1:
 		case CAM_IFE_PIX_PATH_RES_RDI_2:
 		case CAM_IFE_PIX_PATH_RES_RDI_3:
 		case CAM_IFE_PIX_PATH_RES_RDI_4:
-			rc = cam_ife_csid_ver2_program_rdi_path(csid_hw, res);
+			rc = cam_ife_csid_ver2_program_rdi_path(csid_hw, res, &rup_aup_mask);
+			if (rc)
+				goto end;
+
 			break;
 		default:
-			CAM_ERR(CAM_ISP, "CSID:%d Invalid res type%d",
+			CAM_ERR(CAM_ISP, "CSID:%d Invalid res type %d",
 					csid_hw->hw_intf->hw_idx, res->res_type);
 			break;
 		}
 	}
+
+	/* Configure RUP/AUP/MUP @ streamon for all paths together */
+	rup_aup_mask |= (csid_hw->rx_cfg.mup << csid_reg->cmn_reg->mup_shift_val);
+	cam_io_w_mb(rup_aup_mask,
+		soc_info->reg_map[CAM_IFE_CSID_CLC_MEM_BASE_ID].mem_base +
+		csid_reg->cmn_reg->rup_aup_cmd_addr);
+	CAM_DBG(CAM_ISP, "CSID:%u RUP_AUP_MUP: 0x%x at start",
+		csid_hw->hw_intf->hw_idx, rup_aup_mask);
 
 	cam_ife_csid_ver2_enable_csi2(csid_hw);
 
