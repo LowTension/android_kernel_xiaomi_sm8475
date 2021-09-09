@@ -4635,7 +4635,7 @@ static int cam_ife_csid_ver2_print_hbi_vbi(
 		path_reg->format_measure2_addr);
 
 	CAM_INFO_RATE_LIMIT(CAM_ISP,
-		"CSID[%u] Resource[id:%d name:%s hbi %u vbi %u]",
+		"CSID[%u] Resource[id:%d name:%s hbi 0x%x vbi 0x%x]",
 		csid_hw->hw_intf->hw_idx, res->res_id, res->res_name, hbi, vbi);
 
 	return 0;
