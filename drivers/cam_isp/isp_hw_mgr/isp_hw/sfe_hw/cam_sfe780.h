@@ -747,6 +747,7 @@ static struct cam_sfe_bus_rd_hw_info sfe780_bus_rd_hw_info = {
 		},
 	},
 	.top_irq_shift = 0x1,
+	.latency_buf_allocation = 2048,
 };
 
 static struct cam_irq_register_set sfe780_bus_wr_irq_reg[1] = {

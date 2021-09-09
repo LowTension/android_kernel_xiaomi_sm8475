@@ -29,7 +29,6 @@ static const char drv_name[] = "sfe_bus_rd";
 #define MAX_REG_VAL_PAIR_SIZE    \
 	(MAX_BUF_UPDATE_REG_NUM * 2 * CAM_PACKET_MAX_PLANES)
 
-#define BUS_RD_DEFAULT_LATENCY_BUF_ALLOC   512
 #define CAM_SFE_BUS_RD_PAYLOAD_MAX         16
 
 static uint32_t bus_rd_error_irq_mask[1] = {
@@ -134,6 +133,7 @@ struct cam_sfe_bus_rd_priv {
 	int                                 error_irq_handle;
 	void                               *tasklet_info;
 	uint32_t                            top_irq_shift;
+	uint32_t                            latency_buf_allocation;
 };
 
 static void cam_sfe_bus_rd_pxls_to_bytes(uint32_t pxls, uint32_t fmt,
@@ -404,7 +404,7 @@ static int cam_sfe_bus_acquire_rm(
 	rsrc_data->unpacker_cfg =
 		cam_sfe_bus_get_unpacker_fmt(unpacker_fmt);
 	rsrc_data->latency_buf_allocation =
-		BUS_RD_DEFAULT_LATENCY_BUF_ALLOC;
+		bus_rd_priv->latency_buf_allocation;
 	rsrc_data->enable_caching =  false;
 	rsrc_data->enable_disable_cfg_done = false;
 	rsrc_data->offset = 0;
@@ -470,12 +470,11 @@ static int cam_sfe_bus_start_rm(struct cam_isp_resource_node *rm_res)
 	rm_res->res_state = CAM_ISP_RESOURCE_STATE_STREAMING;
 
 	CAM_DBG(CAM_SFE,
-		"Start SFE:%d RM:%d offset:0x%X width:%d[in bytes: %u] height:%d",
+		"Start SFE:%d RM:%d offset:0x%X width:%d [in bytes: %u] height:%d unpack_fmt:%d stride:%d latency_buf_alloc:%u",
 		rm_data->common_data->core_index, rm_data->index,
-		(uint32_t) rm_data->hw_regs->cfg,
-		rm_data->width, width_in_bytes, rm_data->height);
-	CAM_DBG(CAM_SFE, "RM:%d pk_fmt:%d stride:%d", rm_data->index,
-		rm_data->unpacker_cfg, rm_data->stride);
+		rm_data->offset, rm_data->width, width_in_bytes,
+		rm_data->height, rm_data->unpacker_cfg, rm_data->stride,
+		rm_data->latency_buf_allocation);
 
 	return 0;
 }
@@ -1721,6 +1720,7 @@ int cam_sfe_bus_rd_init(
 	bus_priv->common_data.sfe_irq_controller = sfe_irq_controller;
 	bus_priv->common_data.common_reg        = &bus_rd_hw_info->common_reg;
 	bus_priv->top_irq_shift                 = bus_rd_hw_info->top_irq_shift;
+	bus_priv->latency_buf_allocation        = bus_rd_hw_info->latency_buf_allocation;
 
 	rc = cam_irq_controller_init(drv_name,
 		bus_priv->common_data.mem_base,
