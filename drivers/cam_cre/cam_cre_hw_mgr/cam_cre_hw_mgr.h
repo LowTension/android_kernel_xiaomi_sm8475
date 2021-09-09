@@ -41,7 +41,7 @@
 #define CRE_DEVICE_IDLE_TIMEOUT      400
 #define CRE_REQUEST_TIMEOUT          200
 
-#define CAM_CRE_MAX_PER_PATH_VOTES   6
+#define CAM_CRE_MAX_PER_PATH_VOTES   2
 #define CAM_CRE_MAX_REG_SET          32
 
 #define CAM_CRE_MAX_ACTIVE           8
