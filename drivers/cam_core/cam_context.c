@@ -268,7 +268,7 @@ int cam_context_handle_crm_notify_frame_skip(
 int cam_context_handle_crm_flush_req(struct cam_context *ctx,
 	struct cam_req_mgr_flush_request *flush)
 {
-	int rc;
+	int rc = 0;
 
 	if (!ctx->state_machine) {
 		CAM_ERR(CAM_CORE, "Context is not ready");
@@ -276,13 +276,15 @@ int cam_context_handle_crm_flush_req(struct cam_context *ctx,
 	}
 
 	mutex_lock(&ctx->ctx_mutex);
-	if (ctx->state_machine[ctx->state].crm_ops.flush_req) {
-		rc = ctx->state_machine[ctx->state].crm_ops.flush_req(ctx,
-			flush);
-	} else {
-		CAM_ERR(CAM_CORE, "No crm flush req in dev %d, state %d",
-			ctx->dev_hdl, ctx->state);
-		rc = -EPROTO;
+	if (ctx->state != CAM_CTX_FLUSHED) {
+		if (ctx->state_machine[ctx->state].crm_ops.flush_req) {
+			rc = ctx->state_machine[ctx->state].crm_ops.flush_req(ctx,
+				flush);
+		} else {
+			CAM_ERR(CAM_CORE, "No crm flush req in dev %d, state %d, name %s",
+				ctx->dev_hdl, ctx->state, ctx->dev_name);
+			rc = -EPROTO;
+		}
 	}
 	mutex_unlock(&ctx->ctx_mutex);
 
