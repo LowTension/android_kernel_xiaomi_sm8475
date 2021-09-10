@@ -396,7 +396,7 @@ irqreturn_t cam_sfe_irq(int irq_num, void *data)
 	core_info = (struct cam_sfe_hw_core_info *)sfe_hw->core_info;
 
 	return cam_irq_controller_handle_irq(irq_num,
-		core_info->sfe_irq_controller);
+		core_info->sfe_irq_controller, CAM_IRQ_EVT_GROUP_0);
 }
 
 int cam_sfe_core_init(
@@ -409,8 +409,7 @@ int cam_sfe_core_init(
 
 	rc = cam_irq_controller_init(drv_name,
 		CAM_SOC_GET_REG_MAP_START(soc_info, SFE_CORE_BASE_IDX),
-		sfe_hw_info->irq_reg_info, &core_info->sfe_irq_controller,
-		true);
+		sfe_hw_info->irq_reg_info, &core_info->sfe_irq_controller);
 	if (rc) {
 		CAM_ERR(CAM_SFE, "SFE irq controller init failed");
 		return rc;

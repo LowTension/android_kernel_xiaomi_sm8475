@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CAM_VFE_LITE17X_H_
@@ -29,6 +29,7 @@ static struct cam_irq_controller_reg_info vfe17x_top_irq_reg_info = {
 	.irq_reg_set = vfe17x_top_irq_reg_set,
 	.global_clear_offset  = 0x00000058,
 	.global_clear_bitmask = 0x00000001,
+	.clear_all_bitmask = 0xFFFFFFFF,
 };
 
 static struct cam_vfe_top_ver2_reg_offset_common vfe17x_top_common_reg = {
@@ -154,6 +155,7 @@ static struct cam_vfe_bus_ver2_hw_info vfe17x_bus_hw_info = {
 			.irq_reg_set          = vfe17x_bus_irq_reg,
 			.global_clear_offset  = 0x00002068,
 			.global_clear_bitmask = 0x00000001,
+			.clear_all_bitmask = 0xFFFFFFFF,
 		},
 		.comp_error_status            = 0x0000206C,
 		.comp_ovrwr_status            = 0x00002070,

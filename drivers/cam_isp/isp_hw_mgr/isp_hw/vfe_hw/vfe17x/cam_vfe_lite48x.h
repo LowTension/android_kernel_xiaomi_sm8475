@@ -34,6 +34,7 @@ static struct cam_irq_controller_reg_info vfe48x_top_irq_reg_info = {
 	.irq_reg_set = vfe48x_top_irq_reg_set,
 	.global_clear_offset  = 0x00000024,
 	.global_clear_bitmask = 0x00000001,
+	.clear_all_bitmask = 0xFFFFFFFF,
 };
 
 static struct cam_vfe_top_ver3_reg_offset_common vfe48x_top_common_reg = {

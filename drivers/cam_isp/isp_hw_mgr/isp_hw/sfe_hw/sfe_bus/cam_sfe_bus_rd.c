@@ -362,7 +362,7 @@ static int cam_sfe_bus_rd_handle_irq(
 	CAM_DBG(CAM_SFE, "Top Bus RD IRQ Received");
 
 	rc = cam_irq_controller_handle_irq(evt_id,
-		bus_priv->common_data.bus_irq_controller);
+		bus_priv->common_data.bus_irq_controller, CAM_IRQ_EVT_GROUP_0);
 
 	return (rc == IRQ_HANDLED) ? 0 : -EINVAL;
 }
@@ -657,10 +657,7 @@ static int cam_sfe_bus_rd_handle_irq_top_half(uint32_t evt_id,
 		CAM_ERR(CAM_SFE, "SFE:%d constraint violation:0x%x",
 			bus_priv->common_data.core_index,
 			evt_payload->constraint_violation);
-		cam_irq_controller_disable_irq(
-			bus_priv->common_data.bus_irq_controller,
-			 bus_priv->error_irq_handle);
-		cam_irq_controller_clear_and_mask(evt_id,
+		cam_irq_controller_disable_all(
 			bus_priv->common_data.bus_irq_controller);
 	}
 
@@ -722,7 +719,8 @@ static int cam_sfe_bus_subscribe_error_irq(
 		cam_sfe_bus_rd_handle_irq,
 		NULL,
 		NULL,
-		NULL);
+		NULL,
+		CAM_IRQ_EVT_GROUP_0);
 
 	if (bus_priv->irq_handle < 1) {
 		CAM_ERR(CAM_SFE,
@@ -730,6 +728,9 @@ static int cam_sfe_bus_subscribe_error_irq(
 		bus_priv->irq_handle = 0;
 		return -EFAULT;
 	}
+
+	cam_irq_controller_register_dependent(bus_priv->common_data.sfe_irq_controller,
+		bus_priv->common_data.bus_irq_controller, sfe_top_irq_mask);
 
 	if (bus_priv->tasklet_info != NULL) {
 		bus_priv->error_irq_handle = cam_irq_controller_subscribe_irq(
@@ -740,7 +741,8 @@ static int cam_sfe_bus_subscribe_error_irq(
 			cam_sfe_bus_rd_handle_irq_top_half,
 			cam_sfe_bus_rd_handle_irq_bottom_half,
 			bus_priv->tasklet_info,
-			&tasklet_bh_api);
+			&tasklet_bh_api,
+			CAM_IRQ_EVT_GROUP_0);
 
 		if (bus_priv->error_irq_handle < 1) {
 			CAM_ERR(CAM_SFE, "Failed to subscribe error IRQ");
@@ -977,7 +979,8 @@ static int cam_sfe_bus_start_bus_rd(
 			cam_sfe_bus_rd_out_done_top_half,
 			cam_sfe_bus_rd_out_done_bottom_half,
 			sfe_bus_rd->tasklet_info,
-			&tasklet_bh_api);
+			&tasklet_bh_api,
+			CAM_IRQ_EVT_GROUP_0);
 
 		if (sfe_bus_rd->irq_handle < 1) {
 			CAM_ERR(CAM_SFE,
@@ -1039,6 +1042,9 @@ static int cam_sfe_bus_stop_bus_rd(
 			if (rc)
 				CAM_ERR(CAM_SFE, "Failed to unsubscribe top irq");
 			bus_priv->irq_handle = 0;
+			cam_irq_controller_unregister_dependent(
+				bus_priv->common_data.sfe_irq_controller,
+				bus_priv->common_data.bus_irq_controller);
 		}
 
 		if (bus_priv->error_irq_handle) {
@@ -1725,7 +1731,7 @@ int cam_sfe_bus_rd_init(
 	rc = cam_irq_controller_init(drv_name,
 		bus_priv->common_data.mem_base,
 		&bus_rd_hw_info->common_reg.irq_reg_info,
-		&bus_priv->common_data.bus_irq_controller, true);
+		&bus_priv->common_data.bus_irq_controller);
 	if (rc) {
 		CAM_ERR(CAM_SFE, "IRQ controller init failed");
 		goto free_bus_priv;

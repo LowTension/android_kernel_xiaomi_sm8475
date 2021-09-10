@@ -79,7 +79,6 @@ struct cam_vfe_bus_ver3_common_data {
 	void __iomem                               *mem_base;
 	struct cam_hw_intf                         *hw_intf;
 	void                                       *bus_irq_controller;
-	void                                       *rup_irq_controller;
 	void                                       *vfe_irq_controller;
 	void                                       *buf_done_controller;
 	void                                       *priv;
@@ -2180,7 +2179,8 @@ static int cam_vfe_bus_ver3_start_vfe_out(
 		vfe_out->top_half_handler,
 		vfe_out->bottom_half_handler,
 		vfe_out->tasklet_info,
-		&tasklet_bh_api);
+		&tasklet_bh_api,
+		CAM_IRQ_EVT_GROUP_0);
 
 	if (vfe_out->irq_handle < 1) {
 		CAM_ERR(CAM_ISP, "Subscribe IRQ failed for VFE out_res %d",
@@ -2206,14 +2206,15 @@ static int cam_vfe_bus_ver3_start_vfe_out(
 
 		common_data->rup_irq_handle[source_group] =
 			cam_irq_controller_subscribe_irq(
-				common_data->rup_irq_controller,
+				common_data->bus_irq_controller,
 				CAM_IRQ_PRIORITY_0,
 				rup_irq_reg_mask,
 				vfe_out,
 				cam_vfe_bus_ver3_handle_rup_top_half,
 				cam_vfe_bus_ver3_handle_rup_bottom_half,
 				vfe_out->tasklet_info,
-				&tasklet_bh_api);
+				&tasklet_bh_api,
+				CAM_IRQ_EVT_GROUP_1);
 
 		if (common_data->rup_irq_handle[source_group] < 1) {
 			CAM_ERR(CAM_ISP, "Failed to subscribe RUP IRQ");
@@ -2257,7 +2258,7 @@ static int cam_vfe_bus_ver3_stop_vfe_out(
 
 	if (common_data->rup_irq_handle[rsrc_data->source_group]) {
 		rc = cam_irq_controller_unsubscribe_irq(
-			common_data->rup_irq_controller,
+			common_data->bus_irq_controller,
 			common_data->rup_irq_handle[rsrc_data->source_group]);
 		common_data->rup_irq_handle[rsrc_data->source_group] = 0;
 	}
@@ -2717,7 +2718,7 @@ static int cam_vfe_bus_ver3_handle_bus_irq(uint32_t    evt_id,
 	bus_priv = th_payload->handler_priv;
 	CAM_DBG(CAM_ISP, "Enter");
 	rc = cam_irq_controller_handle_irq(evt_id,
-		bus_priv->common_data.bus_irq_controller);
+		bus_priv->common_data.bus_irq_controller, CAM_IRQ_EVT_GROUP_0);
 	return (rc == IRQ_HANDLED) ? 0 : -EINVAL;
 }
 
@@ -2730,7 +2731,7 @@ static int cam_vfe_bus_ver3_handle_rup_irq(uint32_t     evt_id,
 	bus_priv = th_payload->handler_priv;
 	CAM_DBG(CAM_ISP, "Enter");
 	rc = cam_irq_controller_handle_irq(evt_id,
-		bus_priv->common_data.rup_irq_controller);
+		bus_priv->common_data.bus_irq_controller, CAM_IRQ_EVT_GROUP_1);
 	return (rc == IRQ_HANDLED) ? 0 : -EINVAL;
 }
 
@@ -2894,6 +2895,8 @@ static void cam_vfe_bus_ver3_unsubscribe_init_irq(
 			CAM_WARN(CAM_ISP, "failed to unsubscribe top irq");
 
 		bus_priv->bus_irq_handle = 0;
+		cam_irq_controller_unregister_dependent(bus_priv->common_data.vfe_irq_controller,
+		bus_priv->common_data.bus_irq_controller);
 	}
 
 	if (bus_priv->rup_irq_handle) {
@@ -2918,6 +2921,11 @@ static int cam_vfe_bus_ver3_subscribe_init_irq(
 	/* Subscribe top IRQ */
 	top_irq_reg_mask[0] = (1 << bus_priv->top_irq_shift);
 
+	cam_irq_controller_register_dependent(
+		bus_priv->common_data.vfe_irq_controller,
+		bus_priv->common_data.bus_irq_controller,
+		top_irq_reg_mask);
+
 	bus_priv->bus_irq_handle = cam_irq_controller_subscribe_irq(
 		bus_priv->common_data.vfe_irq_controller,
 		CAM_IRQ_PRIORITY_4,
@@ -2926,7 +2934,8 @@ static int cam_vfe_bus_ver3_subscribe_init_irq(
 		cam_vfe_bus_ver3_handle_bus_irq,
 		NULL,
 		NULL,
-		NULL);
+		NULL,
+		CAM_IRQ_EVT_GROUP_0);
 
 	if (bus_priv->bus_irq_handle < 1) {
 		CAM_ERR(CAM_ISP, "Failed to subscribe BUS (buf_done) IRQ");
@@ -2944,7 +2953,8 @@ static int cam_vfe_bus_ver3_subscribe_init_irq(
 			cam_vfe_bus_ver3_err_irq_top_half,
 			cam_vfe_bus_ver3_err_irq_bottom_half,
 			bus_priv->tasklet_info,
-			&tasklet_bh_api);
+			&tasklet_bh_api,
+			CAM_IRQ_EVT_GROUP_0);
 
 		if (bus_priv->error_irq_handle < 1) {
 			CAM_ERR(CAM_ISP, "Failed to subscribe BUS Error IRQ");
@@ -2962,7 +2972,8 @@ static int cam_vfe_bus_ver3_subscribe_init_irq(
 			cam_vfe_bus_ver3_handle_rup_irq,
 			NULL,
 			NULL,
-			NULL);
+			NULL,
+			CAM_IRQ_EVT_GROUP_0);
 
 		if (bus_priv->rup_irq_handle < 1) {
 			CAM_ERR(CAM_ISP, "Failed to subscribe BUS (rup) IRQ");
@@ -4118,21 +4129,10 @@ int cam_vfe_bus_ver3_init(
 
 	rc = cam_irq_controller_init(drv_name, bus_priv->common_data.mem_base,
 		&ver3_hw_info->common_reg.irq_reg_info,
-		&bus_priv->common_data.bus_irq_controller, false);
+		&bus_priv->common_data.bus_irq_controller);
 	if (rc) {
 		CAM_ERR(CAM_ISP, "Init bus_irq_controller failed");
 		goto free_vfe_out;
-	}
-
-	if (bus_priv->common_data.supported_irq & CAM_VFE_HW_IRQ_CAP_RUP) {
-		rc = cam_irq_controller_init("vfe_bus_rup",
-			bus_priv->common_data.mem_base,
-			&ver3_hw_info->common_reg.irq_reg_info,
-			&bus_priv->common_data.rup_irq_controller, false);
-		if (rc) {
-			CAM_ERR(CAM_ISP, "Init rup_irq_controller failed");
-			goto free_vfe_out;
-		}
 	}
 
 	INIT_LIST_HEAD(&bus_priv->free_comp_grp);
@@ -4269,12 +4269,6 @@ int cam_vfe_bus_ver3_deinit(
 	if (rc)
 		CAM_ERR(CAM_ISP,
 			"Deinit BUS IRQ Controller failed rc=%d", rc);
-
-	rc = cam_irq_controller_deinit(
-		&bus_priv->common_data.rup_irq_controller);
-	if (rc)
-		CAM_ERR(CAM_ISP,
-			"Deinit RUP IRQ Controller failed rc=%d", rc);
 
 	kfree(bus_priv->comp_grp);
 	kfree(bus_priv->vfe_out);

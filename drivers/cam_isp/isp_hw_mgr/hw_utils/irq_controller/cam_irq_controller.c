@@ -29,6 +29,8 @@
  *                          Function used to enqueue the bottom_half event
  * @list_node:              list_head struct used for overall handler List
  * @th_list_node:           list_head struct used for top half handler List
+ * @index:                  Unique id of the event
+ * @group:                  Group to which the event belongs
  */
 struct cam_irq_evt_handler {
 	enum cam_irq_priority_level        priority;
@@ -41,6 +43,7 @@ struct cam_irq_evt_handler {
 	struct list_head                   list_node;
 	struct list_head                   th_list_node;
 	int                                index;
+	int                                group;
 };
 
 /**
@@ -53,8 +56,10 @@ struct cam_irq_evt_handler {
  * @clear_reg_offset:       Offset of IRQ CLEAR register
  * @status_reg_offset:      Offset of IRQ STATUS register
  * @top_half_enable_mask:   Array of enabled bit_mask sorted by priority
- * @pclear_mask:            Partial mask to be cleared in case entire status
- *                          register is not to be cleared
+ * @aggr_mask:              Aggregate mask to keep track of the overall mask
+ *                          after subscribe/unsubscribe calls
+ * @dependent_read_mask:    Mask to check if any dependent controllers' read needs to triggered
+ *                          from independent controller
  */
 struct cam_irq_register_obj {
 	uint32_t                     index;
@@ -62,7 +67,8 @@ struct cam_irq_register_obj {
 	uint32_t                     clear_reg_offset;
 	uint32_t                     status_reg_offset;
 	uint32_t                     top_half_enable_mask[CAM_IRQ_PRIORITY_MAX];
-	uint32_t                     pclear_mask;
+	uint32_t                     aggr_mask;
+	uint32_t                     dependent_read_mask[CAM_IRQ_MAX_DEPENDENTS];
 };
 
 /**
@@ -82,13 +88,18 @@ struct cam_irq_register_obj {
  *                          to take effect
  * @global_clear_bitmask:   Bitmask needed to be used in Global Clear register
  *                          for Clear IRQ cmd to take effect
+ * @clear_all_bitmask:      Bitmask that specifies which bits should be written to clear register
+ *                          when it is to be cleared forcefully
  * @evt_handler_list_head:  List of all event handlers
  * @th_list_head:           List of handlers sorted by priority
  * @hdl_idx:                Unique identity of handler assigned on Subscribe.
  *                          Used to Unsubscribe.
  * @lock:                   Lock for use by controller
- * @clear_all:              Flag to indicate whether to clear entire status
- *                          register
+ * @th_payload:             Payload structure to be passed to top half handler
+ * @is_dependent:           Flag to indicate is this controller is dependent on another controller
+ * @dependent_controller:   Array of controllers that depend on this controller
+ * @delayed_global_clear:   Flag to indicate if this controller issues global clear after dependent
+ *                          controllers are handled
  */
 struct cam_irq_controller {
 	const char                     *name;
@@ -98,13 +109,141 @@ struct cam_irq_controller {
 	uint32_t                       *irq_status_arr;
 	uint32_t                        global_clear_offset;
 	uint32_t                        global_clear_bitmask;
+	uint32_t                        clear_all_bitmask;
 	struct list_head                evt_handler_list_head;
 	struct list_head                th_list_head[CAM_IRQ_PRIORITY_MAX];
 	uint32_t                        hdl_idx;
 	spinlock_t                      lock;
 	struct cam_irq_th_payload       th_payload;
-	bool                            clear_all;
+	bool                            is_dependent;
+	struct cam_irq_controller      *dependent_controller[CAM_IRQ_MAX_DEPENDENTS];
+	bool                            delayed_global_clear;
 };
+
+int cam_irq_controller_unregister_dependent(void *primary_controller, void *secondary_controller)
+{
+	struct cam_irq_controller *ctrl_primary, *ctrl_secondary;
+	int i, dep_idx;
+
+	if (!primary_controller || !secondary_controller) {
+		CAM_ERR(CAM_IRQ_CTRL, "invalid args: %pK, %pK", primary_controller,
+			secondary_controller);
+		return -EINVAL;
+	}
+
+	ctrl_primary = primary_controller;
+	ctrl_secondary = secondary_controller;
+
+	for (i = 0; i < CAM_IRQ_MAX_DEPENDENTS; i++) {
+		if (ctrl_primary->dependent_controller[i] == ctrl_secondary)
+			break;
+	}
+	if (i == CAM_IRQ_MAX_DEPENDENTS) {
+		CAM_ERR(CAM_IRQ_CTRL, "could not find %s as a dependent of %s)",
+			ctrl_secondary->name, ctrl_primary->name);
+		return -EINVAL;
+	}
+	dep_idx = i;
+
+	ctrl_primary->dependent_controller[dep_idx] = NULL;
+	for (i = 0; i < ctrl_primary->num_registers; i++)
+		ctrl_primary->irq_register_arr[i].dependent_read_mask[dep_idx] = 0;
+	ctrl_secondary->is_dependent = false;
+	ctrl_primary->delayed_global_clear = false;
+
+	CAM_DBG(CAM_IRQ_CTRL, "successfully unregistered %s as dependent of %s",
+		ctrl_secondary->name, ctrl_primary->name);
+
+	return 0;
+}
+
+int cam_irq_controller_register_dependent(void *primary_controller, void *secondary_controller,
+	uint32_t *mask)
+{
+	struct cam_irq_controller *ctrl_primary, *ctrl_secondary;
+	int i, dep_idx;
+
+	if (!primary_controller || !secondary_controller) {
+		CAM_ERR(CAM_IRQ_CTRL, "invalid args: %pK, %pK", primary_controller,
+			secondary_controller);
+		return -EINVAL;
+	}
+
+	ctrl_primary = primary_controller;
+	ctrl_secondary = secondary_controller;
+
+	for (i = 0; i < CAM_IRQ_MAX_DEPENDENTS; i++) {
+		if (!ctrl_primary->dependent_controller[i])
+			break;
+	}
+	if (i == CAM_IRQ_MAX_DEPENDENTS) {
+		CAM_ERR(CAM_IRQ_CTRL, "reached maximum dependents (%s - %s)",
+			ctrl_primary->name, ctrl_secondary->name);
+		return -ENOMEM;
+	}
+	dep_idx = i;
+
+	ctrl_primary->dependent_controller[dep_idx] = secondary_controller;
+	for (i = 0; i < ctrl_primary->num_registers; i++)
+		ctrl_primary->irq_register_arr[i].dependent_read_mask[dep_idx] = mask[i];
+	ctrl_secondary->is_dependent = true;
+
+	/**
+	 * NOTE: For dependent controllers that should not issue global clear command,
+	 * set their global_clear_offset to 0
+	 */
+	if (!ctrl_secondary->global_clear_offset)
+		ctrl_primary->delayed_global_clear = true;
+
+	CAM_DBG(CAM_IRQ_CTRL, "successfully registered %s as dependent of %s", ctrl_secondary->name,
+		ctrl_primary->name);
+	return 0;
+}
+
+static inline unsigned long cam_irq_controller_lock(
+	struct cam_irq_controller *controller)
+{
+	unsigned long flags = 0;
+
+	if (!in_irq())
+		spin_lock_irqsave(&controller->lock, flags);
+
+	return flags;
+}
+
+static inline void cam_irq_controller_unlock(
+	struct cam_irq_controller *controller,
+	unsigned long flags)
+{
+	if (!in_irq())
+		spin_unlock_irqrestore(&controller->lock, flags);
+}
+
+static inline void cam_irq_controller_clear_irq(
+	struct cam_irq_controller  *controller,
+	struct cam_irq_evt_handler *evt_handler)
+{
+	struct cam_irq_register_obj *irq_register;
+	int i;
+
+	/* Don't clear in IRQ context since global clear will be issued after
+	 * top half processing
+	 */
+	if (in_irq())
+		return;
+
+	for (i = 0; i < controller->num_registers; i++) {
+		irq_register = &controller->irq_register_arr[i];
+		cam_io_w_mb(evt_handler->evt_bit_mask_arr[i],
+				controller->mem_base +
+				irq_register->clear_reg_offset);
+	}
+
+	if (controller->global_clear_offset)
+		cam_io_w_mb(controller->global_clear_bitmask,
+				controller->mem_base +
+				controller->global_clear_offset);
+}
 
 int cam_irq_controller_deinit(void **irq_controller)
 {
@@ -136,8 +275,7 @@ int cam_irq_controller_deinit(void **irq_controller)
 int cam_irq_controller_init(const char       *name,
 	void __iomem                         *mem_base,
 	struct cam_irq_controller_reg_info   *register_info,
-	void                                **irq_controller,
-	bool                                  clear_all)
+	void                                **irq_controller)
 {
 	struct cam_irq_controller *controller = NULL;
 	int i, rc = 0;
@@ -205,8 +343,9 @@ int cam_irq_controller_init(const char       *name,
 	controller->num_registers        = register_info->num_registers;
 	controller->global_clear_bitmask = register_info->global_clear_bitmask;
 	controller->global_clear_offset  = register_info->global_clear_offset;
+	controller->clear_all_bitmask    = register_info->clear_all_bitmask;
 	controller->mem_base             = mem_base;
-	controller->clear_all            = clear_all;
+	controller->is_dependent         = false;
 
 	CAM_DBG(CAM_IRQ_CTRL, "global_clear_bitmask: 0x%x",
 		controller->global_clear_bitmask);
@@ -236,6 +375,46 @@ reg_alloc_error:
 	return rc;
 }
 
+static inline void __cam_irq_controller_disable_irq(
+	struct cam_irq_controller  *controller,
+	struct cam_irq_evt_handler *evt_handler)
+{
+	struct cam_irq_register_obj *irq_register;
+	uint32_t *update_mask;
+	int i, priority;
+
+	update_mask = evt_handler->evt_bit_mask_arr;
+	priority    = evt_handler->priority;
+
+	for (i = 0; i < controller->num_registers; i++) {
+		irq_register = &controller->irq_register_arr[i];
+		irq_register->top_half_enable_mask[priority] &= ~update_mask[i];
+		irq_register->aggr_mask &= ~update_mask[i];
+		cam_io_w_mb(irq_register->aggr_mask, controller->mem_base +
+			irq_register->mask_reg_offset);
+	}
+}
+
+static inline void __cam_irq_controller_enable_irq(
+	struct cam_irq_controller  *controller,
+	struct cam_irq_evt_handler *evt_handler)
+{
+	struct cam_irq_register_obj *irq_register;
+	uint32_t *update_mask;
+	int i, priority;
+
+	update_mask = evt_handler->evt_bit_mask_arr;
+	priority    = evt_handler->priority;
+
+	for (i = 0; i < controller->num_registers; i++) {
+		irq_register = &controller->irq_register_arr[i];
+		irq_register->top_half_enable_mask[priority] |= update_mask[i];
+		irq_register->aggr_mask |= update_mask[i];
+		cam_io_w_mb(irq_register->aggr_mask, controller->mem_base +
+			irq_register->mask_reg_offset);
+	}
+}
+
 int cam_irq_controller_subscribe_irq(void *irq_controller,
 	enum cam_irq_priority_level        priority,
 	uint32_t                          *evt_bit_mask_arr,
@@ -243,15 +422,14 @@ int cam_irq_controller_subscribe_irq(void *irq_controller,
 	CAM_IRQ_HANDLER_TOP_HALF           top_half_handler,
 	CAM_IRQ_HANDLER_BOTTOM_HALF        bottom_half_handler,
 	void                              *bottom_half,
-	struct cam_irq_bh_api             *irq_bh_api)
+	struct cam_irq_bh_api             *irq_bh_api,
+	enum cam_irq_event_group           evt_grp)
 {
 	struct cam_irq_controller  *controller  = irq_controller;
 	struct cam_irq_evt_handler *evt_handler = NULL;
 	int                         i;
 	int                         rc = 0;
-	uint32_t                    irq_mask;
 	unsigned long               flags = 0;
-	bool                        need_lock;
 
 	if (!controller || !handler_priv || !evt_bit_mask_arr) {
 		CAM_ERR(CAM_IRQ_CTRL,
@@ -319,6 +497,7 @@ int cam_irq_controller_subscribe_irq(void *irq_controller,
 	evt_handler->bottom_half_handler      = bottom_half_handler;
 	evt_handler->bottom_half              = bottom_half;
 	evt_handler->index                    = controller->hdl_idx++;
+	evt_handler->group                    = evt_grp;
 
 	if (irq_bh_api)
 		evt_handler->irq_bh_api       = *irq_bh_api;
@@ -327,31 +506,16 @@ int cam_irq_controller_subscribe_irq(void *irq_controller,
 	if (controller->hdl_idx > 0x3FFFFFFF)
 		controller->hdl_idx = 1;
 
-	need_lock = !in_irq();
-	if (need_lock)
-		spin_lock_irqsave(&controller->lock, flags);
-	for (i = 0; i < controller->num_registers; i++) {
-		controller->irq_register_arr[i].top_half_enable_mask[priority]
-			|= evt_bit_mask_arr[i];
+	flags = cam_irq_controller_lock(controller);
 
-		controller->irq_register_arr[i].pclear_mask
-			|= evt_bit_mask_arr[i];
-
-		irq_mask = cam_io_r_mb(controller->mem_base +
-			controller->irq_register_arr[i].mask_reg_offset);
-		irq_mask |= evt_bit_mask_arr[i];
-
-		cam_io_w_mb(irq_mask, controller->mem_base +
-			controller->irq_register_arr[i].mask_reg_offset);
-	}
+	__cam_irq_controller_enable_irq(controller, evt_handler);
 
 	list_add_tail(&evt_handler->list_node,
 		&controller->evt_handler_list_head);
 	list_add_tail(&evt_handler->th_list_node,
 		&controller->th_list_head[priority]);
 
-	if (need_lock)
-		spin_unlock_irqrestore(&controller->lock, flags);
+	cam_irq_controller_unlock(controller, flags);
 
 	return evt_handler->index;
 
@@ -362,58 +526,46 @@ free_evt_handler:
 	return rc;
 }
 
-int cam_irq_controller_enable_irq(void *irq_controller, uint32_t handle)
+static inline int cam_irq_controller_find_event_handle(struct cam_irq_controller *controller,
+	uint32_t handle, struct cam_irq_evt_handler **found_evt_handler)
 {
-	struct cam_irq_controller   *controller  = irq_controller;
-	struct cam_irq_evt_handler  *evt_handler = NULL;
-	struct cam_irq_evt_handler  *evt_handler_temp;
-	struct cam_irq_register_obj *irq_register = NULL;
-	enum cam_irq_priority_level priority;
-	unsigned long               flags = 0;
-	unsigned int                i;
-	uint32_t                    irq_mask;
-	uint32_t                    found = 0;
-	int                         rc = -EINVAL;
-	bool                        need_lock;
-
-	if (!controller)
-		return rc;
-
-	need_lock = !in_irq();
-	if (need_lock)
-		spin_lock_irqsave(&controller->lock, flags);
+	struct cam_irq_evt_handler  *evt_handler, *evt_handler_temp;
+	int rc = -EINVAL;
 
 	list_for_each_entry_safe(evt_handler, evt_handler_temp,
 		&controller->evt_handler_list_head, list_node) {
 		if (evt_handler->index == handle) {
-			CAM_DBG(CAM_IRQ_CTRL, "enable item %d", handle);
-			found = 1;
 			rc = 0;
+			*found_evt_handler = evt_handler;
 			break;
 		}
 	}
 
-	if (!found) {
-		if (need_lock)
-			spin_unlock_irqrestore(&controller->lock, flags);
+	return rc;
+}
+
+int cam_irq_controller_enable_irq(void *irq_controller, uint32_t handle)
+{
+	struct cam_irq_controller   *controller  = irq_controller;
+	struct cam_irq_evt_handler  *evt_handler = NULL;
+	unsigned long               flags = 0;
+	int                         rc = 0;
+
+	if (!controller)
 		return rc;
-	}
 
-	priority = evt_handler->priority;
-	for (i = 0; i < controller->num_registers; i++) {
-		irq_register = &controller->irq_register_arr[i];
-		irq_register->top_half_enable_mask[priority] |=
-			evt_handler->evt_bit_mask_arr[i];
+	flags = cam_irq_controller_lock(controller);
 
-		irq_mask = cam_io_r_mb(controller->mem_base +
-			irq_register->mask_reg_offset);
-		irq_mask |= evt_handler->evt_bit_mask_arr[i];
+	rc = cam_irq_controller_find_event_handle(controller, handle,
+		&evt_handler);
+	if (rc)
+		goto end;
 
-		cam_io_w_mb(irq_mask, controller->mem_base +
-		controller->irq_register_arr[i].mask_reg_offset);
-	}
-	if (need_lock)
-		spin_unlock_irqrestore(&controller->lock, flags);
+	CAM_DBG(CAM_IRQ_CTRL, "enable event %d", handle);
+	__cam_irq_controller_enable_irq(controller, evt_handler);
+
+end:
+	cam_irq_controller_unlock(controller, flags);
 
 	return rc;
 }
@@ -422,68 +574,25 @@ int cam_irq_controller_disable_irq(void *irq_controller, uint32_t handle)
 {
 	struct cam_irq_controller   *controller  = irq_controller;
 	struct cam_irq_evt_handler  *evt_handler = NULL;
-	struct cam_irq_evt_handler  *evt_handler_temp;
-	struct cam_irq_register_obj *irq_register;
-	enum cam_irq_priority_level priority;
 	unsigned long               flags = 0;
-	unsigned int                i;
-	uint32_t                    irq_mask;
-	uint32_t                    found = 0;
-	int                         rc = -EINVAL;
-	bool                        need_lock;
+	int                         rc = 0;
 
 	if (!controller)
 		return rc;
 
-	need_lock = !in_irq();
-	if (need_lock)
-		spin_lock_irqsave(&controller->lock, flags);
+	flags = cam_irq_controller_lock(controller);
 
-	list_for_each_entry_safe(evt_handler, evt_handler_temp,
-		&controller->evt_handler_list_head, list_node) {
-		if (evt_handler->index == handle) {
-			CAM_DBG(CAM_IRQ_CTRL, "disable item %d", handle);
-			found = 1;
-			rc = 0;
-			break;
-		}
-	}
+	rc = cam_irq_controller_find_event_handle(controller, handle,
+		&evt_handler);
+	if (rc)
+		goto end;
 
-	if (!found) {
-		if (need_lock)
-			spin_unlock_irqrestore(&controller->lock, flags);
-		return rc;
-	}
+	CAM_DBG(CAM_IRQ_CTRL, "disable event %d", handle);
+	__cam_irq_controller_disable_irq(controller, evt_handler);
+	cam_irq_controller_clear_irq(controller, evt_handler);
 
-	priority = evt_handler->priority;
-	for (i = 0; i < controller->num_registers; i++) {
-		irq_register = &controller->irq_register_arr[i];
-		irq_register->top_half_enable_mask[priority] &=
-			~(evt_handler->evt_bit_mask_arr[i]);
-
-		irq_mask = cam_io_r_mb(controller->mem_base +
-			irq_register->mask_reg_offset);
-		CAM_DBG(CAM_IRQ_CTRL, "irq_mask 0x%x before disable 0x%x",
-			irq_register->mask_reg_offset, irq_mask);
-		irq_mask &= ~(evt_handler->evt_bit_mask_arr[i]);
-
-		cam_io_w_mb(irq_mask, controller->mem_base +
-			irq_register->mask_reg_offset);
-		CAM_DBG(CAM_IRQ_CTRL, "irq_mask 0x%x after disable 0x%x",
-			irq_register->mask_reg_offset, irq_mask);
-
-		/* Clear the IRQ bits of this handler */
-		cam_io_w_mb(evt_handler->evt_bit_mask_arr[i],
-			controller->mem_base +
-			irq_register->clear_reg_offset);
-	}
-
-	if (controller->global_clear_offset)
-		cam_io_w_mb(controller->global_clear_bitmask,
-			controller->mem_base + controller->global_clear_offset);
-
-	if (need_lock)
-		spin_unlock_irqrestore(&controller->lock, flags);
+end:
+	cam_irq_controller_unlock(controller, flags);
 
 	return rc;
 }
@@ -493,63 +602,28 @@ int cam_irq_controller_unsubscribe_irq(void *irq_controller,
 {
 	struct cam_irq_controller   *controller  = irq_controller;
 	struct cam_irq_evt_handler  *evt_handler = NULL;
-	struct cam_irq_evt_handler  *evt_handler_temp;
-	struct cam_irq_register_obj *irq_register;
-	enum cam_irq_priority_level priority;
-	uint32_t                    i;
-	uint32_t                    found = 0;
-	uint32_t                    irq_mask;
 	unsigned long               flags = 0;
-	int                         rc = -EINVAL;
-	bool                        need_lock;
+	int                         rc = 0;
 
-	need_lock = !in_irq();
-	if (need_lock)
-		spin_lock_irqsave(&controller->lock, flags);
+	flags = cam_irq_controller_lock(controller);
 
-	list_for_each_entry_safe(evt_handler, evt_handler_temp,
-		&controller->evt_handler_list_head, list_node) {
-		if (evt_handler->index == handle) {
-			CAM_DBG(CAM_IRQ_CTRL, "unsubscribe item %d", handle);
-			list_del_init(&evt_handler->list_node);
-			list_del_init(&evt_handler->th_list_node);
-			found = 1;
-			rc = 0;
-			break;
-		}
-	}
 
-	if (found) {
-		priority = evt_handler->priority;
-		for (i = 0; i < controller->num_registers; i++) {
-			irq_register = &controller->irq_register_arr[i];
-			irq_register->top_half_enable_mask[priority] &=
-				~(evt_handler->evt_bit_mask_arr[i]);
+	rc = cam_irq_controller_find_event_handle(controller, handle,
+		&evt_handler);
+	if (rc)
+		goto end;
 
-			irq_mask = cam_io_r_mb(controller->mem_base +
-				irq_register->mask_reg_offset);
-			irq_mask &= ~(evt_handler->evt_bit_mask_arr[i]);
+	list_del_init(&evt_handler->list_node);
+	list_del_init(&evt_handler->th_list_node);
 
-			cam_io_w_mb(irq_mask, controller->mem_base +
-				irq_register->mask_reg_offset);
+	__cam_irq_controller_disable_irq(controller, evt_handler);
+	cam_irq_controller_clear_irq(controller, evt_handler);
 
-			/* Clear the IRQ bits of this handler */
-			cam_io_w_mb(evt_handler->evt_bit_mask_arr[i],
-				controller->mem_base +
-				irq_register->clear_reg_offset);
-			if (controller->global_clear_offset)
-				cam_io_w_mb(
-					controller->global_clear_bitmask,
-					controller->mem_base +
-					controller->global_clear_offset);
-		}
+	kfree(evt_handler->evt_bit_mask_arr);
+	kfree(evt_handler);
 
-		kfree(evt_handler->evt_bit_mask_arr);
-		kfree(evt_handler);
-	}
-
-	if (need_lock)
-		spin_unlock_irqrestore(&controller->lock, flags);
+end:
+	cam_irq_controller_unlock(controller, flags);
 
 	return rc;
 }
@@ -569,9 +643,13 @@ int cam_irq_controller_unsubscribe_irq(void *irq_controller,
  */
 static bool cam_irq_controller_match_bit_mask(
 	struct cam_irq_controller   *controller,
-	struct cam_irq_evt_handler  *evt_handler)
+	struct cam_irq_evt_handler  *evt_handler,
+	int                          evt_grp)
 {
 	int i;
+
+	if (evt_handler->group != evt_grp)
+		return false;
 
 	for (i = 0; i < controller->num_registers; i++) {
 		if (evt_handler->evt_bit_mask_arr[i] &
@@ -582,9 +660,10 @@ static bool cam_irq_controller_match_bit_mask(
 	return false;
 }
 
-static void cam_irq_controller_th_processing(
+static void __cam_irq_controller_th_processing(
 	struct cam_irq_controller      *controller,
-	struct list_head               *th_list_head)
+	struct list_head               *th_list_head,
+	int                             evt_grp)
 {
 	struct cam_irq_evt_handler     *evt_handler = NULL;
 	struct cam_irq_evt_handler     *evt_handler_tmp = NULL;
@@ -601,8 +680,7 @@ static void cam_irq_controller_th_processing(
 		return;
 
 	list_for_each_entry_safe(evt_handler, evt_handler_tmp, th_list_head, th_list_node) {
-		is_irq_match = cam_irq_controller_match_bit_mask(controller,
-			evt_handler);
+		is_irq_match = cam_irq_controller_match_bit_mask(controller, evt_handler, evt_grp);
 
 		if (!is_irq_match)
 			continue;
@@ -662,101 +740,153 @@ static void cam_irq_controller_th_processing(
 	CAM_DBG(CAM_IRQ_CTRL, "Exit");
 }
 
-irqreturn_t cam_irq_controller_clear_and_mask(int irq_num, void *priv)
+void cam_irq_controller_disable_all(void *priv)
 {
 	struct cam_irq_controller  *controller  = priv;
+	struct cam_irq_evt_handler  *evt_handler, *evt_handler_temp;
+	struct cam_irq_register_obj *irq_register;
+
 	uint32_t i = 0;
 
 	if (!controller)
-		return IRQ_NONE;
+		return;
 
-	for (i = 0; i < controller->num_registers; i++) {
-
-		cam_io_w_mb(0x0, controller->mem_base +
-			controller->irq_register_arr[i].clear_reg_offset);
+	for (i = 0; i < CAM_IRQ_PRIORITY_MAX; i++) {
+		list_for_each_entry_safe(evt_handler, evt_handler_temp,
+			&controller->th_list_head[i], th_list_node) {
+			list_del_init(&evt_handler->th_list_node);
+		}
 	}
 
-	if (controller->global_clear_offset)
+	for (i = 0; i < controller->num_registers; i++) {
+		irq_register = &controller->irq_register_arr[i];
+		memset(irq_register->top_half_enable_mask, 0, CAM_IRQ_PRIORITY_MAX);
+		irq_register->aggr_mask = 0;
+		cam_io_w_mb(0x0, controller->mem_base + irq_register->mask_reg_offset);
+		cam_io_w_mb(controller->clear_all_bitmask, controller->mem_base +
+			irq_register->clear_reg_offset);
+	}
+
+	if (controller->global_clear_offset && !controller->delayed_global_clear) {
 		cam_io_w_mb(controller->global_clear_bitmask,
-			controller->mem_base +
-			controller->global_clear_offset);
-
-	for (i = 0; i < controller->num_registers; i++) {
-		cam_io_w_mb(0x0, controller->mem_base +
-		controller->irq_register_arr[i].mask_reg_offset);
+			controller->mem_base + controller->global_clear_offset);
+		CAM_DBG(CAM_IRQ_CTRL, "Global Clear done from %s",
+			controller->name);
 	}
-
-	return IRQ_HANDLED;
 }
 
-irqreturn_t cam_irq_controller_handle_irq(int irq_num, void *priv)
+static void __cam_irq_controller_read_registers(struct cam_irq_controller *controller)
 {
-	struct cam_irq_controller   *controller  = priv;
 	struct cam_irq_register_obj *irq_register;
-	bool         need_th_processing[CAM_IRQ_PRIORITY_MAX] = {false};
-	int          i;
-	int          j;
+	int i;
 
-	if (!controller)
+	for (i = 0; i < controller->num_registers; i++) {
+		irq_register = &controller->irq_register_arr[i];
+
+		/* Skip register read if we are not going to process it */
+		if (!irq_register->aggr_mask) {
+			controller->irq_status_arr[i] = 0;
+			continue;
+		}
+
+		controller->irq_status_arr[i] = cam_io_r(controller->mem_base +
+			irq_register->status_reg_offset);
+
+		CAM_DBG(CAM_IRQ_CTRL, "(%s) Read irq status%d (0x%x) = 0x%x", controller->name, i,
+			controller->irq_register_arr[i].status_reg_offset,
+			controller->irq_status_arr[i]);
+
+		cam_io_w(controller->irq_status_arr[i],
+			controller->mem_base + irq_register->clear_reg_offset);
+	}
+
+	if (controller->global_clear_offset && !controller->delayed_global_clear) {
+		cam_io_w_mb(controller->global_clear_bitmask,
+			controller->mem_base + controller->global_clear_offset);
+		CAM_DBG(CAM_IRQ_CTRL, "Global Clear done from %s",
+			controller->name);
+	}
+}
+
+static void cam_irq_controller_read_registers(struct cam_irq_controller *controller)
+{
+	struct cam_irq_register_obj *irq_register;
+	struct cam_irq_controller *dep_controller;
+	bool need_reg_read[CAM_IRQ_MAX_DEPENDENTS] = {false};
+	int i, j;
+
+	__cam_irq_controller_read_registers(controller);
+
+	for (i = 0; i < controller->num_registers; i++) {
+		irq_register = &controller->irq_register_arr[i];
+		for (j = 0; j < CAM_IRQ_MAX_DEPENDENTS; j++) {
+			if (irq_register->dependent_read_mask[j] & controller->irq_status_arr[i])
+				need_reg_read[j] = true;
+			CAM_DBG(CAM_IRQ_CTRL, "(%s) reg:%d dep:%d need_reg_read = %d",
+				controller->name, i, j, need_reg_read[j]);
+		}
+	}
+
+	for (j = 0; j < CAM_IRQ_MAX_DEPENDENTS; j++) {
+		if (need_reg_read[j]) {
+			dep_controller = controller->dependent_controller[j];
+			CAM_DBG(CAM_IRQ_CTRL, "Reading dependent registers for %s",
+				dep_controller->name);
+			spin_lock(&dep_controller->lock);
+			__cam_irq_controller_read_registers(dep_controller);
+			spin_unlock(&dep_controller->lock);
+		}
+	}
+
+	if (controller->global_clear_offset && controller->delayed_global_clear) {
+		cam_io_w_mb(controller->global_clear_bitmask,
+			controller->mem_base + controller->global_clear_offset);
+		CAM_DBG(CAM_IRQ_CTRL, "Delayed Global Clear done from %s",
+			controller->name);
+	}
+}
+
+static void cam_irq_controller_process_th(struct cam_irq_controller *controller, int evt_grp)
+{
+	struct cam_irq_register_obj *irq_register;
+	bool need_th_processing[CAM_IRQ_PRIORITY_MAX] = {false};
+	int i, j;
+
+
+	for (i = 0; i < controller->num_registers; i++) {
+		irq_register = &controller->irq_register_arr[i];
+		for (j = 0; j < CAM_IRQ_PRIORITY_MAX; j++) {
+			if (irq_register->top_half_enable_mask[j] & controller->irq_status_arr[i])
+				need_th_processing[j] = true;
+			CAM_DBG(CAM_IRQ_CTRL, "reg:%d priority:%d need_th_processing = %d",
+				i, j, need_th_processing[j]);
+		}
+	}
+
+	for (i = 0; i < CAM_IRQ_PRIORITY_MAX; i++) {
+		if (need_th_processing[i]) {
+			CAM_DBG(CAM_IRQ_CTRL, "(%s) Invoke TH processing priority:%d",
+				controller->name, i);
+			__cam_irq_controller_th_processing(controller, &controller->th_list_head[i],
+				evt_grp);
+		}
+	}
+}
+
+irqreturn_t cam_irq_controller_handle_irq(int irq_num, void *priv, int evt_grp)
+{
+	struct cam_irq_controller *controller  = priv;
+
+	if (unlikely(!controller))
 		return IRQ_NONE;
 
 	CAM_DBG(CAM_IRQ_CTRL,
 		"Locking: %s IRQ Controller: [%pK], lock handle: %pK",
 		controller->name, controller, &controller->lock);
 	spin_lock(&controller->lock);
-	for (i = 0; i < controller->num_registers; i++) {
-		irq_register = &controller->irq_register_arr[i];
-		controller->irq_status_arr[i] = cam_io_r_mb(
-			controller->mem_base + irq_register->status_reg_offset);
-
-		if (controller->clear_all)
-			cam_io_w_mb(controller->irq_status_arr[i],
-				controller->mem_base +
-				irq_register->clear_reg_offset);
-		else
-			cam_io_w_mb(
-				controller->irq_register_arr[i].pclear_mask &
-				controller->irq_status_arr[i],
-				controller->mem_base +
-				irq_register->clear_reg_offset);
-
-		CAM_DBG(CAM_IRQ_CTRL, "Read irq status%d (0x%x) = 0x%x", i,
-			controller->irq_register_arr[i].status_reg_offset,
-			controller->irq_status_arr[i]);
-		for (j = 0; j < CAM_IRQ_PRIORITY_MAX; j++) {
-			if (irq_register->top_half_enable_mask[j] &
-				controller->irq_status_arr[i])
-				need_th_processing[j] = true;
-
-			CAM_DBG(CAM_IRQ_CTRL,
-				"i %d j %d need_th_processing = %d",
-				i, j, need_th_processing[j]);
-		}
-	}
-
-	CAM_DBG(CAM_IRQ_CTRL, "Status Registers read Successful");
-
-	if (controller->global_clear_offset) {
-		cam_io_w_mb(controller->global_clear_bitmask,
-			controller->mem_base + controller->global_clear_offset);
-		for (i = 0; i < controller->num_registers; i++) {
-			irq_register = &controller->irq_register_arr[i];
-			if (controller->irq_status_arr[i])
-				cam_io_w_mb(0x0, controller->mem_base +
-					irq_register->clear_reg_offset);
-		}
-
-		CAM_DBG(CAM_IRQ_CTRL, "Global Clear done from %s",
-			controller->name);
-	}
-
-	for (i = 0; i < CAM_IRQ_PRIORITY_MAX; i++) {
-		if (need_th_processing[i]) {
-			CAM_DBG(CAM_IRQ_CTRL, "Invoke TH processing");
-			cam_irq_controller_th_processing(controller,
-				&controller->th_list_head[i]);
-		}
-	}
+	if (!controller->is_dependent)
+		cam_irq_controller_read_registers(controller);
+	cam_irq_controller_process_th(controller, evt_grp);
 	spin_unlock(&controller->lock);
 	CAM_DBG(CAM_IRQ_CTRL,
 		"Unlocked: %s IRQ Controller: %pK, lock handle: %pK",
@@ -770,67 +900,33 @@ int cam_irq_controller_update_irq(void *irq_controller, uint32_t handle,
 {
 	struct cam_irq_controller   *controller  = irq_controller;
 	struct cam_irq_evt_handler  *evt_handler = NULL;
-	struct cam_irq_evt_handler  *evt_handler_temp;
-	struct cam_irq_register_obj *irq_register = NULL;
-	enum cam_irq_priority_level priority;
 	unsigned long               flags = 0;
 	unsigned int                i;
-	uint32_t                    found = 0;
-	int                         rc = -EINVAL;
-	bool                        need_lock;
+	int                         rc = 0;
 
 	if (!controller)
 		return rc;
 
-	need_lock = !in_irq();
-	if (need_lock)
-		spin_lock_irqsave(&controller->lock, flags);
+	flags = cam_irq_controller_lock(controller);
 
-	list_for_each_entry_safe(evt_handler, evt_handler_temp,
-		&controller->evt_handler_list_head, list_node) {
-		if (evt_handler->index == handle) {
-			CAM_DBG(CAM_IRQ_CTRL, "enable item %d", handle);
-			found = 1;
-			rc = 0;
-			break;
-		}
-	}
+	rc = cam_irq_controller_find_event_handle(controller, handle,
+		&evt_handler);
+	if (rc)
+		goto end;
 
-	if (!found) {
-		if (need_lock)
-			spin_unlock_irqrestore(&controller->lock, flags);
-		return rc;
-	}
-
-	priority = evt_handler->priority;
+	__cam_irq_controller_disable_irq(controller, evt_handler);
 	for (i = 0; i < controller->num_registers; i++) {
-
-		irq_register = &controller->irq_register_arr[i];
-
 		if (enable) {
-			irq_register->top_half_enable_mask[priority] |=
-								irq_mask[i];
 			evt_handler->evt_bit_mask_arr[i] |= irq_mask[i];
 		} else {
-			irq_register->top_half_enable_mask[priority] &=
-								~irq_mask[i];
 			evt_handler->evt_bit_mask_arr[i] &= ~irq_mask[i];
 		}
-
-		cam_io_w_mb(evt_handler->evt_bit_mask_arr[i],
-			controller->mem_base +
-			controller->irq_register_arr[i].mask_reg_offset);
 	}
+	__cam_irq_controller_enable_irq(controller, evt_handler);
+	cam_irq_controller_clear_irq(controller, evt_handler);
 
-	if (!enable) {
-		if (controller->global_clear_offset)
-			cam_io_w_mb(controller->global_clear_bitmask,
-				controller->mem_base +
-				controller->global_clear_offset);
-	}
-
-	if (need_lock)
-		spin_unlock_irqrestore(&controller->lock, flags);
+end:
+	cam_irq_controller_unlock(controller, flags);
 
 	return rc;
 }

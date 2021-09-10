@@ -490,6 +490,7 @@ static struct cam_irq_controller_reg_info vfe780_top_irq_reg_info = {
 	.irq_reg_set = vfe780_top_irq_reg_set,
 	.global_clear_offset  = 0x00000030,
 	.global_clear_bitmask = 0x00000001,
+	.clear_all_bitmask = 0xFFFFFFFF,
 };
 
 static struct cam_vfe_top_ver4_reg_offset_common vfe780_top_common_reg = {

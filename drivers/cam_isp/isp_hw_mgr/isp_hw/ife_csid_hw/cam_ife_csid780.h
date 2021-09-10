@@ -331,6 +331,7 @@ static struct cam_irq_controller_reg_info cam_ife_csid_780_irq_reg_info = {
 	.irq_reg_set = cam_ife_csid_780_irq_reg_set,
 	.global_clear_offset  = 0x00000014,
 	.global_clear_bitmask = 0x00000001,
+	.clear_all_bitmask = 0xFFFFFFFF,
 };
 
 static struct cam_irq_register_set cam_ife_csid_780_buf_done_irq_reg_set[1] = {
@@ -345,8 +346,7 @@ static struct cam_irq_controller_reg_info
 	cam_ife_csid_780_buf_done_irq_reg_info = {
 	.num_registers = 1,
 	.irq_reg_set = cam_ife_csid_780_buf_done_irq_reg_set,
-	.global_clear_offset  = 0x00000014,
-	.global_clear_bitmask = 0x00000001,
+	.global_clear_offset  = 0, /* intentionally set to zero */
 };
 
 static struct cam_ife_csid_ver2_path_reg_info
