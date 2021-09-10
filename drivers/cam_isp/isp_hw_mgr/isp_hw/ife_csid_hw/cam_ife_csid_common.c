@@ -264,6 +264,14 @@ int cam_ife_csid_get_format_rdi(
 		path_format->decode_fmt  = 0xD;
 		path_format->plain_fmt = 0x1;
 		break;
+	case CAM_FORMAT_YUV422:
+		path_format->decode_fmt  = 0x1;
+		path_format->plain_fmt = 0x01;
+		break;
+	case CAM_FORMAT_YUV422_10:
+		path_format->decode_fmt  = 0x2;
+		path_format->plain_fmt = 0x01;
+		break;
 	default:
 		rc = -EINVAL;
 		break;
@@ -341,6 +349,14 @@ int cam_ife_csid_get_format_ipp_ppp(
 	case CAM_FORMAT_DPCM_12_10_12:
 		path_format->decode_fmt  = 0xD;
 		path_format->plain_fmt = 0x1;
+		break;
+	case CAM_FORMAT_YUV422:
+		path_format->decode_fmt  = 0x1;
+		path_format->plain_fmt = 0x0;
+		break;
+	case CAM_FORMAT_YUV422_10:
+		path_format->decode_fmt  = 0x2;
+		path_format->plain_fmt = 0x0;
 		break;
 	default:
 		CAM_ERR(CAM_ISP, "Unsupported format %d",

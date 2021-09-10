@@ -38,6 +38,9 @@ static struct cam_vfe_camif_ver3_reg_data vfe_580_camif_reg_data = {
 	.pp_camif_cfg_ife_out_en_shift   = 8,
 	.top_debug_cfg_en                = 1,
 	.dual_vfe_sync_mask              = 0x3,
+	.input_bayer_fmt                 = 0,
+	.input_yuv_fmt                   = 1,
+
 };
 
 static struct cam_vfe_camif_lite_ver3_reg_data vfe580_camif_rdi1_reg_data = {
