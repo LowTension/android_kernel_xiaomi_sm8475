@@ -429,6 +429,7 @@ int cam_jpeg_dma_process_cmd(void *device_priv, uint32_t cmd_type,
 		}
 
 		irq_cb_data = &irq_cb->irq_cb_data;
+		spin_lock(&jpeg_dma_dev->hw_lock);
 		if (irq_cb->b_set_cb) {
 			core_info->irq_cb.jpeg_hw_mgr_cb =
 				irq_cb->jpeg_hw_mgr_cb;
@@ -439,6 +440,7 @@ int cam_jpeg_dma_process_cmd(void *device_priv, uint32_t cmd_type,
 			core_info->irq_cb.irq_cb_data.jpeg_req = NULL;
 			core_info->irq_cb.irq_cb_data.private_data = NULL;
 		}
+		spin_unlock(&jpeg_dma_dev->hw_lock);
 		rc = 0;
 		break;
 	}

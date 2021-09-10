@@ -357,6 +357,12 @@ static int cam_jpeg_mgr_bottom_half_irq(void *priv, void *data)
 	irq_cb_data = (struct cam_jpeg_irq_cb_data *)task_data->data;
 
 	ctx_data = (struct cam_jpeg_hw_ctx_data *)irq_cb_data->private_data;
+
+	if (!ctx_data) {
+		CAM_ERR(CAM_JPEG, "No ctx data found!");
+		return -EINVAL;
+	}
+
 	if (!ctx_data->in_use) {
 		CAM_ERR(CAM_JPEG, "ctx is not in use");
 		return -EINVAL;
