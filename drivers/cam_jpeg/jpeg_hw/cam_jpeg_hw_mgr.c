@@ -32,6 +32,7 @@
 #include "cam_common_util.h"
 #include "cam_cpas_api.h"
 #include "cam_sync_api.h"
+#include "cam_presil_hw_access.h"
 
 #define CAM_JPEG_HW_ENTRIES_MAX                       20
 
@@ -987,6 +988,18 @@ static int cam_jpeg_mgr_prepare_hw_update(void *hw_mgr_priv,
 	}
 
 	rc = cam_jpeg_add_command_buffers(packet, prepare_args, ctx_data);
+
+	if (cam_presil_mode_enabled()) {
+		CAM_INFO(CAM_JPEG, "Sending relevant buffers for request:%llu to presil",
+			packet->header.request_id);
+		rc = cam_presil_send_buffers_from_packet(packet, hw_mgr->iommu_hdl,
+			hw_mgr->cdm_iommu_hdl);
+		if (rc) {
+			CAM_ERR(CAM_JPEG, "Error sending buffers for request:%llu to presil",
+				packet->header.request_id);
+			return rc;
+		}
+	}
 
 	CAM_DBG(CAM_JPEG, "will wait on input sync sync_id %d",
 		prepare_args->in_map_entries[0].sync_id);
