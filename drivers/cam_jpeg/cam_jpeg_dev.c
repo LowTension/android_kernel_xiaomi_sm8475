@@ -147,7 +147,7 @@ static int cam_jpeg_dev_component_bind(struct device *dev,
 		rc = cam_jpeg_context_init(&g_jpeg_dev.ctx_jpeg[i],
 			&g_jpeg_dev.ctx[i],
 			&node->hw_mgr_intf,
-			i);
+			i, iommu_hdl);
 		if (rc) {
 			CAM_ERR(CAM_JPEG, "JPEG context init failed %d %d",
 				i, rc);

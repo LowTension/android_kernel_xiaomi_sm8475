@@ -195,7 +195,7 @@ static int cam_ope_subdev_component_bind(struct device *dev,
 	for (i = 0; i < OPE_CTX_MAX; i++) {
 		g_ope_dev.ctx_ope[i].base = &g_ope_dev.ctx[i];
 		rc = cam_ope_context_init(&g_ope_dev.ctx_ope[i],
-			hw_mgr_intf, i);
+			hw_mgr_intf, i, iommu_hdl);
 		if (rc) {
 			CAM_ERR(CAM_OPE, "OPE context init failed");
 			goto ctx_fail;

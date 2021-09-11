@@ -1213,6 +1213,18 @@ static int __cam_isp_ctx_handle_buf_done_for_request(
 			continue;
 		}
 
+		/* Get buf handles from packet and retrieve them from presil framework */
+		if (cam_presil_mode_enabled()) {
+			rc = cam_presil_retrieve_buffers_from_packet(req_isp->hw_update_data.packet,
+				ctx->img_iommu_hdl, req_isp->fence_map_out[i].resource_handle);
+			if (rc) {
+				CAM_ERR(CAM_ISP,
+					"Failed to retrieve image buffers req_id:%d ctx_id:%d bubble detected:%d rc:%d",
+					req->request_id, ctx->ctx_id, req_isp->bubble_detected, rc);
+				return rc;
+			}
+		}
+
 		if (!req_isp->bubble_detected) {
 			if (req_isp->is_sync_mode) {
 				CAM_DBG(CAM_ISP,
@@ -1422,6 +1434,18 @@ static int __cam_isp_ctx_handle_buf_done_for_request_verify_addr(
 			trace_cam_log_event("Duplicate BufDone",
 				handle_type, req->request_id, ctx->ctx_id);
 			continue;
+		}
+
+		/* Get buf handles from packet and retrieve them from presil framework */
+		if (cam_presil_mode_enabled()) {
+			rc = cam_presil_retrieve_buffers_from_packet(req_isp->hw_update_data.packet,
+				ctx->img_iommu_hdl, req_isp->fence_map_out[i].resource_handle);
+			if (rc) {
+				CAM_ERR(CAM_ISP,
+					"Failed to retrieve image buffers req_id:%d ctx_id:%d bubble detected:%d rc:%d",
+					req->request_id, ctx->ctx_id, req_isp->bubble_detected, rc);
+				return rc;
+			}
 		}
 
 		if (defer_buf_done) {
@@ -6911,8 +6935,8 @@ int cam_isp_context_init(struct cam_isp_context *ctx,
 	struct cam_req_mgr_kmd_ops *crm_node_intf,
 	struct cam_hw_mgr_intf *hw_intf,
 	uint32_t ctx_id,
-	uint32_t isp_device_type)
-
+	uint32_t isp_device_type,
+	int img_iommu_hdl)
 {
 	int rc = -1;
 	int i;
@@ -6951,7 +6975,7 @@ int cam_isp_context_init(struct cam_isp_context *ctx,
 
 	/* camera context setup */
 	rc = cam_context_init(ctx_base, isp_dev_name, CAM_ISP, ctx_id,
-		crm_node_intf, hw_intf, ctx->req_base, CAM_ISP_CTX_REQ_MAX);
+		crm_node_intf, hw_intf, ctx->req_base, CAM_ISP_CTX_REQ_MAX, img_iommu_hdl);
 	if (rc) {
 		CAM_ERR(CAM_ISP, "Camera Context Base init failed");
 		goto err;

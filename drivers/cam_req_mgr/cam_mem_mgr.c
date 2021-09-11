@@ -22,6 +22,7 @@
 #include "cam_debug_util.h"
 #include "cam_trace.h"
 #include "cam_common_util.h"
+#include "cam_presil_hw_access.h"
 
 #define CAM_MEM_SHARED_BUFFER_PAD_4K (4 * 1024)
 
@@ -31,6 +32,19 @@ static atomic_t cam_mem_mgr_state = ATOMIC_INIT(CAM_MEM_MGR_UNINITIALIZED);
 #if IS_REACHABLE(CONFIG_DMABUF_HEAPS)
 static void cam_mem_mgr_put_dma_heaps(void);
 static int cam_mem_mgr_get_dma_heaps(void);
+#endif
+
+#ifdef CONFIG_CAM_PRESIL
+static inline void cam_mem_mgr_reset_presil_params(int idx)
+{
+        tbl.bufq[idx].presil_params.fd_for_umd_daemon = -1;
+        tbl.bufq[idx].presil_params.refcount = 0;
+}
+#else
+static inline void cam_mem_mgr_reset_presil_params(int idx)
+{
+        return;
+}
 #endif
 
 static unsigned long cam_mem_mgr_mini_dump_cb(void *dst, unsigned long len)
@@ -220,6 +234,7 @@ int cam_mem_mgr_init(void)
 	for (i = 1; i < CAM_MEM_BUFQ_MAX; i++) {
 		tbl.bufq[i].fd = -1;
 		tbl.bufq[i].buf_handle = -1;
+		cam_mem_mgr_reset_presil_params(i);
 	}
 	mutex_init(&tbl.m_lock);
 
@@ -1020,6 +1035,7 @@ int cam_mem_mgr_alloc_and_map(struct cam_mem_mgr_alloc_cmd *cmd)
 	tbl.bufq[idx].dma_buf = dmabuf;
 	tbl.bufq[idx].len = len;
 	tbl.bufq[idx].num_hdl = cmd->num_hdl;
+	cam_mem_mgr_reset_presil_params(idx);
 	memcpy(tbl.bufq[idx].hdls, cmd->mmu_hdls,
 		sizeof(int32_t) * cmd->num_hdl);
 	tbl.bufq[idx].is_imported = false;
@@ -1297,6 +1313,7 @@ static int cam_mem_mgr_cleanup_table(void)
 		tbl.bufq[i].dma_buf = NULL;
 		tbl.bufq[i].active = false;
 		tbl.bufq[i].is_internal = false;
+		cam_mem_mgr_reset_presil_params(i);
 		mutex_unlock(&tbl.bufq[i].q_lock);
 		mutex_destroy(&tbl.bufq[i].q_lock);
 	}
@@ -1408,6 +1425,7 @@ static int cam_mem_util_unmap(int32_t idx,
 	tbl.bufq[idx].is_internal = false;
 	tbl.bufq[idx].len = 0;
 	tbl.bufq[idx].num_hdl = 0;
+	cam_mem_mgr_reset_presil_params(idx);
 	memset(&tbl.bufq[idx].timestamp, 0, sizeof(struct timespec64));
 	mutex_unlock(&tbl.bufq[idx].q_lock);
 	mutex_destroy(&tbl.bufq[idx].q_lock);
@@ -1821,8 +1839,268 @@ int cam_mem_mgr_free_memory_region(struct cam_mem_mgr_memory_desc *inp)
 }
 EXPORT_SYMBOL(cam_mem_mgr_free_memory_region);
 
-#ifndef CONFIG_CAM_PRESIL
+#ifdef CONFIG_CAM_PRESIL
+struct dma_buf *cam_mem_mgr_get_dma_buf(int fd)
+{
+	struct dma_buf *dmabuf = NULL;
 
+	dmabuf = dma_buf_get(fd);
+	if (IS_ERR_OR_NULL((void *)(dmabuf))) {
+		CAM_ERR(CAM_MEM, "Failed to import dma_buf for fd");
+		return NULL;
+	}
+
+	CAM_INFO(CAM_PRESIL, "Received DMA Buf* %pK", dmabuf);
+
+	return dmabuf;
+}
+
+int cam_presil_put_dmabuf_from_fd(uint64_t input_dmabuf)
+{
+	struct dma_buf *dmabuf = (struct dma_buf *)(uint64_t)input_dmabuf;
+	int idx = 0;
+
+	CAM_INFO(CAM_PRESIL, "Received dma_buf :%pK", dmabuf);
+
+	if (!dmabuf) {
+		CAM_ERR(CAM_PRESIL, "NULL to import dma_buf fd");
+		return -EINVAL;
+	}
+
+	for (idx = 0; idx < CAM_MEM_BUFQ_MAX; idx++) {
+		if ((tbl.bufq[idx].dma_buf != NULL) && (tbl.bufq[idx].dma_buf == dmabuf)) {
+			if (tbl.bufq[idx].presil_params.refcount)
+				tbl.bufq[idx].presil_params.refcount--;
+			else
+				CAM_ERR(CAM_PRESIL, "Unbalanced dmabuf put: %pK", dmabuf);
+
+			if (!tbl.bufq[idx].presil_params.refcount) {
+				dma_buf_put(dmabuf);
+				cam_mem_mgr_reset_presil_params(idx);
+				CAM_DBG(CAM_PRESIL, "Done dma_buf_put for %pK", dmabuf);
+			}
+		}
+	}
+
+	return 0;
+}
+EXPORT_SYMBOL(cam_presil_put_dmabuf_from_fd);
+
+int cam_presil_get_fd_from_dmabuf(uint64_t input_dmabuf)
+{
+	int fd_for_dmabuf = -1;
+	struct dma_buf *dmabuf = (struct dma_buf *)(uint64_t)input_dmabuf;
+	int idx = 0;
+
+	CAM_DBG(CAM_PRESIL, "Received dma_buf :%pK", dmabuf);
+
+	if (!dmabuf) {
+		CAM_ERR(CAM_PRESIL, "NULL to import dma_buf fd");
+		return -EINVAL;
+	}
+
+	for (idx = 0; idx < CAM_MEM_BUFQ_MAX; idx++) {
+		if ((tbl.bufq[idx].dma_buf != NULL) && (tbl.bufq[idx].dma_buf == dmabuf)) {
+			CAM_DBG(CAM_PRESIL,
+				"Found entry for request from Presil UMD Daemon at %d, dmabuf %pK fd_for_umd_daemon %d refcount: %d",
+				idx, tbl.bufq[idx].dma_buf,
+				tbl.bufq[idx].presil_params.fd_for_umd_daemon,
+				tbl.bufq[idx].presil_params.refcount);
+
+			if (tbl.bufq[idx].presil_params.fd_for_umd_daemon < 0) {
+				fd_for_dmabuf = dma_buf_fd(dmabuf, O_CLOEXEC);
+				if (fd_for_dmabuf < 0) {
+					CAM_ERR(CAM_PRESIL, "get fd fail, fd_for_dmabuf=%d",
+						fd_for_dmabuf);
+					return -EINVAL;
+				}
+
+				tbl.bufq[idx].presil_params.fd_for_umd_daemon = fd_for_dmabuf;
+				CAM_INFO(CAM_PRESIL,
+					"Received generated idx %d fd_for_dmabuf Buf* %lld", idx,
+					fd_for_dmabuf);
+			} else {
+				fd_for_dmabuf = tbl.bufq[idx].presil_params.fd_for_umd_daemon;
+				CAM_INFO(CAM_PRESIL,
+					"Received existing at idx %d fd_for_dmabuf Buf* %lld", idx,
+					fd_for_dmabuf);
+			}
+
+			tbl.bufq[idx].presil_params.refcount++;
+		} else {
+			CAM_DBG(CAM_MEM,
+				"Not found dmabuf at idx=%d, dma_buf %pK handle 0x%0x active %d ",
+				idx, tbl.bufq[idx].dma_buf, tbl.bufq[idx].buf_handle,
+				tbl.bufq[idx].active);
+		}
+	}
+
+	return (int)fd_for_dmabuf;
+}
+EXPORT_SYMBOL(cam_presil_get_fd_from_dmabuf);
+
+int cam_mem_mgr_send_buffer_to_presil(int32_t iommu_hdl, int32_t buf_handle)
+{
+	int rc = 0;
+
+	/* Sending Presil IO Buf to PC side ( as iova start address indicates) */
+	uint64_t io_buf_addr;
+	size_t io_buf_size;
+	int i, fd = -1, idx = 0;
+	uint8_t *iova_ptr = NULL;
+	uint64_t dmabuf = 0;
+	bool is_mapped_in_cb = false;
+
+
+	CAM_DBG(CAM_PRESIL, "buf handle 0x%0x", buf_handle);
+
+	idx = CAM_MEM_MGR_GET_HDL_IDX(buf_handle);
+	for (i = 0; i < tbl.bufq[idx].num_hdl; i++) {
+		if (tbl.bufq[idx].hdls[i] == iommu_hdl)
+			is_mapped_in_cb = true;
+	}
+
+	if (!is_mapped_in_cb)
+		return 0;
+
+	if ((tbl.bufq[idx].buf_handle != 0) && (tbl.bufq[idx].active) &&
+		(tbl.bufq[idx].buf_handle == buf_handle)) {
+		CAM_DBG(CAM_PRESIL,
+			"Found dmabuf in bufq idx %d, FD %d handle 0x%0x dmabuf %pK",
+			idx, tbl.bufq[idx].fd, tbl.bufq[idx].buf_handle, tbl.bufq[idx].dma_buf);
+		dmabuf = (uint64_t)tbl.bufq[idx].dma_buf;
+		fd = tbl.bufq[idx].fd;
+	} else {
+		CAM_ERR(CAM_PRESIL,
+			"Could not find dmabuf Invalid Mem idx=%d, FD %d handle 0x%0x active %d",
+			idx, tbl.bufq[idx].fd, tbl.bufq[idx].buf_handle, tbl.bufq[idx].active);
+		return -EINVAL;
+	}
+
+	rc = cam_mem_get_io_buf(buf_handle, iommu_hdl, &io_buf_addr, &io_buf_size, NULL);
+	if (rc || NULL == (void *)io_buf_addr) {
+		CAM_DBG(CAM_PRESIL, "Invalid ioaddr : 0x%x, fd = %d,  dmabuf = %pK",
+			io_buf_addr, fd, dmabuf);
+		return -EINVAL;
+	}
+
+	iova_ptr = (uint8_t *)io_buf_addr;
+	CAM_INFO(CAM_PRESIL, "Sending buffer with ioaddr : 0x%x, fd = %d, dmabuf = %pK",
+		io_buf_addr, fd, dmabuf);
+
+	rc = cam_presil_send_buffer(dmabuf, 0, 0, (uint32_t)io_buf_size, (uint64_t)iova_ptr);
+
+	return rc;
+}
+
+int cam_mem_mgr_send_all_buffers_to_presil(int32_t iommu_hdl)
+{
+	int idx = 0;
+	int rc = 0;
+	int32_t fd_already_sent[128];
+	int fd_already_sent_count = 0;
+	int fd_already_index = 0;
+	int fd_already_sent_found = 0;
+
+
+	memset(&fd_already_sent, 0x0, sizeof(fd_already_sent));
+
+	for (idx = 0; idx < CAM_MEM_BUFQ_MAX; idx++) {
+		if ((tbl.bufq[idx].buf_handle != 0) && (tbl.bufq[idx].active)) {
+			CAM_DBG(CAM_PRESIL, "Sending %d, FD %d handle 0x%0x", idx, tbl.bufq[idx].fd,
+				tbl.bufq[idx].buf_handle);
+			fd_already_sent_found = 0;
+
+			for (fd_already_index = 0; fd_already_index < fd_already_sent_count;
+				fd_already_index++) {
+
+				if (fd_already_sent[fd_already_index] == tbl.bufq[idx].fd) {
+					fd_already_sent_found = 1;
+					CAM_DBG(CAM_PRESIL,
+						"fd_already_sent %d, FD %d handle 0x%0x flags=0x%0x",
+						idx, tbl.bufq[idx].fd, tbl.bufq[idx].buf_handle,
+						tbl.bufq[idx].flags);
+				}
+			}
+
+			if (fd_already_sent_found)
+				continue;
+
+			CAM_DBG(CAM_PRESIL, "Sending %d, FD %d handle 0x%0x flags=0x%0x", idx,
+				tbl.bufq[idx].fd, tbl.bufq[idx].buf_handle, tbl.bufq[idx].flags);
+
+			rc = cam_mem_mgr_send_buffer_to_presil(iommu_hdl, tbl.bufq[idx].buf_handle);
+			fd_already_sent[fd_already_sent_count++] = tbl.bufq[idx].fd;
+
+		} else {
+			CAM_DBG(CAM_PRESIL, "Invalid Mem idx=%d, FD %d handle 0x%0x active %d",
+				idx, tbl.bufq[idx].fd, tbl.bufq[idx].buf_handle,
+				tbl.bufq[idx].active);
+		}
+	}
+
+	return rc;
+}
+EXPORT_SYMBOL(cam_mem_mgr_send_all_buffers_to_presil);
+
+int cam_mem_mgr_retrieve_buffer_from_presil(int32_t buf_handle, uint32_t buf_size,
+	uint32_t offset, int32_t iommu_hdl)
+{
+	int rc = 0;
+
+	/* Receive output buffer from Presil IO Buf to PC side (as iova start address indicates) */
+	uint64_t io_buf_addr;
+	size_t io_buf_size;
+	uint64_t dmabuf = 0;
+	int fd = 0;
+	uint8_t *iova_ptr = NULL;
+	int idx = 0;
+
+
+	CAM_DBG(CAM_PRESIL, "buf handle 0x%0x ", buf_handle);
+	rc = cam_mem_get_io_buf(buf_handle, iommu_hdl, &io_buf_addr, &io_buf_size, NULL);
+	if (rc) {
+		CAM_ERR(CAM_PRESIL, "Unable to get IOVA for buffer buf_hdl: 0x%0x iommu_hdl: 0x%0x",
+			buf_handle, iommu_hdl);
+		return -EINVAL;
+	}
+
+	iova_ptr = (uint8_t *)io_buf_addr;
+	iova_ptr += offset;   // correct target address to start writing buffer to.
+
+	if (!buf_size) {
+		buf_size = io_buf_size;
+		CAM_DBG(CAM_PRESIL, "Updated buf_size from Zero to 0x%0x", buf_size);
+	}
+
+	fd = GET_FD_FROM_HANDLE(buf_handle);
+
+	idx = CAM_MEM_MGR_GET_HDL_IDX(buf_handle);
+	if ((tbl.bufq[idx].buf_handle != 0) && (tbl.bufq[idx].active) &&
+		(tbl.bufq[idx].buf_handle == buf_handle)) {
+		CAM_DBG(CAM_PRESIL, "Found dmabuf in bufq idx %d, FD %d handle 0x%0x dmabuf %pK",
+			idx, tbl.bufq[idx].fd, tbl.bufq[idx].buf_handle, tbl.bufq[idx].dma_buf);
+		dmabuf = (uint64_t)tbl.bufq[idx].dma_buf;
+	} else {
+		CAM_ERR(CAM_PRESIL,
+			"Could not find dmabuf Invalid Mem idx=%d, FD %d handle 0x%0x active %d ",
+			idx, tbl.bufq[idx].fd, tbl.bufq[idx].buf_handle, tbl.bufq[idx].active);
+	}
+
+	CAM_DBG(CAM_PRESIL,
+		"Retrieving buffer with ioaddr : 0x%x, offset = %d, size = %d, fd = %d, dmabuf = %pK",
+		io_buf_addr, offset, buf_size, fd, dmabuf);
+
+	rc = cam_presil_retrieve_buffer(dmabuf, 0, 0, (uint32_t)buf_size, (uint64_t)io_buf_addr);
+
+	CAM_INFO(CAM_PRESIL,
+		"Retrieved buffer with ioaddr : 0x%x, offset = %d, size = %d, fd = %d, dmabuf = %pK",
+		io_buf_addr, 0, buf_size, fd, dmabuf);
+
+	return rc;
+}
+
+#else /* ifdef CONFIG_CAM_PRESIL */
 struct dma_buf * cam_mem_mgr_get_dma_buf(int fd)
 {
 	return NULL;
@@ -1845,4 +2123,4 @@ int cam_mem_mgr_retrieve_buffer_from_presil(int32_t buf_handle,
 {
 	return 0;
 }
-#endif
+#endif /* ifdef CONFIG_CAM_PRESIL */

@@ -829,6 +829,21 @@ int cam_hw_cdm_submit_gen_irq(
 		goto end;
 	}
 
+	if (cam_presil_mode_enabled()) {
+		CAM_DBG(CAM_PRESIL,
+			"Sending CDM gen irq cmd buffer:%d with iommu_hdl:%d",
+			core->gen_irq[fifo_idx].handle, core->iommu_hdl.non_secure);
+
+		rc = cam_mem_mgr_send_buffer_to_presil(core->iommu_hdl.non_secure,
+			core->gen_irq[fifo_idx].handle);
+		if (rc) {
+			CAM_ERR(CAM_PRESIL,
+				"Failed to send CDM gen irq cmd buffer fifo_idx:%d mem_handle:%d rc:%d",
+				fifo_idx, core->gen_irq[fifo_idx].handle, rc);
+			goto end;
+		}
+	}
+
 	if (cam_hw_cdm_commit_bl_write(cdm_hw, fifo_idx)) {
 		CAM_ERR(CAM_CDM,
 			"Cannot commit the genirq BL with tag tag=%d",
@@ -948,6 +963,22 @@ static int cam_hw_cdm_arb_submit_bl(struct cam_hw_info *cdm_hw,
 			kfree(node);
 			return -EIO;
 	}
+
+	if (cam_presil_mode_enabled()) {
+		CAM_DBG(CAM_PRESIL,
+			"Sending CDM arb cmd buffer:%d with iommu_hdl:%d",
+			cdm_cmd->cmd[i].bl_addr.mem_handle, core->iommu_hdl.non_secure);
+
+		rc = cam_mem_mgr_send_buffer_to_presil(core->iommu_hdl.non_secure,
+			cdm_cmd->cmd[i].bl_addr.mem_handle);
+		if (rc) {
+			CAM_ERR(CAM_PRESIL,
+				"Failed to send CDM arb cmd buffer i:%d mem_handle:%d rc:%d",
+				i, cdm_cmd->cmd[i].bl_addr.mem_handle, rc);
+			return rc;
+		}
+	}
+
 	rc = cam_hw_cdm_commit_bl_write(cdm_hw,
 		fifo_idx);
 	if (rc) {

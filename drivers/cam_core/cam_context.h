@@ -221,6 +221,7 @@ struct cam_ctx_ops {
  * @in_map_entries:        In map update entry
  * @out_map_entries:       Out map entry
  * @mini dump cb:          Mini dump cb
+ * @img_iommu_hdl:         Image IOMMU handle
  *
  */
 struct cam_context {
@@ -266,7 +267,7 @@ struct cam_context {
 	struct cam_hw_fence_map_entry *in_map_entries;
 	struct cam_hw_fence_map_entry *out_map_entries;
 	cam_ctx_mini_dump_cb_func      mini_dump_cb;
-
+	int                            img_iommu_hdl;
 };
 
 /**
@@ -592,6 +593,7 @@ int cam_context_deinit(struct cam_context *ctx);
  * @hw_mgr_intf:           Function table for context to hw interface
  * @req_list:              Requests storage
  * @req_size:              Size of the request storage
+ * @img_iommu_hdl:         IOMMU Handle for image buffers
  *
  */
 int cam_context_init(struct cam_context *ctx,
@@ -601,7 +603,7 @@ int cam_context_init(struct cam_context *ctx,
 		struct cam_req_mgr_kmd_ops *crm_node_intf,
 		struct cam_hw_mgr_intf *hw_mgr_intf,
 		struct cam_ctx_request *req_list,
-		uint32_t req_size);
+		uint32_t req_size, int img_iommu_hdl);
 
 /**
  * cam_context_putref()

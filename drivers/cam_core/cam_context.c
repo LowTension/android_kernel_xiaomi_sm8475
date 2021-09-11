@@ -729,7 +729,7 @@ int cam_context_init(struct cam_context *ctx,
 	struct cam_req_mgr_kmd_ops *crm_node_intf,
 	struct cam_hw_mgr_intf *hw_mgr_intf,
 	struct cam_ctx_request *req_list,
-	uint32_t req_size)
+	uint32_t req_size, int img_iommu_hdl)
 {
 	int i;
 
@@ -772,6 +772,7 @@ int cam_context_init(struct cam_context *ctx,
 	ctx->state = CAM_CTX_AVAILABLE;
 	ctx->state_machine = NULL;
 	ctx->ctx_priv = NULL;
+	ctx->img_iommu_hdl = img_iommu_hdl;
 
 	return 0;
 }

@@ -132,13 +132,14 @@ struct cam_custom_context {
  * @bridge_ops:         Bridge call back funciton
  * @hw_intf:            Cust hw manager interface
  * @ctx_id:             ID for this context
+ * @img_iommu_hdl:      IOMMU HDL for Image buffers
  *
  */
 int cam_custom_dev_context_init(struct cam_custom_context *ctx,
 	struct cam_context *ctx_base,
 	struct cam_req_mgr_kmd_ops *bridge_ops,
 	struct cam_hw_mgr_intf *hw_intf,
-	uint32_t ctx_id);
+	uint32_t ctx_id, int img_iommu_hdl);
 
 /**
  * cam_custom_dev_context_deinit()

@@ -19,6 +19,7 @@
 #include "cam_trace.h"
 #include "cam_debug_util.h"
 #include "cam_cpas_api.h"
+#include "cam_packet_util.h"
 
 static uint cam_debug_ctx_req_list;
 module_param(cam_debug_ctx_req_list, uint, 0644);
@@ -173,6 +174,16 @@ int cam_context_buf_done_from_hw(struct cam_context *ctx,
 		ctx->dev_name, ctx->ctx_id, req->request_id, result);
 
 	for (j = 0; j < req->num_out_map_entries; j++) {
+		/* Get buf handles from packet and retrieve them from presil framework */
+		if (cam_presil_mode_enabled()) {
+			rc = cam_presil_retrieve_buffers_from_packet(req->pf_data.packet,
+				ctx->img_iommu_hdl, req->out_map_entries[j].resource_handle);
+			if (rc) {
+				CAM_ERR(CAM_CTXT, "Failed to retrieve image buffers rc:%d", rc);
+				return rc;
+			}
+		}
+
 		CAM_DBG(CAM_REQ, "fence %d signal with %d",
 			req->out_map_entries[j].sync_id, result);
 		cam_sync_signal(req->out_map_entries[j].sync_id, result,

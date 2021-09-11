@@ -202,7 +202,8 @@ static struct cam_ctx_ops
 int cam_jpeg_context_init(struct cam_jpeg_context *ctx,
 	struct cam_context *ctx_base,
 	struct cam_hw_mgr_intf *hw_intf,
-	uint32_t ctx_id)
+	uint32_t ctx_id,
+	int img_iommu_hdl)
 {
 	int rc;
 	int i;
@@ -221,7 +222,7 @@ int cam_jpeg_context_init(struct cam_jpeg_context *ctx,
 		ctx->req_base[i].req_priv = &ctx->jpeg_req[i];
 
 	rc = cam_context_init(ctx_base, jpeg_dev_name, CAM_JPEG, ctx_id,
-		NULL, hw_intf, ctx->req_base, CAM_CTX_REQ_MAX);
+		NULL, hw_intf, ctx->req_base, CAM_CTX_REQ_MAX, img_iommu_hdl);
 	if (rc) {
 		CAM_ERR(CAM_JPEG, "Camera Context Base init failed");
 		goto err;

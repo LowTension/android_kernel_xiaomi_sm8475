@@ -173,7 +173,7 @@ static int cam_isp_dev_component_bind(struct device *dev,
 			&node->crm_node_intf,
 			&node->hw_mgr_intf,
 			i,
-			g_isp_dev.isp_device_type);
+			g_isp_dev.isp_device_type, iommu_hdl);
 		if (rc) {
 			CAM_ERR(CAM_ISP, "ISP context init failed!");
 			goto kfree;
