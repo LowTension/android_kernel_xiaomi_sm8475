@@ -474,6 +474,7 @@ static int cam_vfe_camif_ver3_resource_start(
 	switch (soc_private->cpas_version) {
 	case CAM_CPAS_TITAN_480_V100:
 	case CAM_CPAS_TITAN_580_V100:
+	case CAM_CPAS_TITAN_570_V100:
 	case CAM_CPAS_TITAN_570_V200:
 		epoch0_line_cfg = ((rsrc_data->last_line +
 			rsrc_data->vbi_value) -
