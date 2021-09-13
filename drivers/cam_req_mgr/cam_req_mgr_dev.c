@@ -828,7 +828,6 @@ static int cam_req_mgr_component_master_bind(struct device *dev)
 		goto req_mgr_core_fail;
 	}
 
-	g_dev.state = true;
 	INIT_LIST_HEAD(&cam_req_mgr_ordered_sd_list);
 
 	if (g_cam_req_mgr_timer_cachep == NULL) {
@@ -843,6 +842,7 @@ static int cam_req_mgr_component_master_bind(struct device *dev)
 	}
 
 	CAM_DBG(CAM_CRM, "All probes done, binding slave components");
+	g_dev.state = true;
 	rc = component_bind_all(dev, NULL);
 	if (rc) {
 		CAM_ERR(CAM_CRM,
