@@ -86,6 +86,8 @@ int cam_ife_csid_is_pix_res_format_supported(
 	case CAM_FORMAT_DPCM_14_8_14:
 	case CAM_FORMAT_DPCM_14_10_14:
 	case CAM_FORMAT_DPCM_12_10_12:
+	case CAM_FORMAT_YUV422:
+	case CAM_FORMAT_YUV422_10:
 		rc = 0;
 		break;
 	default:
