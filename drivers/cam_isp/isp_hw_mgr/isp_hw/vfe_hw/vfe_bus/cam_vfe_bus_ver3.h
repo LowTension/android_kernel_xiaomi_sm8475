@@ -193,6 +193,7 @@ struct cam_vfe_bus_ver3_vfe_out_hw_info {
 	uint32_t                         mid[CAM_VFE_BUS_VER3_MAX_MID_PER_PORT];
 	uint32_t                            num_wm;
 	uint32_t                            line_based;
+	uint32_t                            bufdone_shift;
 	uint32_t                            wm_idx[PLANE_MAX];
 	uint8_t                            *name[PLANE_MAX];
 };

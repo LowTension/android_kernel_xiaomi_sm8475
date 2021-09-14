@@ -1713,7 +1713,7 @@ static struct cam_vfe_bus_ver3_hw_info vfe780_bus_hw_info = {
 			.debug_status_cfg         = 0x00002884,
 			.debug_status_0           = 0x00002888,
 			.debug_status_1           = 0x0000288C,
-			.comp_group              = CAM_VFE_BUS_VER3_COMP_GRP_3,
+			.comp_group               = CAM_VFE_BUS_VER3_COMP_GRP_3,
 			.ubwc_regs                = NULL,
 		},
 	},
@@ -1726,6 +1726,8 @@ static struct cam_vfe_bus_ver3_hw_info vfe780_bus_hw_info = {
 			.source_group  = CAM_VFE_BUS_VER3_SRC_GRP_2,
 			.mid[0]        = 34,
 			.num_wm        = 1,
+			.line_based    = 1,
+			.bufdone_shift = 2,
 			.wm_idx        = {
 				23,
 			},
@@ -1740,6 +1742,8 @@ static struct cam_vfe_bus_ver3_hw_info vfe780_bus_hw_info = {
 			.source_group  = CAM_VFE_BUS_VER3_SRC_GRP_3,
 			.mid[0]        = 35,
 			.num_wm        = 1,
+			.line_based    = 1,
+			.bufdone_shift = 2,
 			.wm_idx        = {
 				24,
 			},
@@ -1754,6 +1758,8 @@ static struct cam_vfe_bus_ver3_hw_info vfe780_bus_hw_info = {
 			.source_group  = CAM_VFE_BUS_VER3_SRC_GRP_4,
 			.mid[0]        = 36,
 			.num_wm        = 1,
+			.bufdone_shift = 2,
+			.line_based    = 1,
 			.wm_idx        = {
 				25,
 			},
@@ -1848,6 +1854,7 @@ static struct cam_vfe_bus_ver3_hw_info vfe780_bus_hw_info = {
 			.source_group  = CAM_VFE_BUS_VER3_SRC_GRP_1,
 			.mid[0]        = 8,
 			.num_wm        = 1,
+			.bufdone_shift = 2,
 			.wm_idx        = {
 				20,
 			},
@@ -1994,6 +2001,7 @@ static struct cam_vfe_bus_ver3_hw_info vfe780_bus_hw_info = {
 			.source_group  = CAM_VFE_BUS_VER3_SRC_GRP_1,
 			.mid[0]        = 9,
 			.num_wm        = 1,
+			.bufdone_shift = 2,
 			.wm_idx        = {
 				21,
 			},
@@ -2022,6 +2030,7 @@ static struct cam_vfe_bus_ver3_hw_info vfe780_bus_hw_info = {
 			.source_group  = CAM_VFE_BUS_VER3_SRC_GRP_1,
 			.mid[0]        = 10,
 			.num_wm        = 1,
+			.bufdone_shift = 2,
 			.wm_idx        = {
 				22,
 			},
