@@ -193,6 +193,7 @@ struct cam_isp_bw_clk_config_info {
  * @reg_dump_buf_desc:     cmd buffer descriptors for reg dump
  * @num_reg_dump_buf:      Count of descriptors in reg_dump_buf_desc
  * @packet                 CSL packet from user mode driver
+ * @mup_val:               MUP value if configured
  * @mup_en                 Flag if dynamic sensor switch is enabled
  *
  */
@@ -206,7 +207,8 @@ struct cam_isp_prepare_hw_update_data {
 	struct cam_cmd_buf_desc               reg_dump_buf_desc[
 						CAM_REG_DUMP_MAX_BUF_ENTRIES];
 	uint32_t                              num_reg_dump_buf;
-	struct cam_packet                     *packet;
+	struct cam_packet                    *packet;
+	uint32_t                              mup_val;
 	bool                                  mup_en;
 };
 

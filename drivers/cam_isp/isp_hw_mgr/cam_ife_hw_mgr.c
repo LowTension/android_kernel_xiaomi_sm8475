@@ -5850,17 +5850,21 @@ static int cam_ife_mgr_config_hw(void *hw_mgr_priv,
 					cam_cdm_dump_debug_registers(
 						ctx->cdm_handle);
 				rc = -ETIMEDOUT;
-			} else
+			} else {
 				CAM_DBG(CAM_ISP,
 					"config done Success for req_id=%llu ctx_index %d",
 					cfg->request_id, ctx->ctx_index);
-			hw_update_data->mup_en = false;
+				/* Update last applied MUP */
+				if (hw_update_data->mup_en)
+					ctx->current_mup = hw_update_data->mup_val;
+				hw_update_data->mup_en = false;
+			}
 		}
 	} else {
 		CAM_ERR(CAM_ISP, "No commands to config");
 	}
-	CAM_DBG(CAM_ISP, "Exit: Config Done: %llu",  cfg->request_id);
 
+	CAM_DBG(CAM_ISP, "Exit: Config Done: %llu",  cfg->request_id);
 	return rc;
 }
 
@@ -6126,6 +6130,7 @@ static int cam_ife_mgr_stop_hw(void *hw_mgr_priv, void *stop_hw_args)
 		memset(ctx->sfe_info.scratch_config, 0,
 			sizeof(struct cam_sfe_scratch_buf_cfg));
 	ctx->sfe_info.skip_scratch_cfg_streamon = false;
+	ctx->current_mup = 0;
 
 	cam_ife_mgr_pause_hw(ctx);
 
@@ -7653,6 +7658,7 @@ static int cam_isp_blob_csid_dynamic_switch_update(
 	prepare_hw_data = (struct cam_isp_prepare_hw_update_data  *)
 			prepare->priv;
 	prepare_hw_data->mup_en = true;
+	prepare_hw_data->mup_val = mup_config->mup;
 
 	csid_mup_upd_args.mup_args.mup = mup_config->mup;
 	for (i = 0; i < ctx->num_base; i++) {
@@ -10615,6 +10621,7 @@ int cam_isp_config_csid_rup_aup(
 		rup_args[i].cmd.cmd_buf_addr = NULL;
 		rup_args[i].cmd.size = 0;
 		rup_args[i].reg_write = true;
+		rup_args[i].last_applied_mup = ctx->current_mup;
 		res = rup_args[i].res[0];
 
 		rc = res->hw_intf->hw_ops.process_cmd(
@@ -10625,8 +10632,8 @@ int cam_isp_config_csid_rup_aup(
 			return rc;
 
 		CAM_DBG(CAM_ISP,
-			"Reg update for res %d hw_id %d ",
-			res->res_id, res->hw_intf->hw_idx);
+			"Reg update for CSID: %u mup: %u",
+			res->hw_intf->hw_idx, ctx->current_mup);
 	}
 
 	return rc;

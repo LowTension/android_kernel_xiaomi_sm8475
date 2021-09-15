@@ -239,6 +239,8 @@ struct cam_ife_cdm_user_data {
  * @flags                   Flags pertainting to this ctx
  * @bw_config_version       BW Config version
  * @recovery_id:            Unique ID of the current valid scheduled recovery
+ * @current_mup:            Current MUP val, scratch will then apply the same as previously
+ *                          applied request
  *
  */
 struct cam_ife_hw_mgr_ctx {
@@ -294,6 +296,7 @@ struct cam_ife_hw_mgr_ctx {
 	struct cam_ife_cdm_user_data      cdm_userdata;
 	uint32_t                          bw_config_version;
 	atomic_t                          recovery_id;
+	uint32_t                          current_mup;
 };
 
 /**
