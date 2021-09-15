@@ -59,7 +59,7 @@
 
 #define CAM_CCI_WORKQUEUE_NAME "cam_cci_wq"
 
-#define MAX_CCI 2
+#define MAX_CCI 3
 
 #define PRIORITY_QUEUE (QUEUE_0)
 #define SYNC_QUEUE (QUEUE_1)
