@@ -1198,7 +1198,7 @@ static int __cam_isp_ctx_handle_buf_done_for_request(
 			handle_type =
 				__cam_isp_resource_handle_id_to_type(
 				ctx_isp->isp_device_type,
-				req_isp->fence_map_out[i].resource_handle);
+				req_isp->fence_map_out[j].resource_handle);
 
 			CAM_WARN(CAM_ISP,
 				"Duplicate BUF_DONE for req %lld : i=%d, j=%d, res=%s",
@@ -1216,7 +1216,7 @@ static int __cam_isp_ctx_handle_buf_done_for_request(
 		/* Get buf handles from packet and retrieve them from presil framework */
 		if (cam_presil_mode_enabled()) {
 			rc = cam_presil_retrieve_buffers_from_packet(req_isp->hw_update_data.packet,
-				ctx->img_iommu_hdl, req_isp->fence_map_out[i].resource_handle);
+				ctx->img_iommu_hdl, req_isp->fence_map_out[j].resource_handle);
 			if (rc) {
 				CAM_ERR(CAM_ISP,
 					"Failed to retrieve image buffers req_id:%d ctx_id:%d bubble detected:%d rc:%d",
@@ -1387,6 +1387,7 @@ static int __cam_isp_ctx_handle_buf_done_for_request_verify_addr(
 	struct cam_isp_ctx_req *req_isp;
 	struct cam_context *ctx = ctx_isp->base;
 	const char *handle_type;
+	uint32_t cmp_addr = 0;
 
 	trace_cam_buf_done("ISP", ctx, req);
 
@@ -1397,9 +1398,10 @@ static int __cam_isp_ctx_handle_buf_done_for_request_verify_addr(
 
 	for (i = 0; i < done->num_handles; i++) {
 		for (j = 0; j < req_isp->num_fence_map_out; j++) {
-			if (verify_consumed_addr &&
-				(done->last_consumed_addr[i] !=
-				 req_isp->fence_map_out[j].image_buf_addr[0]))
+			cmp_addr = cam_smmu_is_expanded_memory() ? CAM_36BIT_INTF_GET_IOVA_BASE(
+				req_isp->fence_map_out[j].image_buf_addr[0]) :
+				req_isp->fence_map_out[j].image_buf_addr[0];
+			if (verify_consumed_addr && (done->last_consumed_addr[i] != cmp_addr))
 				continue;
 
 			if (done->resource_handle[i] ==
@@ -1425,7 +1427,7 @@ static int __cam_isp_ctx_handle_buf_done_for_request_verify_addr(
 		if (req_isp->fence_map_out[j].sync_id == -1) {
 			handle_type = __cam_isp_resource_handle_id_to_type(
 				ctx_isp->isp_device_type,
-				req_isp->fence_map_out[i].resource_handle);
+				req_isp->fence_map_out[j].resource_handle);
 
 			CAM_WARN(CAM_ISP,
 				"Duplicate BUF_DONE for req %lld : i=%d, j=%d, res=%s",
@@ -1439,7 +1441,7 @@ static int __cam_isp_ctx_handle_buf_done_for_request_verify_addr(
 		/* Get buf handles from packet and retrieve them from presil framework */
 		if (cam_presil_mode_enabled()) {
 			rc = cam_presil_retrieve_buffers_from_packet(req_isp->hw_update_data.packet,
-				ctx->img_iommu_hdl, req_isp->fence_map_out[i].resource_handle);
+				ctx->img_iommu_hdl, req_isp->fence_map_out[j].resource_handle);
 			if (rc) {
 				CAM_ERR(CAM_ISP,
 					"Failed to retrieve image buffers req_id:%d ctx_id:%d bubble detected:%d rc:%d",
@@ -1651,15 +1653,18 @@ static void __cam_isp_ctx_buf_done_match_req(
 	int i, j;
 	uint32_t match_count = 0;
 	struct cam_isp_ctx_req *req_isp;
+	uint32_t cmp_addr = 0;
 
 	req_isp = (struct cam_isp_ctx_req *) req->req_priv;
 
 	for (i = 0; i < done->num_handles; i++) {
 		for (j = 0; j < req_isp->num_fence_map_out; j++) {
+			cmp_addr = cam_smmu_is_expanded_memory() ? CAM_36BIT_INTF_GET_IOVA_BASE(
+				req_isp->fence_map_out[j].image_buf_addr[0]) :
+				req_isp->fence_map_out[j].image_buf_addr[0];
 			if ((done->resource_handle[i] ==
 				 req_isp->fence_map_out[j].resource_handle) &&
-				(done->last_consumed_addr[i] ==
-				 req_isp->fence_map_out[j].image_buf_addr[0])) {
+				(done->last_consumed_addr[i] == cmp_addr)) {
 				match_count++;
 				break;
 			}
