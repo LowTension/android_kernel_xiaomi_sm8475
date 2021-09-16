@@ -2985,8 +2985,8 @@ int cam_ife_csid_ver1_start(void *hw_priv, void *args,
 
 		res = start_args->node_res[i];
 		if (!res || res->res_type != CAM_ISP_RESOURCE_PIX_PATH) {
-			CAM_ERR(CAM_ISP, "CSID:%d Invalid res type%d",
-				csid_hw->hw_intf->hw_idx, res->res_type);
+			CAM_ERR(CAM_ISP, "CSID:%d: res: %p, res type: %d",
+				csid_hw->hw_intf->hw_idx, res, (res) ? res->res_type : -1);
 			rc = -EINVAL;
 			goto end;
 		}

@@ -875,12 +875,12 @@ static int cam_vfe_bus_rd_update_rm(void *priv, void *cmd_args,
 	vfe_bus_rd_data = (struct cam_vfe_bus_rd_ver1_vfe_bus_rd_data *)
 		update_buf->res->res_priv;
 
-	cdm_util_ops = vfe_bus_rd_data->cdm_util_ops;
-
 	if (!vfe_bus_rd_data || !vfe_bus_rd_data->cdm_util_ops) {
 		CAM_ERR(CAM_ISP, "Failed! Invalid data");
 		return -EINVAL;
 	}
+
+	cdm_util_ops = vfe_bus_rd_data->cdm_util_ops;
 
 	CAM_DBG(CAM_ISP, "#of RM: %d",  vfe_bus_rd_data->num_rm);
 	if (update_buf->rm_update->num_buf != vfe_bus_rd_data->num_rm) {

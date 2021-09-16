@@ -1906,7 +1906,7 @@ int32_t cam_cci_core_cfg(struct v4l2_subdev *sd,
 	enum cci_i2c_master_t master = MASTER_MAX;
 
 	if (!cci_dev) {
-		CAM_ERR(CAM_CCI, "CCI%d_I2C_M%d CCI_DEV IS NULL", cci_dev->soc_info.index, master);
+		CAM_ERR(CAM_CCI, "CCI_DEV is null");
 		return -EINVAL;
 	}
 
