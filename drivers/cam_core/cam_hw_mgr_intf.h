@@ -26,6 +26,9 @@
 /* Maximum reg dump cmd buffer entries in a context */
 #define CAM_REG_DUMP_MAX_BUF_ENTRIES        10
 
+/* max device name string length*/
+#define CAM_HW_MINI_DUMP_DEV_NAME_LEN       20
+
 /**
  * enum cam_context_dump_id -
  *              context dump type
@@ -56,6 +59,10 @@ typedef int (*cam_ctx_info_dump_cb_func)(void *context,
 /* ctx recovery callback function type */
 typedef int (*cam_ctx_recovery_cb_func)(void *context,
 	void *recovery_data);
+
+/* ctx mini dump callback function type */
+typedef int (*cam_ctx_mini_dump_cb_func)(void *context,
+	void *args);
 
 /**
  * struct cam_hw_update_entry - Entry for hardware config
@@ -138,6 +145,7 @@ struct cam_hw_acquire_stream_caps {
  *                         its updated per hardware
  * @valid_acquired_hw:     Valid num of acquired hardware
  * @op_params:             OP Params from hw_mgr to ctx
+ * @mini_dump_cb:          Mini dump callback function
  *
  */
 struct cam_hw_acquire_args {
@@ -156,6 +164,7 @@ struct cam_hw_acquire_args {
 	uint32_t    valid_acquired_hw;
 
 	struct cam_hw_acquire_stream_caps op_params;
+	cam_ctx_mini_dump_cb_func    mini_dump_cb;
 };
 
 /**
@@ -394,6 +403,86 @@ struct cam_hw_cmd_args {
 		void                       *internal_args;
 		struct cam_hw_dump_pf_args  pf_args;
 	} u;
+};
+
+/**
+ * struct cam_hw_mini_dump_args - Mini Dump arguments
+ *
+ * @start_addr:          Start address of buffer
+ * @len:                 Len of Buffer
+ * @bytes_written:       Bytes written
+ */
+struct cam_hw_mini_dump_args {
+	void             *start_addr;
+	unsigned long     len;
+	unsigned long     bytes_written;
+};
+
+/**
+ * struct cam_hw_req_mini_dump - Mini dump context req
+ *
+ * @fence_map_out:       Fence map out array
+ * @fence_map_in:        Fence map in array
+ * @io_cfg:              IO cfg.
+ * @request_id:          Request id
+ * @num_fence_map_in:    num of fence map in
+ * @num_fence_map_in:    num of fence map out
+ * @num_io_cfg:          num of io cfg
+ * @num_in_acked:        num in acked
+ * @num_out_acked:       num out acked
+ * @status:              Status
+ * @flushed:             whether request is flushed
+ *
+ */
+struct cam_hw_req_mini_dump {
+	struct cam_hw_fence_map_entry     *fence_map_out;
+	struct cam_hw_fence_map_entry     *fence_map_in;
+	struct cam_buf_io_cfg             *io_cfg;
+	uint64_t                           request_id;
+	uint16_t                           num_fence_map_in;
+	uint16_t                           num_fence_map_out;
+	uint16_t                           num_io_cfg;
+	uint16_t                           num_in_acked;
+	uint16_t                           num_out_acked;
+	uint8_t                            status;
+	uint8_t                            flushed;
+};
+
+/**
+ * struct cam_hw_mini_dump_info - Mini dump context info
+ *
+ * @active_list:          array of active req in context
+ * @wait_list:            array of  wait req in context
+ * @pending_list:         array of pending req in context
+ * @name:                 name of context
+ * @dev_id:               dev id.
+ * @last_flush_req:       last flushed request id
+ * @refcount:             kernel ref count
+ * @ctx_id:               Context id
+ * @session_hdl:          Session handle
+ * @link_hdl:             link handle
+ * @dev_hdl:              Dev hdl
+ * @state:                State of context
+ * @hw_mgr_ctx_id:        ctx id with hw mgr
+ *
+ */
+struct cam_hw_mini_dump_info {
+	struct   cam_hw_req_mini_dump   *active_list;
+	struct   cam_hw_req_mini_dump   *wait_list;
+	struct   cam_hw_req_mini_dump   *pending_list;
+	char                             name[CAM_HW_MINI_DUMP_DEV_NAME_LEN];
+	uint64_t                         dev_id;
+	uint32_t                         last_flush_req;
+	uint32_t                         refcount;
+	uint32_t                         ctx_id;
+	uint32_t                         active_cnt;
+	uint32_t                         pending_cnt;
+	uint32_t                         wait_cnt;
+	int32_t                          session_hdl;
+	int32_t                          link_hdl;
+	int32_t                          dev_hdl;
+	uint8_t                          state;
+	uint8_t                          hw_mgr_ctx_id;
 };
 
 /**

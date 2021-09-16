@@ -26,25 +26,33 @@ enum cam_smmu_mapping_client {
 	CAM_SMMU_MAPPING_KERNEL,
 };
 
+#ifdef CONFIG_CAM_PRESIL
+struct cam_presil_dmabuf_params {
+	int32_t fd_for_umd_daemon;
+	uint32_t refcount;
+};
+#endif
+
 /**
  * struct cam_mem_buf_queue
  *
- * @dma_buf:     pointer to the allocated dma_buf in the table
- * @q_lock:      mutex lock for buffer
- * @hdls:        list of mapped handles
- * @num_hdl:     number of handles
- * @fd:          file descriptor of buffer
- * @i_ino:       inode number of this dmabuf. Uniquely identifies a buffer
- * @buf_handle:  unique handle for buffer
- * @align:       alignment for allocation
- * @len:         size of buffer
- * @flags:       attributes of buffer
- * @vaddr:       IOVA of buffer
- * @kmdvaddr:    Kernel virtual address
- * @active:      state of the buffer
- * @is_imported: Flag indicating if buffer is imported from an FD in user space
- * @is_internal: Flag indicating kernel allocated buffer
- * @timestamp:   Timestamp at which this entry in tbl was made
+ * @dma_buf:        pointer to the allocated dma_buf in the table
+ * @q_lock:         mutex lock for buffer
+ * @hdls:           list of mapped handles
+ * @num_hdl:        number of handles
+ * @fd:             file descriptor of buffer
+ * @i_ino:          inode number of this dmabuf. Uniquely identifies a buffer
+ * @buf_handle:     unique handle for buffer
+ * @align:          alignment for allocation
+ * @len:            size of buffer
+ * @flags:          attributes of buffer
+ * @vaddr:          IOVA of buffer
+ * @kmdvaddr:       Kernel virtual address
+ * @active:         state of the buffer
+ * @is_imported:    Flag indicating if buffer is imported from an FD in user space
+ * @is_internal:    Flag indicating kernel allocated buffer
+ * @timestamp:      Timestamp at which this entry in tbl was made
+ * @presil_params:  Parameters specific to presil environment
  */
 struct cam_mem_buf_queue {
 	struct dma_buf *dma_buf;
@@ -63,6 +71,10 @@ struct cam_mem_buf_queue {
 	bool is_imported;
 	bool is_internal;
 	struct timespec64 timestamp;
+
+#ifdef CONFIG_CAM_PRESIL
+	struct cam_presil_dmabuf_params presil_params;
+#endif
 };
 
 /**
@@ -102,6 +114,25 @@ struct cam_mem_table {
 	struct dma_heap *secure_display_heap;
 #endif
 
+};
+
+/**
+ * struct cam_mem_table_mini_dump
+ *
+ * @bufq: array of buffers
+ * @dbg_buf_idx: debug buffer index to get usecases info
+ * @alloc_profile_enable: Whether to enable alloc profiling
+ * @dbg_buf_idx: debug buffer index to get usecases info
+ * @force_cache_allocs: Force all internal buffer allocations with cache
+ * @need_shared_buffer_padding: Whether padding is needed for shared buffer
+ *                              allocations.
+ */
+struct cam_mem_table_mini_dump {
+	struct cam_mem_buf_queue bufq[CAM_MEM_BUFQ_MAX];
+	size_t dbg_buf_idx;
+	bool   alloc_profile_enable;
+	bool   force_cache_allocs;
+	bool   need_shared_buffer_padding;
 };
 
 /**

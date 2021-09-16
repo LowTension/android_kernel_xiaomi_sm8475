@@ -46,11 +46,13 @@ struct cam_cre_ctx_irq_ops {
  * @ctx: CRE context obj to be initialized
  * @hw_intf: CRE hw manager interface
  * @ctx_id: ID for this context
+ * @img_iommu_hdl: IOMMU HDL for image buffers
  *
  */
 int cam_cre_context_init(struct cam_cre_context *ctx,
 	struct cam_hw_mgr_intf *hw_intf,
-	uint32_t ctx_id);
+	uint32_t ctx_id,
+	int img_iommu_hdl);
 
 /**
  * cam_cre_context_deinit()

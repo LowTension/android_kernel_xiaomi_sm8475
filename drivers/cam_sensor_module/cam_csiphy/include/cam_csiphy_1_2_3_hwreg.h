@@ -15,6 +15,7 @@ struct csiphy_reg_parms_t csiphy_v1_2_3 = {
 	.status_reg_params = NULL,
 	.size_offset_betn_lanes = 0x200,
 	.csiphy_interrupt_status_size = 11,
+	.csiphy_num_common_status_regs = 12,
 	.csiphy_common_array_size = 5,
 	.csiphy_reset_enter_array_size = 2,
 	.csiphy_reset_exit_array_size = 0,
@@ -23,7 +24,6 @@ struct csiphy_reg_parms_t csiphy_v1_2_3 = {
 	.csiphy_2ph_3ph_config_array_size = 0,
 	.csiphy_2ph_clock_lane = 0x1,
 	.csiphy_2ph_combo_ck_ln = 0x10,
-	.prgm_cmn_reg_across_csiphy = 1,
 	.aon_sel_params = NULL,
 };
 

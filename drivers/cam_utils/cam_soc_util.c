@@ -1289,6 +1289,13 @@ int cam_soc_util_clk_disable(struct cam_hw_soc_info *soc_info,
 			"Dev %s clk %s Disabling Shared clk, set 0 rate",
 			soc_info->dev_name, clk_name);
 		cam_soc_util_clk_wrapper_set_clk_rate(clk_id, soc_info, clk, 0);
+	} else if ((!skip_mmrm_set_rate) && (soc_info->src_clk_idx == clk_idx)) {
+		CAM_DBG(CAM_UTIL,
+			"Dev %s Disabling %s clk, set 0 rate", soc_info->dev_name, clk_name);
+		cam_soc_util_set_rate_through_mmrm(
+			soc_info->mmrm_handle,
+			soc_info->is_nrt_dev,
+			0, 0, 1);
 	}
 
 	return 0;

@@ -113,6 +113,10 @@ const char *cam_cpas_axi_util_path_type_to_string(
 		return "SFE_RDI4";
 	case CAM_AXI_PATH_DATA_SFE_STATS:
 		return "SFE_STATS";
+	case CAM_AXI_PATH_DATA_CRE_RD_IN:
+		return "CRE_RD_IN";
+	case CAM_AXI_PATH_DATA_CRE_WR_OUT:
+		return "CRE_WR_OUT";
 
 	/* Common Paths */
 	case CAM_AXI_PATH_DATA_ALL:

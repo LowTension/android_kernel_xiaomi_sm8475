@@ -315,6 +315,7 @@ static struct cam_irq_controller_reg_info cam_ife_csid_lite_780_irq_reg_info = {
 	.irq_reg_set = cam_ife_csid_lite_780_irq_reg_set,
 	.global_clear_offset  = 0x00000014,
 	.global_clear_bitmask = 0x00000001,
+	.clear_all_bitmask = 0xFFFFFFFF,
 };
 
 static struct cam_irq_register_set cam_ife_csid_lite_780_buf_done_irq_reg_set[1] = {
@@ -329,8 +330,7 @@ static struct cam_irq_controller_reg_info
 	cam_ife_csid_lite_780_buf_done_irq_reg_info = {
 	.num_registers = 1,
 	.irq_reg_set = cam_ife_csid_lite_780_buf_done_irq_reg_set,
-	.global_clear_offset  = 0x00000014,
-	.global_clear_bitmask = 0x00000001,
+	.global_clear_offset  = 0, /* intentionally set to zero */
 };
 
 static struct cam_ife_csid_ver2_common_reg_info
@@ -376,7 +376,7 @@ static struct cam_ife_csid_ver2_common_reg_info
 	.multi_vcdt_vc1_shift_val                     = 2,
 	.multi_vcdt_dt1_shift_val                     = 7,
 	.multi_vcdt_en_shift_val                      = 0,
-	.timestamp_stb_sel_shift_val                  = 0,
+	.timestamp_stb_sel_shift_val                  = 8,
 	.vfr_en_shift_val                             = 0,
 	.early_eof_supported                          = 1,
 	.vfr_supported                                = 1,
@@ -406,6 +406,7 @@ static struct cam_ife_csid_ver2_common_reg_info
 	.top_reset_irq_mask                           = 0x1,
 	.top_buf_done_irq_mask                        = 0x2000,
 	.decode_format_payload_only                   = 0xF,
+	.timestamp_enabled_in_cfg0                    = true,
 };
 
 static struct cam_ife_csid_csi2_rx_reg_info
@@ -556,7 +557,7 @@ static struct cam_ife_csid_ver2_path_reg_info
 		.pix_store_en_shift_val               = 14,
 		.early_eof_en_shift_val               = 16,
 		.format_measure_en_shift_val          = 8,
-		.timestamp_en_shift_val               = 9,
+		.timestamp_en_shift_val               = 6,
 		.overflow_ctrl_en                     = 1,
 		.overflow_ctrl_mode_val               = 0x8,
 		.min_hbi_shift_val                    = 4,
@@ -646,7 +647,7 @@ static struct cam_ife_csid_ver2_path_reg_info
 		.drop_h_en_shift_val                 = 5,
 		.early_eof_en_shift_val              = 14,
 		.format_measure_en_shift_val         = 3,
-		.timestamp_en_shift_val              = 4,
+		.timestamp_en_shift_val              = 6,
 		.debug_byte_cntr_rst_shift_val       = 2,
 		.ccif_violation_en                   = 1,
 		.fatal_err_mask                      = 0x5,
@@ -733,7 +734,7 @@ static struct cam_ife_csid_ver2_path_reg_info
 		.drop_h_en_shift_val                 = 5,
 		.early_eof_en_shift_val              = 14,
 		.format_measure_en_shift_val         = 3,
-		.timestamp_en_shift_val              = 4,
+		.timestamp_en_shift_val              = 6,
 		.debug_byte_cntr_rst_shift_val       = 2,
 		.ccif_violation_en                   = 1,
 		.fatal_err_mask                      = 0x5,
@@ -820,7 +821,7 @@ static struct cam_ife_csid_ver2_path_reg_info
 		.drop_h_en_shift_val                 = 5,
 		.early_eof_en_shift_val              = 14,
 		.format_measure_en_shift_val         = 3,
-		.timestamp_en_shift_val              = 4,
+		.timestamp_en_shift_val              = 6,
 		.debug_byte_cntr_rst_shift_val       = 2,
 		.ccif_violation_en                   = 1,
 		.fatal_err_mask                      = 0x5,
@@ -907,7 +908,7 @@ static struct cam_ife_csid_ver2_path_reg_info
 		.drop_h_en_shift_val                 = 5,
 		.early_eof_en_shift_val              = 14,
 		.format_measure_en_shift_val         = 3,
-		.timestamp_en_shift_val              = 4,
+		.timestamp_en_shift_val              = 6,
 		.debug_byte_cntr_rst_shift_val       = 2,
 		.ccif_violation_en                   = 1,
 		.fatal_err_mask                      = 0x5,

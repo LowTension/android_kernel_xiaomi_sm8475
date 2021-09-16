@@ -56,12 +56,24 @@ struct cam_jpeg_match_pid_args {
 	uint32_t    match_res;
 };
 
+struct cam_jpeg_mini_dump_core_info {
+	uint32_t           framedone;
+	uint32_t           resetdone;
+	uint32_t           iserror;
+	uint32_t           stopdone;
+	uint32_t           open_count;
+	int32_t            ref_count;
+	uint32_t           core_state;
+	uint32_t           hw_state;
+};
+
 enum cam_jpeg_cmd_type {
 	CAM_JPEG_CMD_CDM_CFG,
 	CAM_JPEG_CMD_SET_IRQ_CB,
 	CAM_JPEG_CMD_HW_DUMP,
 	CAM_JPEG_CMD_GET_NUM_PID,
 	CAM_JPEG_CMD_MATCH_PID_MID,
+	CAM_JPEG_CMD_MINI_DUMP,
 	CAM_JPEG_CMD_MAX,
 };
 

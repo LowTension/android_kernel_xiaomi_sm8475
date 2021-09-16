@@ -70,6 +70,17 @@ struct cam_ife_hw_mgr_debug {
 };
 
 /**
+ * struct cam_ife_hw_mgr_ctx_pf_info - pf buf info
+ *
+ * @out_port_id: Out port id
+ * @mid: MID value
+ */
+struct cam_ife_hw_mgr_ctx_pf_info {
+	uint32_t       out_port_id;
+	uint32_t       mid;
+};
+
+/**
  * struct cam_sfe_scratch_buf_info - Scratch buf info
  *
  * @width: Width in pixels
@@ -79,6 +90,7 @@ struct cam_ife_hw_mgr_debug {
  * @io_addr: Buffer address
  * @res_id: Resource type
  * @offset: Buffer offset
+ * @config_done: To indicate if RDIx received scratch cfg
  * @is_secure: secure scratch buffer
  */
 struct cam_sfe_scratch_buf_info {
@@ -89,20 +101,19 @@ struct cam_sfe_scratch_buf_info {
 	dma_addr_t io_addr;
 	uint32_t   res_id;
 	uint32_t   offset;
+	bool       config_done;
 	bool       is_secure;
 };
 
 /**
  * struct cam_sfe_scratch_buf_cfg - Scratch buf info
  *
- * @config_done: To indicate if stream received it's scratch cfg
  * @num_configs: Number of buffer configs [max of 3 currently]
  * @curr_num_exp: Current num of exposures
  * @buf_info: Info on each of the buffers
  *
  */
 struct cam_sfe_scratch_buf_cfg {
-	bool                            config_done;
 	uint32_t                        num_config;
 	uint32_t                        curr_num_exp;
 	struct cam_sfe_scratch_buf_info buf_info[
@@ -168,6 +179,17 @@ struct cam_ife_hw_mgr_ctx_flags {
 };
 
 /**
+ * struct cam_ife_cdm_user_data - IFE HW user data with CDM
+ *
+ * @prepare:                   hw_update_data
+ * @request_id:                Request id
+ */
+struct cam_ife_cdm_user_data {
+	struct cam_isp_prepare_hw_update_data    *hw_update_data;
+	uint64_t                                  request_id;
+};
+
+/**
  * struct cam_ife_hw_mgr_ctx - IFE HW manager Context object
  *
  * @list:                   used by the ctx list.
@@ -182,6 +204,8 @@ struct cam_ife_hw_mgr_ctx_flags {
  * @res_list_ife_in_rd      IFE/SFE input resource list for read path
  * @res_list_ife_out:       IFE output resoruces array
  * @res_list_sfe_out:       SFE output resources array
+ * @num_acq_vfe_out:        Number of acquired VFE out resources
+ * @num_acq_sfe_out:        Number of acquired SFE out resources
  * @free_res_list:          Free resources list for the branch node
  * @res_pool:               memory storage for the free resource list
  * @irq_status0_mask:       irq_status0_mask for the context
@@ -218,54 +242,58 @@ struct cam_ife_hw_mgr_ctx_flags {
  *
  */
 struct cam_ife_hw_mgr_ctx {
-	struct list_head                list;
-	struct cam_isp_hw_mgr_ctx       common;
+	struct list_head                   list;
+	struct cam_isp_hw_mgr_ctx          common;
 
-	uint32_t                        ctx_index;
-	uint32_t                        left_hw_idx;
-	uint32_t                        right_hw_idx;
-	struct cam_ife_hw_mgr          *hw_mgr;
+	uint32_t                          ctx_index;
+	uint32_t                          left_hw_idx;
+	uint32_t                          right_hw_idx;
+	struct cam_ife_hw_mgr            *hw_mgr;
 
-	struct cam_isp_hw_mgr_res       res_list_ife_in;
-	struct list_head                res_list_ife_csid;
-	struct list_head                res_list_ife_src;
-	struct list_head                res_list_sfe_src;
-	struct list_head                res_list_ife_in_rd;
-	struct cam_isp_hw_mgr_res      *res_list_ife_out;
-	struct cam_isp_hw_mgr_res       res_list_sfe_out[
+	struct cam_isp_hw_mgr_res         res_list_ife_in;
+	struct list_head                  res_list_ife_csid;
+	struct list_head                  res_list_ife_src;
+	struct list_head                  res_list_sfe_src;
+	struct list_head                  res_list_ife_in_rd;
+	struct cam_isp_hw_mgr_res        *res_list_ife_out;
+	struct cam_isp_hw_mgr_res         res_list_sfe_out[
 						CAM_SFE_HW_OUT_RES_MAX];
-	struct list_head                free_res_list;
-	struct cam_isp_hw_mgr_res       res_pool[CAM_IFE_HW_RES_POOL_MAX];
+	struct list_head                  free_res_list;
+	struct cam_isp_hw_mgr_res         res_pool[CAM_IFE_HW_RES_POOL_MAX];
+	uint32_t                          num_acq_vfe_out;
+	uint32_t                          num_acq_sfe_out;
 
-	uint32_t                        irq_status0_mask[CAM_IFE_HW_NUM_MAX];
-	uint32_t                        irq_status1_mask[CAM_IFE_HW_NUM_MAX];
-	struct cam_isp_ctx_base_info    base[CAM_IFE_HW_NUM_MAX +
+	uint32_t                          irq_status0_mask[CAM_IFE_HW_NUM_MAX];
+	uint32_t                          irq_status1_mask[CAM_IFE_HW_NUM_MAX];
+	struct cam_isp_ctx_base_info      base[CAM_IFE_HW_NUM_MAX +
 						CAM_SFE_HW_NUM_MAX];
-	uint32_t                        num_base;
-	uint32_t                        cdm_handle;
-	struct cam_cdm_utils_ops       *cdm_ops;
-	struct cam_cdm_bl_request      *cdm_cmd;
-	enum cam_cdm_id                 cdm_id;
-	uint32_t                        sof_cnt[CAM_IFE_HW_NUM_MAX];
-	uint32_t                        epoch_cnt[CAM_IFE_HW_NUM_MAX];
-	uint32_t                        eof_cnt[CAM_IFE_HW_NUM_MAX];
-	atomic_t                        overflow_pending;
-	atomic_t                        cdm_done;
-	uint64_t                        last_cdm_done_req;
-	struct completion               config_done_complete;
-	uint32_t                        hw_version;
-	struct cam_cmd_buf_desc         reg_dump_buf_desc[
+	uint32_t                          num_base;
+	uint32_t                          cdm_handle;
+	struct cam_cdm_utils_ops         *cdm_ops;
+	struct cam_cdm_bl_request        *cdm_cmd;
+	enum cam_cdm_id                   cdm_id;
+	uint32_t                          sof_cnt[CAM_IFE_HW_NUM_MAX];
+	uint32_t                          epoch_cnt[CAM_IFE_HW_NUM_MAX];
+	uint32_t                          eof_cnt[CAM_IFE_HW_NUM_MAX];
+	atomic_t                          overflow_pending;
+	atomic_t                          cdm_done;
+	uint64_t                          last_cdm_done_req;
+	struct completion                 config_done_complete;
+	uint32_t                          hw_version;
+	struct cam_cmd_buf_desc           reg_dump_buf_desc[
 						CAM_REG_DUMP_MAX_BUF_ENTRIES];
-	uint32_t                        num_reg_dump_buf;
-	uint64_t                        applied_req_id;
-	enum cam_ife_ctx_master_type    ctx_type;
-	uint32_t                        ctx_config;
-	struct timespec64               ts;
-	void                           *buf_done_controller;
-	struct cam_ife_hw_mgr_sfe_info  sfe_info;
-	struct cam_ife_hw_mgr_ctx_flags flags;
-	uint32_t                        bw_config_version;
-	atomic_t                        recovery_id;
+	uint32_t                          num_reg_dump_buf;
+	uint64_t                          applied_req_id;
+	enum cam_ife_ctx_master_type      ctx_type;
+	uint32_t                          ctx_config;
+	struct timespec64                 ts;
+	void                             *buf_done_controller;
+	struct cam_ife_hw_mgr_sfe_info    sfe_info;
+	struct cam_ife_hw_mgr_ctx_flags   flags;
+	struct cam_ife_hw_mgr_ctx_pf_info pf_info;
+	struct cam_ife_cdm_user_data      cdm_userdata;
+	uint32_t                          bw_config_version;
+	atomic_t                          recovery_id;
 };
 
 /**
@@ -363,6 +391,61 @@ struct cam_ife_hw_event_recovery_data {
 	struct cam_ife_hw_mgr_ctx *affected_ctx[CAM_IFE_CTX_MAX];
 	uint32_t                   no_of_context;
 	uint32_t                   id[CAM_IFE_CTX_MAX];
+};
+
+/**
+ * struct cam_ife_hw_mini_dump_ctx - Mini dump data
+ *
+ * @base:                   device base index array contain the all IFE HW
+ * @pf_info:                Page Fault Info
+ * @csid_md:                CSID mini dump data
+ * @vfe_md:                 VFE mini dump data
+ * @flags:                  Flags pertainting to this ctx
+ * @ctx_priv:               Array of the hardware contexts that are affected
+ * @last_cdm_done_req:      Last cdm done request
+ * @applied_req_id:         Last request id to be applied
+ * @cdm_handle:             cdm hw acquire handle
+ * @ctx_index:              acquired context id.
+ * @left_hw_idx:            hw index for master core [left]
+ * @right_hw_idx:           hw index for slave core [right]
+ * @num_base:               number of valid base data in the base array
+ * @cdm_id:                 cdm id of the acquired cdm
+ * @ctx_type:               Type of IFE ctx [CUSTOM/SFE etc.]
+ * @overflow_pending:       flat to specify the overflow is pending for the
+ * @cdm_done:               flag to indicate cdm has finished writing shadow
+ *                          registers
+ */
+struct cam_ife_hw_mini_dump_ctx {
+	struct cam_isp_ctx_base_info          base[CAM_IFE_HW_NUM_MAX +
+				         	CAM_SFE_HW_NUM_MAX];
+	struct cam_ife_hw_mgr_ctx_pf_info     pf_info;
+	void                                 *csid_md[CAM_IFE_HW_NUM_MAX];
+	void                                 *vfe_md[CAM_IFE_HW_NUM_MAX];
+	struct cam_ife_hw_mgr_ctx_flags       flags;
+	void                                 *ctx_priv;
+	uint64_t                              last_cdm_done_req;
+	uint64_t                              applied_req_id;
+	uint32_t                              cdm_handle;
+	uint8_t                               ctx_index;
+	uint8_t                               left_hw_idx;
+	uint8_t                               right_hw_idx;
+	uint8_t                               num_base;
+	enum cam_cdm_id                       cdm_id;
+	enum cam_ife_ctx_master_type          ctx_type;
+	bool                                  overflow_pending;
+	bool                                  cdm_done;
+};
+
+/**
+ * struct cam_ife_hw_mini_dump_data - Mini dump data
+ *
+ * @num_ctx:                  Number of context dumped
+ * @ctx:                      Array of context
+ *
+ */
+struct cam_ife_hw_mini_dump_data {
+	uint32_t                            num_ctx;
+	struct cam_ife_hw_mini_dump_ctx    *ctx[CAM_IFE_CTX_MAX];
 };
 
 /**

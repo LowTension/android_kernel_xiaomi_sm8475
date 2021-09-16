@@ -229,6 +229,53 @@ struct cam_sec_buff_info {
 	size_t len;
 };
 
+struct cam_smmu_mini_dump_cb_info {
+	struct cam_smmu_monitor mapping[CAM_SMMU_MONITOR_MAX_ENTRIES];
+	struct cam_smmu_region_info scratch_info;
+	struct cam_smmu_region_info firmware_info;
+	struct cam_smmu_region_info shared_info;
+	struct cam_smmu_region_info io_info;
+	struct cam_smmu_region_info secheap_info;
+	struct cam_smmu_region_info fwuncached_region;
+	struct cam_smmu_region_info qdss_info;
+	struct region_buf_info secheap_buf;
+	struct region_buf_info fwuncached_reg_buf;
+	char   name[CAM_SMMU_SHARED_HDL_MAX][16];
+	size_t va_len;
+	size_t io_mapping_size;
+	size_t shared_mapping_size;
+	size_t discard_iova_len;
+	int handle;
+	int device_count;
+	int num_shared_hdl;
+	int cb_count;
+	int secure_count;
+	int pf_count;
+	dma_addr_t va_start;
+	dma_addr_t discard_iova_start;
+	dma_addr_t qdss_phy_addr;
+	enum cam_io_coherency_mode coherency_mode;
+	enum cam_smmu_ops_param state;
+	uint8_t scratch_buf_support;
+	uint8_t firmware_support;
+	uint8_t shared_support;
+	uint8_t io_support;
+	uint8_t secheap_support;
+	uint8_t fwuncached_region_support;
+	uint8_t qdss_support;
+	bool is_mul_client;
+	bool is_secure;
+	bool is_fw_allocated;
+	bool is_secheap_allocated;
+	bool is_fwuncached_buf_allocated;
+	bool is_qdss_allocated;
+};
+
+struct cam_smmu_mini_dump_info {
+	uint32_t cb_num;
+	struct   cam_smmu_mini_dump_cb_info *cb;
+};
+
 static const char *qdss_region_name = "qdss";
 
 static struct cam_iommu_cb_set iommu_cb_set;
@@ -2217,7 +2264,9 @@ static int cam_smmu_map_buffer_validate(struct dma_buf *buf,
 	}
 
 	CAM_DBG(CAM_SMMU, "idx=%d, dma_buf=%pK, dev=%pOFfp, paddr=0x%llx, len=%zu",
-		idx, buf, iommu_cb_set.cb_info[idx].dev, *paddr_ptr, *len_ptr);
+		idx, buf,
+		iommu_cb_set.cb_info[idx].dev->of_node,
+		*paddr_ptr, *len_ptr);
 
 	/* Unmap the mapping in dma region as this is not used anyway */
 	if (region_id == CAM_SMMU_REGION_SHARED)
@@ -2965,7 +3014,8 @@ static int cam_smmu_map_stage2_buffer_and_add_to_list(int idx, int ion_fd,
 	mapping_info->buf = dmabuf;
 
 	CAM_DBG(CAM_SMMU, "idx=%d, ion_fd=%d, i_ino=%lu, dev=%pOFfp, paddr=0x%llx, len=%zu",
-		idx, ion_fd, mapping_info->i_ino, iommu_cb_set.cb_info[idx].dev,
+		idx, ion_fd, mapping_info->i_ino,
+		iommu_cb_set.cb_info[idx].dev->of_node,
 		*paddr_ptr, *len_ptr);
 
 	/* add to the list */
@@ -4240,6 +4290,125 @@ cb_init_fail:
 	return rc;
 }
 
+static void cam_smmu_mini_dump_entries(
+	struct cam_smmu_mini_dump_cb_info *target,
+	struct cam_context_bank_info *src)
+{
+	int i = 0;
+	int64_t state_head = 0;
+	uint32_t index, num_entries, oldest_entry;
+	struct timespec64 *ts = NULL;
+
+	state_head = atomic64_read(&src->monitor_head);
+
+	if (state_head == -1) {
+		return;
+	} else if (state_head < CAM_SMMU_MONITOR_MAX_ENTRIES) {
+		num_entries = state_head;
+		oldest_entry = 0;
+	} else {
+		num_entries = CAM_SMMU_MONITOR_MAX_ENTRIES;
+		div_u64_rem(state_head + 1,
+			CAM_SMMU_MONITOR_MAX_ENTRIES, &oldest_entry);
+	}
+
+	index = oldest_entry;
+
+	for (i = 0; i < num_entries; i++) {
+		ts = &src->monitor_entries[index].timestamp;
+		memcpy(&target->mapping[index],
+			&src->monitor_entries[index],
+			sizeof(struct cam_smmu_monitor));
+		index = (index + 1) % CAM_SMMU_MONITOR_MAX_ENTRIES;
+	}
+}
+
+static unsigned long cam_smmu_mini_dump_cb(void *dst, unsigned long len)
+{
+	struct cam_smmu_mini_dump_cb_info *cb_md;
+	struct cam_smmu_mini_dump_info     *md;
+	struct cam_context_bank_info       *cb;
+	unsigned long                       dumped_len = 0;
+	unsigned long                       remain_len = len;
+	uint32_t                            i = 0, j = 0;
+
+	if (!dst || len < sizeof(*md)) {
+		CAM_ERR(CAM_SMMU, "Invalid params dst: %pk len:%lu",
+			dst, len);
+		return 0;
+	}
+
+	md = (struct cam_smmu_mini_dump_info *)dst;
+	md->cb_num = 0;
+	md->cb = (struct cam_smmu_mini_dump_cb_info *)
+		((uint8_t *)dst + sizeof(*md));
+	dumped_len += sizeof(*md);
+	remain_len =  len - dumped_len;
+
+	for (i = 0; i < iommu_cb_set.cb_num; i++) {
+		if (remain_len < sizeof(*cb_md))
+			goto end;
+
+		cb = &iommu_cb_set.cb_info[i];
+		cb_md = &md->cb[i];
+		cb_md->is_mul_client = cb->is_mul_client;
+		cb_md->is_secure = cb->is_secure;
+		cb_md->is_fw_allocated = cb->is_fw_allocated;
+		cb_md->is_secheap_allocated = cb->is_secheap_allocated;
+		cb_md->is_fwuncached_buf_allocated = cb->is_fwuncached_buf_allocated;
+		cb_md->is_qdss_allocated = cb->is_qdss_allocated;
+		cb_md->scratch_buf_support = cb->scratch_buf_support;
+		cb_md->firmware_support = cb->firmware_support;
+		cb_md->shared_support = cb->shared_support;
+		cb_md->io_support = cb->io_support;
+		cb_md->fwuncached_region_support = cb->fwuncached_region_support;
+		cb_md->qdss_support = cb->qdss_support;
+		cb_md->coherency_mode = cb->coherency_mode;
+		cb_md->state = cb->state;
+		cb_md->va_start = cb->va_start;
+		cb_md->discard_iova_start = cb->discard_iova_start;
+		cb_md->qdss_phy_addr = cb->qdss_phy_addr;
+		cb_md->va_len = cb->va_len;
+		cb_md->io_mapping_size = cb->io_mapping_size;
+		cb_md->shared_mapping_size = cb->shared_mapping_size;
+		cb_md->discard_iova_len = cb->discard_iova_len;
+		cb_md->handle = cb->handle;
+		cb_md->device_count = cb->device_count;
+		cb_md->num_shared_hdl = cb->num_shared_hdl;
+		cb_md->secure_count = cb->secure_count;
+		cb_md->cb_count = cb->cb_count;
+		cb_md->pf_count = cb->pf_count;
+		memcpy(&cb_md->scratch_info, &cb->scratch_info,
+			sizeof(struct cam_smmu_region_info));
+		memcpy(&cb_md->firmware_info, &cb->firmware_info,
+			sizeof(struct cam_smmu_region_info));
+		memcpy(&cb_md->shared_info, &cb->shared_info,
+			sizeof(struct cam_smmu_region_info));
+		memcpy(&cb_md->io_info, &cb->io_info,
+			sizeof(struct cam_smmu_region_info));
+		memcpy(&cb_md->secheap_info, &cb->secheap_info,
+			sizeof(struct cam_smmu_region_info));
+		memcpy(&cb_md->fwuncached_region, &cb->fwuncached_region,
+			sizeof(struct cam_smmu_region_info));
+		memcpy(&cb_md->qdss_info, &cb->qdss_info,
+			sizeof(struct cam_smmu_region_info));
+		memcpy(&cb_md->secheap_buf, &cb->secheap_buf,
+			sizeof(struct region_buf_info));
+		memcpy(&cb_md->fwuncached_reg_buf, &cb->fwuncached_reg_buf,
+			sizeof(struct region_buf_info));
+
+		for (j = 0; j < iommu_cb_set.cb_info[i].num_shared_hdl; j++)
+			scnprintf(cb_md->name[j], 16, cb->name[j]);
+
+		cam_smmu_mini_dump_entries(cb_md, cb);
+		dumped_len += sizeof(*cb_md);
+		remain_len = len - dumped_len;
+		md->cb_num++;
+	}
+end:
+	return dumped_len;
+};
+
 static int cam_smmu_create_debug_fs(void)
 {
 	int rc = 0;
@@ -4366,6 +4535,9 @@ static int cam_smmu_component_bind(struct device *dev,
 		of_property_read_bool(dev->of_node, "need_shared_buffer_padding");
 	iommu_cb_set.is_expanded_memory =
 		of_property_read_bool(dev->of_node, "expanded_memory");
+
+	cam_common_register_mini_dump_cb(cam_smmu_mini_dump_cb,
+		"cam_smmu");
 
 	CAM_DBG(CAM_SMMU, "Main component bound successfully");
 	return 0;

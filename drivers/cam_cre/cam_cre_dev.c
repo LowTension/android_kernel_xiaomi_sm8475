@@ -144,7 +144,7 @@ static int cam_cre_subdev_component_bind(struct device *dev,
 	for (i = 0; i < CAM_CRE_CTX_MAX; i++) {
 		g_cre_dev.ctx_cre[i].base = &g_cre_dev.ctx[i];
 		rc = cam_cre_context_init(&g_cre_dev.ctx_cre[i],
-			hw_mgr_intf, i);
+			hw_mgr_intf, i, iommu_hdl);
 		if (rc) {
 			CAM_ERR(CAM_CRE, "CRE context init failed %d %d",
 				i, rc);

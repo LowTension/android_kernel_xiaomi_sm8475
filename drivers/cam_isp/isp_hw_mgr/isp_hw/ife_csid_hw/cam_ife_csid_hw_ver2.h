@@ -451,6 +451,7 @@ struct cam_ife_csid_ver2_common_reg_info {
 	uint32_t global_reset;
 	uint32_t rup_supported;
 	uint32_t only_master_rup;
+	bool     timestamp_enabled_in_cfg0;
 
 	/* Masks */
 	uint32_t pxl_cnt_mask;
@@ -576,6 +577,37 @@ struct cam_ife_csid_ver2_hw {
 	enum cam_isp_hw_sync_mode              sync_mode;
 	uint32_t                               mup;
 	atomic_t                               discard_frame_per_path;
+};
+
+/*
+ * struct cam_ife_csid_res_mini_dump: CSID Res mini dump place holder
+ * @res_id:      Res id
+ * @res_name:    Res name
+ * @path_cfg:    path configuration
+ */
+struct cam_ife_csid_ver2_res_mini_dump {
+	uint32_t                           res_id;
+	uint8_t                            res_name[CAM_ISP_RES_NAME_LEN];
+	struct cam_ife_csid_ver2_path_cfg  path_cfg;
+};
+
+/*
+ * struct cam_ife_csid_mini_dump_data: CSID mini dump place holder
+ *
+ * @res:             Mini dump data for res
+ * @flags:           Flags
+ * @rx_cfg:          Rx configuration
+ * @cid_data:        CID data
+ * @clk_rate:        Clock Rate
+ * @hw_state:        hw state
+ */
+struct cam_ife_csid_ver2_mini_dump_data {
+	struct cam_ife_csid_ver2_res_mini_dump  res[CAM_IFE_PIX_PATH_RES_MAX];
+	struct cam_ife_csid_hw_flags            flags;
+	struct cam_ife_csid_rx_cfg              rx_cfg;
+	struct cam_ife_csid_cid_data            cid_data[CAM_IFE_CSID_CID_MAX];
+	uint64_t                                clk_rate;
+	uint8_t                                 hw_state;
 };
 
 int cam_ife_csid_hw_ver2_init(struct cam_hw_intf  *csid_hw_intf,

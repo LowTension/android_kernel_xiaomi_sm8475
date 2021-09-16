@@ -30,8 +30,12 @@
 #define CAM_ICP_DUMP_TAG_MAX_LEN 32
 #define CAM_ICP_DUMP_NUM_WORDS   5
 
+typedef void(*cam_icp_mini_dump_cb)(void *priv,
+	void *args);
+
 int cam_icp_hw_mgr_init(struct device_node *of_node,
-	uint64_t *hw_mgr_hdl, int *iommu_hdl);
+	uint64_t *hw_mgr_hdl, int *iommu_hdl,
+	cam_icp_mini_dump_cb mini_dump_cb);
 
 void cam_icp_hw_mgr_deinit(void);
 

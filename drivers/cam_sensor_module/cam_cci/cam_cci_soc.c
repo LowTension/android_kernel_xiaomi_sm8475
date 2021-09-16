@@ -26,13 +26,16 @@ static int cam_cci_init_master(struct cci_device *cci_dev,
 	}
 
 	cci_dev->master_active_slave[master]++;
+	CAM_DBG(CAM_CCI,
+		"CCI%d_I2C_M%d active slave: %d",
+		cci_dev->soc_info.index, master, cci_dev->master_active_slave[master]);
 	if (!cci_dev->cci_master_info[master].is_initilized) {
 		/* Re-initialize the completion */
 		rc = cam_soc_util_select_pinctrl_state(soc_info, master, true);
 		if (rc) {
 			CAM_ERR(CAM_CCI,
-				"Pinctrl active state x'sition failed, rc: %d",
-				rc);
+				"CCI%d_I2C_M%d Pinctrl active state x'sition failed, rc: %d",
+				cci_dev->soc_info.index, master, rc);
 			goto MASTER_INIT_ERR;
 		}
 
@@ -61,8 +64,8 @@ static int cam_cci_init_master(struct cci_device *cci_dev,
 			&cci_dev->cci_master_info[master].reset_complete,
 			CCI_TIMEOUT)) {
 			CAM_ERR(CAM_CCI,
-				"Failed: reset complete timeout for master: %d",
-				master);
+				"CCI%d_I2C_M%d Failed: reset complete timeout",
+				cci_dev->soc_info.index, master);
 			rc = -ETIMEDOUT;
 			goto MASTER_INIT_ERR;
 		}
@@ -75,7 +78,8 @@ static int cam_cci_init_master(struct cci_device *cci_dev,
 		cci_dev->cci_i2c_queue_info[master][QUEUE_1].max_queue_size
 					= max_queue_1_size;
 
-		CAM_DBG(CAM_CCI, "CCI Master[%d] :: Q0: %d Q1: %d", master,
+		CAM_DBG(CAM_CCI, "CCI%d_I2C_M%d:: Q0: %d Q1: %d",
+			cci_dev->soc_info.index, master,
 			cci_dev->cci_i2c_queue_info[master][QUEUE_0]
 				.max_queue_size,
 			cci_dev->cci_i2c_queue_info[master][QUEUE_1]
@@ -109,8 +113,8 @@ int cam_cci_init(struct v4l2_subdev *sd,
 	cci_dev = v4l2_get_subdevdata(sd);
 	if (!cci_dev || !c_ctrl) {
 		CAM_ERR(CAM_CCI,
-			"failed: invalid params cci_dev:%pK, c_ctrl:%pK",
-			cci_dev, c_ctrl);
+			"CCI%d_I2C_M%d failed: invalid params cci_dev:%pK, c_ctrl:%pK",
+			cci_dev->soc_info.index, master, cci_dev, c_ctrl);
 		rc = -EINVAL;
 		return rc;
 	}
@@ -120,19 +124,21 @@ int cam_cci_init(struct v4l2_subdev *sd,
 
 	if (!soc_info || !base) {
 		CAM_ERR(CAM_CCI,
-			"failed: invalid params soc_info:%pK, base:%pK",
-			soc_info, base);
+			"CCI%d_I2C_M%d failed: invalid params soc_info:%pK, base:%pK",
+			cci_dev->soc_info.index, master, soc_info, base);
 		rc = -EINVAL;
 		return rc;
 	}
 
 	if (master >= MASTER_MAX || master < 0) {
-		CAM_ERR(CAM_CCI, "Incorrect Master: %d", master);
+		CAM_ERR(CAM_CCI, "CCI%d_I2C_M%d Incorrect Master",
+			cci_dev->soc_info.index, master);
 		return -EINVAL;
 	}
 
 	if (!cci_dev->write_wq[master]) {
-		CAM_ERR(CAM_CCI, "Null memory for write wq[:%d]", master);
+		CAM_ERR(CAM_CCI, "CCI%d_I2C_M%d Null memory for write wq",
+			cci_dev->soc_info.index, master);
 		rc = -ENOMEM;
 		return rc;
 	}
@@ -140,12 +146,12 @@ int cam_cci_init(struct v4l2_subdev *sd,
 	if (cci_dev->ref_count++) {
 		rc = cam_cci_init_master(cci_dev, master);
 		if (rc) {
-			CAM_ERR(CAM_CCI, "Failed to init: Master: %d: rc: %d",
-				master, rc);
+			CAM_ERR(CAM_CCI, "CCI%d_I2C_M%d Failed to init rc: %d",
+				cci_dev->soc_info.index, master, rc);
 			cci_dev->ref_count--;
 		}
-		CAM_DBG(CAM_CCI, "ref_count %d, master: %d",
-			cci_dev->ref_count, master);
+		CAM_DBG(CAM_CCI, "CCI%d_I2C_M%d ref_count %d",
+			cci_dev->soc_info.index, master, cci_dev->ref_count);
 		return rc;
 	}
 
@@ -160,7 +166,8 @@ int cam_cci_init(struct v4l2_subdev *sd,
 
 	rc = cam_cpas_start(cci_dev->cpas_handle, &ahb_vote, &axi_vote);
 	if (rc) {
-		CAM_ERR(CAM_CCI, "CPAS start failed rc= %d", rc);
+		CAM_ERR(CAM_CCI, "CCI%d_I2C_M%d CPAS start failed, rc: %d",
+			cci_dev->soc_info.index, master, rc);
 		return rc;
 	}
 
@@ -170,21 +177,22 @@ int cam_cci_init(struct v4l2_subdev *sd,
 	rc = cam_soc_util_enable_platform_resource(soc_info, true,
 		CAM_LOWSVS_VOTE, true);
 	if (rc < 0) {
-		CAM_DBG(CAM_CCI, "request platform resources failed, rc: %d",
-			rc);
+		CAM_DBG(CAM_CCI, "CCI%d_I2C_M%d request platform resources failed, rc: %d",
+			cci_dev->soc_info.index, master, rc);
 		goto platform_enable_failed;
 	}
 
 	cci_dev->hw_version = cam_io_r_mb(base + CCI_HW_VERSION_ADDR);
-	CAM_DBG(CAM_CCI, "hw_version = 0x%x", cci_dev->hw_version);
+	CAM_DBG(CAM_CCI, "CCI%d_I2C_M%d hw_version = 0x%x",
+		cci_dev->soc_info.index, master, cci_dev->hw_version);
 
 	cci_dev->payload_size = MSM_CCI_WRITE_DATA_PAYLOAD_SIZE_11;
 	cci_dev->support_seq_write = 1;
 
 	rc = cam_cci_init_master(cci_dev, master);
 	if (rc) {
-		CAM_ERR(CAM_CCI, "Failed to init: Master: %d, rc: %d",
-			master, rc);
+		CAM_ERR(CAM_CCI, "CCI%d_I2C_M%d Failed to init, rc: %d",
+			cci_dev->soc_info.index, master, rc);
 		goto reset_complete_failed;
 	}
 
@@ -417,8 +425,8 @@ int cam_cci_soc_release(struct cci_device *cci_dev,
 	if (!cci_dev->ref_count || cci_dev->cci_state != CCI_STATE_ENABLED ||
 			!cci_dev->master_active_slave[master]) {
 		CAM_ERR(CAM_CCI,
-			"invalid cci_dev_ref count %u | cci state %d | master_ref_count %u",
-			cci_dev->ref_count, cci_dev->cci_state,
+			"CCI%d_I2C_M%d invalid cci_dev_ref count %u | cci state %d | master_ref_count %u",
+			cci_dev->soc_info.index, master, cci_dev->ref_count, cci_dev->cci_state,
 			cci_dev->master_active_slave[master]);
 		return -EINVAL;
 	}
@@ -426,16 +434,17 @@ int cam_cci_soc_release(struct cci_device *cci_dev,
 	if (!(--cci_dev->master_active_slave[master])) {
 		if (cam_soc_util_select_pinctrl_state(soc_info, master, false))
 			CAM_WARN(CAM_CCI,
-				"Pinctrl suspend state x'sition failed");
+				"CCI%d_I2C_M%d Pinctrl suspend state x'sition failed",
+				cci_dev->soc_info.index, master);
 
 		cci_dev->cci_master_info[master].is_initilized = false;
 		CAM_DBG(CAM_CCI,
-			"All submodules are released for master: %d", master);
+			"CCI%d_I2C_M%d All submodules are released", cci_dev->soc_info.index, master);
 	}
 
 	if (--cci_dev->ref_count) {
-		CAM_DBG(CAM_CCI, "Submodule release: Ref_count: %d",
-			cci_dev->ref_count);
+		CAM_DBG(CAM_CCI, "CCI%d_M%d Submodule release: Ref_count: %d",
+			cci_dev->soc_info.index, master, cci_dev->ref_count);
 		return 0;
 	}
 
@@ -447,8 +456,8 @@ int cam_cci_soc_release(struct cci_device *cci_dev,
 
 	rc = cam_soc_util_disable_platform_resource(soc_info, true, true);
 	if (rc) {
-		CAM_ERR(CAM_CCI, "platform resources disable failed, rc=%d",
-			rc);
+		CAM_ERR(CAM_CCI, "CCI%d_I2C_M%d platform resources disable failed, rc: %d",
+			cci_dev->soc_info.index, master, rc);
 		return rc;
 	}
 

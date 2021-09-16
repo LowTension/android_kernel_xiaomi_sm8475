@@ -762,8 +762,8 @@ irqreturn_t cam_csiphy_irq(int irq_num, void *data)
 	base = csiphy_dev->soc_info.reg_map[0].mem_base;
 	csiphy_reg = &csiphy_dev->ctrl_reg->csiphy_reg;
 
-	if (csiphy_dev->enable_irq_status_reg_dump) {
-		cam_csiphy_irq_status_reg_dmp(csiphy_dev);
+	if (csiphy_dev->en_common_status_reg_dump) {
+		cam_csiphy_common_status_reg_dump(csiphy_dev);
 		cam_io_w_mb(0x1, base + csiphy_reg->mipi_csiphy_glbl_irq_cmd_addr);
 		cam_io_w_mb(0x0, base + csiphy_reg->mipi_csiphy_glbl_irq_cmd_addr);
 	}
@@ -1211,7 +1211,7 @@ void cam_csiphy_shutdown(struct csiphy_device *csiphy_dev)
 			cam_csiphy_reset_phyconfig_param(csiphy_dev, i);
 		}
 
-		if (csiphy_reg->prgm_cmn_reg_across_csiphy) {
+		if (csiphy_dev->prgm_cmn_reg_across_csiphy) {
 			mutex_lock(&active_csiphy_cnt_mutex);
 			active_csiphy_hw_cnt--;
 			mutex_unlock(&active_csiphy_cnt_mutex);
@@ -1884,7 +1884,7 @@ int32_t cam_csiphy_core_cfg(void *phy_dev,
 
 		csiphy_dev->csiphy_info[offset].csiphy_cpas_cp_reg_mask = 0x0;
 
-		if (csiphy_reg->prgm_cmn_reg_across_csiphy) {
+		if (csiphy_dev->prgm_cmn_reg_across_csiphy) {
 			mutex_lock(&active_csiphy_cnt_mutex);
 			active_csiphy_hw_cnt--;
 			mutex_unlock(&active_csiphy_cnt_mutex);
@@ -2121,7 +2121,7 @@ int32_t cam_csiphy_core_cfg(void *phy_dev,
 			goto cpas_stop;
 		}
 
-		if (csiphy_reg->prgm_cmn_reg_across_csiphy) {
+		if (csiphy_dev->prgm_cmn_reg_across_csiphy) {
 			cam_csiphy_prgm_cmn_data(csiphy_dev, false);
 
 			mutex_lock(&active_csiphy_cnt_mutex);
@@ -2229,7 +2229,7 @@ int32_t cam_csiphy_core_cfg(void *phy_dev,
 	return rc;
 
 hw_cnt_decrement:
-	if (csiphy_reg->prgm_cmn_reg_across_csiphy) {
+	if (csiphy_dev->prgm_cmn_reg_across_csiphy) {
 		mutex_lock(&active_csiphy_cnt_mutex);
 		active_csiphy_hw_cnt--;
 		mutex_unlock(&active_csiphy_cnt_mutex);

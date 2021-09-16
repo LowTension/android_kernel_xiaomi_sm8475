@@ -341,6 +341,27 @@ int cam_context_handle_crm_dump_req(struct cam_context *ctx,
 	return rc;
 }
 
+int cam_context_mini_dump_from_hw(struct cam_context *ctx,
+	void  *args)
+{
+	int rc = 0;
+
+	if (!ctx->state_machine) {
+		CAM_ERR(CAM_CORE, "Context [id %d name:%s] is not ready", ctx->ctx_id,
+			ctx->dev_name);
+		return -EINVAL;
+	}
+
+	if ((ctx->state >= CAM_CTX_AVAILABLE) && (ctx->state < CAM_CTX_STATE_MAX)) {
+		if (ctx->state_machine[ctx->state].mini_dump_ops)
+			rc = ctx->state_machine[ctx->state].mini_dump_ops(ctx, args);
+		else
+			CAM_WARN(CAM_CORE, "No dump ctx in dev %d, state %d",
+				ctx->dev_hdl, ctx->state);
+	}
+	return rc;
+}
+
 int cam_context_dump_pf_info(struct cam_context *ctx,
 	struct cam_smmu_pf_info *pf_info)
 {
@@ -708,7 +729,7 @@ int cam_context_init(struct cam_context *ctx,
 	struct cam_req_mgr_kmd_ops *crm_node_intf,
 	struct cam_hw_mgr_intf *hw_mgr_intf,
 	struct cam_ctx_request *req_list,
-	uint32_t req_size)
+	uint32_t req_size, int img_iommu_hdl)
 {
 	int i;
 
@@ -751,6 +772,7 @@ int cam_context_init(struct cam_context *ctx,
 	ctx->state = CAM_CTX_AVAILABLE;
 	ctx->state_machine = NULL;
 	ctx->ctx_priv = NULL;
+	ctx->img_iommu_hdl = img_iommu_hdl;
 
 	return 0;
 }

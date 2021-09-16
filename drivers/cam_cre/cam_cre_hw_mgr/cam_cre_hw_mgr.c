@@ -1520,7 +1520,7 @@ static int cam_cre_validate_acquire_res_info(
 			case CAM_FORMAT_MIPI_RAW_12:
 			case CAM_FORMAT_MIPI_RAW_14:
 			case CAM_FORMAT_MIPI_RAW_20:
-			case CAM_FORMAT_PLAIN1128:
+			case CAM_FORMAT_PLAIN128:
 				break;
 			default:
 				CAM_ERR(CAM_CRE, "Invalid input format %d",
@@ -1538,7 +1538,7 @@ static int cam_cre_validate_acquire_res_info(
 			case CAM_FORMAT_PLAIN16_16:
 			case CAM_FORMAT_PLAIN32_20:
 			case CAM_FORMAT_PLAIN32:
-			case CAM_FORMAT_PLAIN1128:
+			case CAM_FORMAT_PLAIN128:
 				break;
 			default:
 				CAM_ERR(CAM_CRE, "Invalid output format %d",
@@ -2077,7 +2077,7 @@ static int cam_cre_packet_generic_blob_handler(void *user_data,
 		clk_info = &ctx_data->req_list[index]->clk_info;
 		clk_info_v2 = &ctx_data->req_list[index]->clk_info_v2;
 
-		memcpy(clk_info, soc_req, clk_update_size);
+		memcpy(clk_info_v2, soc_req, clk_update_size);
 
 		/* Use v2 structure for clk fields */
 		clk_info->budget_ns = clk_info_v2->budget_ns;

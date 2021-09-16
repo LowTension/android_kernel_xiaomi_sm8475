@@ -178,6 +178,37 @@ static int cam_a5_fw_dump(
 	return 0;
 }
 
+static int cam_a5_fw_mini_dump(
+	struct cam_icp_hw_dump_args    *dump_args,
+	struct cam_a5_device_core_info *core_info)
+{
+	u8                         *dest;
+	u8                         *src;
+
+	if (!core_info || !dump_args) {
+		CAM_ERR(CAM_ICP, "invalid params %pK %pK", core_info, dump_args);
+		return -EINVAL;
+	}
+
+	if (!core_info->fw_kva_addr || !dump_args->cpu_addr) {
+		CAM_ERR(CAM_ICP, "invalid params %pK, 0x%zx", core_info->fw_kva_addr,
+			dump_args->cpu_addr);
+		return -EINVAL;
+	}
+
+	if (dump_args->buf_len < core_info->fw_buf_len) {
+		CAM_WARN(CAM_ICP, "Insufficient Len %lu fw_len %llu",
+			dump_args->buf_len, core_info->fw_buf_len);
+		return -ENOSPC;
+	}
+
+	dest = (u8 *)dump_args->cpu_addr;
+	src = (u8 *)core_info->fw_kva_addr;
+	memcpy_fromio(dest, src, core_info->fw_buf_len);
+	dump_args->offset = core_info->fw_buf_len;
+	return 0;
+}
+
 int cam_a5_init_hw(void *device_priv,
 	void *init_hw_args, uint32_t arg_size)
 {
@@ -704,6 +735,13 @@ int cam_a5_process_cmd(void *device_priv, uint32_t cmd_type,
 		struct cam_icp_hw_dump_args *dump_args = cmd_args;
 
 		rc = cam_a5_fw_dump(dump_args, core_info);
+		break;
+	}
+
+	case CAM_ICP_CMD_HW_MINI_DUMP: {
+		struct cam_icp_hw_dump_args *dump_args = cmd_args;
+
+		rc = cam_a5_fw_mini_dump(dump_args, core_info);
 		break;
 	}
 	default:

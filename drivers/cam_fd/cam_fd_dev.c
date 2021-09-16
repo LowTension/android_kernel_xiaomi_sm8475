@@ -136,7 +136,7 @@ static int cam_fd_dev_component_bind(struct device *dev,
 
 	for (i = 0; i < CAM_CTX_MAX; i++) {
 		rc = cam_fd_context_init(&g_fd_dev.fd_ctx[i],
-			&g_fd_dev.base_ctx[i], &node->hw_mgr_intf, i);
+			&g_fd_dev.base_ctx[i], &node->hw_mgr_intf, i, -1);
 		if (rc) {
 			CAM_ERR(CAM_FD, "FD context init failed i=%d, rc=%d",
 				i, rc);

@@ -193,6 +193,7 @@ struct cam_vfe_bus_ver3_vfe_out_hw_info {
 	uint32_t                         mid[CAM_VFE_BUS_VER3_MAX_MID_PER_PORT];
 	uint32_t                            num_wm;
 	uint32_t                            line_based;
+	uint32_t                            bufdone_shift;
 	uint32_t                            wm_idx[PLANE_MAX];
 	uint8_t                            *name[PLANE_MAX];
 };
@@ -238,6 +239,52 @@ struct cam_vfe_bus_ver3_hw_info {
 	bool comp_cfg_needed;
 	uint32_t pack_align_shift;
 	uint32_t max_bw_counter_limit;
+};
+
+/**
+ * struct cam_vfe_bus_ver3_wm_mini_dump - VFE WM data
+ *
+ * @width                  Width
+ * @height                 Height
+ * @stride                 stride
+ * @h_init                 init height
+ * @acquired_width         acquired width
+ * @acquired_height        acquired height
+ * @en_cfg                 Enable flag
+ * @format                 format
+ * @index                  Index
+ * @state                  state
+ * @name                   Res name
+ */
+struct cam_vfe_bus_ver3_wm_mini_dump {
+	uint32_t   width;
+	uint32_t   height;
+	uint32_t   stride;
+	uint32_t   h_init;
+	uint32_t   acquired_width;
+	uint32_t   acquired_height;
+	uint32_t   en_cfg;
+	uint32_t   format;
+	uint32_t   index;
+	uint32_t   state;
+	uint8_t    name[CAM_ISP_RES_NAME_LEN];
+};
+
+/**
+ * struct cam_vfe_bus_ver3_mini_dump_data - VFE bus mini dump data
+ *
+ * @wm:              Write Master client information
+ * @clk_rate:        Clock rate
+ * @num_client:      Num client
+ * @hw_state:        hw statte
+ * @hw_idx:          Hw index
+ */
+struct cam_vfe_bus_ver3_mini_dump_data {
+	struct cam_vfe_bus_ver3_wm_mini_dump *wm;
+	uint64_t                              clk_rate;
+	uint32_t                              num_client;
+	uint8_t                               hw_state;
+	uint8_t                               hw_idx;
 };
 
 /*

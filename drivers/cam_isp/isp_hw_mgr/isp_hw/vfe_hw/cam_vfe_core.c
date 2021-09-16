@@ -253,7 +253,7 @@ int cam_vfe_reset(void *hw_priv, void *reset_core_args, uint32_t arg_size)
 		top_reset_irq_reg_mask,
 		vfe_hw,
 		cam_vfe_reset_irq_top_half,
-		NULL, NULL, NULL);
+		NULL, NULL, NULL, CAM_IRQ_EVT_GROUP_0);
 
 	if (irq_info->reset_irq_handle < 1) {
 		CAM_ERR(CAM_ISP, "subscribe irq controller failed");
@@ -528,13 +528,14 @@ int cam_vfe_process_cmd(void *hw_priv, uint32_t cmd_type,
 	case CAM_ISP_HW_CMD_UBWC_UPDATE:
 	case CAM_ISP_HW_CMD_UBWC_UPDATE_V2:
 	case CAM_ISP_HW_CMD_WM_CONFIG_UPDATE:
-	case CAM_ISP_HW_CMD_GET_SECURE_MODE:
+	case CAM_ISP_HW_CMD_GET_WM_SECURE_MODE:
 	case CAM_ISP_HW_CMD_UNMASK_BUS_WR_IRQ:
 	case CAM_ISP_HW_CMD_DUMP_BUS_INFO:
 	case CAM_ISP_HW_CMD_GET_RES_FOR_MID:
 	case CAM_ISP_HW_CMD_QUERY_BUS_CAP:
 	case CAM_ISP_HW_CMD_IFE_BUS_DEBUG_CFG:
 	case CAM_ISP_HW_CMD_WM_BW_LIMIT_CONFIG:
+	case CAM_ISP_HW_BUS_MINI_DUMP:
 		rc = core_info->vfe_bus->hw_ops.process_cmd(
 			core_info->vfe_bus->bus_priv, cmd_type, cmd_args,
 			arg_size);
@@ -571,7 +572,7 @@ irqreturn_t cam_vfe_irq(int irq_num, void *data)
 	core_info = (struct cam_vfe_hw_core_info *)vfe_hw->core_info;
 
 	return cam_irq_controller_handle_irq(irq_num,
-		core_info->vfe_irq_controller);
+		core_info->vfe_irq_controller, CAM_IRQ_EVT_GROUP_0);
 }
 
 int cam_vfe_core_init(struct cam_vfe_hw_core_info  *core_info,
@@ -592,8 +593,8 @@ int cam_vfe_core_init(struct cam_vfe_hw_core_info  *core_info,
 
 	rc = cam_irq_controller_init(drv_name,
 		CAM_SOC_GET_REG_MAP_START(soc_info, VFE_CORE_BASE_IDX),
-		vfe_hw_info->irq_hw_info->top_irq_reg, &core_info->vfe_irq_controller,
-		true);
+		vfe_hw_info->irq_hw_info->top_irq_reg,
+		&core_info->vfe_irq_controller);
 	if (rc) {
 		CAM_ERR(CAM_ISP,
 			"Error, cam_irq_controller_init failed rc = %d", rc);

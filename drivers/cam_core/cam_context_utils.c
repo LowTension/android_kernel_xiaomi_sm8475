@@ -19,6 +19,7 @@
 #include "cam_trace.h"
 #include "cam_debug_util.h"
 #include "cam_cpas_api.h"
+#include "cam_packet_util.h"
 
 static uint cam_debug_ctx_req_list;
 module_param(cam_debug_ctx_req_list, uint, 0644);
@@ -173,6 +174,16 @@ int cam_context_buf_done_from_hw(struct cam_context *ctx,
 		ctx->dev_name, ctx->ctx_id, req->request_id, result);
 
 	for (j = 0; j < req->num_out_map_entries; j++) {
+		/* Get buf handles from packet and retrieve them from presil framework */
+		if (cam_presil_mode_enabled()) {
+			rc = cam_presil_retrieve_buffers_from_packet(req->pf_data.packet,
+				ctx->img_iommu_hdl, req->out_map_entries[j].resource_handle);
+			if (rc) {
+				CAM_ERR(CAM_CTXT, "Failed to retrieve image buffers rc:%d", rc);
+				return rc;
+			}
+		}
+
 		CAM_DBG(CAM_REQ, "fence %d signal with %d",
 			req->out_map_entries[j].sync_id, result);
 		cam_sync_signal(req->out_map_entries[j].sync_id, result,
@@ -615,6 +626,7 @@ int32_t cam_context_acquire_dev_to_hw(struct cam_context *ctx,
 	param.context_data = ctx;
 	param.ctx_id = ctx->ctx_id;
 	param.event_cb = ctx->irq_cb_intf;
+	param.mini_dump_cb = ctx->mini_dump_cb;
 	param.num_acq = cmd->num_resources;
 	param.acquire_info = cmd->resource_hdl;
 
@@ -1316,5 +1328,156 @@ err:
 	if (packet)
 		*packet = ERR_PTR(rc);
 
+	return 0;
+}
+
+static void __cam_context_req_mini_dump(struct cam_ctx_request *req,
+	uint8_t *start_addr, uint8_t *end_addr,
+	unsigned long *bytes_updated)
+{
+	struct cam_hw_req_mini_dump      *req_md;
+	struct cam_buf_io_cfg            *io_cfg;
+	struct cam_packet                *packet = NULL;
+	unsigned long                     bytes_written = 0;
+	unsigned long                     bytes_required = 0;
+
+	bytes_required = sizeof(*req_md);
+	if (start_addr + bytes_written + bytes_required > end_addr)
+		goto end;
+
+	req_md = (struct cam_hw_req_mini_dump *)start_addr;
+
+	req_md->num_fence_map_in = req->num_in_map_entries;
+	req_md->num_fence_map_out = req->num_out_map_entries;
+	req_md->num_in_acked = atomic_read(&req->num_in_acked);
+	req_md->num_out_acked = req->num_out_acked;
+	req_md->request_id = req->request_id;
+	bytes_written += bytes_required;
+
+	if (req->num_out_map_entries) {
+		bytes_required = sizeof(struct cam_hw_fence_map_entry) *
+					req->num_out_map_entries;
+		if (start_addr + bytes_written + bytes_required > end_addr)
+			goto end;
+
+		req_md->fence_map_out = (struct cam_hw_fence_map_entry *)
+				(start_addr + bytes_written);
+		memcpy(req_md->fence_map_out, req->out_map_entries, bytes_required);
+		req_md->num_fence_map_out = req->num_out_map_entries;
+		bytes_written += bytes_required;
+	}
+
+	if (req->num_in_map_entries) {
+		bytes_required = sizeof(struct cam_hw_fence_map_entry) *
+				    req->num_in_map_entries;
+		if (start_addr + bytes_written + bytes_required > end_addr)
+			goto end;
+
+		req_md->fence_map_in = (struct cam_hw_fence_map_entry *)
+				(start_addr + bytes_written);
+		memcpy(req_md->fence_map_in, req->in_map_entries, bytes_required);
+		req_md->num_fence_map_in = req->num_in_map_entries;
+		bytes_written += bytes_required;
+	}
+
+	packet = (struct cam_packet *)req->pf_data.packet;
+	if (packet && packet->num_io_configs) {
+		bytes_required = packet->num_io_configs * sizeof(struct cam_buf_io_cfg);
+		if (start_addr + bytes_written + bytes_required > end_addr)
+			goto end;
+
+		io_cfg = (struct cam_buf_io_cfg *)((uint32_t *)&packet->payload +
+			    packet->io_configs_offset / 4);
+		req_md->io_cfg = (struct cam_buf_io_cfg *)(start_addr + bytes_written);
+		memcpy(req_md->io_cfg, io_cfg, bytes_required);
+		bytes_written += bytes_required;
+		req_md->num_io_cfg = packet->num_io_configs;
+	}
+
+end:
+	*bytes_updated = bytes_written;
+}
+
+int cam_context_mini_dump(struct cam_context *ctx, void *args)
+{
+	struct cam_hw_mini_dump_info *md;
+	struct cam_ctx_request *req, *req_temp;
+	struct cam_hw_mini_dump_args *md_args;
+	uint8_t                      *start_addr;
+	uint8_t                      *end_addr;
+	unsigned long                 bytes_written = 0;
+	unsigned long                 bytes_updated = 0;
+
+	if (!ctx || !args) {
+		CAM_ERR(CAM_CTXT, "invalid params");
+		return -EINVAL;
+	}
+
+	md_args = (struct cam_hw_mini_dump_args *)args;
+	if (md_args->len < sizeof(*md)) {
+		md_args->bytes_written = 0;
+		CAM_ERR(CAM_CTXT, "Insufficient len %lu, bytes_written %lu", md_args->len,
+			md_args->bytes_written);
+		return 0;
+	}
+
+	start_addr = (uint8_t *)md_args->start_addr;
+	end_addr  = start_addr + md_args->len;
+	md = (struct cam_hw_mini_dump_info *)md_args->start_addr;
+	md->ctx_id = ctx->ctx_id;
+	md->last_flush_req = ctx->last_flush_req;
+	md->hw_mgr_ctx_id = ctx->hw_mgr_ctx_id;
+	md->dev_id = ctx->dev_id;
+	md->link_hdl = ctx->link_hdl;
+	md->state = ctx->state;
+	md->session_hdl = ctx->session_hdl;
+	md->dev_hdl = ctx->dev_hdl;
+	scnprintf(md->name, CAM_HW_MINI_DUMP_DEV_NAME_LEN, ctx->dev_name);
+	bytes_written += sizeof(*md);
+
+	if (!list_empty(&ctx->active_req_list)) {
+		md->active_list = (struct cam_hw_req_mini_dump *)
+			    (start_addr + bytes_written);
+		list_for_each_entry_safe(req, req_temp, &ctx->active_req_list, list) {
+			bytes_updated = 0;
+			__cam_context_req_mini_dump(req,
+				(uint8_t *)&md->active_list[md->active_cnt++],
+				end_addr, &bytes_updated);
+			if ((start_addr + bytes_written + bytes_updated >= end_addr))
+				goto end;
+			bytes_written += bytes_updated;
+		}
+	}
+
+	if (!list_empty(&ctx->wait_req_list)) {
+		md->wait_list = (struct cam_hw_req_mini_dump *)
+			    (start_addr + bytes_written);
+		list_for_each_entry_safe(req, req_temp, &ctx->wait_req_list, list) {
+			bytes_updated = 0;
+			__cam_context_req_mini_dump(req,
+				(uint8_t *)&md->wait_list[md->wait_cnt++],
+				end_addr, &bytes_updated);
+			if ((start_addr + bytes_written + bytes_updated >= end_addr))
+				goto end;
+			bytes_written += bytes_updated;
+		}
+	}
+
+	if (!list_empty(&ctx->pending_req_list)) {
+		md->pending_list = (struct cam_hw_req_mini_dump *)
+			    (start_addr + bytes_written);
+		list_for_each_entry_safe(req, req_temp, &ctx->pending_req_list, list) {
+			bytes_updated = 0;
+			__cam_context_req_mini_dump(req,
+				(uint8_t *)&md->pending_list[md->pending_cnt++],
+				end_addr, &bytes_updated);
+			if ((start_addr + bytes_written + bytes_updated >= end_addr))
+				goto end;
+			bytes_written += bytes_updated;
+		}
+	}
+end:
+	md_args->bytes_written = bytes_written;
+	CAM_INFO(CAM_CTXT, "Ctx %s bytes_written %lu", ctx->dev_name, md_args->bytes_written);
 	return 0;
 }

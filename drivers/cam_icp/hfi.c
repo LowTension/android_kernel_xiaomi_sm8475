@@ -87,6 +87,32 @@ static void hfi_queue_dump(uint32_t *dwords, int count)
 			rows * 4, dwords[0], dwords[1], dwords[2]);
 }
 
+void cam_hfi_mini_dump(struct hfi_mini_dump_info *dst)
+{
+	struct hfi_mem_info *hfi_mem = &g_hfi->map;
+	struct hfi_qtbl *qtbl;
+	struct hfi_q_hdr *q_hdr;
+	uint32_t *dwords;
+	int num_dwords;
+
+	if (!hfi_mem) {
+		CAM_ERR(CAM_HFI, "hfi mem info NULL... unable to dump queues");
+		return;
+	}
+
+	qtbl = (struct hfi_qtbl *)hfi_mem->qtbl.kva;
+	q_hdr = &qtbl->q_hdr[Q_CMD];
+	dwords = (uint32_t *)hfi_mem->cmd_q.kva;
+	num_dwords = ICP_CMD_Q_SIZE_IN_BYTES >> BYTE_WORD_SHIFT;
+	memcpy(dst->cmd_q, dwords, ICP_CMD_Q_SIZE_IN_BYTES);
+
+	q_hdr = &qtbl->q_hdr[Q_MSG];
+	dwords = (uint32_t *)hfi_mem->msg_q.kva;
+	memcpy(dst->msg_q, dwords, ICP_CMD_Q_SIZE_IN_BYTES);
+	dst->msg_q_state = g_hfi->msg_q_state;
+	dst->cmd_q_state = g_hfi->cmd_q_state;
+}
+
 void cam_hfi_queue_dump(void)
 {
 	struct hfi_mem_info *hfi_mem = &g_hfi->map;

@@ -24,7 +24,7 @@ struct cam_fd_context {
 
 int cam_fd_context_init(struct cam_fd_context *fd_ctx,
 	struct cam_context *base_ctx, struct cam_hw_mgr_intf *hw_intf,
-	uint32_t ctx_id);
+	uint32_t ctx_id, int img_iommu_hdl);
 int cam_fd_context_deinit(struct cam_fd_context *ctx);
 
 #endif /* _CAM_FD_CONTEXT_H_ */

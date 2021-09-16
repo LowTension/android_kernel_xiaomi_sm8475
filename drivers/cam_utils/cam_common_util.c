@@ -13,6 +13,10 @@
 #include <linux/moduleparam.h>
 #include "cam_common_util.h"
 #include "cam_debug_util.h"
+#if IS_REACHABLE(CONFIG_QCOM_VA_MINIDUMP)
+#include <soc/qcom/minidump.h>
+static  struct cam_common_mini_dump_dev_info g_minidump_dev_info;
+#endif
 
 static uint timeout_multiplier = 1;
 module_param(timeout_multiplier, uint, 0644);
@@ -145,3 +149,104 @@ void cam_common_util_thread_switch_delay_detect(
 			diff, threshold);
 	}
 }
+
+#if IS_REACHABLE(CONFIG_QCOM_VA_MINIDUMP)
+static void cam_common_mini_dump_handler(void *dst, unsigned long len)
+{
+	int                               i = 0;
+	uint8_t                          *waddr;
+	unsigned long                     bytes_written = 0;
+	unsigned long                     remain_len = len;
+	struct cam_common_mini_dump_data *md;
+
+	if (len < sizeof(*md)) {
+	    CAM_WARN(CAM_UTIL, "Insufficient len %lu", len);
+	    return;
+	}
+
+	md = (struct cam_common_mini_dump_data *)dst;
+	waddr = (uint8_t *)md + sizeof(*md);
+	remain_len -= sizeof(*md);
+
+	for (i = 0; i < CAM_COMMON_MINI_DUMP_DEV_NUM; i++) {
+		if (!g_minidump_dev_info.dump_cb[i])
+			continue;
+
+		memcpy(md->name[i], g_minidump_dev_info.name[i],
+			strlen(g_minidump_dev_info.name[i]));
+		md->waddr[i] = (void *)waddr;
+		bytes_written = g_minidump_dev_info.dump_cb[i](
+			(void *)waddr, remain_len);
+		md->size[i] = bytes_written;
+		if (bytes_written >= len) {
+			CAM_WARN(CAM_UTIL, "No more space to dump");
+			goto nomem;
+		}
+
+		remain_len -= bytes_written;
+		waddr += bytes_written;
+	}
+
+	return;
+nomem:
+    for (; i >=0; i--)
+	    CAM_WARN(CAM_UTIL, "%s: Dumped len: %lu", md->name[i], md->size[i]);
+}
+
+static int cam_common_md_notify_handler(struct notifier_block *this,
+	unsigned long event, void *ptr)
+{
+	struct va_md_entry cbentry;
+	int rc = 0;
+
+	cbentry.vaddr = 0x0;
+	strlcpy(cbentry.owner, "Camera", sizeof(cbentry.owner));
+	cbentry.size = CAM_COMMON_MINI_DUMP_SIZE;
+	cbentry.cb = cam_common_mini_dump_handler;
+	rc = qcom_va_md_add_region(&cbentry);
+	if (rc) {
+		CAM_ERR(CAM_UTIL, "Va Region add falied %d", rc);
+		return NOTIFY_STOP_MASK;
+	}
+
+	return NOTIFY_OK;
+}
+
+static struct notifier_block cam_common_md_notify_blk = {
+	.notifier_call = cam_common_md_notify_handler,
+	.priority = INT_MAX,
+};
+
+int cam_common_register_mini_dump_cb(
+	cam_common_mini_dump_cb mini_dump_cb,
+	uint8_t *dev_name)
+{
+	int rc = 0;
+
+	if (g_minidump_dev_info.num_devs >= CAM_COMMON_MINI_DUMP_DEV_NUM) {
+		CAM_ERR(CAM_UTIL, "No free index available");
+		return -EINVAL;
+	}
+
+	if (!mini_dump_cb || !dev_name) {
+		CAM_ERR(CAM_UTIL, "Invalid params");
+		return -EINVAL;
+	}
+
+	g_minidump_dev_info.dump_cb[g_minidump_dev_info.num_devs] =
+		mini_dump_cb;
+	scnprintf(g_minidump_dev_info.name[g_minidump_dev_info.num_devs],
+		CAM_COMMON_MINI_DUMP_DEV_NAME_LEN, dev_name);
+	g_minidump_dev_info.num_devs++;
+	if (!g_minidump_dev_info.is_registered) {
+		rc = qcom_va_md_register("Camera", &cam_common_md_notify_blk);
+		if (rc) {
+			CAM_ERR(CAM_UTIL, "Camera VA minidump register failed");
+			goto end;
+		}
+		g_minidump_dev_info.is_registered = true;
+	}
+end:
+	return rc;
+}
+#endif

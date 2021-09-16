@@ -159,7 +159,7 @@ static int cam_lrme_component_bind(struct device *dev,
 	for (i = 0; i < CAM_CTX_MAX; i++) {
 		rc = cam_lrme_context_init(&g_lrme_dev->lrme_ctx[i],
 				&g_lrme_dev->ctx[i],
-				&node->hw_mgr_intf, i);
+				&node->hw_mgr_intf, i, -1);
 		if (rc) {
 			CAM_ERR(CAM_LRME, "LRME context init failed");
 			goto deinit_ctx;

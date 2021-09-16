@@ -333,7 +333,7 @@ int cam_sfe_process_cmd(void *hw_priv, uint32_t cmd_type,
 	case CAM_ISP_HW_CMD_GET_HFR_UPDATE:
 	case CAM_ISP_HW_CMD_STRIPE_UPDATE:
 	case CAM_ISP_HW_CMD_WM_CONFIG_UPDATE:
-	case CAM_ISP_HW_CMD_GET_SECURE_MODE:
+	case CAM_ISP_HW_CMD_GET_WM_SECURE_MODE:
 	case CAM_ISP_HW_CMD_QUERY_BUS_CAP:
 	case CAM_ISP_HW_SFE_SYS_CACHE_WM_CONFIG:
 	case CAM_ISP_HW_CMD_WM_BW_LIMIT_CONFIG:
@@ -347,6 +347,7 @@ int cam_sfe_process_cmd(void *hw_priv, uint32_t cmd_type,
 	case CAM_ISP_HW_CMD_FE_UPDATE_BUS_RD:
 	case CAM_ISP_HW_SFE_SYS_CACHE_RM_CONFIG:
 	case CAM_ISP_HW_CMD_RM_ENABLE_DISABLE:
+	case CAM_ISP_HW_CMD_GET_RM_SECURE_MODE:
 		rc = core_info->sfe_bus_rd->hw_ops.process_cmd(
 			core_info->sfe_bus_rd->bus_priv, cmd_type,
 			cmd_args, arg_size);
@@ -395,7 +396,7 @@ irqreturn_t cam_sfe_irq(int irq_num, void *data)
 	core_info = (struct cam_sfe_hw_core_info *)sfe_hw->core_info;
 
 	return cam_irq_controller_handle_irq(irq_num,
-		core_info->sfe_irq_controller);
+		core_info->sfe_irq_controller, CAM_IRQ_EVT_GROUP_0);
 }
 
 int cam_sfe_core_init(
@@ -408,8 +409,7 @@ int cam_sfe_core_init(
 
 	rc = cam_irq_controller_init(drv_name,
 		CAM_SOC_GET_REG_MAP_START(soc_info, SFE_CORE_BASE_IDX),
-		sfe_hw_info->irq_reg_info, &core_info->sfe_irq_controller,
-		true);
+		sfe_hw_info->irq_reg_info, &core_info->sfe_irq_controller);
 	if (rc) {
 		CAM_ERR(CAM_SFE, "SFE irq controller init failed");
 		return rc;

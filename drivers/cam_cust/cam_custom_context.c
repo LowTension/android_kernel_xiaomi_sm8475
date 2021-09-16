@@ -1683,7 +1683,7 @@ int cam_custom_dev_context_init(struct cam_custom_context *ctx,
 	struct cam_context *ctx_base,
 	struct cam_req_mgr_kmd_ops *crm_node_intf,
 	struct cam_hw_mgr_intf *hw_intf,
-	uint32_t ctx_id)
+	uint32_t ctx_id, int img_iommu_hdl)
 {
 	int rc = -1, i = 0;
 
@@ -1707,7 +1707,7 @@ int cam_custom_dev_context_init(struct cam_custom_context *ctx,
 
 	/* camera context setup */
 	rc = cam_context_init(ctx_base, custom_dev_name, CAM_CUSTOM, ctx_id,
-		crm_node_intf, hw_intf, ctx->req_base, CAM_CTX_REQ_MAX);
+		crm_node_intf, hw_intf, ctx->req_base, CAM_CTX_REQ_MAX, img_iommu_hdl);
 	if (rc) {
 		CAM_ERR(CAM_CUSTOM, "Camera Context Base init failed");
 		return rc;

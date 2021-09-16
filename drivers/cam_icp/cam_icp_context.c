@@ -66,6 +66,25 @@ end:
 	return rc;
 }
 
+static int cam_icp_context_mini_dump(void *priv, void *args)
+{
+	int rc;
+	struct cam_context *ctx;
+
+	if (!priv || !args) {
+		CAM_ERR(CAM_ICP, "Invalid priv %pK args %pK", priv, args);
+		return -EINVAL;
+	}
+
+	ctx = (struct cam_context *)priv;
+	rc = cam_context_mini_dump(ctx, args);
+	if (rc)
+		CAM_ERR(CAM_ICP, "ctx [id: %u name: %s] Mini Dump failed rc %d", ctx->dev_name,
+			ctx->ctx_id, rc);
+
+	return rc;
+}
+
 static int __cam_icp_acquire_dev_in_available(struct cam_context *ctx,
 	struct cam_acquire_dev_cmd *cmd)
 {
@@ -236,6 +255,7 @@ static struct cam_ctx_ops
 		},
 		.crm_ops = {},
 		.irq_ops = NULL,
+		.mini_dump_ops = cam_icp_context_mini_dump,
 	},
 	/* Acquired */
 	{
@@ -249,6 +269,7 @@ static struct cam_ctx_ops
 		.crm_ops = {},
 		.irq_ops = __cam_icp_handle_buf_done_in_ready,
 		.pagefault_ops = cam_icp_context_dump_active_request,
+		.mini_dump_ops = cam_icp_context_mini_dump,
 	},
 	/* Ready */
 	{
@@ -262,6 +283,7 @@ static struct cam_ctx_ops
 		.crm_ops = {},
 		.irq_ops = __cam_icp_handle_buf_done_in_ready,
 		.pagefault_ops = cam_icp_context_dump_active_request,
+		.mini_dump_ops = cam_icp_context_mini_dump,
 	},
 	/* Flushed */
 	{
@@ -273,11 +295,12 @@ static struct cam_ctx_ops
 		.crm_ops = {},
 		.irq_ops = NULL,
 		.pagefault_ops = cam_icp_context_dump_active_request,
+		.mini_dump_ops = cam_icp_context_mini_dump,
 	},
 };
 
 int cam_icp_context_init(struct cam_icp_context *ctx,
-	struct cam_hw_mgr_intf *hw_intf, uint32_t ctx_id)
+	struct cam_hw_mgr_intf *hw_intf, uint32_t ctx_id, int img_iommu_hdl)
 {
 	int rc;
 
@@ -288,7 +311,7 @@ int cam_icp_context_init(struct cam_icp_context *ctx,
 	}
 
 	rc = cam_context_init(ctx->base, icp_dev_name, CAM_ICP, ctx_id,
-		NULL, hw_intf, ctx->req_base, CAM_CTX_ICP_REQ_MAX);
+		NULL, hw_intf, ctx->req_base, CAM_CTX_ICP_REQ_MAX, img_iommu_hdl);
 	if (rc) {
 		CAM_ERR(CAM_ICP, "Camera Context Base init failed");
 		goto err;

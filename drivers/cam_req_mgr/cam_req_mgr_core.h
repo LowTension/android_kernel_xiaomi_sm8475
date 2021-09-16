@@ -8,6 +8,7 @@
 #include <linux/spinlock_types.h>
 #include "cam_req_mgr_interface.h"
 #include "cam_req_mgr_core_defs.h"
+#include "cam_req_mgr_workq.h"
 #include "cam_req_mgr_timer.h"
 
 #define CAM_REQ_MGR_MAX_LINKED_DEV     16
@@ -528,6 +529,112 @@ struct cam_req_mgr_dump_link_data {
 	uint64_t                           m_req_id;
 	uint64_t                           s_req_id;
 	struct cam_req_mgr_dev_info        dev_data;
+};
+
+/**
+ * struct cam_req_mgr_req_tbl
+ * @id            : table indetifier
+ * @pd            : pipeline delay of table
+ * @dev_count     : num of devices having same pipeline delay
+ * @dev_mask      : mask to track which devices are linked
+ * @skip_traverse : to indicate how many traverses need to be dropped
+ *                  by this table especially in the beginning or bubble recovery
+ * @pd_delta      : differnce between this table's pipeline delay and next
+ * @num_slots     : number of request slots present in the table
+ * @slot          : array of slots tracking requests availability at devices
+ */
+struct cam_req_mgr_req_tbl_mini_dump {
+	int32_t                     id;
+	int32_t                     pd;
+	int32_t                     dev_count;
+	int32_t                     dev_mask;
+	int32_t                     skip_traverse;
+	int32_t                     pd_delta;
+	int32_t                     num_slots;
+	struct cam_req_mgr_tbl_slot slot[MAX_REQ_SLOTS];
+};
+
+/**
+ * struct cam_req_mgr_req_data_mini_dump
+ * @apply_data       : Holds information about request id for a request
+ * @prev_apply_data  : Holds information about request id for a previous
+ *                     applied request
+ * @in_q             : Poiner to Input request queue
+ * @l_tbl            : unique pd request tables.
+ * @num_tbl          : how many unique pd value devices are present
+ */
+struct cam_req_mgr_req_data_mini_dump {
+	struct cam_req_mgr_apply       apply_data[CAM_PIPELINE_DELAY_MAX];
+	struct cam_req_mgr_apply       prev_apply_data[CAM_PIPELINE_DELAY_MAX];
+	struct cam_req_mgr_req_queue   in_q;
+	struct cam_req_mgr_req_tbl_mini_dump l_tbl[4];
+	int32_t                              num_tbl;
+};
+
+/**
+ * struct cam_req_mgr_core_link_mini_dump
+ * @workq                : Work q information
+ * @req                  : req data holder.
+ * @sof_timestamp        : SOF timestamp value
+ * @initial_sync_req     : The initial req which is required to sync with the
+ * @prev_sof_timestamp   : Previous SOF timestamp value
+ * @last_flush_id        : Last request to flush
+ * @is_used              : 1 if link is in use else 0
+ * @eof_event_cnt        : Atomic variable to track the number of EOF requests
+ * @pd_mask              : each set bit indicates the device with pd equal to
+ * @num_sync_links       : num of links sync associated with this link
+ * @open_req_cnt         : Counter to keep track of open requests that are yet
+ *                         to be serviced in the kernel.
+ * @link_hdl             : Link identifier
+ * @num_devs             : num of connected devices to this link
+ * @max_delay            : Max of pipeline delay of all connected devs
+ *                          bit position is available.
+ * @state                : link state machine
+ * @dual_trigger         : Dual tirgger flag
+ * @is_shutdown          : Is shutting down
+ * @skip_init_frame      : skip initial frames crm_wd_timer validation in the
+ * @is_master            : Based on pd among links, the link with the highest pd
+ *                         is assigned as master
+ * @initial_skip         : Flag to determine if slave has started streaming in
+ *                         master-slave sync
+ * @in_m_sync_mode       : M-sync  mode flag
+ * @sync_link_sof_skip   : flag determines if a pkt is not available
+ * @wq_congestion        : Indicates if WQ congestion is detected or not
+ */
+struct cam_req_mgr_core_link_mini_dump {
+	struct cam_req_mgr_core_workq_mini_dump  workq;
+	struct cam_req_mgr_req_data_mini_dump    req;
+	struct cam_req_mgr_sof_time              sof_time;
+	int64_t                   initial_sync_req;
+	uint32_t                  last_flush_id;
+	uint32_t                  is_used;
+	uint32_t                  retry_cnt;
+	uint32_t                  eof_event_cnt;
+	int32_t                   pd_mask;
+	int32_t                   num_sync_links;
+	int32_t                   open_req_cnt;
+	int32_t                   link_hdl;
+	int32_t                   num_devs;
+	enum cam_pipeline_delay   max_delay;
+	enum cam_req_mgr_link_state   state;
+	bool                       dual_trigger;
+	bool                       is_shutdown;
+	bool                       skip_init_frame;
+	bool                       is_master;
+	bool                       initial_skip;
+	bool                       in_msync_mode;
+	bool                       sync_link_sof_skip;
+	bool                       wq_congestion;
+};
+
+/**
+ * struct cam_req_mgr_core_mini_dump
+ * @link             : Array of dumped links
+ * @num_link         : Number of links dumped
+ */
+struct cam_req_mgr_core_mini_dump {
+	struct cam_req_mgr_core_link_mini_dump *link[MAXIMUM_LINKS_PER_SESSION];
+	uint32_t num_link;
 };
 
 /**

@@ -92,14 +92,14 @@ int32_t cam_csiphy_reg_dump(struct cam_hw_soc_info *soc_info)
 	return rc;
 }
 
-int32_t cam_csiphy_irq_status_reg_dmp(struct csiphy_device *csiphy_dev)
+int32_t cam_csiphy_common_status_reg_dump(struct csiphy_device *csiphy_dev)
 {
 	struct csiphy_reg_parms_t *csiphy_reg = NULL;
 	int32_t                    rc = 0;
 	resource_size_t            size = 0;
 	void __iomem              *phy_base = NULL;
 	int                        reg_id = 0;
-	uint32_t                   irq, status_reg, clear_reg;
+	uint32_t                   val, status_reg, clear_reg;
 
 	if (!csiphy_dev) {
 		rc = -EINVAL;
@@ -111,19 +111,20 @@ int32_t cam_csiphy_irq_status_reg_dmp(struct csiphy_device *csiphy_dev)
 	phy_base = csiphy_dev->soc_info.reg_map[0].mem_base;
 	status_reg = csiphy_reg->mipi_csiphy_interrupt_status0_addr;
 	clear_reg = csiphy_reg->mipi_csiphy_interrupt_clear0_addr;
-	size = csiphy_reg->csiphy_interrupt_status_size;
+	size = csiphy_reg->csiphy_num_common_status_regs;
 
 	CAM_INFO(CAM_CSIPHY, "PHY base addr=%pK offset=0x%x size=%d",
 		phy_base, status_reg, size);
 
 	if (phy_base != NULL) {
 		for (reg_id = 0; reg_id < size; reg_id++) {
-			irq = cam_io_r(phy_base + status_reg + (0x4 * reg_id));
-			cam_io_w_mb(irq, phy_base + clear_reg + (0x4 * reg_id));
+			val = cam_io_r(phy_base + status_reg + (0x4 * reg_id));
 
-			CAM_INFO(CAM_CSIPHY,
-				"CSIPHY%d_IRQ_STATUS_ADDR%d = 0x%x",
-				csiphy_dev->soc_info.index, reg_id, irq);
+			if (reg_id < csiphy_reg->csiphy_interrupt_status_size)
+				cam_io_w_mb(val, phy_base + clear_reg + (0x4 * reg_id));
+
+			CAM_INFO(CAM_CSIPHY, "CSIPHY%d_COMMON_STATUS%u = 0x%x",
+				csiphy_dev->soc_info.index, reg_id, val);
 		}
 	} else {
 		rc = -EINVAL;
@@ -255,6 +256,7 @@ int32_t cam_csiphy_parse_dt_info(struct platform_device *pdev,
 {
 	int32_t   rc = 0, i = 0;
 	uint32_t  clk_cnt = 0;
+	uint32_t   is_regulator_enable_sync;
 	char      *csi_3p_clk_name = "csi_phy_3p_clk";
 	char      *csi_3p_clk_src_name = "csiphy_3p_clk_src";
 	struct cam_hw_soc_info   *soc_info;
@@ -266,6 +268,15 @@ int32_t cam_csiphy_parse_dt_info(struct platform_device *pdev,
 		CAM_ERR(CAM_CSIPHY, "parsing common soc dt(rc %d)", rc);
 		return  rc;
 	}
+
+	rc = of_property_read_u32(soc_info->dev->of_node, "rgltr-enable-sync",
+		&is_regulator_enable_sync);
+	if (rc) {
+		rc = 0;
+		is_regulator_enable_sync = 0;
+	}
+
+	csiphy_dev->prgm_cmn_reg_across_csiphy = (bool) is_regulator_enable_sync;
 
 	if (of_device_is_compatible(soc_info->dev->of_node,
 		"qcom,csiphy-v1.0")) {

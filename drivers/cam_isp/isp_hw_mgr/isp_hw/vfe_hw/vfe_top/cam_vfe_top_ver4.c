@@ -425,7 +425,7 @@ static int cam_vfe_top_ver4_print_overflow_debug_info(
 
 	i = 0;
 	tmp = violation_status;
-	while (violation_status) {
+	while (tmp) {
 		if (tmp & 0x1)
 			CAM_ERR_RATE_LIMIT(CAM_ISP, "VFE[%d] Bus Violation %s",
 				soc_info->index, common_data->hw_info->wr_client_desc[i].desc);
@@ -1166,9 +1166,7 @@ static int cam_vfe_ver4_err_irq_top_half(
 			th_payload->evt_status_arr[0]);
 		CAM_ERR(CAM_ISP, "Stopping further IRQ processing from VFE:%d",
 			vfe_res->hw_intf->hw_idx);
-		cam_irq_controller_disable_irq(vfe_priv->vfe_irq_controller,
-			vfe_priv->irq_err_handle);
-		cam_irq_controller_clear_and_mask(evt_id,
+		cam_irq_controller_disable_all(
 			vfe_priv->vfe_irq_controller);
 		error_flag = true;
 	}
@@ -1293,7 +1291,8 @@ skip_core_cfg:
 			vfe_res->top_half_handler,
 			vfe_res->bottom_half_handler,
 			vfe_res->tasklet_info,
-			&tasklet_bh_api);
+			&tasklet_bh_api,
+			CAM_IRQ_EVT_GROUP_0);
 
 		if (rsrc_data->irq_handle < 1) {
 			CAM_ERR(CAM_ISP, "IRQ handle subscribe failure");
@@ -1314,7 +1313,8 @@ skip_core_cfg:
 			vfe_res->top_half_handler,
 			vfe_res->bottom_half_handler,
 			vfe_res->tasklet_info,
-			&tasklet_bh_api);
+			&tasklet_bh_api,
+			CAM_IRQ_EVT_GROUP_0);
 
 		if (rsrc_data->sof_irq_handle < 1) {
 			CAM_ERR(CAM_ISP, "SOF IRQ handle subscribe failure");
@@ -1335,7 +1335,8 @@ subscribe_err:
 			cam_vfe_ver4_err_irq_top_half,
 			vfe_res->bottom_half_handler,
 			vfe_res->tasklet_info,
-			&tasklet_bh_api);
+			&tasklet_bh_api,
+			CAM_IRQ_EVT_GROUP_0);
 
 		if (rsrc_data->irq_err_handle < 1) {
 			CAM_ERR(CAM_ISP, "Error IRQ handle subscribe failure");

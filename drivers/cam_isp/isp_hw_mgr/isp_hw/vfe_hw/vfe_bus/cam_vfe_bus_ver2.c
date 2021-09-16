@@ -2371,7 +2371,7 @@ static int cam_vfe_bus_start_vfe_out(
 		common_data->bus_irq_controller, CAM_IRQ_PRIORITY_1,
 		bus_irq_reg_mask, vfe_out, vfe_out->top_half_handler,
 		vfe_out->bottom_half_handler, vfe_out->tasklet_info,
-		&tasklet_bh_api);
+		&tasklet_bh_api, CAM_IRQ_EVT_GROUP_0);
 
 	if (vfe_out->irq_handle < 1) {
 		CAM_ERR(CAM_ISP, "Subscribe IRQ failed for res_id %d",
@@ -2635,7 +2635,7 @@ static int cam_vfe_bus_ver2_handle_irq(uint32_t    evt_id,
 	bus_priv     = th_payload->handler_priv;
 	CAM_DBG(CAM_ISP, "Enter");
 	rc = cam_irq_controller_handle_irq(evt_id,
-		bus_priv->common_data.bus_irq_controller);
+		bus_priv->common_data.bus_irq_controller, CAM_IRQ_EVT_GROUP_0);
 	return (rc == IRQ_HANDLED) ? 0 : -EINVAL;
 }
 
@@ -3596,7 +3596,8 @@ static int cam_vfe_bus_init_hw(void *hw_priv,
 		cam_vfe_bus_ver2_handle_irq,
 		NULL,
 		NULL,
-		NULL);
+		NULL,
+		CAM_IRQ_EVT_GROUP_0);
 
 	if (bus_priv->irq_handle < 1) {
 		CAM_ERR(CAM_ISP, "Failed to subscribe BUS IRQ");
@@ -3613,7 +3614,8 @@ static int cam_vfe_bus_init_hw(void *hw_priv,
 			cam_vfe_bus_error_irq_top_half,
 			cam_vfe_bus_err_bottom_half,
 			bus_priv->tasklet_info,
-			&tasklet_bh_api);
+			&tasklet_bh_api,
+			CAM_IRQ_EVT_GROUP_0);
 
 		if (bus_priv->error_irq_handle < 1) {
 			CAM_ERR(CAM_ISP, "Failed to subscribe BUS error IRQ %d",
@@ -3797,7 +3799,7 @@ static int cam_vfe_bus_process_cmd(
 	case CAM_ISP_HW_CMD_GET_HFR_UPDATE:
 		rc = cam_vfe_bus_update_hfr(priv, cmd_args, arg_size);
 		break;
-	case CAM_ISP_HW_CMD_GET_SECURE_MODE:
+	case CAM_ISP_HW_CMD_GET_WM_SECURE_MODE:
 		rc = cam_vfe_bus_get_secure_mode(priv, cmd_args, arg_size);
 		break;
 	case CAM_ISP_HW_CMD_STRIPE_UPDATE:
@@ -3913,7 +3915,7 @@ int cam_vfe_bus_ver2_init(
 
 	rc = cam_irq_controller_init(drv_name, bus_priv->common_data.mem_base,
 		&ver2_hw_info->common_reg.irq_reg_info,
-		&bus_priv->common_data.bus_irq_controller, true);
+		&bus_priv->common_data.bus_irq_controller);
 	if (rc) {
 		CAM_ERR(CAM_ISP, "cam_irq_controller_init failed");
 		goto free_bus_priv;

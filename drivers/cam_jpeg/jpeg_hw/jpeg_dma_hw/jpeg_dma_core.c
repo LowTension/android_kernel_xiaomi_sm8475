@@ -369,6 +369,32 @@ int cam_jpeg_dma_stop_hw(void *data,
 	return 0;
 }
 
+static int  cam_jpeg_dma_mini_dump(struct cam_hw_info *dev, void *args) {
+
+	struct cam_jpeg_mini_dump_core_info *md;
+	struct cam_jpeg_dma_device_hw_info   *hw_info;
+	struct cam_jpeg_dma_device_core_info *core_info;
+
+	if (!dev || !args) {
+		CAM_ERR(CAM_JPEG, "Invalid params dev %pK args %pK", dev, args);
+		return -EINVAL;
+	}
+
+	core_info = (struct cam_jpeg_dma_device_core_info *)dev->core_info;
+	hw_info = core_info->jpeg_dma_hw_info;
+	md = (struct cam_jpeg_mini_dump_core_info *)args;
+
+	md->framedone = hw_info->int_status.framedone;
+	md->resetdone = hw_info->int_status.resetdone;
+	md->iserror = hw_info->int_status.iserror;
+	md->stopdone = hw_info->int_status.stopdone;
+	md->open_count = dev->open_count;
+	md->hw_state = dev->hw_state;
+	md->ref_count = core_info->ref_count;
+	md->core_state = core_info->core_state;
+	return 0;
+}
+
 int cam_jpeg_dma_process_cmd(void *device_priv, uint32_t cmd_type,
 	void *cmd_args, uint32_t arg_size)
 {
@@ -456,6 +482,9 @@ int cam_jpeg_dma_process_cmd(void *device_priv, uint32_t cmd_type,
 				match_pid_mid->pid_match_found = false;
 		}
 
+		break;
+	case CAM_JPEG_CMD_MINI_DUMP:
+		rc = cam_jpeg_dma_mini_dump(jpeg_dma_dev, cmd_args);
 		break;
 	default:
 		rc = -EINVAL;

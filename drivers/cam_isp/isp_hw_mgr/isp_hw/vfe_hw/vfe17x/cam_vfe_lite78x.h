@@ -74,6 +74,7 @@ static struct cam_irq_controller_reg_info vfe_lite78x_top_irq_reg_info = {
 	.irq_reg_set = vfe_lite78x_top_irq_reg_set,
 	.global_clear_offset  = 0x00001038,
 	.global_clear_bitmask = 0x00000001,
+	.clear_all_bitmask = 0xFFFFFFFF,
 };
 
 static struct cam_vfe_top_ver4_reg_offset_common vfe_lite78x_top_common_reg = {
@@ -456,6 +457,7 @@ static struct cam_vfe_bus_ver3_hw_info vfe_lite78x_bus_hw_info = {
 			.max_height    = -1,
 			.source_group  = CAM_VFE_BUS_VER3_SRC_GRP_1,
 			.num_wm        = 1,
+			.line_based    = 1,
 			.mid[0]        = 8,
 			.wm_idx        = {
 				0,
@@ -470,6 +472,7 @@ static struct cam_vfe_bus_ver3_hw_info vfe_lite78x_bus_hw_info = {
 			.max_height    = -1,
 			.source_group  = CAM_VFE_BUS_VER3_SRC_GRP_2,
 			.num_wm        = 1,
+			.line_based    = 1,
 			.mid[0]        = 9,
 			.wm_idx        = {
 				1,
@@ -484,6 +487,7 @@ static struct cam_vfe_bus_ver3_hw_info vfe_lite78x_bus_hw_info = {
 			.max_height    = -1,
 			.source_group  = CAM_VFE_BUS_VER3_SRC_GRP_3,
 			.num_wm        = 1,
+			.line_based    = 1,
 			.mid[0]        = 10,
 			.wm_idx        = {
 				2,
@@ -498,6 +502,7 @@ static struct cam_vfe_bus_ver3_hw_info vfe_lite78x_bus_hw_info = {
 			.max_height    = -1,
 			.source_group  = CAM_VFE_BUS_VER3_SRC_GRP_4,
 			.num_wm        = 1,
+			.line_based    = 1,
 			.mid[0]        = 11,
 			.wm_idx        = {
 				3,

@@ -34,7 +34,7 @@
 
 #define MAX_LANES                   5
 #define MAX_SETTINGS_PER_LANE       50
-#define MAX_DATA_RATES              3
+#define MAX_DATA_RATES              12
 #define MAX_DATA_RATE_REGS          30
 
 #define CAMX_CSIPHY_DEV_NAME "cam-csiphy-driver"
@@ -113,6 +113,8 @@ struct cam_cphy_dphy_status_reg_params_t {
  * @mipi_csiphy_interrupt_mask_val    : CSIPhy interrupt mask val
  * @mipi_csiphy_interrupt_clear0_addr : CSIPhy interrupt clear addr
  * @csiphy_version                    : CSIPhy Version
+ * @csiphy_interrupt_status_size      : Number of interrupt status registers
+ * @csiphy_num_common_status_regs     : Number of common status registers
  * @csiphy_common_array_size          : CSIPhy common array size
  * @csiphy_reset_enter_array_size     : CSIPhy reset array size
  * @csiphy_reset_exit_array_size      : CSIPhy reset release array size
@@ -139,6 +141,7 @@ struct csiphy_reg_parms_t {
 	uint32_t mipi_csiphy_interrupt_clear0_addr;
 	uint32_t csiphy_version;
 	uint32_t csiphy_interrupt_status_size;
+	uint32_t csiphy_num_common_status_regs;
 	uint32_t csiphy_common_array_size;
 	uint32_t csiphy_reset_enter_array_size;
 	uint32_t csiphy_reset_exit_array_size;
@@ -151,7 +154,6 @@ struct csiphy_reg_parms_t {
 	uint32_t csiphy_cpas_cp_3ph_offset;
 	uint32_t csiphy_2ph_clock_lane;
 	uint32_t csiphy_2ph_combo_ck_ln;
-	uint32_t prgm_cmn_reg_across_csiphy;
 	struct cam_csiphy_aon_sel_params_t *aon_sel_params;
 };
 
@@ -312,7 +314,8 @@ struct csiphy_work_queue {
  * @csiphy_cpas_cp_reg_mask    : Secure csiphy lane mask
  * @ops                        : KMD operations
  * @crm_cb                     : Callback API pointers
- * @enable_irq_status_reg_dump : Debugfs flag to enable hw IRQ status register dump
+ * @prgm_cmn_reg_across_csiphy : Flag to decide if com settings need to be programmed for all PHYs
+ * @en_common_status_reg_dump  : Debugfs flag to enable common status register dump
  * @en_lane_status_reg_dump    : Debugfs flag to enable cphy/dphy lane status dump
  * @en_full_phy_reg_dump       : Debugfs flag to enable the dump for all the Phy registers
  * @preamble_enable            : To enable preamble pattern
@@ -346,7 +349,8 @@ struct csiphy_device {
 					CSIPHY_MAX_INSTANCES_PER_PHY];
 	struct cam_req_mgr_kmd_ops     ops;
 	struct cam_req_mgr_crm_cb     *crm_cb;
-	bool                           enable_irq_status_reg_dump;
+	bool                           prgm_cmn_reg_across_csiphy;
+	bool                           en_common_status_reg_dump;
 	bool                           en_lane_status_reg_dump;
 	bool                           en_full_phy_reg_dump;
 	uint16_t                       preamble_enable;

@@ -13,6 +13,10 @@
 #define CAM_36BIT_INTF_GET_IOVA_BASE(iova) ((iova) >> 8)
 #define CAM_36BIT_INTF_GET_IOVA_OFFSET(iova) ((iova) & 0xff)
 
+#define CAM_COMMON_MINI_DUMP_DEV_NUM      6
+#define CAM_COMMON_MINI_DUMP_DEV_NAME_LEN 16
+#define CAM_COMMON_MINI_DUMP_SIZE         10 * 1024 * 1024
+
 #define PTR_TO_U64(ptr) ((uint64_t)(uintptr_t)ptr)
 #define U64_TO_PTR(ptr) ((void *)(uintptr_t)ptr)
 
@@ -43,6 +47,34 @@
 	(hrs) = do_div(tmp, 24);                                                 \
 })
 
+typedef unsigned long (*cam_common_mini_dump_cb) (void *dst, unsigned long len);
+
+/**
+ * struct cam_common_mini_dump_dev_info
+ * @dump_cb       : address of data dumped
+ * @name          : Name of driver
+ * @num_devs      : Number of device registerd
+ * @is_registered : Bool to indicate if registered
+ */
+struct cam_common_mini_dump_dev_info {
+	cam_common_mini_dump_cb  dump_cb[CAM_COMMON_MINI_DUMP_DEV_NUM];
+	uint8_t                  name[CAM_COMMON_MINI_DUMP_DEV_NUM]
+				    [CAM_COMMON_MINI_DUMP_DEV_NAME_LEN];
+	uint8_t                  num_devs;
+	bool                     is_registered;
+};
+
+/**
+ * struct cam_common_mini_dump_data
+ * @link         : address of data dumped
+ * @name         : Name of driver
+ * @size         : Size dumped
+ */
+struct cam_common_mini_dump_data {
+	void          *waddr[CAM_COMMON_MINI_DUMP_DEV_NUM];
+	uint8_t        name[CAM_COMMON_MINI_DUMP_DEV_NUM][CAM_COMMON_MINI_DUMP_DEV_NAME_LEN];
+	unsigned long  size[CAM_COMMON_MINI_DUMP_DEV_NUM];
+};
 
 /**
  * cam_common_util_get_string_index()
@@ -138,4 +170,25 @@ int cam_common_modify_timer(struct timer_list *timer, int32_t timeout_val);
 void cam_common_util_thread_switch_delay_detect(const char *token,
 	ktime_t scheduled_time, uint32_t threshold);
 
+/**
+ * cam_common_register_mini_dump_cb()
+ *
+ * @brief                  common interface to register mini dump cb
+ *
+ * @mini_dump_cb:          Pointer to the mini_dump_cb
+ * @name:                  name of device registering
+ *
+ * @return:                0 if success in register non-zero if failes
+ */
+#if IS_REACHABLE(CONFIG_QCOM_VA_MINIDUMP)
+int cam_common_register_mini_dump_cb(
+	cam_common_mini_dump_cb mini_dump_cb, uint8_t *name);
+#else
+static inline int cam_common_register_mini_dump_cb(
+	cam_common_mini_dump_cb mini_dump_cb,
+	uint8_t *dev_name)
+{
+	return 0;
+}
+#endif
 #endif /* _CAM_COMMON_UTIL_H_ */

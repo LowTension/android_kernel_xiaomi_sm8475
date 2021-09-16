@@ -8,6 +8,9 @@
 
 #include <linux/types.h>
 
+#define HFI_CMD_Q_MINI_DUMP_SIZE_IN_BYTES      4096
+#define HFI_MSG_Q_MINI_DUMP_SIZE_IN_BYTES      4096
+
 /**
  * struct hfi_mem
  * @len: length of memory
@@ -61,6 +64,19 @@ struct hfi_ops {
 	void __iomem *(*iface_addr)(void *data);
 };
 
+/**
+ * struct hfi_mini_dump_info
+ * @cmd_q: cmd queue
+ * @msg_q: msg queue
+ * @msg_q_state: msg queue state
+ * @cmd_q_state: cmd queue state
+ */
+struct hfi_mini_dump_info {
+	uint32_t       cmd_q[HFI_CMD_Q_MINI_DUMP_SIZE_IN_BYTES];
+	uint32_t       msg_q[HFI_MSG_Q_MINI_DUMP_SIZE_IN_BYTES];
+	bool           msg_q_state;
+	bool           cmd_q_state;
+};
 /**
  * hfi_write_cmd() - function for hfi write
  * @cmd_ptr: pointer to command data for hfi write
@@ -163,5 +179,9 @@ int cam_hfi_resume(struct hfi_mem_info *hfi_mem);
  */
 void cam_hfi_queue_dump(void);
 
+/**
+ * cam_hfi_mini_dump() - utility function for mini dump
+ */
+void cam_hfi_mini_dump(struct hfi_mini_dump_info *dst);
 
 #endif /* _HFI_INTF_H_ */

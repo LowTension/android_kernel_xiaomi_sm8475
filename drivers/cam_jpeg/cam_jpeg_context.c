@@ -56,6 +56,24 @@ static int cam_jpeg_context_dump_active_request(void *data,
 	return rc;
 }
 
+static int cam_jpeg_context_mini_dump(void *priv, void *args)
+{
+	int rc;
+	struct cam_context *ctx;
+
+	if (!priv || args) {
+		CAM_ERR(CAM_ICP, "Invalid param priv %pK args %pK", priv, args);
+		return -EINVAL;
+	}
+
+	ctx = (struct cam_context *)priv;
+	rc = cam_context_mini_dump(ctx, args);
+	if (rc)
+		CAM_ERR(CAM_JPEG, "Mini Dump failed %d", rc);
+
+	return rc;
+}
+
 static int __cam_jpeg_ctx_acquire_dev_in_available(struct cam_context *ctx,
 	struct cam_acquire_dev_cmd *cmd)
 {
@@ -151,6 +169,7 @@ static struct cam_ctx_ops
 		},
 		.crm_ops = { },
 		.irq_ops = NULL,
+		.mini_dump_ops = cam_jpeg_context_mini_dump,
 	},
 	/* Acquired */
 	{
@@ -164,6 +183,7 @@ static struct cam_ctx_ops
 		.crm_ops = { },
 		.irq_ops = __cam_jpeg_ctx_handle_buf_done_in_acquired,
 		.pagefault_ops = cam_jpeg_context_dump_active_request,
+		.mini_dump_ops = cam_jpeg_context_mini_dump,
 	},
 	/* Ready */
 	{
@@ -182,7 +202,8 @@ static struct cam_ctx_ops
 int cam_jpeg_context_init(struct cam_jpeg_context *ctx,
 	struct cam_context *ctx_base,
 	struct cam_hw_mgr_intf *hw_intf,
-	uint32_t ctx_id)
+	uint32_t ctx_id,
+	int img_iommu_hdl)
 {
 	int rc;
 	int i;
@@ -201,7 +222,7 @@ int cam_jpeg_context_init(struct cam_jpeg_context *ctx,
 		ctx->req_base[i].req_priv = &ctx->jpeg_req[i];
 
 	rc = cam_context_init(ctx_base, jpeg_dev_name, CAM_JPEG, ctx_id,
-		NULL, hw_intf, ctx->req_base, CAM_CTX_REQ_MAX);
+		NULL, hw_intf, ctx->req_base, CAM_CTX_REQ_MAX, img_iommu_hdl);
 	if (rc) {
 		CAM_ERR(CAM_JPEG, "Camera Context Base init failed");
 		goto err;

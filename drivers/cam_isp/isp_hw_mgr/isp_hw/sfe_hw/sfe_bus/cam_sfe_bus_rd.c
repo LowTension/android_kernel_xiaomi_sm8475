@@ -29,7 +29,6 @@ static const char drv_name[] = "sfe_bus_rd";
 #define MAX_REG_VAL_PAIR_SIZE    \
 	(MAX_BUF_UPDATE_REG_NUM * 2 * CAM_PACKET_MAX_PLANES)
 
-#define BUS_RD_DEFAULT_LATENCY_BUF_ALLOC   512
 #define CAM_SFE_BUS_RD_PAYLOAD_MAX         16
 
 static uint32_t bus_rd_error_irq_mask[1] = {
@@ -134,6 +133,7 @@ struct cam_sfe_bus_rd_priv {
 	int                                 error_irq_handle;
 	void                               *tasklet_info;
 	uint32_t                            top_irq_shift;
+	uint32_t                            latency_buf_allocation;
 };
 
 static void cam_sfe_bus_rd_pxls_to_bytes(uint32_t pxls, uint32_t fmt,
@@ -362,7 +362,7 @@ static int cam_sfe_bus_rd_handle_irq(
 	CAM_DBG(CAM_SFE, "Top Bus RD IRQ Received");
 
 	rc = cam_irq_controller_handle_irq(evt_id,
-		bus_priv->common_data.bus_irq_controller);
+		bus_priv->common_data.bus_irq_controller, CAM_IRQ_EVT_GROUP_0);
 
 	return (rc == IRQ_HANDLED) ? 0 : -EINVAL;
 }
@@ -404,7 +404,7 @@ static int cam_sfe_bus_acquire_rm(
 	rsrc_data->unpacker_cfg =
 		cam_sfe_bus_get_unpacker_fmt(unpacker_fmt);
 	rsrc_data->latency_buf_allocation =
-		BUS_RD_DEFAULT_LATENCY_BUF_ALLOC;
+		bus_rd_priv->latency_buf_allocation;
 	rsrc_data->enable_caching =  false;
 	rsrc_data->enable_disable_cfg_done = false;
 	rsrc_data->offset = 0;
@@ -470,12 +470,11 @@ static int cam_sfe_bus_start_rm(struct cam_isp_resource_node *rm_res)
 	rm_res->res_state = CAM_ISP_RESOURCE_STATE_STREAMING;
 
 	CAM_DBG(CAM_SFE,
-		"Start SFE:%d RM:%d offset:0x%X width:%d[in bytes: %u] height:%d",
+		"Start SFE:%d RM:%d offset:0x%X width:%d [in bytes: %u] height:%d unpack_fmt:%d stride:%d latency_buf_alloc:%u",
 		rm_data->common_data->core_index, rm_data->index,
-		(uint32_t) rm_data->hw_regs->cfg,
-		rm_data->width, width_in_bytes, rm_data->height);
-	CAM_DBG(CAM_SFE, "RM:%d pk_fmt:%d stride:%d", rm_data->index,
-		rm_data->unpacker_cfg, rm_data->stride);
+		rm_data->offset, rm_data->width, width_in_bytes,
+		rm_data->height, rm_data->unpacker_cfg, rm_data->stride,
+		rm_data->latency_buf_allocation);
 
 	return 0;
 }
@@ -658,10 +657,7 @@ static int cam_sfe_bus_rd_handle_irq_top_half(uint32_t evt_id,
 		CAM_ERR(CAM_SFE, "SFE:%d constraint violation:0x%x",
 			bus_priv->common_data.core_index,
 			evt_payload->constraint_violation);
-		cam_irq_controller_disable_irq(
-			bus_priv->common_data.bus_irq_controller,
-			 bus_priv->error_irq_handle);
-		cam_irq_controller_clear_and_mask(evt_id,
+		cam_irq_controller_disable_all(
 			bus_priv->common_data.bus_irq_controller);
 	}
 
@@ -723,7 +719,8 @@ static int cam_sfe_bus_subscribe_error_irq(
 		cam_sfe_bus_rd_handle_irq,
 		NULL,
 		NULL,
-		NULL);
+		NULL,
+		CAM_IRQ_EVT_GROUP_0);
 
 	if (bus_priv->irq_handle < 1) {
 		CAM_ERR(CAM_SFE,
@@ -731,6 +728,9 @@ static int cam_sfe_bus_subscribe_error_irq(
 		bus_priv->irq_handle = 0;
 		return -EFAULT;
 	}
+
+	cam_irq_controller_register_dependent(bus_priv->common_data.sfe_irq_controller,
+		bus_priv->common_data.bus_irq_controller, sfe_top_irq_mask);
 
 	if (bus_priv->tasklet_info != NULL) {
 		bus_priv->error_irq_handle = cam_irq_controller_subscribe_irq(
@@ -741,7 +741,8 @@ static int cam_sfe_bus_subscribe_error_irq(
 			cam_sfe_bus_rd_handle_irq_top_half,
 			cam_sfe_bus_rd_handle_irq_bottom_half,
 			bus_priv->tasklet_info,
-			&tasklet_bh_api);
+			&tasklet_bh_api,
+			CAM_IRQ_EVT_GROUP_0);
 
 		if (bus_priv->error_irq_handle < 1) {
 			CAM_ERR(CAM_SFE, "Failed to subscribe error IRQ");
@@ -978,7 +979,8 @@ static int cam_sfe_bus_start_bus_rd(
 			cam_sfe_bus_rd_out_done_top_half,
 			cam_sfe_bus_rd_out_done_bottom_half,
 			sfe_bus_rd->tasklet_info,
-			&tasklet_bh_api);
+			&tasklet_bh_api,
+			CAM_IRQ_EVT_GROUP_0);
 
 		if (sfe_bus_rd->irq_handle < 1) {
 			CAM_ERR(CAM_SFE,
@@ -1040,6 +1042,9 @@ static int cam_sfe_bus_stop_bus_rd(
 			if (rc)
 				CAM_ERR(CAM_SFE, "Failed to unsubscribe top irq");
 			bus_priv->irq_handle = 0;
+			cam_irq_controller_unregister_dependent(
+				bus_priv->common_data.sfe_irq_controller,
+				bus_priv->common_data.bus_irq_controller);
 		}
 
 		if (bus_priv->error_irq_handle) {
@@ -1597,7 +1602,7 @@ static int cam_sfe_bus_rd_cache_config(void *priv, void *cmd_args,
 			sfe_bus_rd_data->rm_res[i]->res_priv;
 		rm_data->enable_caching = cache_cfg->use_cache;
 		rm_data->current_scid = cache_cfg->scid;
-		cache_cfg->rd_enabled = true;
+		cache_cfg->rd_cfg_done = true;
 
 		CAM_DBG(CAM_SFE, "SFE:%d RM:%d cache_enable:%s scid:%u",
 			rm_data->common_data->core_index,
@@ -1648,7 +1653,7 @@ static int cam_sfe_bus_rd_process_cmd(
 	case CAM_ISP_HW_CMD_BUF_UPDATE_RM:
 		rc = cam_sfe_bus_rd_config_rm(priv, cmd_args, arg_size);
 		break;
-	case CAM_ISP_HW_CMD_GET_SECURE_MODE:
+	case CAM_ISP_HW_CMD_GET_RM_SECURE_MODE:
 		rc = cam_sfe_bus_rd_get_secure_mode(priv, cmd_args, arg_size);
 		break;
 	case CAM_ISP_HW_CMD_FE_UPDATE_BUS_RD:
@@ -1721,11 +1726,12 @@ int cam_sfe_bus_rd_init(
 	bus_priv->common_data.sfe_irq_controller = sfe_irq_controller;
 	bus_priv->common_data.common_reg        = &bus_rd_hw_info->common_reg;
 	bus_priv->top_irq_shift                 = bus_rd_hw_info->top_irq_shift;
+	bus_priv->latency_buf_allocation        = bus_rd_hw_info->latency_buf_allocation;
 
 	rc = cam_irq_controller_init(drv_name,
 		bus_priv->common_data.mem_base,
 		&bus_rd_hw_info->common_reg.irq_reg_info,
-		&bus_priv->common_data.bus_irq_controller, true);
+		&bus_priv->common_data.bus_irq_controller);
 	if (rc) {
 		CAM_ERR(CAM_SFE, "IRQ controller init failed");
 		goto free_bus_priv;

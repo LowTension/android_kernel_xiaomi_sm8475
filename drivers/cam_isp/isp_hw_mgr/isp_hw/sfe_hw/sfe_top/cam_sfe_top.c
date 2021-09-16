@@ -1212,10 +1212,7 @@ static int cam_sfe_top_handle_err_irq_top_half(
 
 	base = top_priv->common_data.soc_info->reg_map[SFE_CORE_BASE_IDX].mem_base;
 	if (irq_status & top_priv->common_data.common_reg_data->error_irq_mask) {
-		cam_irq_controller_disable_irq(
-			top_priv->common_data.sfe_irq_controller,
-			top_priv->error_irq_handle);
-		cam_irq_controller_clear_and_mask(evt_id,
+		cam_irq_controller_disable_all(
 			top_priv->common_data.sfe_irq_controller);
 	}
 
@@ -1596,7 +1593,8 @@ int cam_sfe_top_start(
 			cam_sfe_top_handle_err_irq_top_half,
 			cam_sfe_top_handle_err_irq_bottom_half,
 			sfe_res->tasklet_info,
-			&tasklet_bh_api);
+			&tasklet_bh_api,
+			CAM_IRQ_EVT_GROUP_0);
 
 		if (top_priv->error_irq_handle < 1) {
 			CAM_ERR(CAM_SFE, "Failed to subscribe Top IRQ");
@@ -1622,7 +1620,8 @@ int cam_sfe_top_start(
 				cam_sfe_top_handle_irq_top_half,
 				cam_sfe_top_handle_irq_bottom_half,
 				sfe_res->tasklet_info,
-				&tasklet_bh_api);
+				&tasklet_bh_api,
+				CAM_IRQ_EVT_GROUP_0);
 
 			if (path_data->sof_eof_handle < 1) {
 				CAM_ERR(CAM_SFE,

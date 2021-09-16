@@ -2448,7 +2448,7 @@ static int cam_tfe_bus_process_cmd(void *priv,
 	case CAM_ISP_HW_CMD_GET_HFR_UPDATE:
 		rc = cam_tfe_bus_update_hfr(priv, cmd_args, arg_size);
 		break;
-	case CAM_ISP_HW_CMD_GET_SECURE_MODE:
+	case CAM_ISP_HW_CMD_GET_WM_SECURE_MODE:
 		rc = cam_tfe_bus_get_secure_mode(priv, cmd_args, arg_size);
 		break;
 	case CAM_ISP_HW_CMD_STRIPE_UPDATE:

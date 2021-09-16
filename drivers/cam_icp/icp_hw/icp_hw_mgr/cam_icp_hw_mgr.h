@@ -14,6 +14,7 @@
 #include "cam_hw_intf.h"
 #include "cam_a5_hw_intf.h"
 #include "hfi_session_defs.h"
+#include "hfi_intf.h"
 #include "cam_req_mgr_workq.h"
 #include "cam_mem_mgr.h"
 #include "cam_smmu_api.h"
@@ -74,6 +75,8 @@
  * to be with ICP hw
  */
 #define CAM_ICP_CTX_RESPONSE_TIME_THRESHOLD   300000
+
+struct hfi_mini_dump_info;
 
 /**
  * struct icp_hfi_mem_info
@@ -321,6 +324,7 @@ struct cam_icp_clk_info {
  * @devices: Devices of ICP hardware manager
  * @ctx_data: Context data
  * @icp_caps: ICP capabilities
+ * @mini_dump_cb: Mini dump cb
  * @icp_booted: Processor is booted i.e. firmware loaded
  * @icp_resumed: Processor is powered on
  * @iommu_hdl: Non secure IOMMU handle
@@ -372,6 +376,7 @@ struct cam_icp_hw_mgr {
 	struct cam_hw_intf **devices[CAM_ICP_DEV_MAX];
 	struct cam_icp_hw_ctx_data ctx_data[CAM_ICP_CTX_MAX];
 	struct cam_icp_query_cap_cmd icp_caps;
+	cam_icp_mini_dump_cb mini_dump_cb;
 
 	bool icp_booted;
 	bool icp_resumed;
@@ -413,6 +418,99 @@ struct cam_icp_hw_mgr {
 	bool bps_clk_state;
 	bool disable_ubwc_comp;
 	atomic_t recovery;
+};
+
+/**
+ * struct cam_icp_mini_dump_acquire_info - ICP mini dump device info
+ *
+ * @in_res: resource info used for clock and bandwidth calculation
+ * @out_res: output resource
+ * @num_out_res: number of output resources
+ * @dev_type: device type (IPE_RT/IPE_NON_RT/BPS)
+ * @secure_mode: camera mode (secure/non secure)
+ */
+struct cam_icp_mini_dump_acquire_info {
+	struct cam_icp_res_info out_res[ICP_MAX_OUTPUT_SUPPORTED];
+	struct cam_icp_res_info in_res;
+	uint16_t                num_out_res;
+	uint8_t                 dev_type;
+	uint8_t                 secure_mode;
+};
+
+/**
+ * struct hfi_frame_process_info
+ * @request_id: Request id list
+ * @num_out_res: Number of out syncs
+ * @out_res: Out sync info
+ * @in_resource: In sync info
+ * @submit_timestamp: Submit timestamp to hw
+ * @fw_process_flag: Frame process flag
+ */
+struct  hfi_frame_mini_dump_info {
+	uint64_t                              request_id[CAM_FRAME_CMD_MAX];
+	uint32_t                              num_out_res[CAM_FRAME_CMD_MAX];
+	uint32_t                              out_res[CAM_FRAME_CMD_MAX][CAM_MAX_OUT_RES];
+	uint32_t                              in_resource[CAM_FRAME_CMD_MAX];
+	ktime_t                               submit_timestamp[CAM_FRAME_CMD_MAX];
+	uint8_t                               fw_process_flag[CAM_FRAME_CMD_MAX];
+};
+
+/**
+ * struct cam_icp_hw_ctx_mini_dump
+ * @acquire: Acquire device info
+ * @hfi_frame: Frame  command
+ * @hw_ctx: Context private data
+ * @state: context state
+ * @ctx_id_string: Context id string
+ * @ctx_id: Context Id
+ */
+struct cam_icp_hw_ctx_mini_dump {
+	struct cam_icp_mini_dump_acquire_info acquire;
+	struct hfi_frame_mini_dump_info       hfi_frame;
+	void                                 *hw_ctx;
+	char                                  ctx_id_string[128];
+	uint8_t                               state;
+	uint8_t                               ctx_id;
+};
+
+/**
+ * struct cam_icp_hw_mini_dump_info
+ *
+ * @ctx: Context for minidump
+ * @hfi_info: hfi info
+ * @hfi_mem_info: hfi mem info
+ * @fw_img: FW image
+ * @recovery: To indicate if recovery is on
+ * @icp_booted: Indicate if ICP is booted
+ * @icp_resumed: Indicate if ICP is resumed
+ * @ipe_clk_state: IPE Clk state
+ * @bps_clk_state: BPS clk state
+ * @disable_ubwc_comp: Indicate if ubws comp is disabled
+ * @ipe0_enable: Is IPE0 enabled
+ * @ipe1_enable: Is IPE1 enabled
+ * @bps_enable:  Is BPS enabled
+ * @icp_pc_flag: Is ICP PC enabled
+ * @ipe_bps_pc_flag: Is IPE BPS PC enabled
+ * @icp_use_pil: Is PIL used
+ */
+struct cam_icp_hw_mini_dump_info {
+	struct cam_icp_hw_ctx_mini_dump   *ctx[CAM_ICP_CTX_MAX];
+	struct hfi_mini_dump_info          hfi_info;
+	struct icp_hfi_mem_info            hfi_mem_info;
+	void                              *fw_img;
+	uint32_t                           recovery;
+	uint32_t                           num_context;
+	bool                               icp_booted;
+	bool                               icp_resumed;
+	bool                               ipe_clk_state;
+	bool                               bps_clk_state;
+	bool                               disable_ubwc_comp;
+	bool                               ipe0_enable;
+	bool                               ipe1_enable;
+	bool                               bps_enable;
+	bool                               icp_pc_flag;
+	bool                               ipe_bps_pc_flag;
+	bool                               icp_use_pil;
 };
 
 static int cam_icp_mgr_hw_close(void *hw_priv, void *hw_close_args);

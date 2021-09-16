@@ -32,6 +32,7 @@
 #include "cam_common_util.h"
 #include "cam_cpas_api.h"
 #include "cam_sync_api.h"
+#include "cam_presil_hw_access.h"
 
 #define CAM_JPEG_HW_ENTRIES_MAX                       20
 
@@ -988,6 +989,18 @@ static int cam_jpeg_mgr_prepare_hw_update(void *hw_mgr_priv,
 
 	rc = cam_jpeg_add_command_buffers(packet, prepare_args, ctx_data);
 
+	if (cam_presil_mode_enabled()) {
+		CAM_INFO(CAM_JPEG, "Sending relevant buffers for request:%llu to presil",
+			packet->header.request_id);
+		rc = cam_presil_send_buffers_from_packet(packet, hw_mgr->iommu_hdl,
+			hw_mgr->cdm_iommu_hdl);
+		if (rc) {
+			CAM_ERR(CAM_JPEG, "Error sending buffers for request:%llu to presil",
+				packet->header.request_id);
+			return rc;
+		}
+	}
+
 	CAM_DBG(CAM_JPEG, "will wait on input sync sync_id %d",
 		prepare_args->in_map_entries[0].sync_id);
 
@@ -1421,7 +1434,7 @@ static int cam_jpeg_mgr_acquire_hw(void *hw_mgr_priv, void *acquire_hw_args)
 	mutex_unlock(&ctx_data->ctx_mutex);
 
 	hw_mgr->ctx_data[ctx_id].ctxt_event_cb = args->event_cb;
-
+	hw_mgr->ctx_data[ctx_id].mini_dump_cb = args->mini_dump_cb;
 
 	if (copy_to_user((void __user *)args->acquire_info,
 		&jpeg_dev_acquire_info,
@@ -1971,8 +1984,83 @@ static int cam_jpeg_mgr_cmd(void *hw_mgr_priv, void *cmd_args)
 	return rc;
 }
 
+static unsigned long cam_jpeg_hw_mgr_mini_dump_cb(void *dst, unsigned long len)
+{
+	struct cam_jpeg_hw_mini_dump_req *md_req;
+	struct cam_jpeg_hw_mgr_mini_dump *md;
+	struct cam_jpeg_hw_ctx_mini_dump *ctx_md;
+	struct cam_jpeg_hw_ctx_data      *ctx;
+	struct cam_jpeg_hw_mgr           *hw_mgr;
+	struct cam_jpeg_hw_cfg_req       *req;
+	struct cam_hw_mini_dump_args      hw_dump_args;
+	uint32_t                          dev_type;
+	uint32_t                          i = 0;
+	unsigned long                     dumped_len = 0;
+	unsigned long                     remain_len = len;
+
+	if (!dst || len < sizeof(*md)) {
+		CAM_ERR(CAM_JPEG, "Invalid params dst %pk len %lu", dst, len);
+		return 0;
+	}
+
+	md = (struct cam_jpeg_hw_mgr_mini_dump *)dst;
+	md->num_context = 0;
+	hw_mgr = &g_jpeg_hw_mgr;
+	for (i = 0; i < CAM_JPEG_RES_TYPE_MAX; i++) {
+		if (hw_mgr->devices[i][0]->hw_ops.process_cmd) {
+			hw_mgr->devices[i][0]->hw_ops.process_cmd(
+				hw_mgr->devices[i][0]->hw_priv,
+				CAM_JPEG_CMD_MINI_DUMP,
+				&md->core[i],
+				sizeof(struct cam_jpeg_mini_dump_core_info));
+		}
+	}
+
+	dumped_len += sizeof(*md);
+	remain_len = len - dumped_len;
+	for (i = 0; i < CAM_JPEG_CTX_MAX; i++) {
+		ctx = &hw_mgr->ctx_data[i];
+		if (!ctx->in_use)
+			continue;
+
+		if (remain_len < sizeof(*ctx_md))
+			goto end;
+
+		md->num_context++;
+		ctx_md = (struct cam_jpeg_hw_ctx_mini_dump *)
+			    ((uint8_t *)dst + dumped_len);
+		md->ctx[i] = ctx_md;
+		ctx_md->in_use  = ctx->in_use;
+		memcpy(&ctx_md->acquire_info, &ctx->jpeg_dev_acquire_info,
+			sizeof(struct cam_jpeg_acquire_dev_info));
+		dev_type = ctx->jpeg_dev_acquire_info.dev_type;
+		req = hw_mgr->dev_hw_cfg_args[dev_type][0];
+		if (req) {
+			md_req = &md->cfg_req[dev_type];
+			memcpy(&md_req->submit_timestamp, &req->submit_timestamp,
+				sizeof(ktime_t));
+			md_req->req_id = req->req_id;
+			md_req->dev_type = req->dev_type;
+			md_req->num_hw_entry_processed = req->num_hw_entry_processed;
+		}
+
+		hw_dump_args.len = remain_len;
+		hw_dump_args.bytes_written = 0;
+		hw_dump_args.start_addr = (void *)((uint8_t *)dst + dumped_len);
+		hw_mgr->mini_dump_cb(ctx->context_priv, &hw_dump_args);
+		if (dumped_len + hw_dump_args.bytes_written >= len)
+			goto end;
+
+		dumped_len += hw_dump_args.bytes_written;
+		remain_len = len - dumped_len;
+	}
+
+end:
+	return dumped_len;
+}
+
 int cam_jpeg_hw_mgr_init(struct device_node *of_node, uint64_t *hw_mgr_hdl,
-	int *iommu_hdl)
+	int *iommu_hdl, cam_jpeg_mini_dump_cb mini_dump_cb)
 {
 	int i, rc;
 	uint32_t num_dev;
@@ -2048,6 +2136,8 @@ int cam_jpeg_hw_mgr_init(struct device_node *of_node, uint64_t *hw_mgr_hdl,
 	g_jpeg_hw_mgr.jpeg_caps.dev_ver[CAM_JPEG_DEV_DMA].hw_ver.incr  = 0;
 	g_jpeg_hw_mgr.jpeg_caps.dev_ver[CAM_JPEG_DEV_DMA].hw_ver.reserved = 0;
 
+	g_jpeg_hw_mgr.mini_dump_cb = mini_dump_cb;
+
 	rc = cam_jpeg_setup_workqs();
 	if (rc) {
 		CAM_ERR(CAM_JPEG, "setup work qs failed  %d", rc);
@@ -2056,6 +2146,8 @@ int cam_jpeg_hw_mgr_init(struct device_node *of_node, uint64_t *hw_mgr_hdl,
 
 	if (iommu_hdl)
 		*iommu_hdl = g_jpeg_hw_mgr.iommu_hdl;
+
+	cam_common_register_mini_dump_cb(cam_jpeg_hw_mgr_mini_dump_cb, "CAM_JPEG");
 
 	return rc;
 

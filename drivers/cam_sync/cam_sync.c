@@ -488,6 +488,7 @@ static int cam_sync_handle_create(struct cam_private_ioctl_arg *k_ioctl)
 		u64_to_user_ptr(k_ioctl->ioctl_ptr),
 		k_ioctl->size))
 		return -EFAULT;
+	sync_create.name[SYNC_DEBUG_NAME_LEN] = '\0';
 
 	result = cam_sync_create(&sync_create.sync_obj,
 		sync_create.name);
