@@ -44,6 +44,7 @@
 #define CAM_ISP_IFE_LITE_OUT_RES_PREPROCESS_RAW  (CAM_ISP_IFE_OUT_RES_BASE + 32)
 #define CAM_ISP_IFE_OUT_RES_STATS_CAF            (CAM_ISP_IFE_OUT_RES_BASE + 33)
 #define CAM_ISP_IFE_OUT_RES_STATS_BAYER_RS       (CAM_ISP_IFE_OUT_RES_BASE + 34)
+#define CAM_ISP_IFE_OUT_RES_PDAF_PARSED_DATA     (CAM_ISP_IFE_OUT_RES_BASE + 35)
 
 /* IFE input port resource type (global unique) */
 #define CAM_ISP_IFE_IN_RES_BASE                 0x4000
