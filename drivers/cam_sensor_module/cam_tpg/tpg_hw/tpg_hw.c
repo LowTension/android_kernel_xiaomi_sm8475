@@ -240,9 +240,11 @@ static int tpg_hw_soc_disable(struct tpg_hw *hw)
 		CAM_ERR(CAM_TPG, "TPG[%d] Disable platform failed %d",
 				hw->hw_idx, rc);
 
-	if (cam_cpas_stop(hw->cpas_handle)) {
+	if ((rc = cam_cpas_stop(hw->cpas_handle))) {
 		CAM_ERR(CAM_TPG, "TPG[%d] CPAS stop failed",
 				hw->hw_idx);
+	} else {
+		hw->state = TPG_HW_STATE_HW_DISABLED;
 	}
 
 	return rc;
@@ -287,6 +289,7 @@ static int tpg_hw_soc_enable(
 				hw->hw_idx);
 		goto stop_cpas;
 	}
+	hw->state = TPG_HW_STATE_HW_ENABLED;
 
 	return rc;
 stop_cpas:
@@ -634,10 +637,16 @@ int tpg_hw_reset(struct tpg_hw *hw)
 		CAM_ERR(CAM_TPG, "TPG[%d] Unable to free up the streams", hw->hw_idx);
 
 	/* disable the hw */
-	if (cam_cpas_stop(hw->cpas_handle)) {
+	mutex_lock(&hw->mutex);
+	if ((hw->state != TPG_HW_STATE_HW_DISABLED) &&
+			cam_cpas_stop(hw->cpas_handle)) {
 		CAM_ERR(CAM_TPG, "TPG[%d] CPAS stop failed",
 				hw->hw_idx);
+		rc = -EINVAL;
+	} else {
+		hw->state = TPG_HW_STATE_HW_DISABLED;
 	}
+	mutex_unlock(&hw->mutex);
 
 	return rc;
 }
