@@ -354,7 +354,7 @@ struct cam_sfe_acquire_args {
  *                          successful initialization
  * @hw_idx:                 Index of SFE HW
  */
-int cam_sfe_hw_init(struct cam_hw_intf **sfe_hw, uint32_t hw_idx);
+int cam_sfe_hw_init(struct cam_isp_hw_intf_data **sfe_hw, uint32_t hw_idx);
 
 #endif /* _CAM_SFE_HW_INTF_H_ */
 

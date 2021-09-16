@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CAM_SFE_SOC_H_
@@ -18,10 +18,14 @@
  *                           This handle is used for all further interface
  *                           with CPAS.
  * @cpas_version:            CPAS version
+ * @num_pid:                 Number of pids of sfe
+ * @pid:                     SFE pid values list
  */
 struct cam_sfe_soc_private {
 	uint32_t    cpas_handle;
 	uint32_t    cpas_version;
+	uint32_t    num_pid;
+	uint32_t    pid[CAM_ISP_HW_MAX_PID_VAL];
 };
 
 /*

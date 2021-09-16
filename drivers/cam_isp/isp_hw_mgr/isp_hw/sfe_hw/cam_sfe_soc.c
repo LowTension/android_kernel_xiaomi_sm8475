@@ -10,12 +10,30 @@
 
 static int cam_sfe_get_dt_properties(struct cam_hw_soc_info *soc_info)
 {
-	int rc = 0;
+	struct cam_sfe_soc_private       *soc_private = soc_info->soc_private;
+	struct platform_device           *pdev = soc_info->pdev;
+	uint32_t                          num_pid = 0;
+	int                               i, rc = 0;
 
 	rc = cam_soc_util_get_dt_properties(soc_info);
-	if (rc)
+	if (rc) {
 		CAM_ERR(CAM_SFE, "Error get DT properties failed rc=%d", rc);
+		goto end;
+	}
 
+	soc_private->num_pid = 0;
+	num_pid = of_property_count_u32_elems(pdev->dev.of_node, "cam_hw_pid");
+	CAM_DBG(CAM_SFE, "sfe:%d pid count %d", soc_info->index, num_pid);
+
+	if (num_pid <= 0  || num_pid > CAM_ISP_HW_MAX_PID_VAL)
+		goto end;
+
+	for (i = 0; i < num_pid; i++)
+		of_property_read_u32_index(pdev->dev.of_node, "cam_hw_pid", i,
+			&soc_private->pid[i]);
+
+	soc_private->num_pid = num_pid;
+end:
 	return rc;
 }
 

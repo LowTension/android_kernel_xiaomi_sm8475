@@ -128,7 +128,7 @@ struct cam_sfe_bus_rd_priv {
 		CAM_SFE_BUS_RD_MAX_CLIENTS];
 	struct cam_isp_resource_node  sfe_bus_rd[
 		CAM_SFE_BUS_RD_MAX];
-
+	struct cam_sfe_bus_rd_hw_info      *bus_rd_hw_info;
 	int                                 irq_handle;
 	int                                 error_irq_handle;
 	void                               *tasklet_info;
@@ -1524,6 +1524,46 @@ static int cam_sfe_bus_rd_update_rm_core_cfg(
 	return 0;
 }
 
+static int cam_sfe_bus_rd_get_res_for_mid(
+	struct cam_sfe_bus_rd_priv *bus_priv,
+	void *cmd_args, uint32_t arg_size)
+{
+	struct cam_sfe_bus_rd_hw_info          *hw_info;
+	struct cam_isp_hw_get_cmd_update       *cmd_update = cmd_args;
+	struct cam_isp_hw_get_res_for_mid      *get_res = NULL;
+	int i, j;
+
+	get_res = (struct cam_isp_hw_get_res_for_mid *)cmd_update->data;
+	if (!get_res) {
+		CAM_ERR(CAM_SFE,
+			"invalid get resource for mid paramas");
+		return -EINVAL;
+	}
+
+	hw_info =  bus_priv->bus_rd_hw_info;
+	for (i = 0; i < bus_priv->num_bus_rd_resc; i++) {
+		for (j = 0; j < CAM_SFE_BUS_MAX_MID_PER_PORT; j++) {
+			if (hw_info->sfe_bus_rd_info[i].mid[j] == get_res->mid)
+				goto end;
+		}
+	}
+
+	/*
+	 * Do not update out_res_id in case of no match.
+	 * Correct value will be dumped in hw mgr
+	 */
+	if (i == bus_priv->num_bus_rd_resc) {
+		CAM_INFO(CAM_SFE, "mid:%d does not match with any out resource", get_res->mid);
+		return 0;
+	}
+
+end:
+	CAM_INFO(CAM_SFE, "match mid :%d  out resource: 0x%x found",
+		get_res->mid, bus_priv->sfe_bus_rd[i].res_id);
+	get_res->out_res_id = bus_priv->sfe_bus_rd[i].res_id;
+	return 0;
+}
+
 static int cam_sfe_bus_init_hw(void *hw_priv,
 	void *init_hw_args, uint32_t arg_size)
 {
@@ -1668,6 +1708,9 @@ static int cam_sfe_bus_rd_process_cmd(
 	case CAM_ISP_HW_CMD_RM_ENABLE_DISABLE:
 		rc = cam_sfe_bus_rd_update_rm_core_cfg(priv, cmd_args, arg_size);
 		break;
+	case CAM_ISP_HW_CMD_GET_RES_FOR_MID:
+		rc = cam_sfe_bus_rd_get_res_for_mid(priv, cmd_args, arg_size);
+		break;
 	default:
 		CAM_ERR_RATE_LIMIT(CAM_SFE,
 			"Invalid SFE BUS RD command type: %d",
@@ -1727,6 +1770,7 @@ int cam_sfe_bus_rd_init(
 	bus_priv->common_data.common_reg        = &bus_rd_hw_info->common_reg;
 	bus_priv->top_irq_shift                 = bus_rd_hw_info->top_irq_shift;
 	bus_priv->latency_buf_allocation        = bus_rd_hw_info->latency_buf_allocation;
+	bus_priv->bus_rd_hw_info = bus_rd_hw_info;
 
 	rc = cam_irq_controller_init(drv_name,
 		bus_priv->common_data.mem_base,
