@@ -407,7 +407,7 @@ struct cam_req_mgr_core_link {
 	int32_t                              num_sync_links;
 	bool                                 sync_link_sof_skip;
 	uint32_t                             open_req_cnt;
-	uint32_t                             last_flush_id;
+	int64_t                              last_flush_id;
 	atomic_t                             is_used;
 	bool                                 is_master;
 	bool                                 initial_skip;

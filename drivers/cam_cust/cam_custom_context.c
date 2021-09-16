@@ -468,7 +468,7 @@ static int __cam_custom_ctx_flush_req(struct cam_context *ctx,
 	if (list_empty(req_list)) {
 		CAM_DBG(CAM_CUSTOM, "request list is empty");
 		if (flush_req->type == CAM_REQ_MGR_FLUSH_TYPE_CANCEL_REQ) {
-			CAM_ERR(CAM_CUSTOM, "no request to cancel");
+			CAM_INFO(CAM_CUSTOM, "no request to cancel (req:%lld)", flush_req->req_id);
 			return -EINVAL;
 		} else {
 			return 0;
