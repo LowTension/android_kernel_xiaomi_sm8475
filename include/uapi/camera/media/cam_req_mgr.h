@@ -450,16 +450,26 @@ struct cam_mem_cache_ops_cmd {
  * @CAM_REQ_MGR_ISP_UNREPORTED_ERROR         : No Error Code reported
  * @CAM_REQ_MGR_LINK_STALLED_ERROR           : Unable to apply requests on link
  * @CAM_REQ_MGR_CSID_FATAL_ERROR             : CSID FATAL Error
- * @CAM_REQ_MGR_CSID_FIFO_OVERFLOW_ERROR     : CSID FIFO Overflow
+ * @CAM_REQ_MGR_CSID_FIFO_OVERFLOW_ERROR     : CSID OutputFIFO Overflow
  * @CAM_REQ_MGR_CSID_RECOVERY_OVERFLOW_ERROR : CSID Recovery Overflow
+ * @CAM_REQ_MGR_CSID_LANE_FIFO_OVERFLOW_ERROR: CSID Lane fifo overflow
  * @CAM_REQ_MGR_CSID_PIXEL_COUNT_MISMATCH    : CSID Pixel Count Mismatch
+ * @CAM_REQ_MGR_CSID_RX_PKT_HDR_CORRUPTION   : Packet header received by the csid rx is corrupted
+ * @CAM_REQ_MGR_CSID_MISSING_PKT_HDR_DATA    : Lesser data received in packet header than expected
+ * @CAM_REQ_MGR_CSID_ERR_ON_SENSOR_SWITCHING : Fatal Error encountered while switching the sensors
+ * @CAM_REQ_MGR_CSID_UNBOUNDED_FRAME         : No EOF in the frame or the frame started with eof
  */
 #define CAM_REQ_MGR_ISP_UNREPORTED_ERROR                 0
 #define CAM_REQ_MGR_LINK_STALLED_ERROR                   BIT(0)
 #define CAM_REQ_MGR_CSID_FATAL_ERROR                     BIT(1)
 #define CAM_REQ_MGR_CSID_FIFO_OVERFLOW_ERROR             BIT(2)
 #define CAM_REQ_MGR_CSID_RECOVERY_OVERFLOW_ERROR         BIT(3)
+#define CAM_REQ_MGR_CSID_LANE_FIFO_OVERFLOW_ERROR        BIT(4)
 #define CAM_REQ_MGR_CSID_PIXEL_COUNT_MISMATCH            BIT(5)
+#define CAM_REQ_MGR_CSID_RX_PKT_HDR_CORRUPTION           BIT(6)
+#define CAM_REQ_MGR_CSID_MISSING_PKT_HDR_DATA            BIT(7)
+#define CAM_REQ_MGR_CSID_ERR_ON_SENSOR_SWITCHING         BIT(8)
+#define CAM_REQ_MGR_CSID_UNBOUNDED_FRAME                 BIT(9)
 
 /**
  * struct cam_req_mgr_error_msg
