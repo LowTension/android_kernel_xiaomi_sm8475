@@ -255,7 +255,7 @@ end:
  * @req_id     : req_id which is not ready
  * @pd         : pipeline delay
  * @masked_val : masked value holds the bit for all devices
- *               that don't have the req_id ready for a given
+ *               that have the req_id ready for a given
  *               pipeline delay
  * @pd         : pipeline delay
  *
@@ -481,7 +481,6 @@ static int __cam_req_mgr_traverse(
 	int32_t                      curr_idx = traverse_data->idx;
 	struct cam_req_mgr_req_tbl  *tbl;
 	struct cam_req_mgr_apply    *apply_data;
-	struct cam_req_mgr_tbl_slot *slot = NULL;
 
 	if (!traverse_data->tbl || !traverse_data->apply_data) {
 		CAM_ERR(CAM_CRM, "NULL pointer %pK %pK",
@@ -492,7 +491,6 @@ static int __cam_req_mgr_traverse(
 
 	tbl = traverse_data->tbl;
 	apply_data = traverse_data->apply_data;
-	slot = &tbl->slot[curr_idx];
 
 	while (tbl) {
 		CAM_DBG(CAM_CRM,
@@ -529,7 +527,7 @@ static int __cam_req_mgr_traverse(
 				CRM_GET_REQ_ID(traverse_data->in_q, curr_idx);
 			traverse_data->result_data.pd = tbl->pd;
 			traverse_data->result_data.masked_value =
-				(tbl->dev_mask & slot->req_ready_map);
+				(tbl->dev_mask & tbl->slot[curr_idx].req_ready_map);
 			SET_FAILURE_BIT(traverse_data->result, tbl->pd);
 			rc = -EAGAIN;
 			break;
