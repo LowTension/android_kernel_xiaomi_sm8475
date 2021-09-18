@@ -933,10 +933,9 @@ static int cam_cpas_axi_consolidate_path_votes(
 
 		if (!path_found) {
 			CAM_ERR(CAM_CPAS,
-				"Client [%s][%d] Consolidated path not found for path=%d, transac=%d",
-				cpas_client->data.identifier,
-				cpas_client->data.cell_index,
-				path_data_type, transac_type);
+				"Client [%s][%d] i=%d num_paths=%d Consolidated path not found for path=%d, transac=%d",
+				cpas_client->data.identifier, cpas_client->data.cell_index, i,
+				axi_vote->num_paths, path_data_type, transac_type);
 			return -EINVAL;
 		}
 	}
