@@ -9008,6 +9008,7 @@ static int cam_isp_packet_generic_blob_handler(void *user_data,
 	case CAM_ISP_GENERIC_BLOB_TYPE_SFE_FE_CONFIG:
 	case CAM_ISP_GENERIC_BLOB_TYPE_SFE_SCRATCH_BUF_CFG:
 	case CAM_ISP_GENERIC_BLOB_TYPE_SFE_EXP_ORDER_CFG:
+	case CAM_ISP_GENERIC_BLOB_TYPE_FPS_CONFIG:
 		break;
 	case CAM_ISP_GENERIC_BLOB_TYPE_DYNAMIC_MODE_SWITCH: {
 		struct cam_isp_mode_switch_info    *mup_config;
@@ -9051,28 +9052,6 @@ static int cam_isp_packet_generic_blob_handler(void *user_data,
 		if (rc)
 			CAM_ERR(CAM_ISP,
 				"BW limit update failed for IFE rc: %d", rc);
-	}
-		break;
-	case CAM_ISP_GENERIC_BLOB_TYPE_FPS_CONFIG: {
-		struct cam_fps_config *fps_config;
-		struct cam_isp_prepare_hw_update_data   *prepare_hw_data;
-
-		if (blob_size < sizeof(struct cam_fps_config)) {
-			CAM_ERR(CAM_ISP, "Invalid fps blob size %u expected %u",
-				blob_size, sizeof(struct cam_fps_config));
-			return -EINVAL;
-		}
-
-		fps_config = (struct cam_fps_config *)blob_data;
-
-		prepare_hw_data = (struct cam_isp_prepare_hw_update_data *)
-				prepare->priv;
-		if (fps_config->fps)
-			prepare_hw_data->fps = fps_config->fps;
-		CAM_DBG(CAM_ISP, "FPS value %u ctx %d req id %lld",
-			fps_config->fps, ife_mgr_ctx->ctx_index,
-			prepare_hw_data->packet->header.request_id);
-
 	}
 		break;
 	case CAM_ISP_GENERIC_BLOB_TYPE_INIT_CONFIG: {
@@ -9568,8 +9547,8 @@ static int cam_sfe_packet_generic_blob_handler(void *user_data,
 	case CAM_ISP_GENERIC_BLOB_TYPE_CSID_QCFA_CONFIG:
 	case CAM_ISP_GENERIC_BLOB_TYPE_SENSOR_BLANKING_CONFIG:
 	case CAM_ISP_GENERIC_BLOB_TYPE_DISCARD_INITIAL_FRAMES:
-	case CAM_ISP_GENERIC_BLOB_TYPE_FPS_CONFIG:
 	case CAM_ISP_GENERIC_BLOB_TYPE_INIT_CONFIG:
+	case CAM_ISP_GENERIC_BLOB_TYPE_FPS_CONFIG:
 		break;
 	default:
 		CAM_WARN(CAM_ISP, "Invalid blob type: %u", blob_type);

@@ -84,13 +84,9 @@
  * @CAM_REQ_MGR_SYNC_MODE_NO_SYNC: Req mgr will apply non-sync mode for this
  * request.
  * @CAM_REQ_MGR_SYNC_MODE_SYNC: Req mgr will apply sync mode for this request.
- * @CAM_REQ_MGR_SYNC_MODE_INITIAL_SYNC: Req mgr will apply initial sync
- * mode for this request. Only first few request before sync mode will apply
- * transition sync mode.
  */
-#define CAM_REQ_MGR_SYNC_MODE_NO_SYNC            0
-#define CAM_REQ_MGR_SYNC_MODE_SYNC               1
-#define CAM_REQ_MGR_SYNC_MODE_INITIAL_SYNC       2
+#define CAM_REQ_MGR_SYNC_MODE_NO_SYNC   0
+#define CAM_REQ_MGR_SYNC_MODE_SYNC      1
 
 /**
  * struct cam_req_mgr_event_data

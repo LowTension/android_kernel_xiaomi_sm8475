@@ -43,10 +43,6 @@
 #define VERSION_2  2
 #define CAM_REQ_MGR_MAX_TRIGGERS   2
 
-#define CAM_REQ_MGR_INIT_SYNC_REQ_NUM 5
-
-#define CAM_REQ_MGR_SYNC_MISMATCH_THRESHOLD 3
-
 /**
  * enum crm_req_eof_trigger_type
  * @codes: to identify which type of eof trigger for next slot
@@ -268,7 +264,7 @@ struct cam_req_mgr_req_tbl {
  * - members updated due to external events
  * @recover            : if user enabled recovery for this request.
  * @req_id             : mask tracking which all devices have request ready
- * @sync_mode          : Modified sync mode in which req id in this slot has to applied
+ * @sync_mode          : Sync mode in which req id in this slot has to applied
  * @additional_timeout : Adjusted watchdog timeout value associated with
  * this request
  */
@@ -338,50 +334,6 @@ struct cam_req_mgr_connected_device {
 };
 
 /**
- * struct cam_req_mgr_sof_time
- * - Frame sof time in ns
- * @csid_timestamp_ns        : CSID SOF timestamp value
- * @prev_csid_timestamp_ns   : Previous CSID SOF timestamp value
- * @boottime_ns              : SOF Boottime value
- * @last_sof_trigger_jiffies : Record the jiffies of last sof trigger jiffies
- */
-struct cam_req_mgr_sof_time {
-	uint64_t          boottime_ns;
-	uint64_t          csid_timestamp_ns;
-	uint64_t          prev_csid_timestamp_ns;
-	uint64_t          last_sof_trigger_jiffies;
-};
-
-/**
- * struct cam_req_mgr_sync_data
- * - Sync link data and properties
- * @num_sync_link          : total number of sync links
- * @sync_link              : array of pointer to the sync link for synchronization
- * @initial_sync_req       : The initial req which is required to sync with the
- *                           other link
- * @modified_init_sync_req : Modified initial req which is required to sync
- *                           with the other link
- * @sync_link_sof_skip     : flag determines if a pkt is not available for a given
- *                           frame in a particular link skip corresponding
- *                           frame in sync link as well.
- * @sync_frame_id          : current frame id of sync link
- * @sof_time               : sof timing value in different format
- * @is_sync_req            : flag used for deciding sync and non-sync
- * @sync_mismatch_count    : counter to store number of frame sync mismatch
- */
-struct cam_req_mgr_sync_data {
-	int32_t                        num_sync_link;
-	struct cam_req_mgr_core_link  *sync_link[MAXIMUM_LINKS_PER_SESSION];
-	int64_t                        initial_sync_req;
-	int64_t                        modified_init_sync_req;
-	bool                           sync_link_sof_skip;
-	uint64_t                       sync_frame_id;
-	struct cam_req_mgr_sof_time    sof_time;
-	bool                           is_sync_req;
-	int32_t                        sync_mismatch_count;
-};
-
-/**
  * struct cam_req_mgr_core_link
  * -  Link Properties
  * @link_hdl             : Link identifier
@@ -404,33 +356,36 @@ struct cam_req_mgr_sync_data {
  * @parent               : pvt data - link's parent is session
  * @lock                 : mutex lock to guard link data operations
  * @link_state_spin_lock : spin lock to protect link state variable
- * @sync_data            : sync data datails needed in sync mode
+ * @sync_link            : array of pointer to the sync link for synchronization
+ * @num_sync_links       : num of links sync associated with this link
+ * @sync_link_sof_skip   : flag determines if a pkt is not available for a given
+ *                         frame in a particular link skip corresponding
+ *                         frame in sync link as well.
  * @open_req_cnt         : Counter to keep track of open requests that are yet
  *                         to be serviced in the kernel.
  * @last_flush_id        : Last request to flush
  * @is_used              : 1 if link is in use else 0
  * @is_master            : Based on pd among links, the link with the highest pd
  *                         is assigned as master
- * @initial_skip         : Flag to determine if initial req need to skip for
- *                         diff pd
+ * @initial_skip         : Flag to determine if slave has started streaming in
+ *                         master-slave sync
  * @in_msync_mode        : Flag to determine if a link is in master-slave mode
+ * @initial_sync_req     : The initial req which is required to sync with the
+ *                         other link
  * @retry_cnt            : Counter that tracks number of attempts to apply
  *                         the same req
  * @is_shutdown          : Flag to indicate if link needs to be disconnected
  *                         as part of shutdown.
+ * @sof_timestamp_value  : SOF timestamp value
+ * @prev_sof_timestamp   : Previous SOF timestamp value
  * @dual_trigger         : Links needs to wait for two triggers prior to
  *                         applying the settings
  * @trigger_cnt          : trigger count value per device initiating the trigger
  * @eof_event_cnt        : Atomic variable to track the number of EOF requests
  * @skip_init_frame      : skip initial frames crm_wd_timer validation in the
  *                         case of long exposure use case
+ * @last_sof_trigger_jiffies : Record the jiffies of last sof trigger jiffies
  * @wq_congestion        : Indicates if WQ congestion is detected or not
- * @activate_seq         : sequence in which link is activated
- * @frame_id             : current frame id
- * @skip_apply_count     : Counter that track number of frames to skip apply request
- * @num_isp_dev          : number of isp dev in a link
- * @retry_threshold      : number of times to retry apply on increased threshold
- * @fps                  : current frame rate
  */
 struct cam_req_mgr_core_link {
 	int32_t                              link_hdl;
@@ -447,28 +402,28 @@ struct cam_req_mgr_core_link {
 	void                                *parent;
 	struct mutex                         lock;
 	spinlock_t                           link_state_spin_lock;
-	struct cam_req_mgr_sync_data         sync_data;
+	struct cam_req_mgr_core_link
+			*sync_link[MAXIMUM_LINKS_PER_SESSION - 1];
+	int32_t                              num_sync_links;
+	bool                                 sync_link_sof_skip;
 	uint32_t                             open_req_cnt;
 	uint32_t                             last_flush_id;
 	atomic_t                             is_used;
 	bool                                 is_master;
-	uint32_t                             initial_skip;
+	bool                                 initial_skip;
 	bool                                 in_msync_mode;
+	int64_t                              initial_sync_req;
 	uint32_t                             retry_cnt;
 	bool                                 is_shutdown;
+	uint64_t                             sof_timestamp;
+	uint64_t                             prev_sof_timestamp;
 	bool                                 dual_trigger;
 	uint32_t trigger_cnt[CAM_REQ_MGR_MAX_TRIGGERS]
 				[CAM_TRIGGER_MAX_POINTS + 1];
 	atomic_t                             eof_event_cnt;
 	bool                                 skip_init_frame;
+	uint64_t                             last_sof_trigger_jiffies;
 	bool                                 wq_congestion;
-	int32_t                              activate_seq;
-	uint64_t                             frame_id;
-	int32_t                              skip_apply_count;
-	bool                                 skip_sync_apply;
-	uint32_t                             num_isp_dev;
-	uint32_t                             retry_threshold;
-	int32_t                              fps;
 };
 
 /**
@@ -502,33 +457,11 @@ struct cam_req_mgr_core_session {
  * @session_head : list head holding sessions
  * @crm_lock     : mutex lock to protect session creation & destruction
  * @recovery_on_apply_fail : Recovery on apply failure using debugfs.
- * @bitmap       : bitmap to store index of link
- * @max_delay    : max pipeline delay in a session
  */
 struct cam_req_mgr_core_device {
 	struct list_head             session_head;
 	struct mutex                 crm_lock;
 	bool                         recovery_on_apply_fail;
-	DECLARE_BITMAP(bitmap, MAXIMUM_LINKS_PER_SESSION);
-	uint32_t                     max_delay;
-};
-
-/**
- * struct cam_req_mgr_dump_link_data
- * - Dump data
- * @m_link          : master link handle
- * @s_link          : slave link handle
- * @m_req_id        : master req id
- * @s_req_id        : slave req id
- * @dev_info        : current timing data of slave link
- *
- */
-struct cam_req_mgr_dump_link_data {
-	struct cam_req_mgr_core_link      *m_link;
-	struct cam_req_mgr_core_link      *s_link;
-	uint64_t                           m_req_id;
-	uint64_t                           s_req_id;
-	struct cam_req_mgr_dev_info        dev_data;
 };
 
 /**
@@ -575,7 +508,6 @@ struct cam_req_mgr_req_data_mini_dump {
  * struct cam_req_mgr_core_link_mini_dump
  * @workq                : Work q information
  * @req                  : req data holder.
- * @sof_timestamp        : SOF timestamp value
  * @initial_sync_req     : The initial req which is required to sync with the
  * @prev_sof_timestamp   : Previous SOF timestamp value
  * @last_flush_id        : Last request to flush
@@ -604,7 +536,6 @@ struct cam_req_mgr_req_data_mini_dump {
 struct cam_req_mgr_core_link_mini_dump {
 	struct cam_req_mgr_core_workq_mini_dump  workq;
 	struct cam_req_mgr_req_data_mini_dump    req;
-	struct cam_req_mgr_sof_time              sof_time;
 	int64_t                   initial_sync_req;
 	uint32_t                  last_flush_id;
 	uint32_t                  is_used;
