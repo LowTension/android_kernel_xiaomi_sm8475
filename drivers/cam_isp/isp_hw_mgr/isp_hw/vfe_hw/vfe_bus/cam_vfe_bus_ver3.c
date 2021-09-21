@@ -448,106 +448,106 @@ static int cam_vfe_bus_ver3_get_comp_vfe_out_res_id_list(
 {
 	int count = 0;
 
-	if (comp_mask & (BIT(CAM_VFE_BUS_VER3_VFE_OUT_RDI0)))
+	if (comp_mask & (BIT_ULL(CAM_VFE_BUS_VER3_VFE_OUT_RDI0)))
 		out_list[count++] = CAM_ISP_IFE_OUT_RES_RDI_0;
 
-	if (comp_mask & (BIT(CAM_VFE_BUS_VER3_VFE_OUT_RDI1)))
+	if (comp_mask & (BIT_ULL(CAM_VFE_BUS_VER3_VFE_OUT_RDI1)))
 		out_list[count++] = CAM_ISP_IFE_OUT_RES_RDI_1;
 
-	if (comp_mask & (BIT(CAM_VFE_BUS_VER3_VFE_OUT_RDI2)))
+	if (comp_mask & (BIT_ULL(CAM_VFE_BUS_VER3_VFE_OUT_RDI2)))
 		out_list[count++] = CAM_ISP_IFE_OUT_RES_RDI_2;
 
-	if (comp_mask & (BIT(CAM_VFE_BUS_VER3_VFE_OUT_RDI3)))
+	if (comp_mask & (BIT_ULL(CAM_VFE_BUS_VER3_VFE_OUT_RDI3)))
 		out_list[count++] = CAM_ISP_IFE_OUT_RES_RDI_3;
 
-	if (comp_mask & (BIT(CAM_VFE_BUS_VER3_VFE_OUT_FULL)))
+	if (comp_mask & (BIT_ULL(CAM_VFE_BUS_VER3_VFE_OUT_FULL)))
 		out_list[count++] = CAM_ISP_IFE_OUT_RES_FULL;
 
-	if (comp_mask & (BIT(CAM_VFE_BUS_VER3_VFE_OUT_DS4)))
+	if (comp_mask & (BIT_ULL(CAM_VFE_BUS_VER3_VFE_OUT_DS4)))
 		out_list[count++] = CAM_ISP_IFE_OUT_RES_DS4;
 
-	if (comp_mask & (BIT(CAM_VFE_BUS_VER3_VFE_OUT_DS16)))
+	if (comp_mask & (BIT_ULL(CAM_VFE_BUS_VER3_VFE_OUT_DS16)))
 		out_list[count++] = CAM_ISP_IFE_OUT_RES_DS16;
 
-	if (comp_mask & (BIT(CAM_VFE_BUS_VER3_VFE_OUT_RAW_DUMP)))
+	if (comp_mask & (BIT_ULL(CAM_VFE_BUS_VER3_VFE_OUT_RAW_DUMP)))
 		out_list[count++] = CAM_ISP_IFE_OUT_RES_RAW_DUMP;
 
-	if (comp_mask & (BIT(CAM_VFE_BUS_VER3_VFE_OUT_FD)))
+	if (comp_mask & (BIT_ULL(CAM_VFE_BUS_VER3_VFE_OUT_FD)))
 		out_list[count++] = CAM_ISP_IFE_OUT_RES_FD;
 
-	if (comp_mask & (BIT(CAM_VFE_BUS_VER3_VFE_OUT_PDAF)))
+	if (comp_mask & (BIT_ULL(CAM_VFE_BUS_VER3_VFE_OUT_PDAF)))
 		out_list[count++] = CAM_ISP_IFE_OUT_RES_PDAF;
 
-	if (comp_mask & (BIT(CAM_VFE_BUS_VER3_VFE_OUT_STATS_HDR_BE)))
+	if (comp_mask & (BIT_ULL(CAM_VFE_BUS_VER3_VFE_OUT_STATS_HDR_BE)))
 		out_list[count++] = CAM_ISP_IFE_OUT_RES_STATS_HDR_BE;
 
-	if (comp_mask & (BIT(CAM_VFE_BUS_VER3_VFE_OUT_STATS_HDR_BHIST)))
+	if (comp_mask & (BIT_ULL(CAM_VFE_BUS_VER3_VFE_OUT_STATS_HDR_BHIST)))
 		out_list[count++] = CAM_ISP_IFE_OUT_RES_STATS_HDR_BHIST;
 
-	if (comp_mask & (BIT(CAM_VFE_BUS_VER3_VFE_OUT_STATS_TL_BG)))
+	if (comp_mask & (BIT_ULL(CAM_VFE_BUS_VER3_VFE_OUT_STATS_TL_BG)))
 		out_list[count++] = CAM_ISP_IFE_OUT_RES_STATS_TL_BG;
 
-	if (comp_mask & (BIT(CAM_VFE_BUS_VER3_VFE_OUT_STATS_BF)))
+	if (comp_mask & (BIT_ULL(CAM_VFE_BUS_VER3_VFE_OUT_STATS_BF)))
 		out_list[count++] = CAM_ISP_IFE_OUT_RES_STATS_BF;
 
-	if (comp_mask & (BIT(CAM_VFE_BUS_VER3_VFE_OUT_STATS_AWB_BG)))
+	if (comp_mask & (BIT_ULL(CAM_VFE_BUS_VER3_VFE_OUT_STATS_AWB_BG)))
 		out_list[count++] = CAM_ISP_IFE_OUT_RES_STATS_AWB_BG;
 
-	if (comp_mask & (BIT(CAM_VFE_BUS_VER3_VFE_OUT_STATS_BHIST)))
+	if (comp_mask & (BIT_ULL(CAM_VFE_BUS_VER3_VFE_OUT_STATS_BHIST)))
 		out_list[count++] = CAM_ISP_IFE_OUT_RES_STATS_BHIST;
 
-	if (comp_mask & (BIT(CAM_VFE_BUS_VER3_VFE_OUT_STATS_RS)))
+	if (comp_mask & (BIT_ULL(CAM_VFE_BUS_VER3_VFE_OUT_STATS_RS)))
 		out_list[count++] = CAM_ISP_IFE_OUT_RES_STATS_RS;
 
-	if (comp_mask & (BIT(CAM_VFE_BUS_VER3_VFE_OUT_STATS_CS)))
+	if (comp_mask & (BIT_ULL(CAM_VFE_BUS_VER3_VFE_OUT_STATS_CS)))
 		out_list[count++] = CAM_ISP_IFE_OUT_RES_STATS_CS;
 
-	if (comp_mask & (BIT(CAM_VFE_BUS_VER3_VFE_OUT_STATS_IHIST)))
+	if (comp_mask & (BIT_ULL(CAM_VFE_BUS_VER3_VFE_OUT_STATS_IHIST)))
 		out_list[count++] = CAM_ISP_IFE_OUT_RES_STATS_IHIST;
 
-	if (comp_mask & (BIT(CAM_VFE_BUS_VER3_VFE_OUT_FULL_DISP)))
+	if (comp_mask & (BIT_ULL(CAM_VFE_BUS_VER3_VFE_OUT_FULL_DISP)))
 		out_list[count++] = CAM_ISP_IFE_OUT_RES_FULL_DISP;
 
-	if (comp_mask & (BIT(CAM_VFE_BUS_VER3_VFE_OUT_DS4_DISP)))
+	if (comp_mask & (BIT_ULL(CAM_VFE_BUS_VER3_VFE_OUT_DS4_DISP)))
 		out_list[count++] = CAM_ISP_IFE_OUT_RES_DS4_DISP;
 
-	if (comp_mask & (BIT(CAM_VFE_BUS_VER3_VFE_OUT_DS16_DISP)))
+	if (comp_mask & (BIT_ULL(CAM_VFE_BUS_VER3_VFE_OUT_DS16_DISP)))
 		out_list[count++] = CAM_ISP_IFE_OUT_RES_DS16_DISP;
 
-	if (comp_mask & (BIT(CAM_VFE_BUS_VER3_VFE_OUT_2PD)))
+	if (comp_mask & (BIT_ULL(CAM_VFE_BUS_VER3_VFE_OUT_2PD)))
 		out_list[count++] = CAM_ISP_IFE_OUT_RES_2PD;
 
-	if (comp_mask & (BIT(CAM_VFE_BUS_VER3_VFE_OUT_LCR)))
+	if (comp_mask & (BIT_ULL(CAM_VFE_BUS_VER3_VFE_OUT_LCR)))
 		out_list[count++] = CAM_ISP_IFE_OUT_RES_LCR;
 
-	if (comp_mask & (BIT(CAM_VFE_BUS_VER3_VFE_OUT_AWB_BFW)))
+	if (comp_mask & (BIT_ULL(CAM_VFE_BUS_VER3_VFE_OUT_AWB_BFW)))
 		out_list[count++] = CAM_ISP_IFE_OUT_RES_AWB_BFW;
 
-	if (comp_mask & (BIT(CAM_VFE_BUS_VER3_VFE_OUT_PREPROCESS_2PD)))
+	if (comp_mask & (BIT_ULL(CAM_VFE_BUS_VER3_VFE_OUT_PREPROCESS_2PD)))
 		out_list[count++] = CAM_ISP_IFE_OUT_RES_PREPROCESS_2PD;
 
-	if (comp_mask & (BIT(CAM_VFE_BUS_VER3_VFE_OUT_STATS_AEC_BE)))
+	if (comp_mask & (BIT_ULL(CAM_VFE_BUS_VER3_VFE_OUT_STATS_AEC_BE)))
 		out_list[count++] = CAM_ISP_IFE_OUT_RES_STATS_AEC_BE;
 
-	if (comp_mask & (BIT(CAM_VFE_BUS_VER3_VFE_OUT_LTM_STATS)))
+	if (comp_mask & (BIT_ULL(CAM_VFE_BUS_VER3_VFE_OUT_LTM_STATS)))
 		out_list[count++] = CAM_ISP_IFE_OUT_RES_LTM_STATS;
 
-	if (comp_mask & (BIT(CAM_VFE_BUS_VER3_VFE_OUT_STATS_GTM_BHIST)))
+	if (comp_mask & (BIT_ULL(CAM_VFE_BUS_VER3_VFE_OUT_STATS_GTM_BHIST)))
 		out_list[count++] = CAM_ISP_IFE_OUT_RES_STATS_GTM_BHIST;
 
-	if (comp_mask & (BIT(CAM_VFE_BUS_VER3_VFE_OUT_STATS_BG)))
+	if (comp_mask & (BIT_ULL(CAM_VFE_BUS_VER3_VFE_OUT_STATS_BG)))
 		out_list[count++] = CAM_ISP_IFE_LITE_OUT_RES_STATS_BG;
 
-	if (comp_mask & (BIT(CAM_VFE_BUS_VER3_VFE_OUT_PREPROCESS_RAW)))
+	if (comp_mask & (BIT_ULL(CAM_VFE_BUS_VER3_VFE_OUT_PREPROCESS_RAW)))
 		out_list[count++] = CAM_ISP_IFE_LITE_OUT_RES_PREPROCESS_RAW;
 
-	if (comp_mask & (BIT(CAM_VFE_BUS_VER3_VFE_OUT_SPARSE_PD)))
+	if (comp_mask & (BIT_ULL(CAM_VFE_BUS_VER3_VFE_OUT_SPARSE_PD)))
 		out_list[count++] = CAM_ISP_IFE_OUT_RES_SPARSE_PD;
 
-	if (comp_mask & (BIT(CAM_VFE_BUS_VER3_VFE_OUT_STATS_CAF)))
+	if (comp_mask & (BIT_ULL(CAM_VFE_BUS_VER3_VFE_OUT_STATS_CAF)))
 		out_list[count++] = CAM_ISP_IFE_OUT_RES_STATS_CAF;
 
-	if (comp_mask & (BIT(CAM_VFE_BUS_VER3_VFE_OUT_STATS_BAYER_RS)))
+	if (comp_mask & (BIT_ULL(CAM_VFE_BUS_VER3_VFE_OUT_STATS_BAYER_RS)))
 		out_list[count++] = CAM_ISP_IFE_OUT_RES_STATS_BAYER_RS;
 
 	*num_out = count;
@@ -1953,7 +1953,7 @@ static int cam_vfe_bus_ver3_acquire_vfe_out(void *bus_priv, void *acquire_args,
 		out_acquire_args->disable_ubwc_comp;
 	rsrc_data->priv = acq_args->priv;
 	rsrc_data->bus_priv = ver3_bus_priv;
-	comp_acq_args.composite_mask = (1 << vfe_out_res_id);
+	comp_acq_args.composite_mask = (1ULL << vfe_out_res_id);
 
 	/* for some hw versions, buf done is not received from vfe but
 	 * from IP external to VFE. In such case, we get the controller
@@ -2389,9 +2389,8 @@ static int cam_vfe_bus_ver3_handle_vfe_out_done_bottom_half(
 
 	rc = cam_vfe_bus_ver3_handle_comp_done_bottom_half(
 		rsrc_data, evt_payload_priv, &comp_mask);
-	CAM_DBG(CAM_ISP, "VFE:%d out_type:0x%X rc:%d",
-		rsrc_data->common_data->core_index, rsrc_data->out_type,
-		rsrc_data->out_type, rc);
+	CAM_DBG(CAM_ISP, "VFE:%d out_type:0x%X comp_mask: 0x%lx rc:%d",
+		rsrc_data->common_data->core_index, rsrc_data->out_type, comp_mask, rc);
 
 	ctx = rsrc_data->priv;
 	memset(out_list, 0, sizeof(out_list));
