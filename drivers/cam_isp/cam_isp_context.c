@@ -1394,6 +1394,8 @@ static int __cam_isp_ctx_handle_buf_done_for_request_verify_addr(
 					CAM_SYNC_STATE_SIGNALED_SUCCESS,
 					CAM_SYNC_COMMON_EVENT_SUCCESS);
 			}
+			/* Reset fence */
+			req_isp->fence_map_out[j].sync_id = -1;
 		} else if (!req_isp->bubble_report) {
 			CAM_DBG(CAM_ISP,
 				"Sync with failure: req %lld res 0x%x fd 0x%x, ctx %u",
