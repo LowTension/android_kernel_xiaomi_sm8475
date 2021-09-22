@@ -1103,6 +1103,7 @@ static int cam_vfe_camif_lite_handle_irq_bottom_half(
 	evt_info.hw_idx   = camif_lite_node->hw_intf->hw_idx;
 	evt_info.res_id   = camif_lite_node->res_id;
 	evt_info.res_type = camif_lite_node->res_type;
+	evt_info.hw_type  = CAM_ISP_HW_TYPE_VFE;
 
 	CAM_DBG(CAM_ISP,
 		"VFE:%d CAMIF LITE:%d %s IRQ status_0: 0x%X status_1: 0x%X status_2: 0x%X",

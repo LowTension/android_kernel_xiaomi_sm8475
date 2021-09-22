@@ -1389,6 +1389,7 @@ static int cam_vfe_camif_ver3_handle_irq_bottom_half(void *handler_priv,
 	evt_info.res_id   = camif_node->res_id;
 	evt_info.res_type = camif_node->res_type;
 	evt_info.reg_val = 0;
+	evt_info.hw_type = CAM_ISP_HW_TYPE_VFE;
 
 	if (irq_status[CAM_IFE_IRQ_CAMIF_REG_STATUS1]
 		& camif_priv->reg_data->sof_irq_mask) {
