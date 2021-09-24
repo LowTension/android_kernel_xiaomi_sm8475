@@ -12268,7 +12268,6 @@ static unsigned long cam_ife_hw_mgr_mini_dump_cb(void *dst, unsigned long len)
 	struct cam_hw_intf                 *hw_intf = NULL;
 	struct cam_ife_hw_mgr              *hw_mgr;
 	struct cam_hw_mini_dump_args        hw_dump_args;
-	unsigned long                       bytes_written = 0;
 	unsigned long                       remain_len = len;
 	unsigned long                       dumped_len = 0;
 	uint32_t                            i = 0;
@@ -12361,7 +12360,7 @@ static unsigned long cam_ife_hw_mgr_mini_dump_cb(void *dst, unsigned long len)
 				goto end;
 
 			ctx_md->ctx_priv = hw_dump_args.start_addr;
-			dumped_len += bytes_written;
+			dumped_len += hw_dump_args.bytes_written;
 			remain_len = len - dumped_len;
 		}
 
