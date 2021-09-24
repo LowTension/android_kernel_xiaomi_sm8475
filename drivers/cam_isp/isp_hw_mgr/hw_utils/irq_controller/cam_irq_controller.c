@@ -743,20 +743,12 @@ static void __cam_irq_controller_th_processing(
 void cam_irq_controller_disable_all(void *priv)
 {
 	struct cam_irq_controller  *controller  = priv;
-	struct cam_irq_evt_handler  *evt_handler, *evt_handler_temp;
 	struct cam_irq_register_obj *irq_register;
 
 	uint32_t i = 0;
 
 	if (!controller)
 		return;
-
-	for (i = 0; i < CAM_IRQ_PRIORITY_MAX; i++) {
-		list_for_each_entry_safe(evt_handler, evt_handler_temp,
-			&controller->th_list_head[i], th_list_node) {
-			list_del_init(&evt_handler->th_list_node);
-		}
-	}
 
 	for (i = 0; i < controller->num_registers; i++) {
 		irq_register = &controller->irq_register_arr[i];
