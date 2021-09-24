@@ -157,9 +157,7 @@ struct cam_isp_ctx_irq_ops {
  * @reapply:                   True if reapplying after bubble
  * @cdm_reset_before_apply:    For bubble re-apply when buf done not coming set
  *                             to True
- * @buf_done_ready             Flag to check if ready to signal buf done when in sync mode
- * @buf_done_mask              Mask used to check number of buf done which is yet to be signaled
- * @is_sync_mode               If request need to be apply in sync with other link
+ *
  */
 struct cam_isp_ctx_req {
 	struct cam_ctx_request               *base;
@@ -179,9 +177,6 @@ struct cam_isp_ctx_req {
 	bool                                  bubble_detected;
 	bool                                  reapply;
 	bool                                  cdm_reset_before_apply;
-	atomic_t                              buf_done_ready;
-	int32_t                               buf_done_mask;
-	bool                                  is_sync_mode;
 };
 
 /**
@@ -279,7 +274,6 @@ struct cam_isp_context_event_record {
  * @workq:                     Worker thread for offline ife
  * @trigger_id:                ID provided by CRM for each ctx on the link
  * @last_bufdone_err_apply_req_id:  last bufdone error apply request id
- * @fps:                       Current FPS for the activated state.
  *
  */
 struct cam_isp_context {
@@ -329,7 +323,6 @@ struct cam_isp_context {
 	struct cam_req_mgr_core_workq        *workq;
 	int32_t                               trigger_id;
 	int64_t                               last_bufdone_err_apply_req_id;
-	uint32_t                              fps;
 };
 
 /**

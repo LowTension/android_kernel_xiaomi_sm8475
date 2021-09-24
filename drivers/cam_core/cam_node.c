@@ -619,42 +619,6 @@ static int __cam_node_crm_flush_req(struct cam_req_mgr_flush_request *flush)
 	return cam_context_handle_crm_flush_req(ctx, flush);
 }
 
-static int __cam_req_mgr_signal_buf_done(
-	struct cam_req_mgr_signal_info *signal_buf_done_info)
-{
-	struct cam_context *ctx = NULL;
-
-	if (!signal_buf_done_info)
-		return -EINVAL;
-
-	ctx = (struct cam_context *) cam_get_device_priv(signal_buf_done_info->dev_hdl);
-	if (!ctx) {
-		CAM_ERR(CAM_CORE, "Can not get context for handle %d",
-			signal_buf_done_info->dev_hdl);
-		return -EINVAL;
-	}
-
-	return cam_context_handle_crm_signal_buf_done(ctx, signal_buf_done_info);
-}
-
-static int __cam_node_crm_state_change_req(
-	struct cam_req_mgr_request_change_state *state_info)
-{
-	struct cam_context *ctx = NULL;
-
-	if (!state_info)
-		return -EINVAL;
-
-	ctx = (struct cam_context *) cam_get_device_priv(state_info->dev_hdl);
-	if (!ctx) {
-		CAM_ERR(CAM_CORE, "Can not get context for handle %d",
-			state_info->dev_hdl);
-		return -EINVAL;
-	}
-
-	return cam_context_handle_crm_state_change(ctx, state_info);
-}
-
 static int __cam_node_crm_process_evt(
 	struct cam_req_mgr_link_evt_data *evt_data)
 {
@@ -751,8 +715,6 @@ int cam_node_init(struct cam_node *node, struct cam_hw_mgr_intf *hw_mgr_intf,
 	node->crm_node_intf.dump_req = __cam_node_crm_dump_req;
 	node->crm_node_intf.notify_frame_skip =
 		__cam_node_crm_notify_frame_skip;
-	node->crm_node_intf.change_state = __cam_node_crm_state_change_req;
-	node->crm_node_intf.signal_buf_done = __cam_req_mgr_signal_buf_done;
 
 	mutex_init(&node->list_mutex);
 	INIT_LIST_HEAD(&node->free_ctx_list);

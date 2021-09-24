@@ -130,8 +130,6 @@ struct cam_ctx_ioctl_ops {
  * @flush_req:             Flush request to remove request ids
  * @process_evt:           Handle event notification from CRM.(optional)
  * @dump_req:              Dump information for the issue request
- * @change_state:          Change sub-state of hw context layer to bubble
- * @signal_buf_done        Notify device to signal buf done
  *
  */
 struct cam_ctx_crm_ops {
@@ -151,10 +149,6 @@ struct cam_ctx_crm_ops {
 			struct cam_req_mgr_link_evt_data *evt_data);
 	int (*dump_req)(struct cam_context *ctx,
 			struct cam_req_mgr_dump_info *dump);
-	int (*change_state)(struct cam_context *ctx,
-			struct cam_req_mgr_request_change_state *change_state);
-	int (*signal_buf_done)(struct cam_context *ctx,
-			struct cam_req_mgr_signal_info *signal_info);
 };
 
 
@@ -340,30 +334,6 @@ int cam_context_handle_crm_unlink(struct cam_context *ctx,
  */
 int cam_context_handle_crm_apply_req(struct cam_context *ctx,
 		struct cam_req_mgr_apply_request *apply);
-
-/**
- * cam_context_handle_crm_state_change()
- *
- * @brief:        Handle state change request
- *
- * @ctx:          Object pointer for cam_context
- * @state_info:   State change request command payload
- *
- */
-int cam_context_handle_crm_state_change(struct cam_context *ctx,
-		struct cam_req_mgr_request_change_state *state_info);
-
-/**
- * cam_context_handle_crm_signal_buf_done()
- *
- * @brief:         Handle signal buf done command
- *
- * @ctx:           Object pointer for cam_context
- * @signal_info    Signal buf done request command payload
- *
- */
-int cam_context_handle_crm_signal_buf_done(struct cam_context *ctx,
-	struct cam_req_mgr_signal_info *signal_info);
 
 /**
  * cam_context_handle_crm_notify_frame_skip()

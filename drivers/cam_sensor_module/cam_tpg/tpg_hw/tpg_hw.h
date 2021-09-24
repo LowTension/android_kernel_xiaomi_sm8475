@@ -43,6 +43,17 @@ struct tpg_hw_ops {
 };
 
 /**
+ * tpg_hw_state : tpg hw states
+ *
+ * TPG_HW_STATE_HW_DISABLED: tpg hw is not enabled yet
+ * TPG_HW_STATE_HW_ENABLED : tpg hw is enabled
+ */
+enum tpg_hw_state {
+	TPG_HW_STATE_HW_DISABLED,
+	TPG_HW_STATE_HW_ENABLED,
+};
+
+/**
  * @brief tpg_vc_slot_info
  * @slot_id      : slot id of this vc slot
  * @vc           : virtual channel configured

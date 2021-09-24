@@ -837,18 +837,6 @@ struct cam_isp_acquire_hw_info {
 };
 
 /**
- * struct cam_fps_config - FPS info per request
- *
- * @fps                 : Fps value
- * @reserved:           : Reserved field for alignment
- *
- */
-struct cam_fps_config {
-	__u32             fps;
-	__u32             reserved_params[3];
-} __attribute__((packed));
-
-/**
  * struct cam_isp_vfe_wm_config  -  VFE write master config per port
  *
  * @port_type        : Unique ID of output port
