@@ -2497,7 +2497,7 @@ int cam_ife_csid_ver2_reserve(void *hw_priv,
 	csid_hw->token  = reserve->cb_priv;
 	reserve->buf_done_controller = csid_hw->buf_done_irq_controller;
 	res->cdm_ops = reserve->cdm_ops;
-	csid_hw->flags.sfe_inline_shdr = reserve->sfe_inline_shdr;
+	path_cfg->sfe_inline_shdr = reserve->sfe_inline_shdr;
 	csid_hw->flags.offline_mode = reserve->is_offline;
 
 	reserve->need_top_cfg = csid_reg->need_top_cfg;
@@ -2784,7 +2784,7 @@ static int cam_ife_csid_ver2_init_config_rdi_path(
 			path_reg->err_recovery_cfg0_addr);
 	}
 
-	if (csid_hw->flags.sfe_inline_shdr)
+	if (path_cfg->sfe_inline_shdr)
 		cam_ife_csid_ver2_shdr_cfg(csid_hw, res->res_id);
 
 	if (csid_hw->debug_info.debug_val &
@@ -3069,7 +3069,7 @@ static int cam_ife_csid_ver2_program_rdi_path(
 	}
 
 	if ((csid_hw->flags.offline_mode ||
-		csid_hw->flags.sfe_inline_shdr) &&
+		path_cfg->sfe_inline_shdr) &&
 		(res->res_id == CAM_IFE_PIX_PATH_RES_RDI_0)) {
 		val |= path_reg->camif_irq_mask;
 		path_cfg->handle_camif_irq = true;

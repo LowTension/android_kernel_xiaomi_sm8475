@@ -281,7 +281,6 @@ struct cam_ife_csid_debug_info {
  * @fatal_err_detected:     flag to indicate if fatal err detected
  * @rx_enabled:             flag to indicate if rx is enabled
  * @tpg_configured:         flag to indicate if internal_tpg is configured
- * @sfe_inline_shdr:        flag to indicate if sfe is inline shdr
  * @reset_awaited:          flag to indicate if reset is awaited
  * @offline_mode:           flag to indicate if csid in offline mode
  */
@@ -294,7 +293,6 @@ struct cam_ife_csid_hw_flags {
 	bool                  rx_enabled;
 	bool                  tpg_enabled;
 	bool                  tpg_configured;
-	bool                  sfe_inline_shdr;
 	bool                  reset_awaited;
 	bool                  offline_mode;
 };
