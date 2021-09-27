@@ -1076,6 +1076,7 @@ static int cam_vfe_camif_lite_handle_irq_bottom_half(
 	struct cam_vfe_mux_camif_lite_data *camif_lite_priv;
 	struct cam_vfe_top_irq_evt_payload *payload;
 	struct cam_isp_hw_event_info evt_info;
+	struct cam_isp_hw_error_event_info err_evt_info;
 	struct cam_vfe_soc_private *soc_private = NULL;
 	uint32_t irq_status[CAM_IFE_IRQ_REGISTERS_MAX] = {0};
 	int i = 0;
@@ -1100,6 +1101,7 @@ static int cam_vfe_camif_lite_handle_irq_bottom_half(
 	for (i = 0; i < CAM_IFE_IRQ_REGISTERS_MAX; i++)
 		irq_status[i] = payload->irq_reg_val[i];
 
+	evt_info.hw_type  = CAM_ISP_HW_TYPE_VFE;
 	evt_info.hw_idx   = camif_lite_node->hw_intf->hw_idx;
 	evt_info.res_id   = camif_lite_node->res_id;
 	evt_info.res_type = camif_lite_node->res_type;
@@ -1166,7 +1168,8 @@ static int cam_vfe_camif_lite_handle_irq_bottom_half(
 		CAM_ERR(CAM_ISP, "VFE:%d Overflow",
 			camif_lite_node->hw_intf->hw_idx);
 
-		evt_info.err_type = CAM_VFE_IRQ_STATUS_OVERFLOW;
+		err_evt_info.err_type = CAM_VFE_IRQ_STATUS_OVERFLOW;
+		evt_info.event_data = (void *)&err_evt_info;
 		ktime_get_boottime_ts64(&ts);
 		CAM_INFO(CAM_ISP,
 			"current monotonic time stamp seconds %lld:%lld",
@@ -1215,7 +1218,8 @@ static int cam_vfe_camif_lite_handle_irq_bottom_half(
 		CAM_ERR(CAM_ISP, "VFE:%d Violation",
 			camif_lite_node->hw_intf->hw_idx);
 
-		evt_info.err_type = CAM_VFE_IRQ_STATUS_VIOLATION;
+		err_evt_info.err_type = CAM_VFE_IRQ_STATUS_VIOLATION;
+		evt_info.event_data = (void *)&err_evt_info;
 
 		if (camif_lite_priv->event_cb)
 			camif_lite_priv->event_cb(camif_lite_priv->priv,

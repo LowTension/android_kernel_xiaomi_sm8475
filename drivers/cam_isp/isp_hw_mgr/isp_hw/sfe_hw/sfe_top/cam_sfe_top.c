@@ -1384,12 +1384,15 @@ static int cam_sfe_top_handle_err_irq_bottom_half(
 
 	if (irq_status[0] &
 		top_priv->common_data.common_reg_data->error_irq_mask) {
+		struct cam_isp_hw_error_event_info err_evt_info;
+
 		viol_sts = payload->violation_status;
 		CAM_INFO(CAM_SFE, "Violation status 0x%x",
 			viol_sts);
 		cam_sfe_top_print_top_irq_error(top_priv,
 			irq_status[0], viol_sts);
-		evt_info.err_type = CAM_SFE_IRQ_STATUS_VIOLATION;
+		err_evt_info.err_type = CAM_SFE_IRQ_STATUS_VIOLATION;
+		evt_info.event_data = (void *)&err_evt_info;
 		cam_sfe_top_print_debug_reg_info(top_priv);
 		if (top_priv->event_cb)
 			top_priv->event_cb(top_priv->priv_per_stream,

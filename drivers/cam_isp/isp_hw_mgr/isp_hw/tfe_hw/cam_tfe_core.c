@@ -456,6 +456,7 @@ static int cam_tfe_error_irq_bottom_half(
 	cam_hw_mgr_event_cb_func              event_cb,
 	void                                 *event_cb_priv)
 {
+	struct cam_isp_hw_error_event_info   err_evt_info;
 	struct cam_isp_hw_event_info         evt_info;
 	struct cam_tfe_hw_info              *hw_info;
 	uint32_t   error_detected = 0;
@@ -465,18 +466,18 @@ static int cam_tfe_error_irq_bottom_half(
 	evt_info.res_type = CAM_ISP_RESOURCE_TFE_IN;
 
 	if (evt_payload->irq_reg_val[0] & hw_info->error_irq_mask[0]) {
-		evt_info.err_type = CAM_TFE_IRQ_STATUS_OVERFLOW;
+		err_evt_info.err_type = CAM_TFE_IRQ_STATUS_OVERFLOW;
 		error_detected = 1;
 	}
 
 	if ((evt_payload->bus_irq_val[0] & hw_info->bus_error_irq_mask[0]) ||
 		(evt_payload->irq_reg_val[2] & hw_info->error_irq_mask[2])) {
-		evt_info.err_type = CAM_TFE_IRQ_STATUS_VIOLATION;
+		err_evt_info.err_type = CAM_TFE_IRQ_STATUS_VIOLATION;
 		error_detected = 1;
 	}
 
 	if (error_detected) {
-		evt_info.err_type = CAM_TFE_IRQ_STATUS_OVERFLOW;
+		evt_info.event_data = (void *)&err_evt_info;
 		top_priv->error_ts.tv_sec =
 			evt_payload->ts.mono_time.tv_sec;
 		top_priv->error_ts.tv_nsec =

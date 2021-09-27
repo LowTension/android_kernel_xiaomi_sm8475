@@ -899,8 +899,9 @@ static int cam_ife_csid_ver2_handle_event_err(
 	uint32_t                      err_type,
 	struct cam_isp_resource_node *res)
 {
-	struct cam_isp_hw_event_info            evt = {0};
-	struct cam_ife_csid_ver2_path_cfg      *path_cfg;
+	struct cam_isp_hw_error_event_info   err_evt_info;
+	struct cam_isp_hw_event_info         evt = {0};
+	struct cam_ife_csid_ver2_path_cfg   *path_cfg;
 
 	if (!csid_hw->event_cb) {
 		CAM_ERR_RATE_LIMIT(CAM_ISP, "CSID[%u] event cb not registered",
@@ -911,7 +912,8 @@ static int cam_ife_csid_ver2_handle_event_err(
 	evt.hw_idx   = csid_hw->hw_intf->hw_idx;
 	evt.reg_val  = irq_status;
 	evt.hw_type  = CAM_ISP_HW_TYPE_CSID;
-	evt.err_type = err_type;
+	err_evt_info.err_type = err_type;
+	evt.event_data = (void *)&err_evt_info;
 
 	if (res) {
 		cam_ife_csid_ver2_print_debug_reg_status(csid_hw, res);
@@ -928,7 +930,8 @@ static int cam_ife_csid_ver2_handle_event_err(
 			csid_hw->hw_intf->hw_idx, err_type, irq_status);
 	}
 
-	evt.in_core_idx = cam_ife_csid_ver2_input_core_to_hw_idx(csid_hw->top_cfg.input_core_type);
+	evt.in_core_idx =
+		cam_ife_csid_ver2_input_core_to_hw_idx(csid_hw->top_cfg.input_core_type);
 
 	csid_hw->event_cb(csid_hw->token, CAM_ISP_HW_EVENT_ERROR, (void *)&evt);
 
@@ -1429,10 +1432,11 @@ static int cam_ife_csid_ver2_ipp_bottom_half(
 		goto end;
 	}
 
+	evt_info.hw_type  = CAM_ISP_HW_TYPE_CSID;
 	evt_info.hw_idx   = csid_hw->hw_intf->hw_idx;
 	evt_info.res_id   = CAM_IFE_PIX_PATH_RES_IPP;
 	evt_info.res_type = CAM_ISP_RESOURCE_PIX_PATH;
-	evt_info.reg_val = irq_status_ipp;
+	evt_info.reg_val  = irq_status_ipp;
 
 	if (irq_status_ipp & IFE_CSID_VER2_PATH_CAMIF_EOF) {
 		if (csid_hw->event_cb)

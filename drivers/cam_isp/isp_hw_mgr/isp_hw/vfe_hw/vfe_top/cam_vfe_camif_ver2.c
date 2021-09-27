@@ -806,6 +806,7 @@ static int cam_vfe_camif_handle_irq_bottom_half(void *handler_priv,
 	soc_info = camif_priv->soc_info;
 	soc_private = (struct cam_vfe_soc_private *)soc_info->soc_private;
 
+	evt_info.hw_type  = CAM_ISP_HW_TYPE_VFE;
 	evt_info.hw_idx   = camif_node->hw_intf->hw_idx;
 	evt_info.res_id   = camif_node->res_id;
 	evt_info.res_type = camif_node->res_type;

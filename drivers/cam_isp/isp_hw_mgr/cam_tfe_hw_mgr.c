@@ -5309,6 +5309,7 @@ end:
 }
 
 static int cam_tfe_hw_mgr_handle_csid_event(
+	uint32_t                      err_type,
 	struct cam_isp_hw_event_info *event_info)
 {
 	struct cam_isp_hw_error_event_data  error_event_data = {0};
@@ -5317,13 +5318,13 @@ static int cam_tfe_hw_mgr_handle_csid_event(
 	/* this can be extended based on the types of error
 	 * received from CSID
 	 */
-	switch (event_info->err_type) {
+	switch (err_type) {
 	case CAM_ISP_HW_ERROR_CSID_FATAL: {
 
 		if (!g_tfe_hw_mgr.debug_cfg.enable_csid_recovery)
 			break;
 
-		error_event_data.error_type = event_info->err_type;
+		error_event_data.error_type = err_type;
 		error_event_data.error_code = CAM_REQ_MGR_CSID_FATAL_ERROR;
 		cam_tfe_hw_mgr_find_affected_ctx(&error_event_data,
 			event_info->hw_idx,
@@ -5339,13 +5340,20 @@ static int cam_tfe_hw_mgr_handle_csid_event(
 static int cam_tfe_hw_mgr_handle_hw_err(
 	void                                *evt_info)
 {
+	struct cam_isp_hw_error_event_info      *err_evt_info;
 	struct cam_isp_hw_event_info            *event_info = evt_info;
 	struct cam_isp_hw_error_event_data       error_event_data = {0};
 	struct cam_tfe_hw_event_recovery_data    recovery_data = {0};
 	int    rc = -EINVAL;
 	uint32_t core_idx;
 
-	if (event_info->err_type == CAM_TFE_IRQ_STATUS_VIOLATION)
+	if (!event_info->event_data) {
+		CAM_ERR(CAM_ISP, "No error event data failed to process");
+		return rc;
+	}
+
+	err_evt_info = (struct cam_isp_hw_error_event_info *)event_info->event_data;
+	if (err_evt_info->err_type == CAM_TFE_IRQ_STATUS_VIOLATION)
 		error_event_data.error_type = CAM_ISP_HW_ERROR_VIOLATION;
 	else if (event_info->res_type == CAM_ISP_RESOURCE_TFE_IN ||
 		event_info->res_type == CAM_ISP_RESOURCE_PIX_PATH)
@@ -5354,8 +5362,8 @@ static int cam_tfe_hw_mgr_handle_hw_err(
 		error_event_data.error_type = CAM_ISP_HW_ERROR_BUSIF_OVERFLOW;
 
 	spin_lock(&g_tfe_hw_mgr.ctx_lock);
-	if (event_info->err_type == CAM_ISP_HW_ERROR_CSID_FATAL) {
-		rc = cam_tfe_hw_mgr_handle_csid_event(event_info);
+	if (err_evt_info->err_type == CAM_ISP_HW_ERROR_CSID_FATAL) {
+		rc = cam_tfe_hw_mgr_handle_csid_event(err_evt_info->err_type, event_info);
 		spin_unlock(&g_tfe_hw_mgr.ctx_lock);
 		return rc;
 	}
@@ -5381,7 +5389,7 @@ static int cam_tfe_hw_mgr_handle_hw_err(
 
 	if (g_tfe_hw_mgr.debug_cfg.enable_recovery) {
 		/* Trigger for recovery */
-		if (event_info->err_type == CAM_TFE_IRQ_STATUS_VIOLATION)
+		if (err_evt_info->err_type == CAM_TFE_IRQ_STATUS_VIOLATION)
 			recovery_data.error_type = CAM_ISP_HW_ERROR_VIOLATION;
 		else
 			recovery_data.error_type = CAM_ISP_HW_ERROR_OVERFLOW;

@@ -742,6 +742,7 @@ static int cam_vfe_bus_ver3_handle_rup_bottom_half(void *handler_priv,
 
 	irq_status = payload->irq_reg_val[CAM_IFE_IRQ_BUS_VER3_REG_STATUS0];
 
+	evt_info.hw_type  = CAM_ISP_HW_TYPE_VFE;
 	evt_info.hw_idx = rsrc_data->common_data->core_index;
 	evt_info.res_type = CAM_ISP_RESOURCE_VFE_IN;
 
@@ -2403,7 +2404,8 @@ static int cam_vfe_bus_ver3_handle_vfe_out_done_bottom_half(
 	struct cam_isp_resource_node          *vfe_out = handler_priv;
 	struct cam_vfe_bus_ver3_vfe_out_data  *rsrc_data = vfe_out->res_priv;
 	struct cam_vfe_bus_irq_evt_payload    *evt_payload = evt_payload_priv;
-	struct cam_isp_hw_compdone_event_info  evt_info = {0};
+	struct cam_isp_hw_event_info           evt_info;
+	struct cam_isp_hw_compdone_event_info  compdone_evt_info = {0};
 	void                                  *ctx = NULL;
 	uint32_t                               evt_id = 0;
 	uint64_t                               comp_mask = 0;
@@ -2439,14 +2441,15 @@ static int cam_vfe_bus_ver3_handle_vfe_out_done_bottom_half(
 			goto end;
 		}
 
-		evt_info.num_res = num_out;
+		compdone_evt_info.num_res = num_out;
 		for (i = 0; i < num_out; i++) {
-			evt_info.res_id[i] = out_list[i];
-			evt_info.last_consumed_addr[i] =
+			compdone_evt_info.res_id[i] = out_list[i];
+			compdone_evt_info.last_consumed_addr[i] =
 				cam_vfe_bus_ver3_get_last_consumed_addr(
 				rsrc_data->bus_priv,
-				evt_info.res_id[i]);
+				compdone_evt_info.res_id[i]);
 		}
+		evt_info.event_data = (void *)&compdone_evt_info;
 		if (rsrc_data->common_data->event_cb)
 			rsrc_data->common_data->event_cb(ctx, evt_id,
 				(void *)&evt_info);
@@ -2860,6 +2863,7 @@ static int cam_vfe_bus_ver3_err_irq_bottom_half(
 	struct cam_vfe_bus_ver3_priv *bus_priv = handler_priv;
 	struct cam_vfe_bus_ver3_common_data *common_data;
 	struct cam_isp_hw_event_info evt_info;
+	struct cam_isp_hw_error_event_info err_evt_info;
 	uint32_t status = 0, image_size_violation = 0, ccif_violation = 0, constraint_violation = 0;
 
 	if (!handler_priv || !evt_payload_priv)
@@ -2901,8 +2905,9 @@ static int cam_vfe_bus_ver3_err_irq_bottom_half(
 	evt_info.hw_idx = common_data->core_index;
 	evt_info.res_type = CAM_ISP_RESOURCE_VFE_OUT;
 	evt_info.res_id = CAM_VFE_BUS_VER3_VFE_OUT_MAX;
-	evt_info.err_type = CAM_VFE_IRQ_STATUS_VIOLATION;
 	evt_info.hw_type = CAM_ISP_HW_TYPE_VFE;
+	err_evt_info.err_type = CAM_VFE_IRQ_STATUS_VIOLATION;
+	evt_info.event_data = (void *)&err_evt_info;
 
 	if (common_data->event_cb)
 		common_data->event_cb(common_data->priv, CAM_ISP_HW_EVENT_ERROR,
