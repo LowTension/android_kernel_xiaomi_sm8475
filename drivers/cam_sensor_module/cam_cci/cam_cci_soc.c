@@ -104,7 +104,7 @@ int cam_cci_init(struct v4l2_subdev *sd,
 	uint8_t i = 0;
 	int32_t rc = 0;
 	struct cci_device *cci_dev;
-	enum cci_i2c_master_t master = c_ctrl->cci_info->cci_i2c_master;
+	enum cci_i2c_master_t master = MASTER_MAX;
 	struct cam_ahb_vote ahb_vote;
 	struct cam_axi_vote axi_vote = {0};
 	struct cam_hw_soc_info *soc_info = NULL;
@@ -113,12 +113,13 @@ int cam_cci_init(struct v4l2_subdev *sd,
 	cci_dev = v4l2_get_subdevdata(sd);
 	if (!cci_dev || !c_ctrl) {
 		CAM_ERR(CAM_CCI,
-			"CCI%d_I2C_M%d failed: invalid params cci_dev:%pK, c_ctrl:%pK",
-			cci_dev->soc_info.index, master, cci_dev, c_ctrl);
+			"Invalid params cci_dev: %p, c_ctrl: %p",
+			cci_dev, c_ctrl);
 		rc = -EINVAL;
 		return rc;
 	}
 
+	master = c_ctrl->cci_info->cci_i2c_master;
 	soc_info = &cci_dev->soc_info;
 	base = soc_info->reg_map[0].mem_base;
 

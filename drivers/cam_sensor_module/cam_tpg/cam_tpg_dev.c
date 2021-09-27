@@ -168,11 +168,12 @@ static int tpg_soc_info_init(struct cam_tpg_device *tpg_dev,
 	struct platform_device *pdev = to_platform_device(dev);
 	struct device_node *of_node = NULL;
 
+	if (!dev || !tpg_dev)
+		return -EINVAL;
+
 	tpg_dev->soc_info.pdev = pdev;
 	tpg_dev->soc_info.dev = &pdev->dev;
 	tpg_dev->soc_info.dev_name = pdev->name;
-	if (!dev || !tpg_dev)
-		return -EINVAL;
 
 	of_node = dev->of_node;
 

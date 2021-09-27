@@ -7317,6 +7317,12 @@ static int cam_isp_blob_sfe_exp_order_update(
 
 		/* Configure cache config for WM */
 		res_id_out = order_cfg->res_type & 0xFF;
+		if (res_id_out >= CAM_SFE_HW_OUT_RES_MAX) {
+			CAM_ERR_RATE_LIMIT(CAM_ISP, "res_id_out: %d exceeds max size: %d",
+				res_id_out, CAM_SFE_HW_OUT_RES_MAX);
+			return -EINVAL;
+		}
+
 		hw_mgr_res = &ctx->res_list_sfe_out[res_id_out];
 		for (j = 0; j < CAM_ISP_HW_SPLIT_MAX; j++) {
 			if (!hw_mgr_res->hw_res[j])
@@ -8108,6 +8114,13 @@ static int cam_ife_hw_mgr_update_scratch_offset(
 		return 0;
 
 	res_id = wm_config->port_type & 0xFF;
+
+	if (res_id >= CAM_SFE_FE_RDI_NUM_MAX) {
+		CAM_ERR_RATE_LIMIT(CAM_ISP, "res_id: %d exceeds max size: %d",
+			res_id, CAM_SFE_FE_RDI_NUM_MAX);
+		return -EINVAL;
+	}
+
 	if (!ctx->sfe_info.scratch_config->buf_info[res_id].config_done) {
 		CAM_ERR(CAM_ISP,
 			"Scratch buffer not configured on ctx: %u for res: %u",

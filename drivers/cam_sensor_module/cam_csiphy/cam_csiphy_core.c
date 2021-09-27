@@ -1306,6 +1306,11 @@ static int cam_csiphy_update_lane(
 		}
 	}
 
+	if (i == size) {
+		CAM_ERR_RATE_LIMIT(CAM_CSIPHY, "Couldnt find CSIPHY_LANE_ENABLE");
+		return -EINVAL;
+	}
+
 	lane_assign = csiphy->csiphy_info[index].lane_assign;
 
 	if (enable)

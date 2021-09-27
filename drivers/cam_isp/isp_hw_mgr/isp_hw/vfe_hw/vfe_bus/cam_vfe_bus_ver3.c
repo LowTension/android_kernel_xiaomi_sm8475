@@ -2404,8 +2404,20 @@ static int cam_vfe_bus_ver3_handle_vfe_out_done_bottom_half(
 		evt_info.hw_idx   = vfe_out->hw_intf->hw_idx;
 		evt_info.hw_type  = CAM_ISP_HW_TYPE_VFE;
 
-		rc = cam_vfe_bus_ver3_get_comp_vfe_out_res_id_list(
+		cam_vfe_bus_ver3_get_comp_vfe_out_res_id_list(
 			comp_mask, out_list, &num_out);
+		if (num_out > CAM_NUM_OUT_PER_COMP_IRQ_MAX) {
+			CAM_ERR(CAM_ISP,
+				"num_out: %d  exceeds max_port_per_comp_grp: %d for comp_mask: %u",
+				num_out, CAM_NUM_OUT_PER_COMP_IRQ_MAX, comp_mask);
+			for (i = 0; i < num_out; i++)
+				CAM_ERR(CAM_ISP,
+					"Skipping buf done notify for outport: %u",
+					out_list[i]);
+			rc = -EINVAL;
+			goto end;
+		}
+
 		evt_info.num_res = num_out;
 		for (i = 0; i < num_out; i++) {
 			evt_info.res_id[i] = out_list[i];
@@ -2422,6 +2434,7 @@ static int cam_vfe_bus_ver3_handle_vfe_out_done_bottom_half(
 		break;
 	}
 
+end:
 	cam_vfe_bus_ver3_put_evt_payload(rsrc_data->common_data, &evt_payload);
 
 	return rc;
