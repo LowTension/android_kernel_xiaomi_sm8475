@@ -2953,6 +2953,45 @@ add_reg_pair:
 	return 0;
 }
 
+static int cam_sfe_bus_wr_get_res_for_mid(
+	struct cam_sfe_bus_wr_priv *bus_priv,
+	void *cmd_args, uint32_t arg_size)
+{
+	struct cam_isp_hw_get_cmd_update       *cmd_update = cmd_args;
+	struct cam_isp_hw_get_res_for_mid       *get_res = NULL;
+	int i, j;
+
+	get_res = (struct cam_isp_hw_get_res_for_mid *)cmd_update->data;
+	if (!get_res) {
+		CAM_ERR(CAM_SFE,
+			"invalid get resource for mid paramas");
+		return -EINVAL;
+	}
+
+	for (i = 0; i < bus_priv->num_out; i++) {
+
+		for (j = 0; j < CAM_SFE_BUS_MAX_MID_PER_PORT; j++) {
+			if (bus_priv->sfe_out_hw_info[i].mid[j] == get_res->mid)
+				goto end;
+		}
+	}
+	/*
+	 * Do not update out_res_id in case of no match.
+	 * Correct value will be dumped in hw mgr
+	 */
+	if (i == bus_priv->num_out) {
+		CAM_INFO(CAM_SFE, "mid:%d does not match with any out resource", get_res->mid);
+		return 0;
+	}
+
+end:
+	CAM_INFO(CAM_SFE, "match mid :%d  out resource: %s 0x%x found",
+		get_res->mid, bus_priv->sfe_out_hw_info[i].name,
+		bus_priv->sfe_out[i].res_id);
+	get_res->out_res_id = bus_priv->sfe_out[i].res_id;
+	return 0;
+}
+
 static int cam_sfe_bus_wr_start_hw(void *hw_priv,
 	void *start_hw_args, uint32_t arg_size)
 {
@@ -3104,6 +3143,9 @@ static int cam_sfe_bus_wr_process_cmd(
 		break;
 	case CAM_ISP_HW_CMD_WM_BW_LIMIT_CONFIG:
 		rc = cam_sfe_bus_wr_update_bw_limiter(priv, cmd_args, arg_size);
+		break;
+	case CAM_ISP_HW_CMD_GET_RES_FOR_MID:
+		rc = cam_sfe_bus_wr_get_res_for_mid(priv, cmd_args, arg_size);
 		break;
 	default:
 		CAM_ERR_RATE_LIMIT(CAM_SFE, "Invalid HW command type:%d",
