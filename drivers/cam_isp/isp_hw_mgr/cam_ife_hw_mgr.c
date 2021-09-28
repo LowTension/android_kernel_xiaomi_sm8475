@@ -2491,10 +2491,10 @@ static bool cam_ife_mgr_check_can_use_lite(
 
 	switch (csid_acquire->res_id) {
 
-	case CAM_ISP_IFE_OUT_RES_RDI_0:
-	case CAM_ISP_IFE_OUT_RES_RDI_1:
-	case CAM_ISP_IFE_OUT_RES_RDI_2:
-	case CAM_ISP_IFE_OUT_RES_RDI_3:
+	case CAM_IFE_PIX_PATH_RES_RDI_0:
+	case CAM_IFE_PIX_PATH_RES_RDI_1:
+	case CAM_IFE_PIX_PATH_RES_RDI_2:
+	case CAM_IFE_PIX_PATH_RES_RDI_3:
 		can_use_lite = true;
 		break;
 	default:
