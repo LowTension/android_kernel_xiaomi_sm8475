@@ -313,16 +313,6 @@ static int cam_csiphy_component_bind(struct device *dev,
 	snprintf(wq_name, 32, "%s%d%s", "csiphy",
 		new_csiphy_dev->soc_info.index, "_wq");
 
-	new_csiphy_dev->work_queue = alloc_workqueue("wq_name",
-		WQ_UNBOUND | WQ_MEM_RECLAIM, 1);
-	if (!new_csiphy_dev->work_queue) {
-		CAM_ERR(CAM_CSIPHY,
-			"Error allocating workqueue for csiphy: %d",
-			new_csiphy_dev->soc_info.index);
-		rc = -ENOMEM;
-		goto cpas_unregister;
-	}
-
 	rc = cam_csiphy_register_baseaddress(new_csiphy_dev);
 	if (rc) {
 		CAM_ERR(CAM_CSIPHY, "Failed to register baseaddress, rc: %d", rc);
@@ -338,8 +328,6 @@ static int cam_csiphy_component_bind(struct device *dev,
 
 cpas_unregister:
 	cam_cpas_unregister_client(new_csiphy_dev->cpas_handle);
-	if (new_csiphy_dev->work_queue)
-		destroy_workqueue(new_csiphy_dev->work_queue);
 csiphy_unregister_subdev:
 	cam_unregister_subdev(&(new_csiphy_dev->v4l2_dev_str));
 csiphy_no_resource:
