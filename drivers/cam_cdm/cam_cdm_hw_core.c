@@ -28,8 +28,13 @@
 #include "cam_req_mgr_workq.h"
 #include "cam_common_util.h"
 
-#define CAM_CDM_BL_FIFO_WAIT_TIMEOUT 2000
-#define CAM_CDM_DBG_GEN_IRQ_USR_DATA 0xff
+#define CAM_CDM_BL_FIFO_WAIT_TIMEOUT         2000
+#define CAM_CDM_DBG_GEN_IRQ_USR_DATA         0xff
+#define CAM_CDM_MAX_BL_LENGTH                0x100000
+#define CAM_CDM_FIFO_LEN_REG_LEN_MASK        0xFFFFF
+#define CAM_CDM_FIFO_LEN_REG_TAG_MASK        0xFF
+#define CAM_CDM_FIFO_LEN_REG_TAG_SHIFT       24
+#define CAM_CDM_FIFO_LEN_REG_ARB_SHIFT       20
 
 static void cam_hw_cdm_work(struct work_struct *work);
 
@@ -675,8 +680,7 @@ int cam_hw_cdm_wait_for_bl_fifo(
 	bl_fifo = &core->bl_fifo[fifo_idx];
 
 	do {
-		if (cam_hw_cdm_bl_fifo_pending_bl_rb_in_fifo(
-				cdm_hw, fifo_idx, &pending_bl)) {
+		if (cam_hw_cdm_bl_fifo_pending_bl_rb_in_fifo(cdm_hw, fifo_idx, &pending_bl)) {
 			CAM_ERR(CAM_CDM, "Failed to read CDM pending BL's");
 			rc = -EIO;
 			break;
@@ -745,8 +749,9 @@ bool cam_hw_cdm_bl_write(
 	}
 	if (cam_cdm_write_hw_reg(cdm_hw,
 		cdm_core->offsets->bl_fifo_reg[fifo_idx]->bl_fifo_len,
-		((len & 0xFFFFF) | ((tag & 0xFF) << 24)) |
-		((set_arb) ? (1 << 20) : (0)))) {
+		((len & CAM_CDM_FIFO_LEN_REG_LEN_MASK) |
+			((tag & CAM_CDM_FIFO_LEN_REG_TAG_MASK) << CAM_CDM_FIFO_LEN_REG_TAG_SHIFT)) |
+			((set_arb) ? (1 << CAM_CDM_FIFO_LEN_REG_ARB_SHIFT) : (0)))) {
 		CAM_ERR(CAM_CDM, "Failed to write CDM BL len");
 		return true;
 	}
@@ -906,103 +911,16 @@ end:
 	return rc;
 }
 
-static int cam_hw_cdm_arb_submit_bl(struct cam_hw_info *cdm_hw,
-	struct cam_cdm_hw_intf_cmd_submit_bl *req, int i,
-	uint32_t fifo_idx, dma_addr_t hw_vaddr_ptr)
-{
-	struct cam_cdm_bl_request *cdm_cmd = req->data;
-	struct cam_cdm *core = (struct cam_cdm *)cdm_hw->core_info;
-	uintptr_t cpu_addr;
-	struct cam_cdm_bl_cb_request_entry *node;
-	int rc = 0;
-	size_t len = 0;
-
-	node = kzalloc(sizeof(
-		struct cam_cdm_bl_cb_request_entry),
-		GFP_KERNEL);
-	if (!node)
-		return -ENOMEM;
-
-	node->request_type = CAM_HW_CDM_BL_CB_CLIENT;
-	node->client_hdl = req->handle;
-	node->cookie = req->data->cookie;
-	node->bl_tag = core->bl_fifo[fifo_idx].bl_tag -
-		1;
-	node->userdata = req->data->userdata;
-	list_add_tail(&node->entry,
-		&core->bl_fifo[fifo_idx]
-		.bl_request_list);
-	cdm_cmd->cmd[i].arbitrate = true;
-	rc = cam_mem_get_cpu_buf(
-		cdm_cmd->cmd[i].bl_addr.mem_handle,
-		&cpu_addr, &len);
-	if (rc || !cpu_addr) {
-		CAM_ERR(CAM_OPE, "get cmd buffailed %x",
-			cdm_cmd->cmd[i].bl_addr
-			.mem_handle);
-		return rc;
-	}
-	core->ops->cdm_write_genirq(
-		((uint32_t *)cpu_addr +
-		cdm_cmd->cmd[i].offset / 4 +
-		cdm_cmd->cmd[i].len / 4),
-		core->bl_fifo[fifo_idx].bl_tag - 1,
-		1, fifo_idx);
-	rc = cam_hw_cdm_bl_write(cdm_hw,
-		(uint32_t)hw_vaddr_ptr +
-		cdm_cmd->cmd[i].offset,
-		cdm_cmd->cmd[i].len + 7,
-		core->bl_fifo[fifo_idx].bl_tag - 1,
-		1, fifo_idx);
-	if (rc) {
-		CAM_ERR(CAM_CDM,
-			"CDM hw bl write failed tag=%d",
-			core->bl_fifo[fifo_idx].bl_tag -
-			1);
-			list_del_init(&node->entry);
-			kfree(node);
-			return -EIO;
-	}
-
-	if (cam_presil_mode_enabled()) {
-		CAM_DBG(CAM_PRESIL,
-			"Sending CDM arb cmd buffer:%d with iommu_hdl:%d",
-			cdm_cmd->cmd[i].bl_addr.mem_handle, core->iommu_hdl.non_secure);
-
-		rc = cam_mem_mgr_send_buffer_to_presil(core->iommu_hdl.non_secure,
-			cdm_cmd->cmd[i].bl_addr.mem_handle);
-		if (rc) {
-			CAM_ERR(CAM_PRESIL,
-				"Failed to send CDM arb cmd buffer i:%d mem_handle:%d rc:%d",
-				i, cdm_cmd->cmd[i].bl_addr.mem_handle, rc);
-			return rc;
-		}
-	}
-
-	rc = cam_hw_cdm_commit_bl_write(cdm_hw,
-		fifo_idx);
-	if (rc) {
-		CAM_ERR(CAM_CDM,
-			"CDM hw commit failed tag=%d",
-			core->bl_fifo[fifo_idx].bl_tag -
-			1);
-			list_del_init(&node->entry);
-			kfree(node);
-			return -EIO;
-	}
-
-	return 0;
-}
-
 int cam_hw_cdm_submit_bl(struct cam_hw_info *cdm_hw,
 	struct cam_cdm_hw_intf_cmd_submit_bl *req,
 	struct cam_cdm_client *client)
 {
-	int i, rc;
+	unsigned int i;
+	int rc;
 	struct cam_cdm_bl_request *cdm_cmd = req->data;
 	struct cam_cdm *core = (struct cam_cdm *)cdm_hw->core_info;
 	struct cam_cdm_bl_fifo *bl_fifo = NULL;
-	uint32_t pending_bl = 0, fifo_idx = 0;
+	uint32_t fifo_idx = 0;
 	int write_count = 0;
 
 	fifo_idx = CAM_CDM_GET_BLFIFO_IDX(client->handle);
@@ -1025,7 +943,6 @@ int cam_hw_cdm_submit_bl(struct cam_hw_info *cdm_hw,
 			bl_fifo->bl_depth);
 	}
 
-
 	mutex_lock(&core->bl_fifo[fifo_idx].fifo_lock);
 	mutex_lock(&client->lock);
 
@@ -1036,24 +953,13 @@ int cam_hw_cdm_submit_bl(struct cam_hw_info *cdm_hw,
 		return -EAGAIN;
 	}
 
-	rc = cam_hw_cdm_bl_fifo_pending_bl_rb_in_fifo(cdm_hw,
-		fifo_idx, &pending_bl);
-
-	if (rc) {
-		CAM_ERR(CAM_CDM, "Cannot read the current BL depth");
-		mutex_unlock(&client->lock);
-		mutex_unlock(&core->bl_fifo[fifo_idx].fifo_lock);
-		return rc;
-	}
-
 	for (i = 0; i < req->data->cmd_arrary_count ; i++) {
 		dma_addr_t hw_vaddr_ptr = 0;
 		size_t len = 0;
 
-		if ((!cdm_cmd->cmd[i].len) &&
-			(cdm_cmd->cmd[i].len > 0x100000)) {
+		if ((!cdm_cmd->cmd[i].len) && (cdm_cmd->cmd[i].len > CAM_CDM_MAX_BL_LENGTH)) {
 			CAM_ERR(CAM_CDM,
-				"cmd len(%d) is invalid cnt=%d total cnt=%d",
+				"cmd len=: %d is invalid_ent: %d, num_cmd_ent: %d",
 				cdm_cmd->cmd[i].len, i,
 				req->data->cmd_arrary_count);
 			rc = -EINVAL;
@@ -1074,29 +980,32 @@ int cam_hw_cdm_submit_bl(struct cam_hw_info *cdm_hw,
 				(req->data->cmd_arrary_count - i), fifo_idx);
 			if (write_count < 0) {
 				CAM_ERR(CAM_CDM,
-					"wait for bl fifo failed %d:%d",
-					i, req->data->cmd_arrary_count);
+					"wait for bl fifo failed for ent: %u", i);
 				rc = -EIO;
 				break;
 			}
 		}
 
 		if (req->data->type == CAM_CDM_BL_CMD_TYPE_MEM_HANDLE) {
-			rc = cam_mem_get_io_buf(
-				cdm_cmd->cmd[i].bl_addr.mem_handle,
+			rc = cam_mem_get_io_buf(cdm_cmd->cmd[i].bl_addr.mem_handle,
 				core->iommu_hdl.non_secure, &hw_vaddr_ptr,
 				&len, NULL);
-		} else if (req->data->type == CAM_CDM_BL_CMD_TYPE_HW_IOVA) {
-			if (!cdm_cmd->cmd[i].bl_addr.hw_iova) {
+			if (rc) {
 				CAM_ERR(CAM_CDM,
-					"Hw bl hw_iova is invalid %d:%d",
-					i, req->data->cmd_arrary_count);
+					"Getting a hwva from mem_hdl failed. rc: %d, cmd_ent: %u",
+					rc, i);
 				rc = -EINVAL;
 				break;
 			}
+		} else if (req->data->type == CAM_CDM_BL_CMD_TYPE_HW_IOVA) {
+			if (!cdm_cmd->cmd[i].bl_addr.hw_iova) {
+				CAM_ERR(CAM_CDM, "hw_iova is null for ent: %d", i);
+				rc = -EINVAL;
+				break;
+			}
+
 			rc = 0;
-			hw_vaddr_ptr =
-				(dma_addr_t)cdm_cmd->cmd[i].bl_addr.hw_iova;
+			hw_vaddr_ptr = (dma_addr_t)cdm_cmd->cmd[i].bl_addr.hw_iova;
 			len = cdm_cmd->cmd[i].len + cdm_cmd->cmd[i].offset;
 		} else {
 			CAM_ERR(CAM_CDM,
@@ -1106,11 +1015,8 @@ int cam_hw_cdm_submit_bl(struct cam_hw_info *cdm_hw,
 			break;
 		}
 
-		if ((!rc) && (hw_vaddr_ptr) && (len) &&
-			(len >= cdm_cmd->cmd[i].offset)) {
-
-			if ((len - cdm_cmd->cmd[i].offset) <
-				cdm_cmd->cmd[i].len) {
+		if ((hw_vaddr_ptr) && (len) && (len >= cdm_cmd->cmd[i].offset)) {
+			if ((len - cdm_cmd->cmd[i].offset) < cdm_cmd->cmd[i].len) {
 				CAM_ERR(CAM_CDM,
 					"Not enough buffer cmd offset: %u cmd length: %u",
 					cdm_cmd->cmd[i].offset,
@@ -1119,134 +1025,99 @@ int cam_hw_cdm_submit_bl(struct cam_hw_info *cdm_hw,
 				break;
 			}
 
-			CAM_DBG(CAM_CDM, "Got the HW VA");
-			if (core->bl_fifo[fifo_idx].bl_tag >=
-				(bl_fifo->bl_depth - 1))
-				core->bl_fifo[fifo_idx].bl_tag = 0;
-			if (core->arbitration ==
-				CAM_CDM_ARBITRATION_PRIORITY_BASED &&
-				(req->data->flag == true) &&
-				(i == (req->data->cmd_arrary_count -
-				1))) {
-				CAM_DBG(CAM_CDM,
-					"GenIRQ in same bl, will sumbit later");
-			} else {
-				rc = cam_hw_cdm_bl_write(cdm_hw,
-					((uint32_t)hw_vaddr_ptr +
-						cdm_cmd->cmd[i].offset),
-					(cdm_cmd->cmd[i].len - 1),
-					core->bl_fifo[fifo_idx].bl_tag,
-					cdm_cmd->cmd[i].arbitrate,
-					fifo_idx);
-				if (rc) {
-					CAM_ERR(CAM_CDM,
-						"Hw bl write failed %d:%d",
-						i, req->data->cmd_arrary_count);
-					rc = -EIO;
-					break;
-				}
+			CAM_DBG(CAM_CDM, "Got the hwva: %pK, type: %u",
+				hw_vaddr_ptr, req->data->type);
+
+			rc = cam_hw_cdm_bl_write(cdm_hw,
+				((uint32_t)hw_vaddr_ptr + cdm_cmd->cmd[i].offset),
+				(cdm_cmd->cmd[i].len - 1),
+				core->bl_fifo[fifo_idx].bl_tag,
+				cdm_cmd->cmd[i].arbitrate,
+				fifo_idx);
+			if (rc) {
+				CAM_ERR(CAM_CDM, "Hw bl write failed %d:%d",
+					i, req->data->cmd_arrary_count);
+				rc = -EIO;
+				break;
 			}
-		} else {
-			CAM_ERR(CAM_CDM,
-				"Sanity check failed for hdl=%x len=%zu:%d",
-				cdm_cmd->cmd[i].bl_addr.mem_handle, len,
-				cdm_cmd->cmd[i].offset);
-			CAM_ERR(CAM_CDM, "Sanity check failed for %d:%d",
-				i, req->data->cmd_arrary_count);
-			rc = -EINVAL;
-			break;
-		}
 
-		if (!rc) {
-			CAM_DBG(CAM_CDM,
-				"write BL done cnt=%d with tag=%d total_cnt=%d",
-				i, core->bl_fifo[fifo_idx].bl_tag,
-				req->data->cmd_arrary_count);
-
-			if (core->arbitration ==
-				CAM_CDM_ARBITRATION_PRIORITY_BASED &&
-				(req->data->flag == true) &&
-				(i == (req->data->cmd_arrary_count -
-				1))) {
-				CAM_DBG(CAM_CDM,
-					"GenIRQ in same blcommit later");
-			} else {
-				CAM_DBG(CAM_CDM, "Now commit the BL");
-				if (cam_hw_cdm_commit_bl_write(cdm_hw,
-					fifo_idx)) {
-					CAM_ERR(CAM_CDM,
-						"commit failed BL %d tag=%d",
-						i, core->bl_fifo[fifo_idx]
-						.bl_tag);
-					rc = -EIO;
-					break;
-				}
-				write_count--;
-				CAM_DBG(CAM_CDM, "commit success BL %d tag=%d",
+			if (cam_hw_cdm_commit_bl_write(cdm_hw, fifo_idx)) {
+				CAM_ERR(CAM_CDM, "Commit failed for BL: %d Tag: %u",
 					i, core->bl_fifo[fifo_idx].bl_tag);
+				rc = -EIO;
+				break;
 			}
+
+			CAM_DBG(CAM_CDM, "Commit success for BL: %d of %d, Tag: %u", (i + 1),
+				req->data->cmd_arrary_count,
+				core->bl_fifo[fifo_idx].bl_tag);
+
+			write_count--;
 			core->bl_fifo[fifo_idx].bl_tag++;
+			core->bl_fifo[fifo_idx].bl_tag %= (bl_fifo->bl_depth - 1);
 
 			if (cdm_cmd->cmd[i].enable_debug_gen_irq) {
 				if (write_count == 0) {
 					write_count =
-						cam_hw_cdm_wait_for_bl_fifo(
-						cdm_hw, 1, fifo_idx);
+						cam_hw_cdm_wait_for_bl_fifo(cdm_hw, 1, fifo_idx);
 					if (write_count < 0) {
-						CAM_ERR(CAM_CDM,
-						"wait for bl fifo failed %d:%d",
-						i, req->data->cmd_arrary_count);
+						CAM_ERR(CAM_CDM, "wait for bl fifo failed %d:%d",
+							i, req->data->cmd_arrary_count);
 						rc = -EIO;
 						break;
 					}
 				}
 
-				rc = cam_hw_cdm_submit_debug_gen_irq(cdm_hw,
-					fifo_idx);
-				if (rc == 0) {
+				rc = cam_hw_cdm_submit_debug_gen_irq(cdm_hw, fifo_idx);
+				if (!rc) {
+					CAM_DBG(CAM_CDM,
+						"Commit success for Dbg_GenIRQ_BL, Tag: %d",
+						core->bl_fifo[fifo_idx].bl_tag);
 					write_count--;
 					core->bl_fifo[fifo_idx].bl_tag++;
+					core->bl_fifo[fifo_idx].bl_tag %= (bl_fifo->bl_depth - 1);
+				} else {
+					CAM_WARN(CAM_CDM,
+						"Failed in submitting the debug gen entry. rc: %d",
+						rc);
+					continue;
 				}
-				if (core->bl_fifo[fifo_idx].bl_tag >=
-						(bl_fifo->bl_depth -
-						1))
-					core->bl_fifo[fifo_idx].bl_tag = 0;
 			}
 
-			if ((!rc) && (req->data->flag == true) &&
-				(i == (req->data->cmd_arrary_count -
-				1))) {
+			if (req->data->flag && (i == (req->data->cmd_arrary_count - 1))) {
 
 				if (write_count == 0) {
 					write_count =
-						cam_hw_cdm_wait_for_bl_fifo(
-						cdm_hw, 1, fifo_idx);
+						cam_hw_cdm_wait_for_bl_fifo(cdm_hw, 1, fifo_idx);
 					if (write_count < 0) {
-						CAM_ERR(CAM_CDM,
-						"wait for bl fifo failed %d:%d",
-						i, req->data->cmd_arrary_count);
+						CAM_ERR(CAM_CDM, "wait for bl fifo failed %d:%d",
+							i, req->data->cmd_arrary_count);
 						rc = -EIO;
 						break;
 					}
 				}
 
-				if (core->arbitration !=
-					CAM_CDM_ARBITRATION_PRIORITY_BASED) {
+				if (core->arbitration == CAM_CDM_ARBITRATION_PRIORITY_BASED)
+					cdm_cmd->gen_irq_arb = true;
+				else
+					cdm_cmd->gen_irq_arb = false;
 
-					rc = cam_hw_cdm_submit_gen_irq(
-						cdm_hw, req, fifo_idx,
-						cdm_cmd->gen_irq_arb);
-					if (rc == 0)
-						core->bl_fifo[fifo_idx]
-						.bl_tag++;
-					break;
+				rc = cam_hw_cdm_submit_gen_irq(cdm_hw, req, fifo_idx,
+					cdm_cmd->gen_irq_arb);
+				if (!rc) {
+					CAM_DBG(CAM_CDM, "Commit success for GenIRQ_BL, Tag: %d",
+						core->bl_fifo[fifo_idx].bl_tag);
+					core->bl_fifo[fifo_idx].bl_tag++;
+					core->bl_fifo[fifo_idx].bl_tag %= (bl_fifo->bl_depth - 1);
 				}
-
-				rc = cam_hw_cdm_arb_submit_bl(cdm_hw, req, i,
-					fifo_idx, hw_vaddr_ptr);
-				if (rc)
-					break;
 			}
+		} else {
+			CAM_ERR(CAM_CDM,
+				"Sanity check failed for cdm_cmd: %d, Hdl: 0x%x, len: %zu, offset: 0x%x, num_cmds: %d",
+				i, cdm_cmd->cmd[i].bl_addr.mem_handle, len, cdm_cmd->cmd[i].offset,
+				req->data->cmd_arrary_count);
+			rc = -EINVAL;
+			break;
 		}
 	}
 	mutex_unlock(&client->lock);
