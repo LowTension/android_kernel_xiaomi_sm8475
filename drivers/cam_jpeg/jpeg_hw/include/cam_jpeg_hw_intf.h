@@ -18,6 +18,11 @@
 #define CAM_JPEG_HW_DUMP_TAG_MAX_LEN 32
 #define CAM_JPEG_HW_DUMP_NUM_WORDS   5
 #define CAM_JPEG_HW_MAX_NUM_PID      2
+#define CAM_JPEG_CAMNOC_MISR_VAL_ROW 2
+#define CAM_JPEG_CAMNOC_MISR_VAL_COL 4
+#define CAM_JPEG_ENC_MISR_VAL_NUM    3
+#define CAM_JPEG_MISR_ID_LOW_RD      1
+#define CAM_JPEG_MISR_ID_LOW_WR      2
 
 
 /**
@@ -67,6 +72,16 @@ struct cam_jpeg_mini_dump_core_info {
 	uint32_t           hw_state;
 };
 
+/**
+ * struct cam_jpeg_misr_dump_args
+ * @req_id     : Request Id
+ * @enable_bug : This flag indicates whether BUG_ON(1) has to be called or not on MISR mismatch
+ */
+struct cam_jpeg_misr_dump_args {
+	uint32_t    req_id;
+	bool        enable_bug;
+};
+
 enum cam_jpeg_cmd_type {
 	CAM_JPEG_CMD_CDM_CFG,
 	CAM_JPEG_CMD_SET_IRQ_CB,
@@ -74,6 +89,8 @@ enum cam_jpeg_cmd_type {
 	CAM_JPEG_CMD_GET_NUM_PID,
 	CAM_JPEG_CMD_MATCH_PID_MID,
 	CAM_JPEG_CMD_MINI_DUMP,
+	CAM_JPEG_CMD_CONFIG_HW_MISR,
+	CAM_JPEG_CMD_DUMP_HW_MISR_VAL,
 	CAM_JPEG_CMD_MAX,
 };
 

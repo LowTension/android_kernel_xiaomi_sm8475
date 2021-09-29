@@ -301,6 +301,21 @@ static int cam_jpeg_process_next_hw_update(void *priv, void *data,
 		goto end_error;
 	}
 
+	if (g_jpeg_hw_mgr.camnoc_misr_test) {
+		/* configure jpeg hw and camnoc misr */
+		rc = hw_mgr->devices[dev_type][0]->hw_ops.process_cmd(
+			hw_mgr->devices[dev_type][0]->hw_priv,
+			CAM_JPEG_CMD_CONFIG_HW_MISR,
+			&g_jpeg_hw_mgr.camnoc_misr_test,
+			sizeof(g_jpeg_hw_mgr.camnoc_misr_test));
+		if (rc) {
+			CAM_ERR(CAM_JPEG, "Failed to apply the configs %d",
+				rc);
+			buf_data->evt_param = CAM_SYNC_JPEG_EVENT_MISR_CONFIG_ERR;
+			goto end_error;
+		}
+	}
+
 	if (!hw_mgr->devices[dev_type][0]->hw_ops.start) {
 		CAM_ERR(CAM_JPEG, "op start null ");
 		buf_data->evt_param = CAM_SYNC_JPEG_EVENT_INVLD_CMD;
@@ -346,7 +361,7 @@ static int cam_jpeg_mgr_bottom_half_irq(void *priv, void *data)
 	struct cam_jpeg_request_data                            *jpeg_req;
 	struct cam_req_mgr_message                               v4l2_msg = {0};
 	struct cam_ctx_request                                  *req;
-
+	struct cam_jpeg_misr_dump_args                           misr_args;
 	if (!data || !priv) {
 		CAM_ERR(CAM_JPEG, "Invalid data");
 		return -EINVAL;
@@ -389,8 +404,20 @@ static int cam_jpeg_mgr_bottom_half_irq(void *priv, void *data)
 
 	p_cfg_req->num_hw_entry_processed++;
 	CAM_DBG(CAM_JPEG, "dev_type: %u, hw_entry_processed %d",
-		dev_type,
-		p_cfg_req->num_hw_entry_processed);
+		dev_type, p_cfg_req->num_hw_entry_processed);
+
+	if (g_jpeg_hw_mgr.camnoc_misr_test) {
+		misr_args.req_id = p_cfg_req->req_id;
+		misr_args.enable_bug = g_jpeg_hw_mgr.bug_on_misr;
+		CAM_DBG(CAM_JPEG, "req %lld bug is enabled for MISR :%d",
+			misr_args.req_id, misr_args.enable_bug);
+
+		/* dump jpeg hw and camnoc misr */
+		rc = g_jpeg_hw_mgr.devices[dev_type][0]->hw_ops.process_cmd(
+			g_jpeg_hw_mgr.devices[dev_type][0]->hw_priv,
+			CAM_JPEG_CMD_DUMP_HW_MISR_VAL, &misr_args,
+			sizeof(struct cam_jpeg_misr_dump_args));
+	}
 
 	/* If we have processed just plane 1 for jpeg dma,
 	 * send the configuration data for plane 1 as well.*/
@@ -2067,6 +2094,64 @@ end:
 	return dumped_len;
 }
 
+static int cam_jpeg_set_camnoc_misr_test(void *data, u64 val)
+{
+	g_jpeg_hw_mgr.camnoc_misr_test = val;
+	return 0;
+}
+
+static int cam_jpeg_get_camnoc_misr_test(void *data, u64 *val)
+{
+	*val = g_jpeg_hw_mgr.camnoc_misr_test;
+	return 0;
+}
+DEFINE_DEBUGFS_ATTRIBUTE(camnoc_misr_test, cam_jpeg_get_camnoc_misr_test,
+	cam_jpeg_set_camnoc_misr_test, "%08llu");
+
+static int cam_jpeg_set_bug_on_misr(void *data, u64 val)
+{
+	g_jpeg_hw_mgr.bug_on_misr = val;
+	return 0;
+}
+
+static int cam_jpeg_get_bug_on_misr(void *data, u64 *val)
+{
+	*val = g_jpeg_hw_mgr.bug_on_misr;
+	return 0;
+}
+DEFINE_DEBUGFS_ATTRIBUTE(bug_on_misr_mismatch, cam_jpeg_get_bug_on_misr,
+	cam_jpeg_set_bug_on_misr, "%08llu");
+
+static int cam_jpeg_mgr_create_debugfs_entry(void)
+{
+	int rc = 0;
+	struct dentry *dbgfileptr = NULL;
+
+	dbgfileptr = debugfs_create_dir("camera_jpeg", NULL);
+	if (!dbgfileptr) {
+		CAM_ERR(CAM_JPEG, "DebugFS could not create directory!");
+		rc = -ENOENT;
+		goto err;
+	}
+	/* Store parent inode for cleanup in caller */
+	g_jpeg_hw_mgr.dentry = dbgfileptr;
+
+	dbgfileptr = debugfs_create_file("camnoc_misr_test", 0644,
+		g_jpeg_hw_mgr.dentry, NULL, &camnoc_misr_test);
+
+	dbgfileptr = debugfs_create_file("bug_on_misr_mismatch", 0644,
+		g_jpeg_hw_mgr.dentry, NULL, &bug_on_misr_mismatch);
+
+	if (IS_ERR(dbgfileptr)) {
+		if (PTR_ERR(dbgfileptr) == -ENODEV)
+			CAM_WARN(CAM_JPEG, "DebugFS not enabled in kernel!");
+		else
+			rc = PTR_ERR(dbgfileptr);
+	}
+err:
+	return rc;
+}
+
 int cam_jpeg_hw_mgr_init(struct device_node *of_node, uint64_t *hw_mgr_hdl,
 	int *iommu_hdl, cam_jpeg_mini_dump_cb mini_dump_cb)
 {
@@ -2157,7 +2242,9 @@ int cam_jpeg_hw_mgr_init(struct device_node *of_node, uint64_t *hw_mgr_hdl,
 
 	cam_common_register_mini_dump_cb(cam_jpeg_hw_mgr_mini_dump_cb, "CAM_JPEG");
 
-	return rc;
+	rc = cam_jpeg_mgr_create_debugfs_entry();
+	if (!rc)
+		return rc;
 
 cdm_iommu_failed:
 	cam_smmu_destroy_handle(g_jpeg_hw_mgr.iommu_hdl);
