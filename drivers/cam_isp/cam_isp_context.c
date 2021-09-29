@@ -3758,7 +3758,8 @@ static int __cam_isp_ctx_flush_req(struct cam_context *ctx,
 	if (list_empty(req_list)) {
 		CAM_DBG(CAM_ISP, "request list is empty");
 		if (flush_req->type == CAM_REQ_MGR_FLUSH_TYPE_CANCEL_REQ) {
-			CAM_ERR(CAM_ISP, "no request to cancel");
+			CAM_INFO(CAM_ISP, "no request to cancel (last applied:%lld cancel:%lld)",
+				ctx_isp->last_applied_req_id, flush_req->req_id);
 			return -EINVAL;
 		} else
 			return 0;
