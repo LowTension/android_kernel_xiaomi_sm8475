@@ -31,6 +31,8 @@
 /* Default frame rate is 30 */
 #define DEFAULT_FRAME_DURATION 33333333
 
+#define INITIAL_IN_SYNC_REQ 5
+
 #define SYNC_LINK_SOF_CNT_MAX_LMT 1
 
 #define MAXIMUM_LINKS_PER_SESSION  4
