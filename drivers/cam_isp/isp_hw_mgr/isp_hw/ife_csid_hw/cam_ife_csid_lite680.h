@@ -10,6 +10,7 @@
 #include "cam_ife_csid_dev.h"
 #include "cam_ife_csid_hw_ver2.h"
 #include "cam_irq_controller.h"
+#include "cam_isp_hw_mgr_intf.h"
 
 static const struct cam_ife_csid_irq_desc cam_ife_csid_lite_680_rx_irq_desc[] = {
 	{
@@ -169,11 +170,15 @@ static const struct cam_ife_csid_irq_desc cam_ife_csid_lite_680_path_irq_desc[] 
 	},
 	{
 		.bitmask = BIT(13),
+		.err_type = CAM_ISP_HW_ERROR_CSID_FRAME_SIZE,
 		.desc = "ERROR_PIX_COUNT",
+		.err_handler = cam_ife_csid_ver2_print_format_measure_info,
 	},
 	{
 		.bitmask = BIT(14),
-		.desc = "ERROR_LINE_COUNT",
+		.err_type = CAM_ISP_HW_ERROR_CSID_FRAME_SIZE,
+		.desc = "ERROR_PIX_COUNT",
+		.err_handler = cam_ife_csid_ver2_print_format_measure_info,
 	},
 	{
 		.bitmask = BIT(15),
@@ -193,6 +198,7 @@ static const struct cam_ife_csid_irq_desc cam_ife_csid_lite_680_path_irq_desc[] 
 	},
 	{
 		.bitmask = BIT(19),
+		.err_type = CAM_ISP_HW_ERROR_RECOVERY_OVERFLOW,
 		.desc = "OVERFLOW_RECOVERY: Back pressure/output fifo ovrfl",
 	},
 	{
@@ -230,6 +236,7 @@ static const struct cam_ife_csid_irq_desc cam_ife_csid_lite_680_path_irq_desc[] 
 	{
 		.bitmask = BIT(28),
 		.desc = "SENSOR_SWITCH_OUT_OF_SYNC_FRAME_DROP",
+		.err_handler = cam_ife_csid_hw_ver2_mup_mismatch_handler,
 	},
 	{
 		.bitmask = BIT(29),
