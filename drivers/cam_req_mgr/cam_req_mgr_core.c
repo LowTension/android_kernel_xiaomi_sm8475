@@ -3003,7 +3003,8 @@ int cam_req_mgr_process_error(void *priv, void *data)
 	in_q = link->req.in_q;
 
 	mutex_lock(&link->req.lock);
-	if (err_info->error == CRM_KMD_ERR_BUBBLE) {
+	switch (err_info->error) {
+	case CRM_KMD_ERR_BUBBLE:
 		idx = __cam_req_mgr_find_slot_for_req(in_q, err_info->req_id);
 		if (idx < 0) {
 			CAM_ERR_RATE_LIMIT(CAM_CRM,
@@ -3027,10 +3028,6 @@ int cam_req_mgr_process_error(void *priv, void *data)
 				mutex_unlock(&link->req.lock);
 				return -EINVAL;
 			}
-			/* Notify all devices in the link about error */
-			__cam_req_mgr_send_evt(err_info->req_id, CAM_REQ_MGR_LINK_EVT_ERR,
-				err_info->error, link);
-
 			/* Bring processing pointer to bubbled req id */
 			__cam_req_mgr_tbl_set_all_skip_cnt(&link->req.l_tbl);
 			in_q->rd_idx = idx;
@@ -3054,8 +3051,17 @@ int cam_req_mgr_process_error(void *priv, void *data)
 			link->state = CAM_CRM_LINK_STATE_ERR;
 			spin_unlock_bh(&link->link_state_spin_lock);
 			link->open_req_cnt++;
+
+			/* Apply immediately to highest pd device on same frame */
 			__cam_req_mgr_apply_on_bubble(link, err_info);
 		}
+		break;
+	case CRM_KMD_ERR_FATAL:
+		rc = __cam_req_mgr_send_evt(err_info->req_id,
+			CAM_REQ_MGR_LINK_EVT_ERR, err_info->error, link);
+		break;
+	default:
+		break;
 	}
 	mutex_unlock(&link->req.lock);
 
