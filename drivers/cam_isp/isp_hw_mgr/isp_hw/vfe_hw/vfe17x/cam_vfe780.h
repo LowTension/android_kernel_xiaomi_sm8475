@@ -375,7 +375,7 @@ static struct cam_vfe_top_ver4_wr_client_desc vfe780_wr_client_desc[] = {
 	},
 	{
 		.wm_id = 22,
-		.desc = "PDAF_2_LCR",
+		.desc = "PDAF_2_PARSED_DATA",
 	},
 	{
 		.wm_id = 23,
@@ -811,7 +811,7 @@ static struct cam_vfe_top_ver4_hw_info vfe780_top_hw_info = {
 	.path_port_map = {
 		{CAM_ISP_HW_VFE_IN_PDLIB, CAM_ISP_IFE_OUT_RES_2PD},
 		{CAM_ISP_HW_VFE_IN_PDLIB, CAM_ISP_IFE_OUT_RES_PREPROCESS_2PD},
-		{CAM_ISP_HW_VFE_IN_PDLIB, CAM_ISP_IFE_OUT_RES_LCR}
+		{CAM_ISP_HW_VFE_IN_PDLIB, CAM_ISP_IFE_OUT_RES_PDAF_PARSED_DATA},
 	},
 	.num_top_errors                  = ARRAY_SIZE(vfe780_top_irq_err_desc),
 	.top_err_desc                    = vfe780_top_irq_err_desc,
@@ -1563,7 +1563,7 @@ static struct cam_vfe_bus_ver3_hw_info vfe780_bus_hw_info = {
 			.comp_group               = CAM_VFE_BUS_VER3_COMP_GRP_11,
 			.ubwc_regs                = NULL,
 		},
-		/* BUS Client 22 PDAF V2.0 PDAF_2_LCR */
+		/* BUS Client 22 PDAF V2.0 PDAF_2_PARSED_DATA */
 		{
 			.cfg                      = 0x00002400,
 			.image_addr               = 0x00002404,
@@ -2024,7 +2024,7 @@ static struct cam_vfe_bus_ver3_hw_info vfe780_bus_hw_info = {
 			},
 		},
 		{
-			.vfe_out_type  = CAM_VFE_BUS_VER3_VFE_OUT_LCR,
+			.vfe_out_type  = CAM_VFE_BUS_VER3_VFE_OUT_PDAF_PARSED,
 			.max_width     = -1,
 			.max_height    = -1,
 			.source_group  = CAM_VFE_BUS_VER3_SRC_GRP_1,
@@ -2035,7 +2035,7 @@ static struct cam_vfe_bus_ver3_hw_info vfe780_bus_hw_info = {
 				22,
 			},
 			.name          = {
-				"PDAF_2_LCR",
+				"PDAF_2_PARSED_DATA",
 			},
 		},
 		{
@@ -2207,7 +2207,7 @@ static struct cam_vfe_bus_ver3_hw_info vfe780_bus_hw_info = {
 	.support_consumed_addr = true,
 	.comp_done_shift = 0,
 	.top_irq_shift   = 0,
-	.max_out_res = CAM_ISP_IFE_OUT_RES_BASE + 35,
+	.max_out_res = CAM_ISP_IFE_OUT_RES_BASE + 36,
 	.pack_align_shift = 5,
 };
 
