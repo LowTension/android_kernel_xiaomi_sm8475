@@ -866,6 +866,33 @@ static void __cam_isp_ctx_send_sof_boot_timestamp(
 			request_id);
 }
 
+static void __cam_isp_ctx_send_unified_timestamp(
+	struct cam_isp_context *ctx_isp, uint64_t request_id)
+{
+	struct cam_req_mgr_message   req_msg;
+
+	req_msg.session_hdl = ctx_isp->base->session_hdl;
+	req_msg.u.frame_msg_v2.frame_id = ctx_isp->frame_id;
+	req_msg.u.frame_msg_v2.request_id = request_id;
+	req_msg.u.frame_msg_v2.timestamps[CAM_REQ_SOF_QTIMER_TIMESTAMP] =
+		(request_id == 0) ? 0 : ctx_isp->sof_timestamp_val;
+	req_msg.u.frame_msg_v2.timestamps[CAM_REQ_BOOT_TIMESTAMP] = ctx_isp->boot_timestamp;
+	req_msg.u.frame_msg_v2.link_hdl = ctx_isp->base->link_hdl;
+	req_msg.u.frame_msg_v2.frame_id_meta = ctx_isp->frame_id_meta;
+
+	CAM_DBG(CAM_ISP,
+		"link hdl 0x%x request id:%lld frame number:%lld SOF time stamp:0x%llx ctx %d\
+		boot time stamp:0x%llx", ctx_isp->base->link_hdl, request_id,
+		ctx_isp->frame_id, ctx_isp->sof_timestamp_val,ctx_isp->base->ctx_id,
+		ctx_isp->boot_timestamp);
+
+	if (cam_req_mgr_notify_message(&req_msg,
+		V4L_EVENT_CAM_REQ_MGR_SOF_UNIFIED_TS, V4L_EVENT_CAM_REQ_MGR_EVENT))
+		CAM_ERR(CAM_ISP,
+			"Error in notifying the sof and boot time for req id:%lld",
+			request_id);
+}
+
 static void __cam_isp_ctx_send_sof_timestamp_frame_header(
 	struct cam_isp_context *ctx_isp, uint32_t *frame_header_cpu_addr,
 	uint64_t request_id, uint32_t sof_event_status)
@@ -907,6 +934,12 @@ static void __cam_isp_ctx_send_sof_timestamp(
 	uint32_t sof_event_status)
 {
 	struct cam_req_mgr_message   req_msg;
+
+	if ((ctx_isp->v4l2_event_sub_ids & (1 << V4L_EVENT_CAM_REQ_MGR_SOF_UNIFIED_TS))
+		&& !ctx_isp->use_frame_header_ts) {
+		__cam_isp_ctx_send_unified_timestamp(ctx_isp,request_id);
+		return;
+	}
 
 	if ((ctx_isp->use_frame_header_ts) || (request_id == 0))
 		goto end;
@@ -4786,6 +4819,7 @@ static int __cam_isp_ctx_release_dev_in_top_state(struct cam_context *ctx,
 	ctx_isp->offline_context = false;
 	ctx_isp->rdi_only_context = false;
 	ctx_isp->req_info.last_bufdone_req_id = 0;
+	ctx_isp->v4l2_event_sub_ids = 0;
 
 	atomic64_set(&ctx_isp->state_monitor_head, -1);
 	for (i = 0; i < CAM_ISP_CTX_EVENT_MAX; i++)
@@ -5101,6 +5135,8 @@ static int __cam_isp_ctx_acquire_dev_in_available(struct cam_context *ctx,
 		"session_hdl 0x%x, num_resources %d, hdl type %d, res %lld",
 		cmd->session_handle, cmd->num_resources,
 		cmd->handle_type, cmd->resource_hdl);
+
+	ctx_isp->v4l2_event_sub_ids = cam_req_mgr_get_id_subscribed();
 
 	if (cmd->num_resources == CAM_API_COMPAT_CONSTANT) {
 		ctx_isp->split_acquire = true;
@@ -6576,6 +6612,7 @@ int cam_isp_context_init(struct cam_isp_context *ctx,
 	ctx->reported_req_id = 0;
 	ctx->bubble_frame_cnt = 0;
 	ctx->req_info.last_bufdone_req_id = 0;
+	ctx->v4l2_event_sub_ids = 0;
 
 	ctx->hw_ctx = NULL;
 	ctx->substate_activated = CAM_ISP_CTX_ACTIVATED_SOF;

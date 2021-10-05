@@ -274,6 +274,7 @@ struct cam_isp_context_event_record {
  * @workq:                     Worker thread for offline ife
  * @trigger_id:                ID provided by CRM for each ctx on the link
  * @last_bufdone_err_apply_req_id:  last bufdone error apply request id
+ * @v4l2_event_sub_ids         contains individual bits representing subscribed v4l2 ids
  *
  */
 struct cam_isp_context {
@@ -323,6 +324,7 @@ struct cam_isp_context {
 	struct cam_req_mgr_core_workq        *workq;
 	int32_t                               trigger_id;
 	int64_t                               last_bufdone_err_apply_req_id;
+	uint32_t                              v4l2_event_sub_ids;
 };
 
 /**

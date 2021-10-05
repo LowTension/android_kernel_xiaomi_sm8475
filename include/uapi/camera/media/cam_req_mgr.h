@@ -57,6 +57,7 @@
 #define V4L_EVENT_CAM_REQ_MGR_SOF_BOOT_TS                               2
 #define V4L_EVENT_CAM_REQ_MGR_CUSTOM_EVT                                3
 #define V4L_EVENT_CAM_REQ_MGR_NODE_EVENT                                4
+#define V4L_EVENT_CAM_REQ_MGR_SOF_UNIFIED_TS                            5
 
 /* SOF Event status */
 #define CAM_REQ_MGR_SOF_EVENT_SUCCESS           0
@@ -508,6 +509,39 @@ struct cam_req_mgr_frame_msg {
 };
 
 /**
+ * enum cam_req_msg_timestamp_type - Identifies index of timestamps
+ *
+ * @CAM_REQ_SOF_QTIMER_TIMESTAMP:  SOF qtimer timestamp
+ * @CAM_REQ_BOOT_TIMESTAMP:        SOF boot timestamp
+ * @CAM_REQ_TIMESTAMP_TYPE:        Max enum index for timestamp type
+ *
+ */
+enum cam_req_msg_timestamp_type {
+	CAM_REQ_SOF_QTIMER_TIMESTAMP = 0,
+	CAM_REQ_BOOT_TIMESTAMP,
+	CAM_REQ_TIMESTAMP_MAX
+};
+
+/**
+ * struct cam_req_mgr_frame_msg
+ * @request_id: request id of the frame
+ * @frame_id: frame id of the frame
+ * @timestamps: array for all the supported timestamps
+ * @link_hdl: link handle associated with this message
+ * @frame_id_meta: refers to the meta for
+ *                that frame in specific usecases
+ * @reserved: reserved for future addtions and max size for structure can be 64 bytes
+ */
+struct cam_req_mgr_frame_msg_v2 {
+	__u64 request_id;
+	__u64 frame_id;
+	__u64 timestamps[CAM_REQ_TIMESTAMP_MAX];
+	__s32 link_hdl;
+	__u32 frame_id_meta;
+	__u32 reserved[4];
+};
+
+/**
  * struct cam_req_mgr_custom_msg
  * @custom_type: custom type
  * @request_id: request id of the frame
@@ -573,6 +607,7 @@ struct cam_req_mgr_message {
 	union {
 		struct cam_req_mgr_error_msg err_msg;
 		struct cam_req_mgr_frame_msg frame_msg;
+		struct cam_req_mgr_frame_msg_v2 frame_msg_v2;
 		struct cam_req_mgr_custom_msg custom_msg;
 		struct cam_req_mgr_node_msg node_msg;
 	} u;
