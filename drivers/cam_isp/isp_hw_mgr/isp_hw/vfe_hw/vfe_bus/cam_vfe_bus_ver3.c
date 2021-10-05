@@ -25,6 +25,7 @@
 #include "cam_trace.h"
 #include "cam_smmu_api.h"
 #include "cam_common_util.h"
+#include "cam_compat.h"
 
 static const char drv_name[] = "vfe_bus";
 
@@ -1881,7 +1882,7 @@ static int cam_vfe_bus_ver3_init_comp_grp(uint32_t index,
 		rsrc_data->comp_grp_type != CAM_VFE_BUS_VER3_COMP_GRP_1)
 		rsrc_data->ubwc_static_ctrl = 0;
 	else {
-		ddr_type = of_fdt_get_ddrtype();
+		ddr_type = cam_get_ddr_type();
 		if ((ddr_type == DDR_TYPE_LPDDR5) ||
 			(ddr_type == DDR_TYPE_LPDDR5X))
 			rsrc_data->ubwc_static_ctrl =

@@ -248,7 +248,7 @@ end:
 	return rc;
 }
 
-#if KERNEL_VERSION(5, 10, 0) <= LINUX_VERSION_CODE
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)
 #include <linux/qcom-iommu-util.h>
 void cam_check_iommu_faults(struct iommu_domain *domain,
 	struct cam_smmu_pf_info *pf_info)
@@ -280,5 +280,20 @@ void cam_check_iommu_faults(struct iommu_domain *domain,
 	pf_info->bid = fault_ids.bid;
 	pf_info->pid = fault_ids.pid;
 	pf_info->mid = fault_ids.mid;
+}
+#endif
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0)
+int cam_get_ddr_type(void)
+{
+	/* We assume all chipsets running kernel version 5.15+
+	 * to be using only DDR5 based memory.
+	 */
+	return DDR_TYPE_LPDDR5;
+}
+#else
+int cam_get_ddr_type(void)
+{
+	return of_fdt_get_ddrtype();
 }
 #endif
