@@ -4443,16 +4443,10 @@ static int cam_smmu_create_debug_fs(void)
 	/* Store parent inode for cleanup in caller */
 	iommu_cb_set.dentry = dbgfileptr;
 
-	dbgfileptr = debugfs_create_bool("cb_dump_enable", 0644,
+	debugfs_create_bool("cb_dump_enable", 0644,
 		iommu_cb_set.dentry, &iommu_cb_set.cb_dump_enable);
-	dbgfileptr = debugfs_create_bool("map_profile_enable", 0644,
+	debugfs_create_bool("map_profile_enable", 0644,
 		iommu_cb_set.dentry, &iommu_cb_set.map_profile_enable);
-	if (IS_ERR(dbgfileptr)) {
-		if (PTR_ERR(dbgfileptr) == -ENODEV)
-			CAM_WARN(CAM_SMMU, "DebugFS not enabled in kernel!");
-		else
-			rc = PTR_ERR(dbgfileptr);
-	}
 end:
 	return rc;
 }

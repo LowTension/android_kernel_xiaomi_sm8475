@@ -179,14 +179,8 @@ static int cam_mem_mgr_create_debug_fs(void)
 	/* Store parent inode for cleanup in caller */
 	tbl.dentry = dbgfileptr;
 
-	dbgfileptr = debugfs_create_bool("alloc_profile_enable", 0644,
+	debugfs_create_bool("alloc_profile_enable", 0644,
 		tbl.dentry, &tbl.alloc_profile_enable);
-	if (IS_ERR(dbgfileptr)) {
-		if (PTR_ERR(dbgfileptr) == -ENODEV)
-			CAM_WARN(CAM_MEM, "DebugFS not enabled in kernel!");
-		else
-			rc = PTR_ERR(dbgfileptr);
-	}
 end:
 	return rc;
 }
