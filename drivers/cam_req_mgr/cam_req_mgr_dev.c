@@ -17,7 +17,6 @@
 #include <media/v4l2-ioctl.h>
 #include <media/cam_req_mgr.h>
 #include <media/cam_defs.h>
-#include <linux/list_sort.h>
 
 #include "cam_req_mgr_dev.h"
 #include "cam_req_mgr_util.h"
@@ -28,6 +27,7 @@
 #include "cam_common_util.h"
 #include "cam_compat.h"
 #include "cam_cpas_hw.h"
+#include "cam_compat.h"
 
 #define CAM_REQ_MGR_EVENT_MAX 30
 
@@ -684,24 +684,6 @@ void cam_subdev_notify_message(u32 subdev_type,
 	}
 }
 EXPORT_SYMBOL(cam_subdev_notify_message);
-
-
-static int cam_req_mgr_ordered_list_cmp(void *priv,
-	struct list_head *head_1, struct list_head *head_2)
-{
-	struct cam_subdev *entry_1 =
-		list_entry(head_1, struct cam_subdev, list);
-	struct cam_subdev *entry_2 =
-		list_entry(head_2, struct cam_subdev, list);
-	int ret = -1;
-
-	if (entry_1->close_seq_prior > entry_2->close_seq_prior)
-		return 1;
-	else if (entry_1->close_seq_prior < entry_2->close_seq_prior)
-		return ret;
-	else
-		return 0;
-}
 
 bool cam_req_mgr_is_open(void)
 {
