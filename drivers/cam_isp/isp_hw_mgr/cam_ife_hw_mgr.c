@@ -11403,34 +11403,16 @@ static int cam_ife_hw_mgr_handle_csid_rup(
 
 	switch (event_info->res_id) {
 	case CAM_IFE_PIX_PATH_RES_IPP:
-		if ((ife_hw_mgr_ctx->flags.is_dual) &&
-			(event_info->hw_idx !=
-			ife_hw_mgr_ctx->left_hw_idx))
-			break;
-
-		if (atomic_read(&ife_hw_mgr_ctx->overflow_pending))
-			break;
-		ife_hwr_irq_rup_cb(ife_hw_mgr_ctx->common.cb_priv,
-			CAM_ISP_HW_EVENT_REG_UPDATE, &rup_event_data);
-		break;
-
 	case CAM_IFE_PIX_PATH_RES_RDI_0:
 	case CAM_IFE_PIX_PATH_RES_RDI_1:
 	case CAM_IFE_PIX_PATH_RES_RDI_2:
 	case CAM_IFE_PIX_PATH_RES_RDI_3:
 	case CAM_IFE_PIX_PATH_RES_RDI_4:
-		/* Process RDI RUP only for RDI only/sHDR/FS use-cases */
-		if (!ife_hw_mgr_ctx->flags.is_rdi_only_context &&
-			!((ife_hw_mgr_ctx->flags.is_fe_enabled) &&
-			(ife_hw_mgr_ctx->ctx_type == CAM_IFE_CTX_TYPE_SFE)))
-			break;
+	case CAM_IFE_PIX_PATH_RES_PPP:
 		if (atomic_read(&ife_hw_mgr_ctx->overflow_pending))
 			break;
 		ife_hwr_irq_rup_cb(ife_hw_mgr_ctx->common.cb_priv,
 			CAM_ISP_HW_EVENT_REG_UPDATE, &rup_event_data);
-		break;
-
-	case CAM_IFE_PIX_PATH_RES_PPP:
 		break;
 	default:
 		CAM_ERR_RATE_LIMIT(CAM_ISP, "Invalid res_id: %d",
