@@ -145,11 +145,13 @@ struct clk_work_data {
  * @request_id: request id
  * @io_config: the address of io config
  * @hfi_cfg_io_cmd: command struct to be sent to hfi
+ * @pkt: pointer to the packet header of current request
  */
 struct icp_frame_info {
 	uint64_t request_id;
 	dma_addr_t io_config;
 	struct hfi_cmd_ipebps_async hfi_cfg_io_cmd;
+	struct cam_packet *pkt;
 };
 
 /**
