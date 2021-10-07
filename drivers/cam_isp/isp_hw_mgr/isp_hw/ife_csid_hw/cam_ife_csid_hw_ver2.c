@@ -4487,12 +4487,18 @@ static int cam_ife_csid_ver2_reg_update(
 	reg_val_pair[0] = csid_reg->cmn_reg->rup_aup_cmd_addr;
 	reg_val_pair[1] = rup_aup_mask;
 
-	reg_val_pair[1] |= csid_hw->rx_cfg.mup <<
-			csid_reg->cmn_reg->mup_shift_val;
+	/* If not an actual request, configure last applied MUP */
+	if (rup_args->reg_write)
+		reg_val_pair[1] |= (rup_args->last_applied_mup <<
+			csid_reg->cmn_reg->mup_shift_val);
+	else
+		reg_val_pair[1] |= (csid_hw->rx_cfg.mup <<
+			csid_reg->cmn_reg->mup_shift_val);
 
-	CAM_DBG(CAM_ISP, "CSID:%d reg_update_cmd 0x%X offset 0x%X",
+	CAM_DBG(CAM_ISP, "CSID:%d configure rup_aup_mup: 0x%x offset: 0x%x via %s",
 		csid_hw->hw_intf->hw_idx,
-		reg_val_pair[1], reg_val_pair[0]);
+		reg_val_pair[1], reg_val_pair[0],
+		(rup_args->reg_write ? "AHB" : "CDM"));
 
 	if (rup_args->reg_write) {
 		soc_info = &csid_hw->hw_info->soc_info;
