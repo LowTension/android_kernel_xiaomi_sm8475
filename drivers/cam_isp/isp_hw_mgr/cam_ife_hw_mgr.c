@@ -5274,6 +5274,60 @@ static const char *cam_isp_util_usage_data_to_string(
 	}
 }
 
+static void cam_ife_mgr_print_blob_info(struct cam_ife_hw_mgr_ctx *ctx, uint64_t request_id,
+	struct cam_isp_prepare_hw_update_data *hw_update_data)
+{
+	int i;
+	struct cam_isp_bw_config_v2 *bw_config =
+		(struct cam_isp_bw_config_v2 *) &hw_update_data->bw_clk_config.bw_config_v2;
+	struct cam_isp_clock_config *ife_clock_config =
+		(struct cam_isp_clock_config *) &hw_update_data->bw_clk_config.ife_clock_config;
+	struct cam_isp_clock_config *sfe_clock_config =
+		(struct cam_isp_clock_config *) &hw_update_data->bw_clk_config.sfe_clock_config;
+
+	CAM_INFO(CAM_ISP, "ctx: %d req_id:%llu config_valid[BW VFE_CLK SFE_CLK]:[%d %d %d]",
+		ctx->ctx_index, request_id, hw_update_data->bw_clk_config.bw_config_valid,
+		hw_update_data->bw_clk_config.ife_clock_config_valid,
+		hw_update_data->bw_clk_config.sfe_clock_config_valid);
+
+	if (!hw_update_data->bw_clk_config.bw_config_valid)
+		goto ife_clk;
+
+	for (i = 0; i < bw_config->num_paths; i++) {
+		CAM_INFO(CAM_PERF,
+			"ISP_BLOB usage_type=%u [%s] [%s] [%s] [%llu] [%llu] [%llu]",
+			bw_config->usage_type,
+			cam_isp_util_usage_data_to_string(
+			bw_config->axi_path[i].usage_data),
+			cam_cpas_axi_util_path_type_to_string(
+			bw_config->axi_path[i].path_data_type),
+			cam_cpas_axi_util_trans_type_to_string(
+			bw_config->axi_path[i].transac_type),
+			bw_config->axi_path[i].camnoc_bw,
+			bw_config->axi_path[i].mnoc_ab_bw,
+			bw_config->axi_path[i].mnoc_ib_bw);
+	}
+
+ife_clk:
+	if (!hw_update_data->bw_clk_config.ife_clock_config_valid)
+		goto sfe_clk;
+
+	CAM_INFO(CAM_PERF, "IFE clk update usage=%u left_clk= %lu right_clk=%lu",
+		ife_clock_config->usage_type, ife_clock_config->left_pix_hz,
+		ife_clock_config->right_pix_hz);
+
+sfe_clk:
+	if (!hw_update_data->bw_clk_config.sfe_clock_config_valid)
+		goto end;
+
+	CAM_INFO(CAM_PERF, "SFE clk update usage: %u left_clk: %lu right_clk: %lu",
+		sfe_clock_config->usage_type, sfe_clock_config->left_pix_hz,
+		sfe_clock_config->right_pix_hz);
+
+end:
+	return;
+}
+
 static int cam_isp_classify_vote_info(
 	struct cam_isp_hw_mgr_res            *hw_mgr_res,
 	struct cam_isp_bw_config_v2          *bw_config,
@@ -5775,6 +5829,7 @@ static int cam_ife_mgr_config_hw(void *hw_mgr_priv,
 	rc = cam_ife_mgr_finish_clk_bw_update(ctx, cfg->request_id);
 	if (rc) {
 		CAM_ERR(CAM_ISP, "Failed in finishing clk/bw update rc: %d", rc);
+		cam_ife_mgr_print_blob_info(ctx, cfg->request_id, hw_update_data);
 		return rc;
 	}
 
