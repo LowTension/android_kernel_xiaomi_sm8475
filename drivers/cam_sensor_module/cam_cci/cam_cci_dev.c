@@ -11,19 +11,18 @@
 
 #define CCI_MAX_DELAY 1000000
 
-static struct v4l2_subdev *g_cci_subdev[MAX_CCI];
+static struct v4l2_subdev *g_cci_subdev[MAX_CCI] = { 0 };
 static struct dentry *debugfs_root;
 
 struct v4l2_subdev *cam_cci_get_subdev(int cci_dev_index)
 {
 	struct v4l2_subdev *sub_device = NULL;
 
-	if (cci_dev_index < MAX_CCI)
+	if ((cci_dev_index < MAX_CCI) && (g_cci_subdev[cci_dev_index] != NULL))
 		sub_device = g_cci_subdev[cci_dev_index];
 	else
-		CAM_WARN(CAM_CCI, "Index: %u is beyond max num CCI allowed: %u",
-			cci_dev_index,
-			MAX_CCI);
+		CAM_WARN(CAM_CCI, "CCI subdev not available at Index: %u, MAX_CCI : %u",
+			cci_dev_index, MAX_CCI);
 
 	return sub_device;
 }
