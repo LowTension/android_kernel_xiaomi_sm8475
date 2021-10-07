@@ -1599,7 +1599,10 @@ static int __cam_req_mgr_check_sync_req_is_ready(
 	if ((trigger == CAM_TRIGGER_POINT_SOF) &&
 		(sync_link->sof_timestamp > 0) &&
 		(sof_timestamp_delta < master_slave_diff) &&
-		(sync_rd_slot->sync_mode == CAM_REQ_MGR_SYNC_MODE_SYNC)) {
+		(sync_rd_slot->sync_mode == CAM_REQ_MGR_SYNC_MODE_SYNC) &&
+		(req_id >= link->initial_sync_req) &&
+		(req_id - link->initial_sync_req >=
+		(INITIAL_IN_SYNC_REQ + link->max_delay))) {
 
 		/*
 		 * This means current frame should sync with next
