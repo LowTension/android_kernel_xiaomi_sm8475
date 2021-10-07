@@ -53,6 +53,10 @@ static const struct of_device_id cam_ife_csid_lite_dt_match[] = {
 		.data = &cam_ife_csid_lite_480_hw_info,
 	},
 	{
+		.compatible = "qcom,csid-lite570",
+		.data = &cam_ife_csid_lite_480_hw_info,
+	},
+	{
 		.compatible = "qcom,csid-lite580",
 		.data = &cam_ife_csid_lite_480_hw_info,
 	},
