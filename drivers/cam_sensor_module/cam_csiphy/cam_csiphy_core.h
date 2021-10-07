@@ -54,7 +54,7 @@ void cam_csiphy_shutdown(struct csiphy_device *csiphy_dev);
  *
  * This API registers base address per soc_idx
  */
-void cam_csiphy_register_baseaddress(struct csiphy_device *csiphy_dev);
+int cam_csiphy_register_baseaddress(struct csiphy_device *csiphy_dev);
 
 /**
  * @get_access : Get Access for the Main Camera over AON Camera
