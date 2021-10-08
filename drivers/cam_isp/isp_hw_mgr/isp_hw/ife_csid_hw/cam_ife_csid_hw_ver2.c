@@ -897,6 +897,7 @@ static int cam_ife_csid_ver2_handle_event_err(
 	struct cam_ife_csid_ver2_hw  *csid_hw,
 	uint32_t                      irq_status,
 	uint32_t                      err_type,
+	bool                          is_secondary,
 	struct cam_isp_resource_node *res)
 {
 	struct cam_isp_hw_error_event_info   err_evt_info;
@@ -912,22 +913,25 @@ static int cam_ife_csid_ver2_handle_event_err(
 	evt.hw_idx   = csid_hw->hw_intf->hw_idx;
 	evt.reg_val  = irq_status;
 	evt.hw_type  = CAM_ISP_HW_TYPE_CSID;
+	evt.is_secondary_evt = is_secondary;
 	err_evt_info.err_type = err_type;
 	evt.event_data = (void *)&err_evt_info;
 
-	if (res) {
-		cam_ife_csid_ver2_print_debug_reg_status(csid_hw, res);
-		path_cfg = (struct cam_ife_csid_ver2_path_cfg *)res->res_priv;
-		evt.res_id   = res->res_id;
-		CAM_ERR_RATE_LIMIT(CAM_ISP,
-			"csid[%u] Res:%s Err 0x%x status 0x%x time_stamp: %lld:%lld",
-			csid_hw->hw_intf->hw_idx, res->res_name, err_type,
-			irq_status, path_cfg->error_ts.tv_sec,
-			path_cfg->error_ts.tv_nsec);
-	} else {
-		CAM_ERR_RATE_LIMIT(CAM_ISP,
-			"csid[%u] Rx Err: 0x%x status 0x%x",
-			csid_hw->hw_intf->hw_idx, err_type, irq_status);
+	if (!is_secondary) {
+		if (res) {
+			cam_ife_csid_ver2_print_debug_reg_status(csid_hw, res);
+			path_cfg = (struct cam_ife_csid_ver2_path_cfg *)res->res_priv;
+			evt.res_id   = res->res_id;
+			CAM_ERR_RATE_LIMIT(CAM_ISP,
+				"csid[%u] Res:%s Err 0x%x status 0x%x time_stamp: %lld:%lld",
+				csid_hw->hw_intf->hw_idx, res->res_name, err_type,
+				irq_status, path_cfg->error_ts.tv_sec,
+				path_cfg->error_ts.tv_nsec);
+		} else {
+			CAM_ERR_RATE_LIMIT(CAM_ISP,
+				"csid[%u] Rx Err: 0x%x status 0x%x",
+				csid_hw->hw_intf->hw_idx, err_type, irq_status);
+		}
 	}
 
 	evt.in_core_idx =
@@ -1115,7 +1119,7 @@ static int cam_ife_csid_ver2_rx_err_bottom_half(
 
 	if (event_type)
 		cam_ife_csid_ver2_handle_event_err(csid_hw,
-			rx_irq_status, event_type, NULL);
+			rx_irq_status, event_type, false, NULL);
 unlock:
 	spin_unlock(&csid_hw->lock_state);
 end:
@@ -1352,7 +1356,7 @@ static int cam_ife_csid_ver2_top_err_irq_bottom_half(
 
 	if (event_type)
 		cam_ife_csid_ver2_handle_event_err(csid_hw,
-			irq_status, event_type, NULL);
+			irq_status, event_type, false, NULL);
 
 	cam_ife_csid_ver2_put_evt_payload(csid_hw, &payload,
 		&csid_hw->path_free_payload_list,
@@ -1505,6 +1509,7 @@ static int cam_ife_csid_ver2_ipp_bottom_half(
 		cam_ife_csid_ver2_handle_event_err(csid_hw,
 			irq_status_ipp,
 			err_type,
+			false,
 			res);
 unlock:
 	spin_unlock(&csid_hw->lock_state);
@@ -1602,6 +1607,7 @@ static int cam_ife_csid_ver2_ppp_bottom_half(
 		cam_ife_csid_ver2_handle_event_err(csid_hw,
 			irq_status_ppp,
 			err_type,
+			false,
 			res);
 unlock:
 	spin_unlock(&csid_hw->lock_state);
@@ -1629,7 +1635,7 @@ static int cam_ife_csid_ver2_rdi_bottom_half(
 	uint32_t                                      irq_status_rdi;
 	uint32_t                                      err_mask;
 	uint32_t                                      err_type = 0;
-	bool                                         skip_sof_notify = false;
+	bool                                          skip_evt_notify = false;
 	struct cam_isp_hw_event_info                  evt_info;
 
 	if (!handler_priv || !evt_payload_priv) {
@@ -1710,7 +1716,7 @@ static int cam_ife_csid_ver2_rdi_bottom_half(
 	if (err_type) {
 
 		cam_ife_csid_ver2_handle_event_err(csid_hw,
-			irq_status_rdi, err_type, res);
+			irq_status_rdi, err_type, false, res);
 		goto end;
 	}
 
@@ -1724,19 +1730,34 @@ static int cam_ife_csid_ver2_rdi_bottom_half(
 	evt_info.reg_val = irq_status_rdi;
 	evt_info.hw_type = CAM_ISP_HW_TYPE_CSID;
 
-	/* Check for secondary evt */
-	if ((path_cfg->en_secondary_evt) &&
-		(irq_status_rdi & IFE_CSID_VER2_PATH_CAMIF_SOF)) {
-		evt_info.is_secondary_evt = true;
-		CAM_DBG(CAM_ISP,
-			"CSID[%u] RDI:%u notify CAMIF SOF as secondary evt",
-			csid_hw->hw_intf->hw_idx, res->res_id);
+	/* Check for specific secondary events */
+	if (path_cfg->sec_evt_config.en_secondary_evt) {
+		if ((irq_status_rdi & IFE_CSID_VER2_PATH_CAMIF_SOF) &&
+			(path_cfg->sec_evt_config.evt_type & CAM_IFE_CSID_EVT_SOF)) {
+			evt_info.is_secondary_evt = true;
+			csid_hw->event_cb(csid_hw->token,
+				CAM_ISP_HW_EVENT_SOF, (void *)&evt_info);
+			skip_evt_notify = true;
+		}
 
-		csid_hw->event_cb(csid_hw->token,
-			CAM_ISP_HW_EVENT_SOF, (void *)&evt_info);
-		skip_sof_notify = true;
+		if ((irq_status_rdi & IFE_CSID_VER2_PATH_CAMIF_EPOCH0) &&
+			(path_cfg->sec_evt_config.evt_type & CAM_IFE_CSID_EVT_EPOCH)) {
+			evt_info.is_secondary_evt = true;
+			csid_hw->event_cb(csid_hw->token,
+				CAM_ISP_HW_EVENT_EPOCH, (void *)&evt_info);
+			skip_evt_notify = true;
+		}
+
+		if ((irq_status_rdi &
+			IFE_CSID_VER2_PATH_SENSOR_SWITCH_OUT_OF_SYNC_FRAME_DROP) &&
+			(path_cfg->sec_evt_config.evt_type &
+			CAM_IFE_CSID_EVT_SENSOR_SYNC_FRAME_DROP)) {
+			cam_ife_csid_ver2_handle_event_err(csid_hw,
+				irq_status_rdi, CAM_ISP_HW_ERROR_CSID_SENSOR_FRAME_DROP, true, res);
+		}
 	}
 
+	evt_info.is_secondary_evt = false;
 	if (!path_cfg->handle_camif_irq)
 		goto end;
 
@@ -1745,7 +1766,7 @@ static int cam_ife_csid_ver2_rdi_bottom_half(
 				CAM_ISP_HW_EVENT_EOF,
 				(void *)&evt_info);
 
-	if (!skip_sof_notify && (irq_status_rdi & IFE_CSID_VER2_PATH_CAMIF_SOF))
+	if (!skip_evt_notify && (irq_status_rdi & IFE_CSID_VER2_PATH_CAMIF_SOF))
 		csid_hw->event_cb(csid_hw->token,
 				CAM_ISP_HW_EVENT_SOF,
 				(void *)&evt_info);
@@ -1755,7 +1776,7 @@ static int cam_ife_csid_ver2_rdi_bottom_half(
 				CAM_ISP_HW_EVENT_REG_UPDATE,
 				(void *)&evt_info);
 
-	if (irq_status_rdi & IFE_CSID_VER2_PATH_CAMIF_EPOCH0)
+	if (!skip_evt_notify && (irq_status_rdi & IFE_CSID_VER2_PATH_CAMIF_EPOCH0))
 		csid_hw->event_cb(csid_hw->token,
 				CAM_ISP_HW_EVENT_EPOCH,
 				(void *)&evt_info);
@@ -2113,7 +2134,8 @@ static int cam_ife_csid_hw_ver2_config_path_data(
 	path_cfg->vertical_bin = reserve->in_port->vertical_bin;
 	path_cfg->qcfa_bin = reserve->in_port->qcfa_bin;
 	path_cfg->num_bytes_out = reserve->in_port->num_bytes_out;
-	path_cfg->en_secondary_evt = reserve->en_secondary_evt;
+	path_cfg->sec_evt_config.en_secondary_evt = reserve->sec_evt_config.en_secondary_evt;
+	path_cfg->sec_evt_config.evt_type = reserve->sec_evt_config.evt_type;
 
 	if (reserve->sync_mode == CAM_ISP_HW_SYNC_MASTER) {
 		path_cfg->start_pixel = reserve->in_port->left_start;
@@ -2294,41 +2316,32 @@ static int cam_ife_csid_ver_config_camif(
 	struct cam_csid_hw_reserve_resource_args  *reserve,
 	struct cam_ife_csid_ver2_path_cfg *path_cfg)
 {
-	int rc = 0;
-	uint32_t epoch0 = 0;
 	struct cam_ife_csid_ver2_reg_info *csid_reg;
-	const struct cam_ife_csid_ver2_path_reg_info  *rdi_reg = NULL;
 
 	csid_reg = (struct cam_ife_csid_ver2_reg_info *)
-		    csid_hw->core_info->csid_reg;
+		csid_hw->core_info->csid_reg;
 
 	switch (reserve->res_id) {
-	case  CAM_IFE_PIX_PATH_RES_IPP:
-		epoch0 = (path_cfg->end_line - path_cfg->start_line)/
-			csid_reg->cmn_reg->epoch_div_factor;
-		break;
+	case CAM_IFE_PIX_PATH_RES_IPP:
 	case CAM_IFE_PIX_PATH_RES_RDI_0:
 	case CAM_IFE_PIX_PATH_RES_RDI_1:
 	case CAM_IFE_PIX_PATH_RES_RDI_2:
 	case CAM_IFE_PIX_PATH_RES_RDI_3:
 	case CAM_IFE_PIX_PATH_RES_RDI_4:
-		rdi_reg = csid_reg->path_reg[reserve->res_id];
-		if (!rdi_reg) {
-			rc = -EINVAL;
-			CAM_ERR(CAM_ISP, "CSID[%d] invalid res %d",
-				csid_hw->hw_intf->hw_idx, reserve->res_id);
-			goto end;
-		}
-		epoch0 = rdi_reg->epoch0_cfg_val;
+		path_cfg->camif_data.epoch0 =
+		(path_cfg->end_line - path_cfg->start_line) /
+		csid_reg->cmn_reg->epoch_div_factor;
+
+		CAM_DBG(CAM_ISP, "CSID[%d] res_id: %u epoch0: 0x%x",
+			csid_hw->hw_intf->hw_idx, reserve->res_id,
+			path_cfg->camif_data.epoch0);
+		break;
+	default:
+		CAM_DBG(CAM_ISP, "No CAMIF epoch update for res: %u", reserve->res_id);
 		break;
 	}
 
-	path_cfg->camif_data.epoch0 = epoch0;
-
-end:
-	CAM_DBG(CAM_ISP, "CSID[%d] epoch0: 0x%x",
-			csid_hw->hw_intf->hw_idx, epoch0);
-	return rc;
+	return 0;
 }
 
 int cam_ife_csid_hw_ver2_hw_cfg(
@@ -3079,12 +3092,17 @@ static int cam_ife_csid_ver2_program_rdi_path(
 		path_cfg->handle_camif_irq = true;
 	}
 
-	/* Currently CAMIF SOF is the secondary evt enabled for HW mgr */
-	if (path_cfg->en_secondary_evt) {
-		val |= IFE_CSID_VER2_PATH_CAMIF_SOF;
+	/* Enable secondary events dictated by HW mgr for RDI paths */
+	if (path_cfg->sec_evt_config.en_secondary_evt) {
+		if (path_cfg->sec_evt_config.evt_type & CAM_IFE_CSID_EVT_SOF)
+			val |= IFE_CSID_VER2_PATH_CAMIF_SOF;
+
+		if (path_cfg->sec_evt_config.evt_type & CAM_IFE_CSID_EVT_EPOCH)
+			val |= IFE_CSID_VER2_PATH_CAMIF_EPOCH0;
+
 		CAM_DBG(CAM_ISP,
-			"Enable camif SOF irq for res: %s",
-			res->res_name);
+			"Enable camif: %d evt irq for res: %s",
+			path_cfg->sec_evt_config.evt_type, res->res_name);
 	}
 
 	res->res_state = CAM_ISP_RESOURCE_STATE_STREAMING;

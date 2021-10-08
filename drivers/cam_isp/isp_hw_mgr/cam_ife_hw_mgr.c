@@ -78,12 +78,14 @@ static int cam_ife_mgr_prog_default_settings(
 	bool need_rup_aup, struct cam_ife_hw_mgr_ctx *ctx);
 
 static int cam_ife_mgr_finish_clk_bw_update(
-	struct cam_ife_hw_mgr_ctx             *ctx, uint64_t request_id)
+	struct cam_ife_hw_mgr_ctx *ctx,
+	uint64_t request_id, bool skip_clk_data_rst)
 {
 	int i, rc = 0;
 	struct cam_isp_apply_clk_bw_args clk_bw_args;
 
 	clk_bw_args.request_id = request_id;
+	clk_bw_args.skip_clk_data_rst = skip_clk_data_rst;
 	for (i = 0; i < ctx->num_base; i++) {
 		clk_bw_args.hw_intf = NULL;
 		CAM_DBG(CAM_PERF,
@@ -3437,13 +3439,26 @@ static int cam_ife_hw_mgr_acquire_res_ife_csid_rdi(
 			 * if only being dumped will be considered as a
 			 * no merge resource
 			 */
-			if ((ife_ctx->flags.is_aeb_mode) &&
-				((out_port->res_type - CAM_ISP_SFE_OUT_RES_RDI_0) >=
-				ife_ctx->sfe_info.num_fetches)) {
-				csid_acquire.en_secondary_evt = true;
-				CAM_DBG(CAM_ISP,
-					"Secondary evt enabled for path: 0x%x",
-					out_port->res_type);
+			if (ife_ctx->flags.is_aeb_mode) {
+				if ((out_port->res_type - CAM_ISP_SFE_OUT_RES_RDI_0) >=
+					ife_ctx->sfe_info.num_fetches) {
+					csid_acquire.sec_evt_config.en_secondary_evt = true;
+					csid_acquire.sec_evt_config.evt_type = CAM_IFE_CSID_EVT_SOF;
+					CAM_DBG(CAM_ISP,
+						"Secondary SOF evt enabled for path: 0x%x",
+						out_port->res_type);
+				}
+
+				/* Enable EPOCH/SYNC frame drop for error monitoring on master */
+				if (out_port->res_type == CAM_ISP_SFE_OUT_RES_RDI_0) {
+					csid_acquire.sec_evt_config.en_secondary_evt = true;
+					csid_acquire.sec_evt_config.evt_type =
+						CAM_IFE_CSID_EVT_EPOCH |
+						CAM_IFE_CSID_EVT_SENSOR_SYNC_FRAME_DROP;
+					CAM_DBG(CAM_ISP,
+						"Secondary EPOCH & frame drop evt enabled for path: 0x%x",
+						out_port->res_type);
+				}
 			}
 		}
 
@@ -5847,7 +5862,7 @@ static int cam_ife_mgr_config_hw(void *hw_mgr_priv,
 	}
 
 	/* Apply the updated values in top layer to the HW*/
-	rc = cam_ife_mgr_finish_clk_bw_update(ctx, cfg->request_id);
+	rc = cam_ife_mgr_finish_clk_bw_update(ctx, cfg->request_id, false);
 	if (rc) {
 		CAM_ERR(CAM_ISP, "Failed in finishing clk/bw update rc: %d", rc);
 		cam_ife_mgr_print_blob_info(ctx, cfg->request_id, hw_update_data);
@@ -6172,6 +6187,12 @@ static int cam_ife_mgr_stop_hw(void *hw_mgr_priv, void *stop_hw_args)
 			ctx->base[i].idx, csid_halt_type);
 	}
 
+	/* Ensure HW layer does not reset any clk data since it's
+	 * internal stream off/resume
+	 */
+	if (stop_isp->internal_trigger)
+		cam_ife_mgr_finish_clk_bw_update(ctx, 0, true);
+
 	/* check to avoid iterating loop */
 	if (ctx->ctx_type == CAM_IFE_CTX_TYPE_SFE) {
 		CAM_DBG(CAM_ISP, "Going to stop SFE Out");
@@ -6207,12 +6228,14 @@ static int cam_ife_mgr_stop_hw(void *hw_mgr_priv, void *stop_hw_args)
 
 	cam_tasklet_stop(ctx->common.tasklet_info);
 
-	/* reset scratch buffer expect init again for SFE */
-	if (ctx->sfe_info.scratch_config)
-		memset(ctx->sfe_info.scratch_config, 0,
-			sizeof(struct cam_sfe_scratch_buf_cfg));
+	/* reset scratch buffer/mup expect INIT again for UMD triggered stop/flush */
+	if (!stop_isp->internal_trigger) {
+		ctx->current_mup = 0;
+		if (ctx->sfe_info.scratch_config)
+			memset(ctx->sfe_info.scratch_config, 0,
+				sizeof(struct cam_sfe_scratch_buf_cfg));
+	}
 	ctx->sfe_info.skip_scratch_cfg_streamon = false;
-	ctx->current_mup = 0;
 
 	cam_ife_mgr_pause_hw(ctx);
 
@@ -6223,6 +6246,16 @@ static int cam_ife_mgr_stop_hw(void *hw_mgr_priv, void *stop_hw_args)
 		CAM_WARN(CAM_ISP,
 			"config done completion timeout for last applied req_id=%llu ctx_index %",
 			ctx->applied_req_id, ctx->ctx_index);
+
+	/* Reset CDM for KMD internal stop */
+	if (stop_isp->internal_trigger) {
+		rc = cam_cdm_reset_hw(ctx->cdm_handle);
+		if (rc) {
+			CAM_WARN(CAM_ISP, "CDM: %u reset failed rc: %d in ctx: %u",
+				ctx->cdm_id, rc, ctx->ctx_index);
+			rc = 0;
+		}
+	}
 
 	if (stop_isp->stop_only)
 		goto end;
@@ -11426,6 +11459,31 @@ end:
 	return 0;
 }
 
+static int cam_ife_hw_mgr_handle_csid_frame_drop(
+	struct cam_isp_hw_event_info         *event_info,
+	struct cam_ife_hw_mgr_ctx            *ctx)
+{
+	int rc = 0;
+	cam_hw_event_cb_func ife_hw_irq_cb = ctx->common.event_cb;
+
+	/*
+	 * Support frame drop as secondary event
+	 */
+	if (event_info->is_secondary_evt) {
+		struct cam_isp_hw_secondary_event_data sec_evt_data;
+
+		CAM_DBG(CAM_ISP,
+			"Received CSID[%u] sensor sync frame drop res: %d as secondary evt",
+			event_info->hw_idx, event_info->res_id);
+
+		sec_evt_data.evt_type = CAM_ISP_HW_SEC_EVENT_OUT_OF_SYNC_FRAME_DROP;
+		rc = ife_hw_irq_cb(ctx->common.cb_priv,
+			CAM_ISP_HW_SECONDARY_EVENT, (void *)&sec_evt_data);
+	}
+
+	return rc;
+}
+
 static int cam_ife_hw_mgr_handle_csid_error(
 	struct cam_ife_hw_mgr_ctx      *ctx,
 	struct cam_isp_hw_event_info   *event_info)
@@ -11448,6 +11506,9 @@ static int cam_ife_hw_mgr_handle_csid_error(
 	CAM_DBG(CAM_ISP, "Entry CSID[%u] error %d", event_info->hw_idx, err_type);
 
 	spin_lock(&g_ife_hw_mgr.ctx_lock);
+	if (err_type & CAM_ISP_HW_ERROR_CSID_SENSOR_FRAME_DROP)
+		cam_ife_hw_mgr_handle_csid_frame_drop(event_info, ctx);
+
 	if ((err_type & CAM_ISP_HW_ERROR_CSID_FATAL) &&
 		g_ife_hw_mgr.debug_cfg.enable_csid_recovery) {
 
@@ -11524,6 +11585,50 @@ static int cam_ife_hw_mgr_handle_csid_rup(
 		event_info->res_id);
 
 	return 0;
+}
+
+static int cam_ife_hw_mgr_handle_csid_camif_sof(
+	struct cam_ife_hw_mgr_ctx            *ctx,
+	struct cam_isp_hw_event_info         *event_info)
+{
+	int rc = 0;
+	cam_hw_event_cb_func ife_hw_irq_sof_cb = ctx->common.event_cb;
+
+	if (event_info->is_secondary_evt) {
+		struct cam_isp_hw_secondary_event_data sec_evt_data;
+
+		CAM_DBG(CAM_ISP,
+			"Received CSID[%u] CAMIF SOF res: %d as secondary evt",
+			event_info->hw_idx, event_info->res_id);
+
+		sec_evt_data.evt_type = CAM_ISP_HW_SEC_EVENT_SOF;
+		rc = ife_hw_irq_sof_cb(ctx->common.cb_priv,
+			CAM_ISP_HW_SECONDARY_EVENT, (void *)&sec_evt_data);
+	}
+
+	return rc;
+}
+
+static int cam_ife_hw_mgr_handle_csid_camif_epoch(
+	struct cam_ife_hw_mgr_ctx            *ctx,
+	struct cam_isp_hw_event_info         *event_info)
+{
+	int rc = 0;
+	cam_hw_event_cb_func ife_hw_irq_epoch_cb = ctx->common.event_cb;
+
+	if (event_info->is_secondary_evt) {
+		struct cam_isp_hw_secondary_event_data sec_evt_data;
+
+		CAM_DBG(CAM_ISP,
+			"Received CSID[%u] CAMIF EPOCH res: %d as secondary evt",
+			event_info->hw_idx, event_info->res_id);
+
+		sec_evt_data.evt_type = CAM_ISP_HW_SEC_EVENT_EPOCH;
+		rc = ife_hw_irq_epoch_cb(ctx->common.cb_priv,
+			CAM_ISP_HW_SECONDARY_EVENT, (void *)&sec_evt_data);
+	}
+
+	return rc;
 }
 
 static int cam_ife_hw_mgr_handle_hw_dump_info(
@@ -11788,40 +11893,6 @@ static int cam_ife_hw_mgr_handle_hw_epoch(
 
 	CAM_DBG(CAM_ISP, "Epoch for VFE:%d source %d", event_info->hw_idx,
 		event_info->res_id);
-
-	return 0;
-}
-
-static int cam_ife_hw_mgr_handle_csid_camif_sof(
-	struct cam_ife_hw_mgr_ctx            *ctx,
-	struct cam_isp_hw_event_info         *event_info)
-{
-	struct cam_isp_hw_sof_event_data      sof_done_event_data;
-	cam_hw_event_cb_func                  ife_hw_irq_sof_cb;
-
-	/*
-	 * Currently SOF update is from IFE TOP - this CSID CAMIF SOF
-	 * is only to monitor second/third exposure frame for custom
-	 * AEB use-case hence the checks
-	 */
-	if (!(ctx->flags.is_aeb_mode && event_info->is_secondary_evt)) {
-		CAM_DBG(CAM_ISP,
-			"Received CSID CAMIF SOF aeb_mode: %d secondary_evt: %d - skip update",
-			ctx->flags.is_aeb_mode, event_info->is_secondary_evt);
-		return 0;
-	}
-
-	CAM_DBG(CAM_ISP,
-		"Received CSID CAMIF SOF res: %d as secondary evt",
-		event_info->res_id);
-
-	ife_hw_irq_sof_cb = ctx->common.event_cb;
-	sof_done_event_data.is_secondary_evt = true;
-	sof_done_event_data.boot_time = 0;
-	sof_done_event_data.timestamp = 0;
-
-	ife_hw_irq_sof_cb(ctx->common.cb_priv,
-		CAM_ISP_HW_EVENT_SOF, (void *)&sof_done_event_data);
 
 	return 0;
 }
@@ -12101,6 +12172,10 @@ static int cam_ife_hw_mgr_handle_csid_event(
 
 	case CAM_ISP_HW_EVENT_SOF:
 		rc = cam_ife_hw_mgr_handle_csid_camif_sof(ctx, event_info);
+		break;
+
+	case CAM_ISP_HW_EVENT_EPOCH:
+		rc = cam_ife_hw_mgr_handle_csid_camif_epoch(ctx, event_info);
 		break;
 
 	default:

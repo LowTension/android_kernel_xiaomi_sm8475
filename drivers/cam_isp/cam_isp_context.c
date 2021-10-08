@@ -430,6 +430,12 @@ static const char *__cam_isp_hw_evt_val_to_type(
 		return "DONE";
 	case CAM_ISP_STATE_CHANGE_TRIGGER_FLUSH:
 		return "FLUSH";
+	case CAM_ISP_STATE_CHANGE_TRIGGER_SEC_EVT_SOF:
+		return "SEC_EVT_SOF";
+	case CAM_ISP_STATE_CHANGE_TRIGGER_SEC_EVT_EPOCH:
+		return "SEC_EVT_EPOCH";
+	case CAM_ISP_STATE_CHANGE_TRIGGER_FRAME_DROP:
+		return "OUT_OF_SYNC_FRAME_DROP";
 	default:
 		return "CAM_ISP_EVENT_INVALID";
 	}
@@ -999,6 +1005,7 @@ static uint64_t __cam_isp_ctx_get_event_ts(uint32_t evt_id, void *evt_data)
 			timestamp;
 		break;
 	case CAM_ISP_HW_EVENT_DONE:
+	case CAM_ISP_HW_SECONDARY_EVENT:
 		break;
 	default:
 		CAM_DBG(CAM_ISP, "Invalid Event Type %d", evt_id);
@@ -1173,6 +1180,92 @@ static void __cam_isp_ctx_handle_buf_done_fail_log(
 	}
 }
 
+static void __cam_isp_context_reset_internal_recovery_params(
+	struct cam_isp_context    *ctx_isp)
+{
+	atomic_set(&ctx_isp->internal_recovery_set, 0);
+	atomic_set(&ctx_isp->process_bubble, 0);
+	ctx_isp->recovery_req_id = 0;
+}
+
+static int __cam_isp_context_try_internal_recovery(
+	struct cam_isp_context    *ctx_isp)
+{
+	int rc = 0;
+	struct cam_context        *ctx = ctx_isp->base;
+	struct cam_ctx_request    *req;
+	struct cam_isp_ctx_req    *req_isp;
+
+	/*
+	 * Start with wait list, if recovery is stil set
+	 * errored request has not been moved to pending yet.
+	 * Buf done for errored request has not occurred recover
+	 * from here
+	 */
+	if (!list_empty(&ctx->wait_req_list)) {
+		req = list_first_entry(&ctx->wait_req_list, struct cam_ctx_request, list);
+		req_isp = (struct cam_isp_ctx_req *)req->req_priv;
+
+		if (req->request_id == ctx_isp->recovery_req_id) {
+			rc = __cam_isp_ctx_notify_error_util(CAM_TRIGGER_POINT_SOF,
+				CRM_KMD_ERR_BUBBLE, ctx_isp->recovery_req_id, ctx_isp);
+			if (rc) {
+				/* Unable to do bubble recovery reset back to normal */
+				CAM_WARN(CAM_ISP,
+					"Unable to perform internal recovery [bubble reporting failed] for req: %llu in ctx: %u on link: 0x%x",
+					req->request_id, ctx->ctx_id, ctx->link_hdl);
+				__cam_isp_context_reset_internal_recovery_params(ctx_isp);
+				req_isp->bubble_detected = false;
+				goto end;
+			}
+
+			list_del_init(&req->list);
+			list_add(&req->list, &ctx->pending_req_list);
+			ctx_isp->substate_activated = CAM_ISP_CTX_ACTIVATED_BUBBLE;
+			CAM_INFO(CAM_ISP,
+				"Internal recovery for req: %llu in ctx: %u on link: 0x%x triggered",
+				ctx_isp->recovery_req_id, ctx->ctx_id, ctx->link_hdl);
+			goto end;
+		}
+	}
+
+	/*
+	 * If not in wait list only other possibility is request is in pending list
+	 * on error detection, bubble detect is set assuming new frame after detection
+	 * comes in, there is an rup it's moved to active list and it finishes with
+	 * it's buf done's
+	 */
+	if (!list_empty(&ctx->pending_req_list)) {
+		req = list_first_entry(&ctx->pending_req_list, struct cam_ctx_request, list);
+		req_isp = (struct cam_isp_ctx_req *)req->req_priv;
+
+		if (req->request_id == ctx_isp->recovery_req_id) {
+			rc = __cam_isp_ctx_notify_error_util(CAM_TRIGGER_POINT_SOF,
+				CRM_KMD_ERR_BUBBLE, ctx_isp->recovery_req_id, ctx_isp);
+			if (rc) {
+				/* Unable to do bubble recovery reset back to normal */
+				CAM_WARN(CAM_ISP,
+					"Unable to perform internal recovery [bubble reporting failed] for req: %llu in ctx: %u on link: 0x%x",
+					req->request_id, ctx->ctx_id, ctx->link_hdl);
+				__cam_isp_context_reset_internal_recovery_params(ctx_isp);
+				req_isp->bubble_detected = false;
+				goto end;
+			}
+			ctx_isp->substate_activated = CAM_ISP_CTX_ACTIVATED_BUBBLE;
+			CAM_INFO(CAM_ISP,
+				"Internal recovery for req: %llu in ctx: %u on link: 0x%x triggered",
+				ctx_isp->recovery_req_id, ctx->ctx_id, ctx->link_hdl);
+			goto end;
+		}
+	}
+
+	/* If request is not found in either of the lists skip recovery */
+	__cam_isp_context_reset_internal_recovery_params(ctx_isp);
+
+end:
+	return rc;
+}
+
 static int __cam_isp_ctx_handle_buf_done_for_req_list(
 	struct cam_isp_context *ctx_isp,
 	struct cam_ctx_request *req)
@@ -1247,6 +1340,9 @@ static int __cam_isp_ctx_handle_buf_done_for_req_list(
 		ctx_isp->req_info.last_bufdone_req_id = req->request_id;
 		ctx_isp->last_bufdone_err_apply_req_id = 0;
 	}
+
+	if (atomic_read(&ctx_isp->internal_recovery_set) && !ctx_isp->active_req_cnt)
+		__cam_isp_context_try_internal_recovery(ctx_isp);
 
 	cam_cpas_notify_event("IFE BufDone", buf_done_req_id);
 
@@ -3112,6 +3208,208 @@ end:
 	return rc;
 }
 
+static void __cam_isp_ctx_notify_aeb_error_for_sec_event(
+	struct cam_isp_context *ctx_isp)
+{
+	struct cam_context *ctx = ctx_isp->base;
+
+	CAM_ERR(CAM_ISP,
+		"AEB slave RDI's current request's SOF seen after next req is applied, EPOCH height need to be re-configured for ctx: %u on link: 0x%x",
+		ctx->ctx_id, ctx->link_hdl);
+
+	/* Pause CRM timer */
+	__cam_isp_ctx_pause_crm_timer(ctx);
+
+	/* Trigger reg dump */
+	__cam_isp_ctx_trigger_reg_dump(CAM_HW_MGR_CMD_REG_DUMP_ON_ERROR, ctx);
+
+	/* Notify CRM on fatal error */
+	__cam_isp_ctx_notify_error_util(CAM_TRIGGER_POINT_SOF, CRM_KMD_ERR_FATAL,
+		ctx_isp->last_applied_req_id, ctx_isp);
+
+	/* Notify userland on error */
+	__cam_isp_ctx_notify_v4l2_error_event(CAM_REQ_MGR_ERROR_TYPE_RECOVERY,
+		CAM_REQ_MGR_CSID_ERR_ON_SENSOR_SWITCHING, ctx_isp->last_applied_req_id, ctx);
+
+	/* Change state to HALT, stop further processing of HW events */
+	ctx_isp->substate_activated = CAM_ISP_CTX_ACTIVATED_HALT;
+}
+
+static int __cam_isp_ctx_trigger_internal_recovery(
+	bool sync_frame_drop, struct cam_isp_context *ctx_isp)
+{
+	int                                 rc = 0;
+	bool                                do_recovery = true;
+	struct cam_context                 *ctx = ctx_isp->base;
+	struct cam_ctx_request             *req = NULL;
+	struct cam_isp_ctx_req             *req_isp = NULL;
+
+	if (list_empty(&ctx->wait_req_list)) {
+		/*
+		 * If the wait list is empty, and we encounter a "silent" frame drop
+		 * then the settings applied on the previous frame, did not reflect
+		 * at the next frame boundary, it's expected to latch a frame after.
+		 * No need to recover. If it's an out of sync drop use pending req
+		 */
+		if (sync_frame_drop && !list_empty(&ctx->pending_req_list))
+			req = list_first_entry(&ctx->pending_req_list,
+				struct cam_ctx_request, list);
+		else
+			do_recovery = false;
+	}
+
+	/* If both wait and pending list have no request to recover on */
+	if (!do_recovery) {
+		CAM_WARN(CAM_ISP,
+			"No request to perform recovery - ctx: %u on link: 0x%x last_applied: %lld last_buf_done: %lld",
+			ctx->ctx_id, ctx->link_hdl, ctx_isp->last_applied_req_id,
+			ctx_isp->req_info.last_bufdone_req_id);
+		goto end;
+	}
+
+	if (!req) {
+		req = list_first_entry(&ctx->wait_req_list, struct cam_ctx_request, list);
+		if (req->request_id != ctx_isp->last_applied_req_id)
+			CAM_WARN(CAM_ISP,
+				"Top of wait list req: %llu does not match with last applied: %llu in ctx: %u on link: 0x%x",
+				req->request_id, ctx_isp->last_applied_req_id,
+				ctx->ctx_id, ctx->link_hdl);
+	}
+
+	req_isp = (struct cam_isp_ctx_req *)req->req_priv;
+	/*
+	 * Treat this as bubble, after recovery re-start from appropriate sub-state
+	 * This will block servicing any further apply calls from CRM
+	 */
+	atomic_set(&ctx_isp->internal_recovery_set, 1);
+	atomic_set(&ctx_isp->process_bubble, 1);
+	ctx_isp->recovery_req_id = req->request_id;
+
+	/* Wait for active request's to finish before issuing recovery */
+	if (ctx_isp->active_req_cnt) {
+		req_isp->bubble_detected = true;
+		CAM_WARN(CAM_ISP,
+			"Active req cnt: %u wait for all buf dones before kicking in recovery on req: %lld ctx: %u on link: 0x%x",
+			ctx_isp->active_req_cnt, ctx_isp->recovery_req_id,
+			ctx->ctx_id, ctx->link_hdl);
+	} else {
+		rc = __cam_isp_ctx_notify_error_util(CAM_TRIGGER_POINT_SOF, CRM_KMD_ERR_BUBBLE,
+				ctx_isp->recovery_req_id, ctx_isp);
+		if (rc) {
+			/* Unable to do bubble recovery reset back to normal */
+			CAM_WARN(CAM_ISP,
+				"Unable to perform internal recovery [bubble reporting failed] for req: %llu in ctx: %u on link: 0x%x",
+				ctx_isp->recovery_req_id, ctx->ctx_id, ctx->link_hdl);
+			__cam_isp_context_reset_internal_recovery_params(ctx_isp);
+			goto end;
+		}
+
+		ctx_isp->substate_activated = CAM_ISP_CTX_ACTIVATED_BUBBLE;
+		list_del_init(&req->list);
+		list_add(&req->list, &ctx->pending_req_list);
+	}
+
+end:
+	return rc;
+}
+
+static int __cam_isp_ctx_handle_secondary_events(
+	struct cam_isp_context *ctx_isp, void *evt_data)
+{
+	int rc = 0;
+	bool recover = false, sync_frame_drop = false;
+	struct cam_context *ctx = ctx_isp->base;
+	struct cam_isp_hw_secondary_event_data *sec_evt_data =
+		(struct cam_isp_hw_secondary_event_data *)evt_data;
+
+	/* Current scheme to handle only for custom AEB */
+	if (!ctx_isp->aeb_enabled) {
+		CAM_WARN(CAM_ISP,
+			"Recovery not supported for non-AEB ctx: %u on link: 0x%x reject sec evt: %u",
+			ctx->ctx_id, ctx->link_hdl, sec_evt_data->evt_type);
+		goto end;
+	}
+
+	if (atomic_read(&ctx_isp->internal_recovery_set)) {
+		CAM_WARN(CAM_ISP,
+			"Internal recovery in progress in ctx: %u on link: 0x%x reject sec evt: %u",
+			ctx->ctx_id, ctx->link_hdl, sec_evt_data->evt_type);
+		goto end;
+	}
+
+	/*
+	 * In case of custom AEB ensure first exposure frame has
+	 * not moved forward with its settings without second/third
+	 * expoure frame coming in. Also track for bubble, in case of system
+	 * delays it's possible for the IFE settings to be not written to
+	 * HW on a given frame. If these scenarios occurs flag as error,
+	 * and recover.
+	 */
+	switch (sec_evt_data->evt_type) {
+	case CAM_ISP_HW_SEC_EVENT_SOF:
+		__cam_isp_ctx_update_state_monitor_array(ctx_isp,
+			CAM_ISP_STATE_CHANGE_TRIGGER_SEC_EVT_SOF,
+			ctx_isp->last_applied_req_id);
+
+		/* Slave RDI's frame starting post IFE EPOCH - Fatal */
+		if ((ctx_isp->substate_activated ==
+			CAM_ISP_CTX_ACTIVATED_APPLIED) ||
+			(ctx_isp->substate_activated ==
+			CAM_ISP_CTX_ACTIVATED_BUBBLE_APPLIED))
+			__cam_isp_ctx_notify_aeb_error_for_sec_event(ctx_isp);
+		break;
+	case CAM_ISP_HW_SEC_EVENT_EPOCH:
+		__cam_isp_ctx_update_state_monitor_array(ctx_isp,
+			CAM_ISP_STATE_CHANGE_TRIGGER_SEC_EVT_EPOCH,
+			ctx_isp->last_applied_req_id);
+
+		/*
+		 * Master RDI frame dropped in CSID, due to programming delay no RUP/AUP
+		 * On such occasions use CSID CAMIF EPOCH for bubble detection, flag
+		 * on detection and perform necessary bubble recovery
+		 */
+		if ((ctx_isp->substate_activated ==
+			CAM_ISP_CTX_ACTIVATED_APPLIED) ||
+			(ctx_isp->substate_activated ==
+			CAM_ISP_CTX_ACTIVATED_BUBBLE_APPLIED)) {
+			recover = true;
+			CAM_WARN(CAM_ISP,
+				"Programming delay input frame dropped ctx: %u on link: 0x%x last_applied_req: %llu, kicking in internal recovery....",
+				ctx->ctx_id, ctx->link_hdl, ctx_isp->last_applied_req_id);
+		}
+		break;
+	case CAM_ISP_HW_SEC_EVENT_OUT_OF_SYNC_FRAME_DROP:
+		__cam_isp_ctx_update_state_monitor_array(ctx_isp,
+			CAM_ISP_STATE_CHANGE_TRIGGER_FRAME_DROP,
+			ctx_isp->last_applied_req_id);
+
+		/* Avoid recovery loop if frame is dropped at stream on */
+		if (!ctx_isp->frame_id) {
+			CAM_ERR(CAM_ISP,
+				"Sensor sync [vc mismatch] frame dropped at stream on ctx: %u link: 0x%x frame_id: %u last_applied_req: %lld",
+				ctx->ctx_id, ctx->link_hdl,
+				ctx_isp->frame_id, ctx_isp->last_applied_req_id);
+			rc = -EPERM;
+			break;
+		}
+
+		recover = true;
+		sync_frame_drop = true;
+		CAM_WARN(CAM_ISP,
+			"Sensor sync [vc mismatch] frame dropped ctx: %u on link: 0x%x last_applied_req: %llu, kicking in internal recovery....",
+			ctx->ctx_id, ctx->link_hdl, ctx_isp->last_applied_req_id);
+		break;
+	default:
+		break;
+	}
+
+	if (recover && ctx_isp->do_internal_recovery)
+		rc = __cam_isp_ctx_trigger_internal_recovery(sync_frame_drop, ctx_isp);
+
+end:
+	return rc;
+}
+
 static struct cam_isp_ctx_irq_ops
 	cam_isp_ctx_activated_state_machine_irq[CAM_ISP_CTX_ACTIVATED_MAX] = {
 	/* SOF */
@@ -3123,6 +3421,7 @@ static struct cam_isp_ctx_irq_ops
 			__cam_isp_ctx_notify_sof_in_activated_state,
 			__cam_isp_ctx_notify_eof_in_activated_state,
 			NULL,
+			__cam_isp_ctx_handle_secondary_events,
 		},
 	},
 	/* APPLIED */
@@ -3134,6 +3433,7 @@ static struct cam_isp_ctx_irq_ops
 			__cam_isp_ctx_epoch_in_applied,
 			__cam_isp_ctx_notify_eof_in_activated_state,
 			__cam_isp_ctx_buf_done_in_applied,
+			__cam_isp_ctx_handle_secondary_events,
 		},
 	},
 	/* EPOCH */
@@ -3145,6 +3445,7 @@ static struct cam_isp_ctx_irq_ops
 			__cam_isp_ctx_notify_sof_in_activated_state,
 			__cam_isp_ctx_notify_eof_in_activated_state,
 			__cam_isp_ctx_buf_done_in_epoch,
+			__cam_isp_ctx_handle_secondary_events,
 		},
 	},
 	/* BUBBLE */
@@ -3156,6 +3457,7 @@ static struct cam_isp_ctx_irq_ops
 			__cam_isp_ctx_notify_sof_in_activated_state,
 			__cam_isp_ctx_notify_eof_in_activated_state,
 			__cam_isp_ctx_buf_done_in_bubble,
+			__cam_isp_ctx_handle_secondary_events,
 		},
 	},
 	/* Bubble Applied */
@@ -3167,6 +3469,7 @@ static struct cam_isp_ctx_irq_ops
 			__cam_isp_ctx_epoch_in_bubble_applied,
 			NULL,
 			__cam_isp_ctx_buf_done_in_bubble_applied,
+			__cam_isp_ctx_handle_secondary_events,
 		},
 	},
 	/* HW ERROR */
@@ -3882,6 +4185,7 @@ static int __cam_isp_ctx_flush_req_in_top_state(
 		stop_args.ctxt_to_hw_map = ctx_isp->hw_ctx;
 		stop_isp.hw_stop_cmd = CAM_ISP_HW_STOP_IMMEDIATELY;
 		stop_isp.stop_only = true;
+		stop_isp.internal_trigger = false;
 		stop_args.args = (void *)&stop_isp;
 		rc = ctx->hw_mgr_intf->hw_stop(ctx->hw_mgr_intf->hw_mgr_priv,
 			&stop_args);
@@ -3924,6 +4228,7 @@ end:
 	ctx_isp->bubble_frame_cnt = 0;
 	atomic_set(&ctx_isp->process_bubble, 0);
 	atomic_set(&ctx_isp->rxd_epoch, 0);
+	atomic_set(&ctx_isp->internal_recovery_set, 0);
 	return rc;
 }
 
@@ -4669,6 +4974,8 @@ static int __cam_isp_ctx_release_hw_in_top_state(struct cam_context *ctx,
 	ctx_isp->hw_acquired = false;
 	ctx_isp->init_received = false;
 	ctx_isp->support_consumed_addr = false;
+	ctx_isp->aeb_enabled = false;
+	ctx_isp->do_internal_recovery = false;
 	ctx_isp->req_info.last_bufdone_req_id = 0;
 
 	atomic64_set(&ctx_isp->state_monitor_head, -1);
@@ -5449,6 +5756,9 @@ static int __cam_isp_ctx_acquire_hw_v2(struct cam_context *ctx,
 	ctx_isp->aeb_enabled =
 		(param.op_flags & CAM_IFE_CTX_AEB_EN);
 
+	if ((ctx_isp->aeb_enabled) && (!isp_ctx_debug.disable_internal_recovery))
+		ctx_isp->do_internal_recovery = true;
+
 	/* Query the context has rdi only resource */
 	hw_cmd_args.ctxt_to_hw_map = param.ctxt_to_hw_map;
 	hw_cmd_args.cmd_type = CAM_HW_MGR_CMD_INTERNAL;
@@ -5709,12 +6019,14 @@ static inline void __cam_isp_context_reset_ctx_params(
 {
 	atomic_set(&ctx_isp->process_bubble, 0);
 	atomic_set(&ctx_isp->rxd_epoch, 0);
+	atomic_set(&ctx_isp->internal_recovery_set, 0);
 	ctx_isp->frame_id = 0;
 	ctx_isp->sof_timestamp_val = 0;
 	ctx_isp->boot_timestamp = 0;
 	ctx_isp->active_req_cnt = 0;
 	ctx_isp->reported_req_id = 0;
 	ctx_isp->bubble_frame_cnt = 0;
+	ctx_isp->recovery_req_id = 0;
 }
 
 static int __cam_isp_ctx_start_dev_in_ready(struct cam_context *ctx,
@@ -5871,6 +6183,7 @@ static int __cam_isp_ctx_stop_dev_in_activated_unlock(
 
 		stop_isp.hw_stop_cmd = CAM_ISP_HW_STOP_IMMEDIATELY;
 		stop_isp.stop_only = false;
+		stop_isp.internal_trigger = false;
 
 		stop.args = (void *) &stop_isp;
 		ctx->hw_mgr_intf->hw_stop(ctx->hw_mgr_intf->hw_mgr_priv,
@@ -5951,6 +6264,7 @@ static int __cam_isp_ctx_stop_dev_in_activated_unlock(
 	ctx_isp->req_info.last_bufdone_req_id = 0;
 	ctx_isp->bubble_frame_cnt = 0;
 	atomic_set(&ctx_isp->process_bubble, 0);
+	atomic_set(&ctx_isp->internal_recovery_set, 0);
 	atomic_set(&ctx_isp->rxd_epoch, 0);
 	atomic64_set(&ctx_isp->state_monitor_head, -1);
 
@@ -6065,6 +6379,138 @@ static int __cam_isp_ctx_handle_sof_freeze_evt(
 	return rc;
 }
 
+static int __cam_isp_ctx_reset_and_recover(
+	bool skip_resume, struct cam_context *ctx)
+{
+	int rc = 0;
+	struct cam_isp_context *ctx_isp =
+		(struct cam_isp_context *)ctx->ctx_priv;
+	struct cam_isp_stop_args              stop_isp;
+	struct cam_hw_stop_args               stop_args;
+	struct cam_isp_start_args             start_isp;
+	struct cam_hw_cmd_args                hw_cmd_args;
+	struct cam_isp_hw_cmd_args            isp_hw_cmd_args;
+	struct cam_ctx_request               *req;
+	struct cam_isp_ctx_req               *req_isp;
+
+	spin_lock(&ctx->lock);
+	if (ctx_isp->active_req_cnt) {
+		spin_unlock(&ctx->lock);
+		CAM_WARN(CAM_ISP,
+			"Active list not empty: %u in ctx: %u on link: 0x%x, retry recovery for req: %lld after buf_done",
+			ctx_isp->active_req_cnt, ctx->ctx_id,
+			ctx->link_hdl, ctx_isp->recovery_req_id);
+		goto end;
+	}
+
+	if (ctx->state != CAM_CTX_ACTIVATED) {
+		spin_unlock(&ctx->lock);
+		CAM_ERR(CAM_ISP,
+			"In wrong state %d, for recovery ctx: %u in link: 0x%x recovery req: %lld",
+			ctx->state, ctx->ctx_id,
+			ctx->link_hdl, ctx_isp->recovery_req_id);
+		rc = -EINVAL;
+		goto end;
+	}
+
+	if (list_empty(&ctx->pending_req_list)) {
+		/* Cannot start with no request */
+		spin_unlock(&ctx->lock);
+		CAM_ERR(CAM_ISP,
+			"Failed to reset and recover last_applied_req: %llu in ctx: %u on link: 0x%x",
+			ctx_isp->last_applied_req_id, ctx->ctx_id, ctx->link_hdl);
+		rc = -EFAULT;
+		goto end;
+	}
+	spin_unlock(&ctx->lock);
+
+	if (!ctx_isp->hw_ctx) {
+		CAM_ERR(CAM_ISP,
+			"Invalid hw context pointer ctx: %u on link: 0x%x",
+			ctx->ctx_id, ctx->link_hdl);
+		rc = -EFAULT;
+		goto end;
+	}
+
+	req = list_first_entry(&ctx->pending_req_list,
+		struct cam_ctx_request, list);
+	req_isp = (struct cam_isp_ctx_req *) req->req_priv;
+	req_isp->bubble_detected = false;
+
+	CAM_INFO(CAM_ISP,
+		"Trigger Halt, Reset & Resume for req: %llu ctx: %u in state: %d link: 0x%x",
+		req->request_id, ctx->ctx_id, ctx->state, ctx->link_hdl);
+
+	stop_args.ctxt_to_hw_map = ctx_isp->hw_ctx;
+	stop_isp.hw_stop_cmd = CAM_ISP_HW_STOP_IMMEDIATELY;
+	stop_isp.stop_only = true;
+	stop_isp.internal_trigger = true;
+	stop_args.args = (void *)&stop_isp;
+	rc = ctx->hw_mgr_intf->hw_stop(ctx->hw_mgr_intf->hw_mgr_priv,
+		&stop_args);
+	if (rc) {
+		CAM_ERR(CAM_ISP, "Failed to stop HW rc: %d ctx: %u",
+			rc, ctx->ctx_id);
+		goto end;
+	}
+	CAM_DBG(CAM_ISP, "Stop HW success ctx: %u link: 0x%x",
+		ctx->ctx_id, ctx->link_hdl);
+
+	/* API provides provision to stream off and not resume as well in case of fatal errors */
+	if (skip_resume) {
+		atomic_set(&ctx_isp->internal_recovery_set, 0);
+		CAM_INFO(CAM_ISP,
+			"Halting streaming off IFE/SFE ctx: %u last_applied_req: %lld [recovery_req: %lld] on link: 0x%x",
+			ctx->ctx_id, ctx_isp->last_applied_req_id,
+			ctx_isp->recovery_req_id, ctx->link_hdl);
+		goto end;
+	}
+
+	hw_cmd_args.ctxt_to_hw_map = ctx_isp->hw_ctx;
+	hw_cmd_args.cmd_type = CAM_HW_MGR_CMD_INTERNAL;
+	isp_hw_cmd_args.cmd_type = CAM_ISP_HW_MGR_CMD_RESUME_HW;
+	hw_cmd_args.u.internal_args = (void *)&isp_hw_cmd_args;
+	rc = ctx->hw_mgr_intf->hw_cmd(ctx->hw_mgr_intf->hw_mgr_priv,
+		&hw_cmd_args);
+	if (rc) {
+		CAM_ERR(CAM_ISP, "Failed to resume HW rc: %d ctx: %u", rc, ctx->ctx_id);
+		goto end;
+	}
+	CAM_DBG(CAM_ISP, "Resume call success ctx: %u on link: 0x%x",
+		ctx->ctx_id, ctx->link_hdl);
+
+	start_isp.hw_config.ctxt_to_hw_map = ctx_isp->hw_ctx;
+	start_isp.hw_config.request_id = req->request_id;
+	start_isp.hw_config.hw_update_entries = req_isp->cfg;
+	start_isp.hw_config.num_hw_update_entries = req_isp->num_cfg;
+	start_isp.hw_config.priv  = &req_isp->hw_update_data;
+	start_isp.hw_config.init_packet = 1;
+	start_isp.hw_config.reapply_type = CAM_CONFIG_REAPPLY_IQ;
+	start_isp.hw_config.cdm_reset_before_apply = false;
+	start_isp.start_only = true;
+
+	__cam_isp_context_reset_internal_recovery_params(ctx_isp);
+
+	ctx_isp->substate_activated = ctx_isp->rdi_only_context ?
+		CAM_ISP_CTX_ACTIVATED_APPLIED : CAM_ISP_CTX_ACTIVATED_SOF;
+
+	rc = ctx->hw_mgr_intf->hw_start(ctx->hw_mgr_intf->hw_mgr_priv,
+		&start_isp);
+	if (rc) {
+		CAM_ERR(CAM_ISP, "Start HW failed");
+		ctx->state = CAM_CTX_READY;
+		goto end;
+	}
+
+	/* IQ applied for this request, on next trigger skip IQ cfg */
+	req_isp->reapply_type = CAM_CONFIG_REAPPLY_IO;
+	CAM_DBG(CAM_ISP, "Internal Start HW success ctx %u on link: 0x%x",
+		ctx->ctx_id, ctx->link_hdl);
+
+end:
+	return rc;
+}
+
 static int __cam_isp_ctx_process_evt(struct cam_context *ctx,
 	struct cam_req_mgr_link_evt_data *link_evt_data)
 {
@@ -6171,9 +6617,13 @@ static int __cam_isp_ctx_apply_default_settings(
 	if (apply->trigger_point != CAM_TRIGGER_POINT_SOF)
 		return 0;
 
+	if ((ctx_isp->aeb_enabled) && (atomic_read(&ctx_isp->internal_recovery_set)))
+		return __cam_isp_ctx_reset_and_recover(false, ctx);
+
 	CAM_DBG(CAM_ISP,
-		"Enter: apply req in Substate %d request _id:%lld",
-		 ctx_isp->substate_activated, apply->request_id);
+		"Enter: apply req in Substate:%d request _id:%lld ctx:%u on link:0x%x",
+		 ctx_isp->substate_activated, apply->request_id,
+		 ctx->ctx_id, ctx->link_hdl);
 
 	ctx_ops = &ctx_isp->substate_machine[
 		ctx_isp->substate_activated];
@@ -6193,7 +6643,6 @@ static int __cam_isp_ctx_apply_default_settings(
 	return rc;
 }
 
-
 static int __cam_isp_ctx_handle_irq_in_activated(void *context,
 	uint32_t evt_id, void *evt_data)
 {
@@ -6204,29 +6653,6 @@ static int __cam_isp_ctx_handle_irq_in_activated(void *context,
 		(struct cam_isp_context *)ctx->ctx_priv;
 
 	spin_lock(&ctx->lock);
-	/*
-	 * In case of custom AEB ensure first exposure frame has
-	 * not moved forward with its settings without second/third
-	 * expoure frame coming in. If this scenario occurs flag as error,
-	 * and recover
-	 */
-	if ((ctx_isp->aeb_enabled) && (evt_id == CAM_ISP_HW_EVENT_SOF)) {
-		bool is_secondary_evt =
-			((struct cam_isp_hw_sof_event_data *)evt_data)->is_secondary_evt;
-
-		if (is_secondary_evt) {
-			if ((ctx_isp->substate_activated ==
-				CAM_ISP_CTX_ACTIVATED_APPLIED) ||
-				(ctx_isp->substate_activated ==
-				CAM_ISP_CTX_ACTIVATED_BUBBLE_APPLIED)) {
-				CAM_ERR(CAM_ISP,
-					"AEB settings mismatch between exposures - needs a reset");
-				rc = -EAGAIN;
-			}
-			goto end;
-		}
-	}
-
 	trace_cam_isp_activated_irq(ctx, ctx_isp->substate_activated, evt_id,
 		__cam_isp_ctx_get_event_ts(evt_id, evt_data));
 
@@ -6247,7 +6673,7 @@ static int __cam_isp_ctx_handle_irq_in_activated(void *context,
 	CAM_DBG(CAM_ISP, "Exit: State %d Substate[%s]",
 		ctx->state, __cam_isp_ctx_substate_val_to_type(
 		ctx_isp->substate_activated));
-end:
+
 	spin_unlock(&ctx->lock);
 	return rc;
 }
@@ -6508,6 +6934,9 @@ static int cam_isp_context_debug_register(void)
 		isp_ctx_debug.dentry, &isp_ctx_debug.enable_state_monitor_dump);
 	debugfs_create_u8("enable_cdm_cmd_buffer_dump", 0644,
 		isp_ctx_debug.dentry, &isp_ctx_debug.enable_cdm_cmd_buff_dump);
+	debugfs_create_bool("disable_internal_recovery", 0644,
+		isp_ctx_debug.dentry, &isp_ctx_debug.disable_internal_recovery);
+
 	if (IS_ERR(dbgfileptr)) {
 		if (PTR_ERR(dbgfileptr) == -ENODEV)
 			CAM_WARN(CAM_ISP, "DebugFS not enabled in kernel!");
