@@ -203,7 +203,7 @@ static void __cam_isp_ctx_req_mini_dump(struct cam_ctx_request *req,
 	req_md->num_deferred_acks = req_isp->num_deferred_acks;
 	req_md->bubble_report = req_isp->bubble_report;
 	req_md->bubble_detected = req_isp->bubble_detected;
-	req_md->reapply = req_isp->reapply;
+	req_md->reapply_type = req_isp->reapply_type;
 	req_md->request_id = req->request_id;
 	*bytes_updated += bytes_required;
 
@@ -1226,7 +1226,7 @@ static int __cam_isp_ctx_handle_buf_done_for_req_list(
 		}
 		list_del_init(&req->list);
 		list_add_tail(&req->list, &ctx->free_req_list);
-		req_isp->reapply = false;
+		req_isp->reapply_type = CAM_CONFIG_REAPPLY_NONE;
 		req_isp->cdm_reset_before_apply = false;
 		req_isp->num_acked = 0;
 		req_isp->num_deferred_acks = 0;
@@ -2388,7 +2388,7 @@ static int __cam_isp_ctx_epoch_in_applied(struct cam_isp_context *ctx_isp,
 		list);
 	req_isp = (struct cam_isp_ctx_req *)req->req_priv;
 	req_isp->bubble_detected = true;
-	req_isp->reapply = true;
+	req_isp->reapply_type = CAM_CONFIG_REAPPLY_IO;
 	req_isp->cdm_reset_before_apply = false;
 
 	CAM_INFO_RATE_LIMIT(CAM_ISP, "ctx:%d Report Bubble flag %d req id:%lld",
@@ -2596,7 +2596,7 @@ static int __cam_isp_ctx_epoch_in_bubble_applied(
 	req_isp->bubble_detected = true;
 	CAM_INFO_RATE_LIMIT(CAM_ISP, "Ctx:%d Report Bubble flag %d req id:%lld",
 		ctx->ctx_id, req_isp->bubble_report, req->request_id);
-	req_isp->reapply = true;
+	req_isp->reapply_type = CAM_CONFIG_REAPPLY_IO;
 	req_isp->cdm_reset_before_apply = false;
 
 	if (req_isp->bubble_report) {
@@ -3422,7 +3422,7 @@ static int __cam_isp_ctx_apply_req_in_activated_state(
 	cfg.num_hw_update_entries = req_isp->num_cfg;
 	cfg.priv  = &req_isp->hw_update_data;
 	cfg.init_packet = 0;
-	cfg.reapply = req_isp->reapply;
+	cfg.reapply_type = req_isp->reapply_type;
 	cfg.cdm_reset_before_apply = req_isp->cdm_reset_before_apply;
 
 	atomic_set(&ctx_isp->apply_in_progress, 1);
@@ -3835,7 +3835,7 @@ static int __cam_isp_ctx_flush_req(struct cam_context *ctx,
 				req_isp->fence_map_out[i].sync_id = -1;
 			}
 		}
-		req_isp->reapply = false;
+		req_isp->reapply_type = CAM_CONFIG_REAPPLY_NONE;
 		req_isp->cdm_reset_before_apply = false;
 		list_del_init(&req->list);
 		list_add_tail(&req->list, &ctx->free_req_list);
@@ -4191,7 +4191,7 @@ static int __cam_isp_ctx_rdi_only_sof_in_bubble_applied(
 	req_isp->bubble_detected = true;
 	CAM_INFO_RATE_LIMIT(CAM_ISP, "Ctx:%d Report Bubble flag %d req id:%lld",
 		ctx->ctx_id, req_isp->bubble_report, req->request_id);
-	req_isp->reapply = true;
+	req_isp->reapply_type = CAM_CONFIG_REAPPLY_IO;
 	req_isp->cdm_reset_before_apply = false;
 
 	if (req_isp->bubble_report) {
@@ -5757,7 +5757,7 @@ static int __cam_isp_ctx_start_dev_in_ready(struct cam_context *ctx,
 	start_isp.hw_config.num_hw_update_entries = req_isp->num_cfg;
 	start_isp.hw_config.priv  = &req_isp->hw_update_data;
 	start_isp.hw_config.init_packet = 1;
-	start_isp.hw_config.reapply = 0;
+	start_isp.hw_config.reapply_type = CAM_CONFIG_REAPPLY_NONE;
 	start_isp.hw_config.cdm_reset_before_apply = false;
 
 	ctx_isp->last_applied_req_id = req->request_id;

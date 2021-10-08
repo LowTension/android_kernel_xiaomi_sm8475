@@ -2635,7 +2635,7 @@ static int cam_tfe_mgr_config_hw(void *hw_mgr_priv,
 	hw_update_data = (struct cam_isp_prepare_hw_update_data  *) cfg->priv;
 	hw_update_data->isp_mgr_ctx = ctx;
 
-	if (cfg->reapply && cfg->cdm_reset_before_apply) {
+	if (cfg->reapply_type && cfg->cdm_reset_before_apply) {
 		if (ctx->last_cdm_done_req < cfg->request_id) {
 			cdm_hang_detect =
 				cam_cdm_detect_hang_error(ctx->cdm_handle);
@@ -2699,7 +2699,8 @@ static int cam_tfe_mgr_config_hw(void *hw_mgr_priv,
 
 	for (i = 0; i < cfg->num_hw_update_entries; i++) {
 		cmd = (cfg->hw_update_entries + i);
-		if (cfg->reapply && cmd->flags == CAM_ISP_IQ_BL) {
+		if ((cfg->reapply_type == CAM_CONFIG_REAPPLY_IO) &&
+			(cmd->flags == CAM_ISP_IQ_BL)) {
 			skip++;
 			continue;
 		}
