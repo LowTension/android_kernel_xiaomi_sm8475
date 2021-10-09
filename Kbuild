@@ -34,6 +34,10 @@ ifeq ($(CONFIG_ARCH_SHIMA), y)
 include $(CAMERA_KERNEL_ROOT)/config/shima.mk
 endif
 
+ifeq ($(CONFIG_ARCH_DIWALI), y)
+include $(CAMERA_KERNEL_ROOT)/config/diwali.mk
+endif
+
 # List of all camera-kernel headers
 cam_include_dirs := $(shell dirname `find $(CAMERA_KERNEL_ROOT) -name '*.h'` | uniq)
 
