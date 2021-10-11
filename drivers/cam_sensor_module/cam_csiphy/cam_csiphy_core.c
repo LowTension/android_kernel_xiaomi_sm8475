@@ -229,9 +229,14 @@ int cam_csiphy_dump_status_reg(struct csiphy_device *csiphy_dev)
 		return -EINVAL;
 	}
 
+	if (!g_phy_data[soc_info->index].base_address) {
+		CAM_ERR(CAM_CSIPHY, "Invalid cphy_idx: %d", soc_info->index);
+		return -EINVAL;
+	}
+
 	csiphy_reg = &csiphy_dev->ctrl_reg->csiphy_reg;
 	status_regs = csiphy_reg->status_reg_params;
-	phybase = soc_info->reg_map[0].mem_base;
+	phybase = g_phy_data[soc_info->index].base_address;
 
 	if (!status_regs) {
 		CAM_ERR(CAM_CSIPHY, "2ph/3ph status offset not set");
@@ -393,6 +398,7 @@ static int32_t cam_csiphy_update_secure_info(
 	case CSIPHY_VERSION_V121:
 	case CSIPHY_VERSION_V123:
 	case CSIPHY_VERSION_V124:
+	case CSIPHY_VERSION_V210:
 		phy_mask_len =
 		(csiphy_dev->soc_info.index < MAX_PHY_MSK_PER_REG) ?
 		(CAM_CSIPHY_MAX_DPHY_LANES + CAM_CSIPHY_MAX_CPHY_LANES) :
@@ -1305,6 +1311,11 @@ static int cam_csiphy_update_lane(
 		}
 	}
 
+	if (i == size) {
+		CAM_ERR_RATE_LIMIT(CAM_CSIPHY, "Couldnt find CSIPHY_LANE_ENABLE");
+		return -EINVAL;
+	}
+
 	lane_assign = csiphy->csiphy_info[index].lane_assign;
 
 	if (enable)
@@ -1410,6 +1421,11 @@ int cam_csiphy_util_update_aon_registration
 		return -EINVAL;
 	}
 
+	if (!g_phy_data[phy_idx].base_address) {
+		CAM_ERR(CAM_CSIPHY, "Invalid PHY idx: %d from Sensor user", phy_idx);
+		return -EINVAL;
+	}
+
 	g_phy_data[phy_idx].enable_aon_support = is_aon_user;
 
 	return 0;
@@ -1425,6 +1441,11 @@ int cam_csiphy_util_update_aon_ops(
 	if (phy_idx >= MAX_CSIPHY) {
 		CAM_ERR(CAM_CSIPHY, "Null device");
 		return -ENODEV;
+	}
+
+	if (!g_phy_data[phy_idx].base_address) {
+		CAM_ERR(CAM_CSIPHY, "phy_idx: %d is not supported", phy_idx);
+		return -EINVAL;
 	}
 
 	if (!g_phy_data[phy_idx].aon_sel_param) {
@@ -1671,6 +1692,12 @@ int32_t cam_csiphy_core_cfg(void *phy_dev,
 	soc_info = &csiphy_dev->soc_info;
 	if (!soc_info) {
 		CAM_ERR(CAM_CSIPHY, "Null Soc_info");
+		return -EINVAL;
+	}
+
+	if (!g_phy_data[soc_info->index].base_address) {
+		CAM_ERR(CAM_CSIPHY, "CSIPHY hw is not avaialble at index: %d",
+			soc_info->index);
 		return -EINVAL;
 	}
 
@@ -2244,19 +2271,19 @@ release_mutex:
 	return rc;
 }
 
-void cam_csiphy_register_baseaddress(struct csiphy_device *csiphy_dev)
+int cam_csiphy_register_baseaddress(struct csiphy_device *csiphy_dev)
 {
 	int phy_idx;
 
 	if (!csiphy_dev) {
-		CAM_WARN(CAM_CSIPHY, "Data is NULL");
-		return;
+		CAM_ERR(CAM_CSIPHY, "Data is NULL");
+		return -EINVAL;
 	}
 
 	if (csiphy_dev->soc_info.index >= MAX_CSIPHY) {
 		CAM_ERR(CAM_CSIPHY, "Invalid soc index: %u Max soc index: %u",
 			csiphy_dev->soc_info.index, MAX_CSIPHY);
-		return;
+		return -EINVAL;
 	}
 
 	phy_idx = csiphy_dev->soc_info.index;
@@ -2267,4 +2294,6 @@ void cam_csiphy_register_baseaddress(struct csiphy_device *csiphy_dev)
 	g_phy_data[phy_idx].aon_sel_param =
 		csiphy_dev->ctrl_reg->csiphy_reg.aon_sel_params;
 	g_phy_data[phy_idx].enable_aon_support = false;
+
+	return 0;
 }

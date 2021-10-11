@@ -28,7 +28,7 @@
 #include "cam_debug_util.h"
 #include "cam_context.h"
 
-#define MAX_CSIPHY                  6
+#define MAX_CSIPHY                  8
 
 #define CSIPHY_NUM_CLK_MAX          16
 

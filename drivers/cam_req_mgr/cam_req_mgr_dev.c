@@ -279,13 +279,21 @@ static struct v4l2_subscribed_event_ops g_cam_v4l2_ops = {
 static int cam_subscribe_event(struct v4l2_fh *fh,
 	const struct v4l2_event_subscription *sub)
 {
+	g_dev.v4l2_sub_ids |= 1 << sub->id;
 	return v4l2_event_subscribe(fh, sub, CAM_REQ_MGR_EVENT_MAX,
 		&g_cam_v4l2_ops);
 }
 
+uint32_t cam_req_mgr_get_id_subscribed(void)
+{
+	return g_dev.v4l2_sub_ids;
+}
+EXPORT_SYMBOL(cam_req_mgr_get_id_subscribed);
+
 static int cam_unsubscribe_event(struct v4l2_fh *fh,
 	const struct v4l2_event_subscription *sub)
 {
+	g_dev.v4l2_sub_ids &= ~(1 << sub->id);
 	return v4l2_event_unsubscribe(fh, sub);
 }
 

@@ -926,7 +926,6 @@ static void cam_vfe_bus_get_comp_vfe_out_res_id_list(
 		out_list[count++] = CAM_ISP_IFE_OUT_RES_DS16_DISP;
 
 	*num_out = count;
-
 }
 
 static enum cam_vfe_bus_packer_format
@@ -2501,6 +2500,8 @@ static int cam_vfe_bus_handle_vfe_out_done_bottom_half(
 
 	ctx = rsrc_data->priv;
 
+	CAM_DBG(CAM_ISP, "vfe_out %d rc %d", rsrc_data->out_type, rc);
+
 	switch (rc) {
 	case CAM_VFE_IRQ_STATUS_SUCCESS:
 		evt_id = evt_payload->evt_id;
@@ -2510,6 +2511,18 @@ static int cam_vfe_bus_handle_vfe_out_done_bottom_half(
 		if (rsrc_data->comp_grp) {
 			cam_vfe_bus_get_comp_vfe_out_res_id_list(
 				comp_mask, out_list, &num_out);
+			if (num_out > CAM_NUM_OUT_PER_COMP_IRQ_MAX) {
+				CAM_ERR(CAM_ISP,
+					"num_out: %d  exceeds max_port_per_comp_grp: %d for comp_mask: %u",
+					num_out, CAM_NUM_OUT_PER_COMP_IRQ_MAX, comp_mask);
+				for (i = 0; i < num_out; i++)
+					CAM_ERR(CAM_ISP,
+						"Skipping buf done notify for outport: %u",
+						out_list[i]);
+				rc = -EINVAL;
+				goto end;
+			}
+
 			evt_info.num_res = num_out;
 			for (i = 0; i < num_out; i++) {
 				evt_info.res_id[i] = out_list[i];
@@ -2526,8 +2539,8 @@ static int cam_vfe_bus_handle_vfe_out_done_bottom_half(
 		break;
 	}
 
+end:
 	cam_vfe_bus_put_evt_payload(rsrc_data->common_data, &evt_payload);
-	CAM_DBG(CAM_ISP, "vfe_out %d rc %d", rsrc_data->out_type, rc);
 
 	return rc;
 }
@@ -2985,12 +2998,12 @@ static int cam_vfe_bus_update_wm(void *priv, void *cmd_args,
 	vfe_out_data = (struct cam_vfe_bus_ver2_vfe_out_data *)
 		update_buf->res->res_priv;
 
-	cdm_util_ops = vfe_out_data->cdm_util_ops;
-
-	if (!vfe_out_data || !cdm_util_ops) {
+	if (!vfe_out_data || !vfe_out_data->cdm_util_ops) {
 		CAM_ERR(CAM_ISP, "Failed! Invalid data");
 		return -EINVAL;
 	}
+
+	cdm_util_ops = vfe_out_data->cdm_util_ops;
 
 	if (update_buf->wm_update->num_buf != vfe_out_data->num_wm) {
 		CAM_ERR(CAM_ISP,
@@ -3164,12 +3177,12 @@ static int cam_vfe_bus_update_hfr(void *priv, void *cmd_args,
 	vfe_out_data = (struct cam_vfe_bus_ver2_vfe_out_data *)
 		update_hfr->res->res_priv;
 
-	cdm_util_ops = vfe_out_data->cdm_util_ops;
-
-	if (!vfe_out_data || !cdm_util_ops) {
+	if (!vfe_out_data || !vfe_out_data->cdm_util_ops) {
 		CAM_ERR(CAM_ISP, "Failed! Invalid data");
 		return -EINVAL;
 	}
+
+	cdm_util_ops = vfe_out_data->cdm_util_ops;
 
 	reg_val_pair = &vfe_out_data->common_data->io_buf_update[0];
 	hfr_cfg = (struct cam_isp_port_hfr_config *)update_hfr->data;

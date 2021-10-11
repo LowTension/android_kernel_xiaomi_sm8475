@@ -2497,7 +2497,7 @@ int cam_ife_csid_ver2_reserve(void *hw_priv,
 	csid_hw->token  = reserve->cb_priv;
 	reserve->buf_done_controller = csid_hw->buf_done_irq_controller;
 	res->cdm_ops = reserve->cdm_ops;
-	csid_hw->flags.sfe_inline_shdr = reserve->sfe_inline_shdr;
+	path_cfg->sfe_inline_shdr = reserve->sfe_inline_shdr;
 	csid_hw->flags.offline_mode = reserve->is_offline;
 
 	reserve->need_top_cfg = csid_reg->need_top_cfg;
@@ -2784,7 +2784,7 @@ static int cam_ife_csid_ver2_init_config_rdi_path(
 			path_reg->err_recovery_cfg0_addr);
 	}
 
-	if (csid_hw->flags.sfe_inline_shdr)
+	if (path_cfg->sfe_inline_shdr)
 		cam_ife_csid_ver2_shdr_cfg(csid_hw, res->res_id);
 
 	if (csid_hw->debug_info.debug_val &
@@ -3069,7 +3069,7 @@ static int cam_ife_csid_ver2_program_rdi_path(
 	}
 
 	if ((csid_hw->flags.offline_mode ||
-		csid_hw->flags.sfe_inline_shdr) &&
+		path_cfg->sfe_inline_shdr) &&
 		(res->res_id == CAM_IFE_PIX_PATH_RES_RDI_0)) {
 		val |= path_reg->camif_irq_mask;
 		path_cfg->handle_camif_irq = true;
@@ -3491,8 +3491,9 @@ end:
 static int cam_ife_csid_ver2_rx_capture_config(
 	struct cam_ife_csid_ver2_hw *csid_hw)
 {
-	const struct cam_ife_csid_ver2_reg_info *csid_reg;
-	struct cam_hw_soc_info                   *soc_info;
+	const struct cam_ife_csid_ver2_reg_info   *csid_reg;
+	struct cam_hw_soc_info                    *soc_info;
+	struct cam_ife_csid_rx_cfg                *rx_cfg;
 	uint32_t vc, dt, i;
 	uint32_t val = 0;
 
@@ -3506,43 +3507,34 @@ static int cam_ife_csid_ver2_rx_capture_config(
 		return 0;
 	}
 
+	rx_cfg = &csid_hw->rx_cfg;
+
 	vc  = csid_hw->cid_data[i].vc_dt[CAM_IFE_CSID_MULTI_VC_DT_GRP_0].vc;
 	dt  = csid_hw->cid_data[i].vc_dt[CAM_IFE_CSID_MULTI_VC_DT_GRP_0].dt;
 
-	csid_reg = (struct cam_ife_csid_ver2_reg_info *)
-			csid_hw->core_info->csid_reg;
+	csid_reg = (struct cam_ife_csid_ver2_reg_info *) csid_hw->core_info->csid_reg;
 	soc_info = &csid_hw->hw_info->soc_info;
 
 	if (csid_hw->debug_info.debug_val &
 			CAM_IFE_CSID_DEBUG_ENABLE_SHORT_PKT_CAPTURE)
-		val = ((1 <<
-			csid_reg->csi2_reg->capture_short_pkt_en_shift) |
-			(vc <<
-			csid_reg->csi2_reg->capture_short_pkt_vc_shift));
+		val = ((1 << csid_reg->csi2_reg->capture_short_pkt_en_shift) |
+			(vc << csid_reg->csi2_reg->capture_short_pkt_vc_shift));
 
-	if (csid_hw->debug_info.debug_val &
-			CAM_IFE_CSID_DEBUG_ENABLE_LONG_PKT_CAPTURE)
-		val |= ((1 <<
-			csid_reg->csi2_reg->capture_long_pkt_en_shift) |
-			(dt <<
-			csid_reg->csi2_reg->capture_long_pkt_dt_shift) |
-			(vc <<
-			csid_reg->csi2_reg->capture_long_pkt_vc_shift));
+	/* CAM_IFE_CSID_DEBUG_ENABLE_LONG_PKT_CAPTURE */
+	val |= ((1 << csid_reg->csi2_reg->capture_long_pkt_en_shift) |
+		(dt << csid_reg->csi2_reg->capture_long_pkt_dt_shift) |
+		(vc << csid_reg->csi2_reg->capture_long_pkt_vc_shift));
 
-	if (csid_hw->debug_info.debug_val &
-			CAM_IFE_CSID_DEBUG_ENABLE_CPHY_PKT_CAPTURE)
-		val |= ((1 <<
-			csid_reg->csi2_reg->capture_cphy_pkt_en_shift) |
-			(dt <<
-			csid_reg->csi2_reg->capture_cphy_pkt_dt_shift) |
-			(vc <<
-			csid_reg->csi2_reg->capture_cphy_pkt_vc_shift));
+	/* CAM_IFE_CSID_DEBUG_ENABLE_CPHY_PKT_CAPTURE */
+	if (rx_cfg->lane_type == CAM_ISP_LANE_TYPE_CPHY) {
+		val |= ((1 << csid_reg->csi2_reg->capture_cphy_pkt_en_shift) |
+			(dt << csid_reg->csi2_reg->capture_cphy_pkt_dt_shift) |
+			(vc << csid_reg->csi2_reg->capture_cphy_pkt_vc_shift));
+	}
 
-	cam_io_w_mb(val, soc_info->reg_map[0].mem_base +
-		csid_reg->csi2_reg->capture_ctrl_addr);
+	cam_io_w_mb(val, soc_info->reg_map[0].mem_base + csid_reg->csi2_reg->capture_ctrl_addr);
 
-	CAM_DBG(CAM_ISP, "CSID[%d] rx capture_ctrl: 0x%x",
-		csid_hw->hw_intf->hw_idx, val);
+	CAM_DBG(CAM_ISP, "CSID[%d] rx capture_ctrl: 0x%x", csid_hw->hw_intf->hw_idx, val);
 
 	return 0;
 }
@@ -4495,12 +4487,18 @@ static int cam_ife_csid_ver2_reg_update(
 	reg_val_pair[0] = csid_reg->cmn_reg->rup_aup_cmd_addr;
 	reg_val_pair[1] = rup_aup_mask;
 
-	reg_val_pair[1] |= csid_hw->rx_cfg.mup <<
-			csid_reg->cmn_reg->mup_shift_val;
+	/* If not an actual request, configure last applied MUP */
+	if (rup_args->reg_write)
+		reg_val_pair[1] |= (rup_args->last_applied_mup <<
+			csid_reg->cmn_reg->mup_shift_val);
+	else
+		reg_val_pair[1] |= (csid_hw->rx_cfg.mup <<
+			csid_reg->cmn_reg->mup_shift_val);
 
-	CAM_DBG(CAM_ISP, "CSID:%d reg_update_cmd 0x%X offset 0x%X",
+	CAM_DBG(CAM_ISP, "CSID:%d configure rup_aup_mup: 0x%x offset: 0x%x via %s",
 		csid_hw->hw_intf->hw_idx,
-		reg_val_pair[1], reg_val_pair[0]);
+		reg_val_pair[1], reg_val_pair[0],
+		(rup_args->reg_write ? "AHB" : "CDM"));
 
 	if (rup_args->reg_write) {
 		soc_info = &csid_hw->hw_info->soc_info;

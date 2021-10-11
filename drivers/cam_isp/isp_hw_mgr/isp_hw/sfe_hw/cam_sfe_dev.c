@@ -15,7 +15,7 @@
 #include "cam_debug_util.h"
 #include "camera_main.h"
 
-static struct cam_hw_intf *cam_sfe_hw_list[CAM_SFE_HW_NUM_MAX];
+static struct cam_isp_hw_intf_data cam_sfe_hw_list[CAM_SFE_HW_NUM_MAX];
 
 static int cam_sfe_component_bind(struct device *dev,
 	struct device *master_dev, void *data)
@@ -27,7 +27,8 @@ static int cam_sfe_component_bind(struct device *dev,
 	struct cam_sfe_hw_core_info       *core_info = NULL;
 	struct cam_sfe_hw_info            *hw_info = NULL;
 	struct platform_device            *pdev = NULL;
-	int                                rc = 0;
+	struct cam_sfe_soc_private        *soc_priv;
+	int                                i, rc = 0;
 
 	pdev = to_platform_device(dev);
 	sfe_hw_intf = kzalloc(sizeof(struct cam_hw_intf), GFP_KERNEL);
@@ -106,7 +107,13 @@ static int cam_sfe_component_bind(struct device *dev,
 	init_completion(&sfe_info->hw_complete);
 
 	if (sfe_hw_intf->hw_idx < CAM_SFE_HW_NUM_MAX)
-		cam_sfe_hw_list[sfe_hw_intf->hw_idx] = sfe_hw_intf;
+		cam_sfe_hw_list[sfe_hw_intf->hw_idx].hw_intf = sfe_hw_intf;
+
+	soc_priv = sfe_info->soc_info.soc_private;
+	cam_sfe_hw_list[sfe_hw_intf->hw_idx].num_hw_pid = soc_priv->num_pid;
+	for (i = 0; i < soc_priv->num_pid; i++)
+		cam_sfe_hw_list[sfe_hw_intf->hw_idx].hw_pid[i] =
+			soc_priv->pid[i];
 
 	CAM_DBG(CAM_SFE, "SFE%d bound successfully",
 		sfe_hw_intf->hw_idx);
@@ -147,7 +154,7 @@ static void cam_sfe_component_unbind(struct device *dev,
 		sfe_hw_intf->hw_type, sfe_hw_intf->hw_idx);
 
 	if (sfe_hw_intf->hw_idx < CAM_SFE_HW_NUM_MAX)
-		cam_sfe_hw_list[sfe_hw_intf->hw_idx] = NULL;
+		cam_sfe_hw_list[sfe_hw_intf->hw_idx].hw_intf = NULL;
 
 	sfe_info = sfe_hw_intf->hw_priv;
 	if (!sfe_info) {
@@ -206,12 +213,12 @@ int cam_sfe_remove(struct platform_device *pdev)
 	return 0;
 }
 
-int cam_sfe_hw_init(struct cam_hw_intf **sfe_hw, uint32_t hw_idx)
+int cam_sfe_hw_init(struct cam_isp_hw_intf_data **sfe_hw, uint32_t hw_idx)
 {
 	int rc = 0;
 
-	if (cam_sfe_hw_list[hw_idx]) {
-		*sfe_hw = cam_sfe_hw_list[hw_idx];
+	if (cam_sfe_hw_list[hw_idx].hw_intf) {
+		*sfe_hw = &cam_sfe_hw_list[hw_idx];
 		rc = 0;
 	} else {
 		*sfe_hw = NULL;

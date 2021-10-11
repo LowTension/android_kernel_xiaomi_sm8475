@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/delay.h>
@@ -115,8 +115,15 @@ int cam_cdm_soc_load_dt_private(struct platform_device *pdev,
 	}
 
 	cdm_pvt_data->is_single_ctx_cdm =
-		of_property_read_bool(pdev->dev.of_node,
-			"single-context-cdm");
+		of_property_read_bool(pdev->dev.of_node, "single-context-cdm");
+
+	rc = of_property_read_u32(pdev->dev.of_node, "cam_hw_pid", &cdm_pvt_data->pid);
+	if (rc)
+		cdm_pvt_data->pid = -1;
+
+	rc = of_property_read_u32(pdev->dev.of_node, "cam-hw-mid", &cdm_pvt_data->mid);
+	if (rc)
+		cdm_pvt_data->mid = -1;
 
 	rc = of_property_read_u8(pdev->dev.of_node, "cdm-priority-group",
 			&cdm_pvt_data->priority_group);

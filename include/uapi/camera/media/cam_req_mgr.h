@@ -57,6 +57,7 @@
 #define V4L_EVENT_CAM_REQ_MGR_SOF_BOOT_TS                               2
 #define V4L_EVENT_CAM_REQ_MGR_CUSTOM_EVT                                3
 #define V4L_EVENT_CAM_REQ_MGR_NODE_EVENT                                4
+#define V4L_EVENT_CAM_REQ_MGR_SOF_UNIFIED_TS                            5
 
 /* SOF Event status */
 #define CAM_REQ_MGR_SOF_EVENT_SUCCESS           0
@@ -446,16 +447,30 @@ struct cam_mem_cache_ops_cmd {
  * @CAM_REQ_MGR_ISP_UNREPORTED_ERROR         : No Error Code reported
  * @CAM_REQ_MGR_LINK_STALLED_ERROR           : Unable to apply requests on link
  * @CAM_REQ_MGR_CSID_FATAL_ERROR             : CSID FATAL Error
- * @CAM_REQ_MGR_CSID_FIFO_OVERFLOW_ERROR     : CSID FIFO Overflow
+ * @CAM_REQ_MGR_CSID_FIFO_OVERFLOW_ERROR     : CSID OutputFIFO Overflow
  * @CAM_REQ_MGR_CSID_RECOVERY_OVERFLOW_ERROR : CSID Recovery Overflow
+ * @CAM_REQ_MGR_CSID_LANE_FIFO_OVERFLOW_ERROR: CSID Lane fifo overflow
  * @CAM_REQ_MGR_CSID_PIXEL_COUNT_MISMATCH    : CSID Pixel Count Mismatch
+ * @CAM_REQ_MGR_CSID_RX_PKT_HDR_CORRUPTION   : Packet header received by the csid rx is corrupted
+ * @CAM_REQ_MGR_CSID_MISSING_PKT_HDR_DATA    : Lesser data received in packet header than expected
+ * @CAM_REQ_MGR_CSID_ERR_ON_SENSOR_SWITCHING : Fatal Error encountered while switching the sensors
+ * @CAM_REQ_MGR_CSID_UNBOUNDED_FRAME         : No EOF in the frame or the frame started with eof
+ * @CAM_REQ_MGR_ICP_NO_MEMORY                : ICP No Memory
+ * @CAM_REQ_MGR_ICP_ERROR_SYSTEM_FAILURE     : ICP system failure
  */
 #define CAM_REQ_MGR_ISP_UNREPORTED_ERROR                 0
 #define CAM_REQ_MGR_LINK_STALLED_ERROR                   BIT(0)
 #define CAM_REQ_MGR_CSID_FATAL_ERROR                     BIT(1)
 #define CAM_REQ_MGR_CSID_FIFO_OVERFLOW_ERROR             BIT(2)
 #define CAM_REQ_MGR_CSID_RECOVERY_OVERFLOW_ERROR         BIT(3)
+#define CAM_REQ_MGR_CSID_LANE_FIFO_OVERFLOW_ERROR        BIT(4)
 #define CAM_REQ_MGR_CSID_PIXEL_COUNT_MISMATCH            BIT(5)
+#define CAM_REQ_MGR_CSID_RX_PKT_HDR_CORRUPTION           BIT(6)
+#define CAM_REQ_MGR_CSID_MISSING_PKT_HDR_DATA            BIT(7)
+#define CAM_REQ_MGR_CSID_ERR_ON_SENSOR_SWITCHING         BIT(8)
+#define CAM_REQ_MGR_CSID_UNBOUNDED_FRAME                 BIT(9)
+#define CAM_REQ_MGR_ICP_NO_MEMORY                        BIT(10)
+#define CAM_REQ_MGR_ICP_SYSTEM_FAILURE                   BIT(11)
 
 /**
  * struct cam_req_mgr_error_msg
@@ -495,6 +510,39 @@ struct cam_req_mgr_frame_msg {
 	__u32 sof_status;
 	__u32 frame_id_meta;
 	__u32 reserved;
+};
+
+/**
+ * enum cam_req_msg_timestamp_type - Identifies index of timestamps
+ *
+ * @CAM_REQ_SOF_QTIMER_TIMESTAMP:  SOF qtimer timestamp
+ * @CAM_REQ_BOOT_TIMESTAMP:        SOF boot timestamp
+ * @CAM_REQ_TIMESTAMP_TYPE:        Max enum index for timestamp type
+ *
+ */
+enum cam_req_msg_timestamp_type {
+	CAM_REQ_SOF_QTIMER_TIMESTAMP = 0,
+	CAM_REQ_BOOT_TIMESTAMP,
+	CAM_REQ_TIMESTAMP_MAX
+};
+
+/**
+ * struct cam_req_mgr_frame_msg
+ * @request_id: request id of the frame
+ * @frame_id: frame id of the frame
+ * @timestamps: array for all the supported timestamps
+ * @link_hdl: link handle associated with this message
+ * @frame_id_meta: refers to the meta for
+ *                that frame in specific usecases
+ * @reserved: reserved for future addtions and max size for structure can be 64 bytes
+ */
+struct cam_req_mgr_frame_msg_v2 {
+	__u64 request_id;
+	__u64 frame_id;
+	__u64 timestamps[CAM_REQ_TIMESTAMP_MAX];
+	__s32 link_hdl;
+	__u32 frame_id_meta;
+	__u32 reserved[4];
 };
 
 /**
@@ -563,6 +611,7 @@ struct cam_req_mgr_message {
 	union {
 		struct cam_req_mgr_error_msg err_msg;
 		struct cam_req_mgr_frame_msg frame_msg;
+		struct cam_req_mgr_frame_msg_v2 frame_msg_v2;
 		struct cam_req_mgr_custom_msg custom_msg;
 		struct cam_req_mgr_node_msg node_msg;
 	} u;

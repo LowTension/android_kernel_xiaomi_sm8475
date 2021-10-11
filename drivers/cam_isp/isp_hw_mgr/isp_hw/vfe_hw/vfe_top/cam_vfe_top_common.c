@@ -26,11 +26,12 @@ static int cam_vfe_top_set_axi_bw_vote(struct cam_vfe_top_priv_common *top_commo
 	int rc = 0;
 	struct cam_hw_soc_info        *soc_info = NULL;
 	struct cam_vfe_soc_private    *soc_private = NULL;
+	int i, j;
 
 	soc_info = top_common->soc_info;
 	soc_private = (struct cam_vfe_soc_private *)soc_info->soc_private;
 
-	CAM_DBG(CAM_PERF, "VFE:%d Sending final BW to cpas bw_state:%s bw_vote:%llu req_id:%d",
+	CAM_DBG(CAM_PERF, "VFE:%d Sending final BW to cpas bw_state:%s bw_vote:%llu req_id:%ld",
 		top_common->hw_idx, cam_vfe_top_clk_bw_state_to_string(top_common->bw_state),
 		total_bw_new_vote, (start_stop ? -1 : request_id));
 	rc = cam_cpas_update_axi_vote(soc_private->cpas_handle,
@@ -41,7 +42,37 @@ static int cam_vfe_top_set_axi_bw_vote(struct cam_vfe_top_priv_common *top_commo
 			sizeof(struct cam_axi_vote));
 		top_common->total_bw_applied = total_bw_new_vote;
 	} else {
-		CAM_ERR(CAM_PERF, "BW request failed, rc=%d", rc);
+		CAM_ERR(CAM_PERF,
+			"VFE:%d BW request failed, req_id: %ld, final num_paths: %d, rc=%d",
+			top_common->hw_idx, (start_stop ? -1 : request_id),
+			final_bw_vote->num_paths, rc);
+		for (i = 0; i < final_bw_vote->num_paths; i++) {
+			CAM_INFO(CAM_PERF,
+				"ife[%d] : Applied BW Vote : [%s][%s] [%llu %llu %llu]",
+				top_common->hw_idx,
+				cam_cpas_axi_util_path_type_to_string(
+				final_bw_vote->axi_path[i].path_data_type),
+				cam_cpas_axi_util_trans_type_to_string(
+				final_bw_vote->axi_path[i].transac_type),
+				final_bw_vote->axi_path[i].camnoc_bw,
+				final_bw_vote->axi_path[i].mnoc_ab_bw,
+				final_bw_vote->axi_path[i].mnoc_ib_bw);
+		}
+
+		for (i = 0; i < CAM_DELAY_CLK_BW_REDUCTION_NUM_REQ; i++) {
+			for (j = 0; j < top_common->last_bw_vote[i].num_paths; j++) {
+				CAM_INFO(CAM_PERF,
+					"ife[%d] : History[%d] BW Vote : [%s][%s] [%llu %llu %llu]",
+					top_common->hw_idx, i,
+					cam_cpas_axi_util_path_type_to_string(
+					top_common->last_bw_vote[i].axi_path[j].path_data_type),
+					cam_cpas_axi_util_trans_type_to_string(
+					top_common->last_bw_vote[i].axi_path[j].transac_type),
+					top_common->last_bw_vote[i].axi_path[j].camnoc_bw,
+					top_common->last_bw_vote[i].axi_path[j].mnoc_ab_bw,
+					top_common->last_bw_vote[i].axi_path[j].mnoc_ib_bw);
+			}
+		}
 	}
 
 	return rc;
@@ -59,7 +90,7 @@ static int cam_vfe_top_set_hw_clk_rate(struct cam_vfe_top_priv_common *top_commo
 	soc_info = top_common->soc_info;
 	soc_private = (struct cam_vfe_soc_private *)soc_info->soc_private;
 
-	CAM_DBG(CAM_PERF, "Applying VFE:%d Clock name=%s idx=%d clk=%llu req_id=%d",
+	CAM_DBG(CAM_PERF, "Applying VFE:%d Clock name=%s idx=%d clk=%llu req_id=%ld",
 		top_common->hw_idx, soc_info->clk_name[soc_info->src_clk_idx],
 		soc_info->src_clk_idx, final_clk_rate, (start_stop ? -1 : request_id));
 
@@ -148,7 +179,7 @@ static int cam_vfe_top_calc_hw_clk_rate(
 	else
 		top_common->clk_state = CAM_CLK_BW_STATE_DECREASE;
 
-	CAM_DBG(CAM_PERF, "VFE:%d Clock state:%s applied_clk_rate:%llu req_id:%d",
+	CAM_DBG(CAM_PERF, "VFE:%d Clock state:%s applied_clk_rate:%llu req_id:%ld",
 		top_common->hw_idx, cam_vfe_top_clk_bw_state_to_string(top_common->clk_state),
 		top_common->applied_clk_rate, (start_stop ? -1 : request_id));
 
@@ -287,7 +318,7 @@ static int cam_vfe_top_calc_axi_bw_vote(
 		bw_unchanged = false;
 
 	CAM_DBG(CAM_PERF,
-		"ife[%d] : applied_total=%lld, new_total=%lld unchanged=%d, start_stop=%d req_id=%d",
+		"ife[%d] : applied_total=%lld, new_total=%lld unchanged=%d, start_stop=%d req_id=%ld",
 		top_common->hw_idx, top_common->total_bw_applied,
 		*total_bw_new_vote, bw_unchanged, start_stop, (start_stop ? -1 : request_id));
 
@@ -351,7 +382,7 @@ static int cam_vfe_top_calc_axi_bw_vote(
 	}
 
 	CAM_DBG(CAM_PERF,
-		"ife[%d] : Delayed update: applied_total=%lld new_total=%lld start_stop=%d bw_state=%s req_id=%d",
+		"ife[%d] : Delayed update: applied_total=%lld new_total=%lld start_stop=%d bw_state=%s req_id=%ld",
 		top_common->hw_idx, top_common->total_bw_applied,
 		*total_bw_new_vote, start_stop,
 		cam_vfe_top_clk_bw_state_to_string(top_common->bw_state),
@@ -589,7 +620,7 @@ int cam_vfe_top_apply_clk_bw_update(struct cam_vfe_top_priv_common *top_common,
 		goto end;
 	}
 
-	CAM_DBG(CAM_PERF, "VFE:%d APPLY CLK/BW req_id:%d clk_state:%s bw_state:%s ",
+	CAM_DBG(CAM_PERF, "VFE:%d APPLY CLK/BW req_id:%ld clk_state:%s bw_state:%s ",
 		hw_intf->hw_idx, request_id,
 		cam_vfe_top_clk_bw_state_to_string(top_common->clk_state),
 		cam_vfe_top_clk_bw_state_to_string(top_common->bw_state));

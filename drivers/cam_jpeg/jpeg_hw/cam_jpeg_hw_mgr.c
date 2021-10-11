@@ -357,6 +357,12 @@ static int cam_jpeg_mgr_bottom_half_irq(void *priv, void *data)
 	irq_cb_data = (struct cam_jpeg_irq_cb_data *)task_data->data;
 
 	ctx_data = (struct cam_jpeg_hw_ctx_data *)irq_cb_data->private_data;
+
+	if (!ctx_data) {
+		CAM_ERR(CAM_JPEG, "No ctx data found!");
+		return -EINVAL;
+	}
+
 	if (!ctx_data->in_use) {
 		CAM_ERR(CAM_JPEG, "ctx is not in use");
 		return -EINVAL;
@@ -943,11 +949,13 @@ static int cam_jpeg_mgr_prepare_hw_update(void *hw_mgr_priv,
 		return rc;
 	}
 
-	if ((packet->num_cmd_buf > CAM_JPEG_MAX_NUM_CMD_BUFFS) || !packet->num_patches ||
-		!packet->num_io_configs) {
-		CAM_ERR(CAM_JPEG, "wrong number of cmd/patch info: %u %u",
-			packet->num_cmd_buf,
-			packet->num_patches);
+	if ((packet->num_cmd_buf > CAM_JPEG_MAX_NUM_CMD_BUFFS) ||
+		!packet->num_patches || !packet->num_io_configs ||
+		(packet->num_io_configs > CAM_JPEG_IMAGE_MAX)) {
+		CAM_ERR(CAM_JPEG,
+			"wrong number of cmd/patch/io_configs info: %u %u %u",
+			packet->num_cmd_buf, packet->num_patches,
+			packet->num_io_configs);
 		return -EINVAL;
 	}
 

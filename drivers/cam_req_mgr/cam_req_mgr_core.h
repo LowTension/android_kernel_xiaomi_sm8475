@@ -31,6 +31,8 @@
 /* Default frame rate is 30 */
 #define DEFAULT_FRAME_DURATION 33333333
 
+#define INITIAL_IN_SYNC_REQ 5
+
 #define SYNC_LINK_SOF_CNT_MAX_LMT 1
 
 #define MAXIMUM_LINKS_PER_SESSION  4
@@ -407,7 +409,7 @@ struct cam_req_mgr_core_link {
 	int32_t                              num_sync_links;
 	bool                                 sync_link_sof_skip;
 	uint32_t                             open_req_cnt;
-	uint32_t                             last_flush_id;
+	int64_t                              last_flush_id;
 	atomic_t                             is_used;
 	bool                                 is_master;
 	bool                                 initial_skip;

@@ -361,15 +361,17 @@ struct cam_ife_csid_dual_sync_args {
 /*
  * struct cam_isp_csid_reg_update_args:
  *
- * @cmd:           cmd buf update args
- * @node_res:      Node res pointer
- * @num_res:       Num of resources
- * @reg_write:     if set use AHB to config rup/aup
+ * @cmd:              cmd buf update args
+ * @node_res:         Node res pointer
+ * @num_res:          Num of resources
+ * @last_applied_mup: last applied MUP
+ * @reg_write:        if set use AHB to config rup/aup
  */
 struct cam_isp_csid_reg_update_args {
 	struct cam_isp_hw_cmd_buf_update  cmd;
 	struct cam_isp_resource_node     *res[CAM_IFE_PIX_PATH_RES_MAX];
 	uint32_t                          num_res;
+	uint32_t                          last_applied_mup;
 	bool                              reg_write;
 };
 

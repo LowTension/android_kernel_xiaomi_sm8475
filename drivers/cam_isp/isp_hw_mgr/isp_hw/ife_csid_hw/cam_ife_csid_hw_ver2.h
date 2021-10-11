@@ -167,6 +167,7 @@ struct cam_ife_csid_ver2_camif_data {
  *                          the corresponding paths
  * @en_secondary_evt:       Enable secondary evt for this path, to notify
  *                          hw manager
+ * @sfe_inline_shdr:        flag to indicate if sfe is inline shdr
  *
  */
 struct cam_ife_csid_ver2_path_cfg {
@@ -204,6 +205,7 @@ struct cam_ife_csid_ver2_path_cfg {
 	bool                                discard_init_frames;
 	bool                                skip_discard_frame_cfg;
 	bool                                en_secondary_evt;
+	bool                                sfe_inline_shdr;
 };
 
 struct cam_ife_csid_ver2_top_reg_info {

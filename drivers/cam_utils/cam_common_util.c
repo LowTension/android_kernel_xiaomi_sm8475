@@ -13,10 +13,13 @@
 #include <linux/moduleparam.h>
 #include "cam_common_util.h"
 #include "cam_debug_util.h"
+#include "cam_presil_hw_access.h"
 #if IS_REACHABLE(CONFIG_QCOM_VA_MINIDUMP)
 #include <soc/qcom/minidump.h>
 static  struct cam_common_mini_dump_dev_info g_minidump_dev_info;
 #endif
+
+#define CAM_PRESIL_POLL_DELAY 20
 
 static uint timeout_multiplier = 1;
 module_param(timeout_multiplier, uint, 0644);
@@ -76,8 +79,7 @@ unsigned long cam_common_wait_for_completion_timeout(
 		timeout_multiplier = 1;
 
 	wait_jiffies = timeout_jiffies * timeout_multiplier;
-	rem_jiffies = wait_for_completion_timeout(
-			complete, wait_jiffies);
+	rem_jiffies = wait_for_completion_timeout(complete, wait_jiffies);
 
 	return rem_jiffies;
 }
@@ -103,8 +105,14 @@ int cam_common_read_poll_timeout(
 		timeout_multiplier = 1;
 
 	wait_time_us = timeout * timeout_multiplier;
-	rc = readl_poll_timeout(addr,
-		*status, (*status & mask) == check_val, delay, wait_time_us);
+
+	if (false == cam_presil_mode_enabled()) {
+		rc = readl_poll_timeout(addr, *status, (*status & mask) == check_val, delay,
+			wait_time_us);
+	} else {
+		rc = cam_presil_readl_poll_timeout(addr, mask,
+			wait_time_us/(CAM_PRESIL_POLL_DELAY * 1000), CAM_PRESIL_POLL_DELAY);
+	}
 
 	return rc;
 }

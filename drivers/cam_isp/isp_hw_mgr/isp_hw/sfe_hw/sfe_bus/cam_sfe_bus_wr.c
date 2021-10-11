@@ -1824,8 +1824,20 @@ static int cam_sfe_bus_handle_sfe_out_done_bottom_half(
 		evt_info.hw_idx   = sfe_out->hw_intf->hw_idx;
 		evt_info.hw_type  = CAM_ISP_HW_TYPE_SFE;
 
-		rc = cam_sfe_bus_get_comp_sfe_out_res_id_list(
+		cam_sfe_bus_get_comp_sfe_out_res_id_list(
 			comp_mask, out_list, &num_out);
+		if (num_out > CAM_NUM_OUT_PER_COMP_IRQ_MAX) {
+			CAM_ERR(CAM_ISP,
+				"num_out: %d  exceeds max_port_per_comp_grp: %d for comp_mask: %u",
+				num_out, CAM_NUM_OUT_PER_COMP_IRQ_MAX, comp_mask);
+			for (i = 0; i < num_out; i++)
+				CAM_ERR(CAM_ISP,
+					"Skipping buf done notify for outport: %u",
+					out_list[i]);
+			rc = -EINVAL;
+			goto end;
+		}
+
 		evt_info.num_res = num_out;
 		for (i = 0; i < num_out; i++) {
 			evt_info.res_id[i] = out_list[i];
@@ -1842,6 +1854,7 @@ static int cam_sfe_bus_handle_sfe_out_done_bottom_half(
 		break;
 	}
 
+end:
 	cam_sfe_bus_wr_put_evt_payload(rsrc_data->common_data, &evt_payload);
 
 	return rc;
@@ -2940,6 +2953,45 @@ add_reg_pair:
 	return 0;
 }
 
+static int cam_sfe_bus_wr_get_res_for_mid(
+	struct cam_sfe_bus_wr_priv *bus_priv,
+	void *cmd_args, uint32_t arg_size)
+{
+	struct cam_isp_hw_get_cmd_update       *cmd_update = cmd_args;
+	struct cam_isp_hw_get_res_for_mid       *get_res = NULL;
+	int i, j;
+
+	get_res = (struct cam_isp_hw_get_res_for_mid *)cmd_update->data;
+	if (!get_res) {
+		CAM_ERR(CAM_SFE,
+			"invalid get resource for mid paramas");
+		return -EINVAL;
+	}
+
+	for (i = 0; i < bus_priv->num_out; i++) {
+
+		for (j = 0; j < CAM_SFE_BUS_MAX_MID_PER_PORT; j++) {
+			if (bus_priv->sfe_out_hw_info[i].mid[j] == get_res->mid)
+				goto end;
+		}
+	}
+	/*
+	 * Do not update out_res_id in case of no match.
+	 * Correct value will be dumped in hw mgr
+	 */
+	if (i == bus_priv->num_out) {
+		CAM_INFO(CAM_SFE, "mid:%d does not match with any out resource", get_res->mid);
+		return 0;
+	}
+
+end:
+	CAM_INFO(CAM_SFE, "match mid :%d  out resource: %s 0x%x found",
+		get_res->mid, bus_priv->sfe_out_hw_info[i].name,
+		bus_priv->sfe_out[i].res_id);
+	get_res->out_res_id = bus_priv->sfe_out[i].res_id;
+	return 0;
+}
+
 static int cam_sfe_bus_wr_start_hw(void *hw_priv,
 	void *start_hw_args, uint32_t arg_size)
 {
@@ -3091,6 +3143,9 @@ static int cam_sfe_bus_wr_process_cmd(
 		break;
 	case CAM_ISP_HW_CMD_WM_BW_LIMIT_CONFIG:
 		rc = cam_sfe_bus_wr_update_bw_limiter(priv, cmd_args, arg_size);
+		break;
+	case CAM_ISP_HW_CMD_GET_RES_FOR_MID:
+		rc = cam_sfe_bus_wr_get_res_for_mid(priv, cmd_args, arg_size);
 		break;
 	default:
 		CAM_ERR_RATE_LIMIT(CAM_SFE, "Invalid HW command type:%d",

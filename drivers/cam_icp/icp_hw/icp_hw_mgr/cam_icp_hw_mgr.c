@@ -45,6 +45,8 @@
 #include "cam_trace.h"
 #include "cam_cpas_api.h"
 #include "cam_common_util.h"
+#include "cam_mem_mgr_api.h"
+#include "cam_presil_hw_access.h"
 
 #define ICP_WORKQ_TASK_CMD_TYPE 1
 #define ICP_WORKQ_TASK_MSG_TYPE 2
@@ -4391,6 +4393,13 @@ static int cam_icp_mgr_config_hw(void *hw_mgr_priv, void *config_hw_args)
 	req_id = frame_info->request_id;
 	idx = cam_icp_clk_idx_from_req_id(ctx_data, req_id);
 
+	if (cam_presil_mode_enabled()) {
+		CAM_INFO(CAM_ICP, "Sending relevant buffers for request: %llu to presil",
+			config_args->request_id);
+		cam_presil_send_buffers_from_packet(frame_info->pkt, hw_mgr->iommu_hdl,
+			hw_mgr->iommu_hdl);
+	}
+
 	cam_icp_mgr_ipe_bps_clk_update(hw_mgr, ctx_data, idx);
 	ctx_data->hfi_frame_process.fw_process_flag[idx] = true;
 	ctx_data->hfi_frame_process.submit_timestamp[idx] = ktime_get();
@@ -4642,10 +4651,14 @@ static int cam_icp_mgr_process_io_cfg(struct cam_icp_hw_mgr *hw_mgr,
 			sync_in_obj[j++] = io_cfg_ptr[i].fence;
 			prepare_args->num_in_map_entries++;
 		} else {
-			prepare_args->out_map_entries[k++].sync_id =
+			prepare_args->out_map_entries[k].sync_id =
 				io_cfg_ptr[i].fence;
+			prepare_args->out_map_entries[k].resource_handle =
+				io_cfg_ptr[i].resource_type;
+			k++;
 			prepare_args->num_out_map_entries++;
 		}
+
 		CAM_DBG(CAM_REQ,
 			"ctx_id: %u req_id: %llu dir[%d]: %u, fence: %u resource_type = %u memh %x",
 			ctx_data->ctx_id, packet->header.request_id, i,
@@ -5066,6 +5079,7 @@ static int cam_icp_mgr_update_hfi_frame_process(
 	ctx_data->hfi_frame_process.frame_info[index].request_id =
 		packet->header.request_id;
 	ctx_data->hfi_frame_process.frame_info[index].io_config = 0;
+        ctx_data->hfi_frame_process.frame_info[index].pkt = packet;
 	rc = cam_icp_process_generic_cmd_buffer(packet, ctx_data, index,
 		&ctx_data->hfi_frame_process.frame_info[index].io_config);
 	if (rc) {
@@ -6036,6 +6050,13 @@ static int cam_icp_mgr_acquire_hw(void *hw_mgr_priv, void *acquire_hw_args)
 		CAM_ERR(CAM_ICP,
 			"sending config io mapping failed rc %d", rc);
 		goto send_map_info_failed;
+	}
+
+	if (cam_presil_mode_enabled()) {
+		CAM_INFO(CAM_PRESIL, "Sending IO Config buffers to presil: FD %d ",
+			(icp_dev_acquire_info->io_config_cmd_handle >> 16));
+		cam_mem_mgr_send_buffer_to_presil(icp_hw_mgr.iommu_hdl,
+			icp_dev_acquire_info->io_config_cmd_handle);
 	}
 
 	rc = cam_icp_mgr_send_config_io(ctx_data, io_buf_addr);
