@@ -2181,7 +2181,6 @@ static int cam_ife_csid_hw_ver2_config_path_data(
 	uint32_t cid)
 {
 	int rc = 0, i = 0;
-	bool is_rpp = false;
 	const struct cam_ife_csid_ver2_reg_info *csid_reg =
 		(struct cam_ife_csid_ver2_reg_info *)csid_hw->core_info->csid_reg;
 	struct cam_ife_csid_cid_data *cid_data = &csid_hw->cid_data[cid];
@@ -2258,7 +2257,6 @@ static int cam_ife_csid_hw_ver2_config_path_data(
 	case CAM_IFE_PIX_PATH_RES_RDI_2:
 	case CAM_IFE_PIX_PATH_RES_RDI_3:
 	case CAM_IFE_PIX_PATH_RES_RDI_4:
-		is_rpp = path_cfg->crop_enable || path_cfg->drop_enable;
 		/*
 		 * if csid gives unpacked out, packing needs to be done at
 		 * WM side if needed, based on the format the decision is
@@ -2270,7 +2268,7 @@ static int cam_ife_csid_hw_ver2_config_path_data(
 			path_cfg->in_format[CAM_IFE_CSID_MULTI_VC_DT_GRP_0],
 			path_cfg->out_format,
 			&path_cfg->path_format[CAM_IFE_CSID_MULTI_VC_DT_GRP_0],
-			is_rpp, reserve->use_wm_pack);
+			path_reg->mipi_pack_supported, reserve->use_wm_pack);
 		if (rc)
 			goto end;
 
@@ -2281,7 +2279,7 @@ static int cam_ife_csid_hw_ver2_config_path_data(
 				path_cfg->in_format[CAM_IFE_CSID_MULTI_VC_DT_GRP_1],
 				path_cfg->out_format,
 				&path_cfg->path_format[CAM_IFE_CSID_MULTI_VC_DT_GRP_1],
-				is_rpp, reserve->use_wm_pack);
+				path_reg->mipi_pack_supported, reserve->use_wm_pack);
 			if (rc)
 				goto end;
 		}
