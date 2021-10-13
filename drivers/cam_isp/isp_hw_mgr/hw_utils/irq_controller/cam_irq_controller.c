@@ -11,6 +11,7 @@
 #include "cam_io_util.h"
 #include "cam_irq_controller.h"
 #include "cam_debug_util.h"
+#include "cam_common_util.h"
 
 /**
  * struct cam_irq_evt_handler:
@@ -94,12 +95,13 @@ struct cam_irq_register_obj {
  * @th_list_head:           List of handlers sorted by priority
  * @hdl_idx:                Unique identity of handler assigned on Subscribe.
  *                          Used to Unsubscribe.
- * @lock:                   Lock for use by controller
  * @th_payload:             Payload structure to be passed to top half handler
  * @is_dependent:           Flag to indicate is this controller is dependent on another controller
  * @dependent_controller:   Array of controllers that depend on this controller
  * @delayed_global_clear:   Flag to indicate if this controller issues global clear after dependent
  *                          controllers are handled
+ * @lock:                   Lock to be used by controller, Use mutex lock in presil mode,
+ *                          and spinlock in regular case
  */
 struct cam_irq_controller {
 	const char                     *name;
@@ -113,12 +115,83 @@ struct cam_irq_controller {
 	struct list_head                evt_handler_list_head;
 	struct list_head                th_list_head[CAM_IRQ_PRIORITY_MAX];
 	uint32_t                        hdl_idx;
-	spinlock_t                      lock;
 	struct cam_irq_th_payload       th_payload;
 	bool                            is_dependent;
 	struct cam_irq_controller      *dependent_controller[CAM_IRQ_MAX_DEPENDENTS];
 	bool                            delayed_global_clear;
+
+#ifdef CONFIG_CAM_PRESIL
+	struct mutex                    lock;
+#else
+	spinlock_t                      lock;
+#endif
 };
+
+#ifdef CONFIG_CAM_PRESIL
+static inline void cam_irq_controller_lock_init(struct cam_irq_controller *controller)
+{
+	mutex_init(&controller->lock);
+}
+
+static inline unsigned long cam_irq_controller_lock_irqsave(
+	struct cam_irq_controller *controller)
+{
+	mutex_lock(&controller->lock);
+
+	return 0;
+}
+
+static inline void cam_irq_controller_unlock_irqrestore(
+	struct cam_irq_controller *controller, unsigned long flags)
+{
+	mutex_unlock(&controller->lock);
+}
+
+static inline void cam_irq_controller_lock(struct cam_irq_controller *controller)
+{
+	mutex_lock(&controller->lock);
+}
+
+static inline void cam_irq_controller_unlock(struct cam_irq_controller *controller)
+{
+	mutex_unlock(&controller->lock);
+}
+#else
+static inline void cam_irq_controller_lock_init(struct cam_irq_controller *controller)
+{
+	spin_lock_init(&controller->lock);
+}
+
+static inline unsigned long cam_irq_controller_lock_irqsave(
+	struct cam_irq_controller *controller)
+{
+	unsigned long flags = 0;
+
+	if (!in_irq())
+		spin_lock_irqsave(&controller->lock, flags);
+
+	return flags;
+}
+
+static inline void cam_irq_controller_unlock_irqrestore(
+	struct cam_irq_controller *controller, unsigned long flags)
+{
+	if (!in_irq())
+		spin_unlock_irqrestore(&controller->lock, flags);
+}
+
+static inline void cam_irq_controller_lock(struct cam_irq_controller *controller)
+{
+	spin_lock(&controller->lock);
+}
+
+static inline void cam_irq_controller_unlock(struct cam_irq_controller *controller)
+{
+	spin_unlock(&controller->lock);
+}
+#endif
+
+
 
 int cam_irq_controller_unregister_dependent(void *primary_controller, void *secondary_controller)
 {
@@ -198,25 +271,6 @@ int cam_irq_controller_register_dependent(void *primary_controller, void *second
 	CAM_DBG(CAM_IRQ_CTRL, "successfully registered %s as dependent of %s", ctrl_secondary->name,
 		ctrl_primary->name);
 	return 0;
-}
-
-static inline unsigned long cam_irq_controller_lock(
-	struct cam_irq_controller *controller)
-{
-	unsigned long flags = 0;
-
-	if (!in_irq())
-		spin_lock_irqsave(&controller->lock, flags);
-
-	return flags;
-}
-
-static inline void cam_irq_controller_unlock(
-	struct cam_irq_controller *controller,
-	unsigned long flags)
-{
-	if (!in_irq())
-		spin_unlock_irqrestore(&controller->lock, flags);
 }
 
 static inline void cam_irq_controller_clear_irq(
@@ -358,7 +412,7 @@ int cam_irq_controller_init(const char       *name,
 	for (i = 0; i < CAM_IRQ_PRIORITY_MAX; i++)
 		INIT_LIST_HEAD(&controller->th_list_head[i]);
 
-	spin_lock_init(&controller->lock);
+	cam_irq_controller_lock_init(controller);
 
 	controller->hdl_idx = 1;
 	*irq_controller = controller;
@@ -506,7 +560,7 @@ int cam_irq_controller_subscribe_irq(void *irq_controller,
 	if (controller->hdl_idx > 0x3FFFFFFF)
 		controller->hdl_idx = 1;
 
-	flags = cam_irq_controller_lock(controller);
+	flags = cam_irq_controller_lock_irqsave(controller);
 
 	__cam_irq_controller_enable_irq(controller, evt_handler);
 
@@ -515,7 +569,7 @@ int cam_irq_controller_subscribe_irq(void *irq_controller,
 	list_add_tail(&evt_handler->th_list_node,
 		&controller->th_list_head[priority]);
 
-	cam_irq_controller_unlock(controller, flags);
+	cam_irq_controller_unlock_irqrestore(controller, flags);
 
 	return evt_handler->index;
 
@@ -554,7 +608,7 @@ int cam_irq_controller_enable_irq(void *irq_controller, uint32_t handle)
 	if (!controller)
 		return rc;
 
-	flags = cam_irq_controller_lock(controller);
+	flags = cam_irq_controller_lock_irqsave(controller);
 
 	rc = cam_irq_controller_find_event_handle(controller, handle,
 		&evt_handler);
@@ -565,7 +619,7 @@ int cam_irq_controller_enable_irq(void *irq_controller, uint32_t handle)
 	__cam_irq_controller_enable_irq(controller, evt_handler);
 
 end:
-	cam_irq_controller_unlock(controller, flags);
+	cam_irq_controller_unlock_irqrestore(controller, flags);
 
 	return rc;
 }
@@ -580,7 +634,7 @@ int cam_irq_controller_disable_irq(void *irq_controller, uint32_t handle)
 	if (!controller)
 		return rc;
 
-	flags = cam_irq_controller_lock(controller);
+	flags = cam_irq_controller_lock_irqsave(controller);
 
 	rc = cam_irq_controller_find_event_handle(controller, handle,
 		&evt_handler);
@@ -592,7 +646,7 @@ int cam_irq_controller_disable_irq(void *irq_controller, uint32_t handle)
 	cam_irq_controller_clear_irq(controller, evt_handler);
 
 end:
-	cam_irq_controller_unlock(controller, flags);
+	cam_irq_controller_unlock_irqrestore(controller, flags);
 
 	return rc;
 }
@@ -605,7 +659,7 @@ int cam_irq_controller_unsubscribe_irq(void *irq_controller,
 	unsigned long               flags = 0;
 	int                         rc = 0;
 
-	flags = cam_irq_controller_lock(controller);
+	flags = cam_irq_controller_lock_irqsave(controller);
 
 
 	rc = cam_irq_controller_find_event_handle(controller, handle,
@@ -623,7 +677,7 @@ int cam_irq_controller_unsubscribe_irq(void *irq_controller,
 	kfree(evt_handler);
 
 end:
-	cam_irq_controller_unlock(controller, flags);
+	cam_irq_controller_unlock_irqrestore(controller, flags);
 
 	return rc;
 }
@@ -824,9 +878,9 @@ static void cam_irq_controller_read_registers(struct cam_irq_controller *control
 			dep_controller = controller->dependent_controller[j];
 			CAM_DBG(CAM_IRQ_CTRL, "Reading dependent registers for %s",
 				dep_controller->name);
-			spin_lock(&dep_controller->lock);
+			cam_irq_controller_lock(dep_controller);
 			__cam_irq_controller_read_registers(dep_controller);
-			spin_unlock(&dep_controller->lock);
+			cam_irq_controller_unlock(dep_controller);
 		}
 	}
 
@@ -875,11 +929,14 @@ irqreturn_t cam_irq_controller_handle_irq(int irq_num, void *priv, int evt_grp)
 	CAM_DBG(CAM_IRQ_CTRL,
 		"Locking: %s IRQ Controller: [%pK], lock handle: %pK",
 		controller->name, controller, &controller->lock);
-	spin_lock(&controller->lock);
+	cam_irq_controller_lock(controller);
+
 	if (!controller->is_dependent)
 		cam_irq_controller_read_registers(controller);
+
 	cam_irq_controller_process_th(controller, evt_grp);
-	spin_unlock(&controller->lock);
+
+	cam_irq_controller_unlock(controller);
 	CAM_DBG(CAM_IRQ_CTRL,
 		"Unlocked: %s IRQ Controller: %pK, lock handle: %pK",
 		controller->name, controller, &controller->lock);
@@ -899,7 +956,7 @@ int cam_irq_controller_update_irq(void *irq_controller, uint32_t handle,
 	if (!controller)
 		return rc;
 
-	flags = cam_irq_controller_lock(controller);
+	flags = cam_irq_controller_lock_irqsave(controller);
 
 	rc = cam_irq_controller_find_event_handle(controller, handle,
 		&evt_handler);
@@ -918,7 +975,7 @@ int cam_irq_controller_update_irq(void *irq_controller, uint32_t handle,
 	cam_irq_controller_clear_irq(controller, evt_handler);
 
 end:
-	cam_irq_controller_unlock(controller, flags);
+	cam_irq_controller_unlock_irqrestore(controller, flags);
 
 	return rc;
 }
