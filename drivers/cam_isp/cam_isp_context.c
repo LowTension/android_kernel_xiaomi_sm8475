@@ -1331,6 +1331,13 @@ static int __cam_isp_ctx_handle_buf_done_for_request_verify_addr(
 	CAM_DBG(CAM_ISP, "Enter with bubble_state %d, req_bubble_detected %d",
 		bubble_state, req_isp->bubble_detected);
 
+	if (done->num_handles > CAM_NUM_OUT_PER_COMP_IRQ_MAX) {
+		CAM_ERR(CAM_ISP, "ctx: %u req: %llu num_handles: %u is more than %u",
+			ctx->ctx_id, req->request_id,
+			done->num_handles, CAM_NUM_OUT_PER_COMP_IRQ_MAX);
+		return -EINVAL;
+	}
+
 	for (i = 0; i < done->num_handles; i++) {
 		for (j = 0; j < req_isp->num_fence_map_out; j++) {
 			cmp_addr = cam_smmu_is_expanded_memory() ? CAM_36BIT_INTF_GET_IOVA_BASE(
