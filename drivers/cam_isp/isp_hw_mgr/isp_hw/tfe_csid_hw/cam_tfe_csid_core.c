@@ -3258,6 +3258,7 @@ irqreturn_t cam_tfe_csid_irq(int irq_num, void *data)
 	uint32_t sof_irq_debug_en = 0, log_en = 0;
 	unsigned long flags;
 	uint32_t i, val, val1;
+	uint32_t data_idx;
 
 	if (!data) {
 		CAM_ERR(CAM_ISP, "CSID: Invalid arguments");
@@ -3265,6 +3266,7 @@ irqreturn_t cam_tfe_csid_irq(int irq_num, void *data)
 	}
 
 	csid_hw = (struct cam_tfe_csid_hw *)data;
+	data_idx = csid_hw->csi2_rx_cfg.phy_sel - 1;
 	CAM_DBG(CAM_ISP, "CSID %d IRQ Handling", csid_hw->hw_intf->hw_idx);
 
 	csid_reg = csid_hw->csid_info->csid_reg;
@@ -3397,8 +3399,7 @@ handle_fatal_error:
 		/* phy_sel starts from 1 and should never be zero*/
 		if (csid_hw->csi2_rx_cfg.phy_sel > 0) {
 			cam_subdev_notify_message(CAM_CSIPHY_DEVICE_TYPE,
-				CAM_SUBDEV_MESSAGE_IRQ_ERR,
-				(csid_hw->csi2_rx_cfg.phy_sel - 1));
+				CAM_SUBDEV_MESSAGE_IRQ_ERR, (void *)&data_idx);
 		}
 		cam_tfe_csid_handle_hw_err_irq(csid_hw,
 			CAM_ISP_HW_ERROR_CSID_FATAL, irq_status);

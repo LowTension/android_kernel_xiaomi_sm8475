@@ -134,6 +134,7 @@ static int cam_ife_csid_ver2_sof_irq_debug(
 	struct   cam_ife_csid_ver2_path_cfg    *path_cfg;
 	struct   cam_isp_resource_node         *res;
 	uint32_t irq_mask[CAM_IFE_CSID_IRQ_REG_MAX] = {0};
+	uint32_t data_idx;
 
 	if (*((uint32_t *)cmd_args) == 1)
 		sof_irq_enable = true;
@@ -147,6 +148,7 @@ static int cam_ife_csid_ver2_sof_irq_debug(
 		return 0;
 	}
 
+	data_idx = csid_hw->rx_cfg.phy_sel - 1;
 	csid_reg = (struct cam_ife_csid_ver2_reg_info *)
 			csid_hw->core_info->csid_reg;
 
@@ -185,8 +187,7 @@ static int cam_ife_csid_ver2_sof_irq_debug(
 			csid_hw->rx_cfg.phy_sel - 1);
 
 	cam_subdev_notify_message(CAM_CSIPHY_DEVICE_TYPE,
-			CAM_SUBDEV_MESSAGE_IRQ_ERR,
-			(csid_hw->rx_cfg.phy_sel - 1));
+			CAM_SUBDEV_MESSAGE_IRQ_ERR, (void *)&data_idx);
 
 	return 0;
 }
@@ -952,6 +953,7 @@ static int cam_ife_csid_ver2_rx_err_bottom_half(
 	uint32_t                                    event_type = 0;
 	uint32_t                                    long_pkt_ftr_val;
 	uint32_t                                    total_crc;
+	uint32_t                                    data_idx;
 
 	if (!handler_priv || !evt_payload_priv) {
 		CAM_ERR(CAM_ISP, "Invalid params");
@@ -961,6 +963,7 @@ static int cam_ife_csid_ver2_rx_err_bottom_half(
 	payload = evt_payload_priv;
 	csid_hw = handler_priv;
 	soc_info = &csid_hw->hw_info->soc_info;
+	data_idx = csid_hw->rx_cfg.phy_sel -1;
 
 	log_buf = csid_hw->log_buf;
 	memset(log_buf, 0, sizeof(csid_hw->log_buf));
@@ -1106,8 +1109,7 @@ static int cam_ife_csid_ver2_rx_err_bottom_half(
 	if (csid_hw->flags.fatal_err_detected) {
 		event_type |= CAM_ISP_HW_ERROR_CSID_FATAL;
 		cam_subdev_notify_message(CAM_CSIPHY_DEVICE_TYPE,
-			CAM_SUBDEV_MESSAGE_IRQ_ERR,
-			(csid_hw->rx_cfg.phy_sel -1));
+			CAM_SUBDEV_MESSAGE_IRQ_ERR, (void *)&data_idx);
 	}
 
 	if (event_type)

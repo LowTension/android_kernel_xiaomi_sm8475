@@ -3275,6 +3275,7 @@ static int cam_ife_csid_ver1_sof_irq_debug(
 	bool sof_irq_enable = false;
 	struct cam_hw_soc_info                  *soc_info;
 	struct cam_ife_csid_ver1_reg_info *csid_reg;
+	uint32_t data_idx;
 
 	if (*((uint32_t *)cmd_args) == 1)
 		sof_irq_enable = true;
@@ -3287,6 +3288,7 @@ static int cam_ife_csid_ver1_sof_irq_debug(
 		return 0;
 	}
 
+	data_idx = csid_hw->rx_cfg.phy_sel;
 	soc_info = &csid_hw->hw_info->soc_info;
 	csid_reg = (struct cam_ife_csid_ver1_reg_info *)
 			csid_hw->core_info->csid_reg;
@@ -3353,7 +3355,7 @@ static int cam_ife_csid_ver1_sof_irq_debug(
 
 	cam_subdev_notify_message(CAM_CSIPHY_DEVICE_TYPE,
 			CAM_SUBDEV_MESSAGE_IRQ_ERR,
-			(csid_hw->rx_cfg.phy_sel));
+			(void *)&data_idx);
 
 	return 0;
 }
@@ -3948,6 +3950,7 @@ static int cam_ife_csid_ver1_rx_bottom_half_handler(
 	uint32_t                                    event_type = 0;
 	size_t                                      len = 0;
 	struct cam_hw_soc_info                     *soc_info;
+	uint32_t                                    data_idx;
 
 	if (!csid_hw || !evt_payload) {
 		CAM_ERR(CAM_ISP,
@@ -3956,6 +3959,7 @@ static int cam_ife_csid_ver1_rx_bottom_half_handler(
 		return -EINVAL;
 	}
 
+	data_idx = csid_hw->rx_cfg.phy_sel;
 	soc_info = &csid_hw->hw_info->soc_info;
 	csid_reg = (struct cam_ife_csid_ver1_reg_info *)
 			csid_hw->core_info->csid_reg;
@@ -4067,7 +4071,7 @@ static int cam_ife_csid_ver1_rx_bottom_half_handler(
 		event_type |= CAM_ISP_HW_ERROR_CSID_FATAL;
 		cam_subdev_notify_message(CAM_CSIPHY_DEVICE_TYPE,
 				CAM_SUBDEV_MESSAGE_IRQ_ERR,
-				(csid_hw->rx_cfg.phy_sel));
+				(void *)&data_idx);
 	}
 	if (event_type)
 		cam_ife_csid_ver1_handle_event_err(csid_hw,
