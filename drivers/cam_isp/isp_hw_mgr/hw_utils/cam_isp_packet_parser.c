@@ -66,8 +66,8 @@ int cam_isp_add_change_base(
 			hw_entry[num_ent].len    = get_base.cmd.used_bytes;
 			hw_entry[num_ent].offset = kmd_buf_info->offset;
 
-			/* Marking change base as IOCFG to reapply on bubble */
-			hw_entry[num_ent].flags  = CAM_ISP_IOCFG_BL;
+			/* Marking change base as COMMON_CFG */
+			hw_entry[num_ent].flags  = CAM_ISP_COMMON_CFG_BL;
 			CAM_DBG(CAM_ISP,
 				"num_ent=%d handle=0x%x, len=%u, offset=%u",
 				num_ent,
@@ -1238,8 +1238,8 @@ int cam_isp_add_reg_update(
 		prepare->hw_update_entries[num_ent].offset =
 			kmd_buf_info->offset;
 
-		/* Marking reg update as IOCFG to reapply on bubble */
-		prepare->hw_update_entries[num_ent].flags = CAM_ISP_IOCFG_BL;
+		/* Marking reg update as COMMON */
+		prepare->hw_update_entries[num_ent].flags = CAM_ISP_COMMON_CFG_BL;
 		CAM_DBG(CAM_ISP,
 			"num_ent=%d handle=0x%x, len=%u, offset=%u",
 			num_ent,
@@ -1333,7 +1333,7 @@ int cam_isp_add_go_cmd(
 		prepare->hw_update_entries[num_ent].len = reg_update_size;
 		prepare->hw_update_entries[num_ent].offset =
 			kmd_buf_info->offset;
-		prepare->hw_update_entries[num_ent].flags = CAM_ISP_IOCFG_BL;
+		prepare->hw_update_entries[num_ent].flags = CAM_ISP_COMMON_CFG_BL;
 		CAM_DBG(CAM_ISP,
 			"num_ent=%d handle=0x%x, len=%u, offset=%u",
 			num_ent,
@@ -1748,8 +1748,8 @@ int cam_isp_add_csid_reg_update(
 		prepare->hw_update_entries[num_ent].offset =
 			kmd_buf_info->offset;
 
-		/* Marking reg update as IOCFG to reapply on bubble */
-		prepare->hw_update_entries[num_ent].flags = CAM_ISP_IOCFG_BL;
+		/* Marking reg update as COMMON */
+		prepare->hw_update_entries[num_ent].flags = CAM_ISP_COMMON_CFG_BL;
 		CAM_DBG(CAM_ISP,
 			"num_ent=%d handle=0x%x, len=%u, offset=%u",
 			num_ent,
@@ -1846,8 +1846,8 @@ go_cmd_added:
 		prepare->hw_update_entries[num_ent].offset =
 			kmd_buf_info->offset;
 
-		/* Marking go update as IOCFG to reapply on bubble */
-		prepare->hw_update_entries[num_ent].flags = CAM_ISP_IOCFG_BL;
+		/* Marking go update as COMMON */
+		prepare->hw_update_entries[num_ent].flags = CAM_ISP_COMMON_CFG_BL;
 		CAM_DBG(CAM_ISP,
 			"num_ent=%d handle=0x%x, len=%u, offset=%u",
 			num_ent,
