@@ -251,7 +251,6 @@ static int cam_vfe_top_calc_axi_bw_vote(
 	struct cam_axi_vote **to_be_applied_axi_vote, uint64_t *total_bw_new_vote,
 	uint64_t request_id)
 {
-	static struct cam_axi_vote agg_vote;
 	int rc = 0;
 	uint32_t i;
 	uint32_t num_paths = 0;
@@ -265,7 +264,7 @@ static int cam_vfe_top_calc_axi_bw_vote(
 		return -EINVAL;
 	}
 
-	memset(&agg_vote, 0, sizeof(struct cam_axi_vote));
+	memset(&top_common->agg_incoming_vote, 0, sizeof(struct cam_axi_vote));
 	for (i = 0; i < top_common->num_mux; i++) {
 		if (top_common->axi_vote_control[i] ==
 			CAM_ISP_BW_CONTROL_INCLUDE) {
@@ -281,7 +280,7 @@ static int cam_vfe_top_calc_axi_bw_vote(
 				goto end;
 			}
 
-			memcpy(&agg_vote.axi_path[num_paths],
+			memcpy(&top_common->agg_incoming_vote.axi_path[num_paths],
 				&top_common->req_axi_vote[i].axi_path[0],
 				top_common->req_axi_vote[i].num_paths *
 				sizeof(
@@ -290,26 +289,26 @@ static int cam_vfe_top_calc_axi_bw_vote(
 		}
 	}
 
-	agg_vote.num_paths = num_paths;
+	top_common->agg_incoming_vote.num_paths = num_paths;
 
-	for (i = 0; i < agg_vote.num_paths; i++) {
+	for (i = 0; i < top_common->agg_incoming_vote.num_paths; i++) {
 		CAM_DBG(CAM_PERF,
 			"ife[%d] : New BW Vote : counter[%d] [%s][%s] [%llu %llu %llu]",
 			top_common->hw_idx,
 			top_common->last_bw_counter,
 			cam_cpas_axi_util_path_type_to_string(
-			agg_vote.axi_path[i].path_data_type),
+			top_common->agg_incoming_vote.axi_path[i].path_data_type),
 			cam_cpas_axi_util_trans_type_to_string(
-			agg_vote.axi_path[i].transac_type),
-			agg_vote.axi_path[i].camnoc_bw,
-			agg_vote.axi_path[i].mnoc_ab_bw,
-			agg_vote.axi_path[i].mnoc_ib_bw);
+			top_common->agg_incoming_vote.axi_path[i].transac_type),
+			top_common->agg_incoming_vote.axi_path[i].camnoc_bw,
+			top_common->agg_incoming_vote.axi_path[i].mnoc_ab_bw,
+			top_common->agg_incoming_vote.axi_path[i].mnoc_ib_bw);
 
-		*total_bw_new_vote += agg_vote.axi_path[i].camnoc_bw;
+		*total_bw_new_vote += top_common->agg_incoming_vote.axi_path[i].camnoc_bw;
 	}
 
-	memcpy(&top_common->last_bw_vote[top_common->last_bw_counter], &agg_vote,
-		sizeof(struct cam_axi_vote));
+	memcpy(&top_common->last_bw_vote[top_common->last_bw_counter],
+		&top_common->agg_incoming_vote, sizeof(struct cam_axi_vote));
 	top_common->last_total_bw_vote[top_common->last_bw_counter] = *total_bw_new_vote;
 	top_common->last_bw_counter = (top_common->last_bw_counter + 1) %
 		CAM_DELAY_CLK_BW_REDUCTION_NUM_REQ;
@@ -331,14 +330,15 @@ static int cam_vfe_top_calc_axi_bw_vote(
 
 	if (start_stop) {
 		/* need to vote current request immediately */
-		final_bw_vote = &agg_vote;
+		final_bw_vote = &top_common->agg_incoming_vote;
 		/* Reset everything, we can start afresh */
 		memset(top_common->last_bw_vote, 0, sizeof(struct cam_axi_vote) *
 			CAM_DELAY_CLK_BW_REDUCTION_NUM_REQ);
 		memset(top_common->last_total_bw_vote, 0, sizeof(uint64_t) *
 			CAM_DELAY_CLK_BW_REDUCTION_NUM_REQ);
 		top_common->last_bw_counter = 0;
-		top_common->last_bw_vote[top_common->last_bw_counter] = agg_vote;
+		top_common->last_bw_vote[top_common->last_bw_counter] =
+			top_common->agg_incoming_vote;
 		top_common->last_total_bw_vote[top_common->last_bw_counter] = *total_bw_new_vote;
 		top_common->last_bw_counter = (top_common->last_bw_counter + 1) %
 			CAM_DELAY_CLK_BW_REDUCTION_NUM_REQ;

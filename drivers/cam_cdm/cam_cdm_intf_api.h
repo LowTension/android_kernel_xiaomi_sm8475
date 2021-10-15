@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CAM_CDM_API_H_
@@ -133,23 +133,23 @@ struct cam_cdm_bl_cmd {
  *
  * @flag : 1 for callback needed and 0 for no callback when this BL
  *            request is done
+ * @gen_irq_arb : enum for setting arbitration in gen_irq
  * @userdata :Input private data which will be returned as part
  *             of callback if request for this bl request in flags.
- * @cookie : Cookie if the callback is gen irq status
  * @type : type of the submitted bl cmd address.
  * @cmd_arrary_count : Input number of BL commands to be submitted to CDM
- * @gen_irq_arb : enum for setting arbitration in gen_irq
+ * @cookie : Cookie if the callback is gen irq status
  * @bl_cmd_array     : Input payload holding the BL cmd's arrary
  *                     to be sumbitted.
  *
  */
 struct cam_cdm_bl_request {
-	int flag;
+	bool flag;
+	bool gen_irq_arb;
 	void *userdata;
-	uint64_t cookie;
 	enum cam_cdm_bl_cmd_addr_type type;
 	uint32_t cmd_arrary_count;
-	bool gen_irq_arb;
+	uint64_t cookie;
 	struct cam_cdm_bl_cmd cmd[1];
 };
 

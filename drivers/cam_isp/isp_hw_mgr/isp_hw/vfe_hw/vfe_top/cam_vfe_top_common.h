@@ -21,6 +21,7 @@ struct cam_vfe_top_priv_common {
 	uint32_t                        num_mux;
 	uint32_t                        hw_idx;
 	struct cam_axi_vote             applied_axi_vote;
+	struct cam_axi_vote             agg_incoming_vote;
 	struct cam_axi_vote             req_axi_vote[CAM_VFE_TOP_MUX_MAX];
 	struct cam_axi_vote             last_bw_vote[CAM_DELAY_CLK_BW_REDUCTION_NUM_REQ];
 	uint64_t                        last_total_bw_vote[CAM_DELAY_CLK_BW_REDUCTION_NUM_REQ];
