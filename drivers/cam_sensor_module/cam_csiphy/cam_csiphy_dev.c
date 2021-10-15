@@ -286,6 +286,7 @@ static int cam_csiphy_component_bind(struct device *dev,
 		new_csiphy_dev->csiphy_info[i].lane_cnt = 0;
 		new_csiphy_dev->csiphy_info[i].lane_assign = 0;
 		new_csiphy_dev->csiphy_info[i].lane_enable = 0;
+		new_csiphy_dev->csiphy_info[i].mipi_flags = 0;
 	}
 
 	new_csiphy_dev->ops.get_dev_info = NULL;
@@ -294,6 +295,7 @@ static int cam_csiphy_component_bind(struct device *dev,
 
 	new_csiphy_dev->acquire_count = 0;
 	new_csiphy_dev->start_dev_count = 0;
+	new_csiphy_dev->preamble_enable = 0;
 
 	cpas_parms.cam_cpas_client_cb = NULL;
 	cpas_parms.cell_index = new_csiphy_dev->soc_info.index;

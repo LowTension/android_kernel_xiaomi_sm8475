@@ -85,7 +85,9 @@ static void cam_csiphy_reset_phyconfig_param(struct csiphy_device *csiphy_dev,
 	csiphy_dev->csiphy_info[index].settle_time = 0;
 	csiphy_dev->csiphy_info[index].data_rate = 0;
 	csiphy_dev->csiphy_info[index].secure_mode = 0;
+	csiphy_dev->csiphy_info[index].mipi_flags = 0;
 	csiphy_dev->csiphy_info[index].hdl_data.device_hdl = -1;
+	csiphy_dev->csiphy_info[index].csiphy_3phase = -1;
 }
 
 static inline void cam_csiphy_apply_onthego_reg_values(void __iomem *csiphybase, uint8_t csiphy_idx)
@@ -635,14 +637,12 @@ int32_t cam_cmd_buf_parser(struct csiphy_device *csiphy_dev,
 	 * preamble enable.
 	 */
 	if (csiphy_dev->preamble_enable && !preamble_en &&
-		csiphy_dev->csiphy_info[index].csiphy_3phase) {
+		csiphy_dev->combo_mode &&
+		!csiphy_dev->cphy_dphy_combo_mode) {
 		CAM_ERR(CAM_CSIPHY,
-			"Cannot support CPHY combo mode with differnt preamble settings");
-		return -EINVAL;
-	} else if (preamble_en &&
-		!csiphy_dev->csiphy_info[index].csiphy_3phase) {
-		CAM_ERR(CAM_CSIPHY,
-			"Preamble pattern enablement is not supported for DPHY sensors");
+			"Cannot support %s combo mode with differnt preamble settings",
+			(csiphy_dev->csiphy_info[index].csiphy_3phase ?
+			"CPHY" : "DPHY"));
 		return -EINVAL;
 	}
 
@@ -2087,6 +2087,7 @@ int32_t cam_csiphy_core_cfg(void *phy_dev,
 			CAM_SECURE_MODE_NON_SECURE;
 
 		csiphy_dev->csiphy_cpas_cp_reg_mask[offset] = 0x0;
+		csiphy_dev->preamble_enable = 0;
 
 		rc = cam_destroy_device_hdl(release.dev_handle);
 		if (rc < 0)
