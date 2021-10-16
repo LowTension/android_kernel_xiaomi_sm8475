@@ -153,8 +153,8 @@ struct cam_isp_ctx_irq_ops {
  * @bubble_report:             Flag to track if bubble report is active on
  *                             current request
  * @hw_update_data:            HW update data for this request
+ * @reapply_type:              Determines type of settings to be re-applied
  * @event_timestamp:           Timestamp for different stage of request
- * @reapply:                   True if reapplying after bubble
  * @cdm_reset_before_apply:    For bubble re-apply when buf done not coming set
  *                             to True
  *
@@ -172,10 +172,10 @@ struct cam_isp_ctx_req {
 	uint32_t                  deferred_fence_map_index[CAM_ISP_CTX_RES_MAX];
 	int32_t                               bubble_report;
 	struct cam_isp_prepare_hw_update_data hw_update_data;
+	enum cam_hw_config_reapply_type       reapply_type;
 	ktime_t                               event_timestamp
 		[CAM_ISP_CTX_EVENT_MAX];
 	bool                                  bubble_detected;
-	bool                                  reapply;
 	bool                                  cdm_reset_before_apply;
 };
 
@@ -345,6 +345,7 @@ struct cam_isp_context_dump_header {
  * @map_out:                   Output fence mapping
  * @map_in:                    Input fence mapping
  * @io_cfg:                    IO buffer configuration
+ * @reapply_type:              Determines type of settings to be re-applied
  * @request_id:                Request ID
  * @num_fence_map_out:         Number of the output fence map
  * @num_fence_map_in:          Number of input fence map
@@ -358,7 +359,6 @@ struct cam_isp_context_dump_header {
  * @bubble_report:             Flag to track if bubble report is active on
  *                             current request
  * @bubble_detected:           Flag to track if bubble is detected
- * @reapply:                   True if reapplying after bubble
  * @cdm_reset_before_apply:    For bubble re-apply when buf done not coming set
  *                             to True
  *
@@ -367,6 +367,7 @@ struct cam_isp_ctx_req_mini_dump {
 	struct cam_hw_fence_map_entry   *map_out;
 	struct cam_hw_fence_map_entry   *map_in;
 	struct cam_buf_io_cfg           *io_cfg;
+	enum cam_hw_config_reapply_type  reapply_type;
 	uint64_t                         request_id;
 	uint8_t                          num_fence_map_in;
 	uint8_t                          num_fence_map_out;
@@ -375,7 +376,6 @@ struct cam_isp_ctx_req_mini_dump {
 	uint8_t                          num_deferred_acks;
 	bool                             bubble_report;
 	bool                             bubble_detected;
-	bool                             reapply;
 	bool                             cdm_reset_before_apply;
 };
 

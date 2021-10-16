@@ -5770,7 +5770,7 @@ static int cam_ife_mgr_config_hw(void *hw_mgr_priv,
 	CAM_DBG(CAM_ISP, "Ctx[%pK][%d] : Applying Req %lld, init_packet=%d",
 		ctx, ctx->ctx_index, cfg->request_id, cfg->init_packet);
 
-	if (cfg->reapply && cfg->cdm_reset_before_apply) {
+	if (cfg->reapply_type && cfg->cdm_reset_before_apply) {
 		if (ctx->last_cdm_done_req < cfg->request_id) {
 			cdm_hang_detect =
 				cam_cdm_detect_hang_error(ctx->cdm_handle);
@@ -5869,8 +5869,14 @@ static int cam_ife_mgr_config_hw(void *hw_mgr_priv,
 		for (i = 0 ; i < cfg->num_hw_update_entries; i++) {
 			cmd = (cfg->hw_update_entries + i);
 
-			if (cfg->reapply &&
-				cmd->flags == CAM_ISP_IQ_BL) {
+			if ((cfg->reapply_type == CAM_CONFIG_REAPPLY_IO) &&
+				(cmd->flags == CAM_ISP_IQ_BL)) {
+				skip++;
+				continue;
+			}
+
+			if ((cfg->reapply_type == CAM_CONFIG_REAPPLY_IQ) &&
+				(cmd->flags == CAM_ISP_IOCFG_BL)) {
 				skip++;
 				continue;
 			}

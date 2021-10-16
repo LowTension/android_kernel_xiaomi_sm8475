@@ -273,6 +273,15 @@ struct cam_hw_stream_setttings {
 };
 
 /**
+ * enum cam_hw_config_reapply_type
+ */
+enum cam_hw_config_reapply_type {
+	CAM_CONFIG_REAPPLY_NONE,
+	CAM_CONFIG_REAPPLY_IQ,
+	CAM_CONFIG_REAPPLY_IO,
+};
+
+/**
  * struct cam_hw_config_args - Payload for config command
  *
  * @ctxt_to_hw_map:            HW context from the acquire
@@ -282,7 +291,8 @@ struct cam_hw_stream_setttings {
  * @num_out_map_entries:       Number of out map entries
  * @priv:                      Private pointer
  * @request_id:                Request ID
- * @reapply:                   True if reapplying after bubble
+ * @reapply_type:              On reapply determines what is to be applied
+ * @init_packet:               Set if INIT packet
  * @cdm_reset_before_apply:    True is need to reset CDM before re-apply bubble
  *                             request
  *
@@ -295,8 +305,8 @@ struct cam_hw_config_args {
 	uint32_t                        num_out_map_entries;
 	void                           *priv;
 	uint64_t                        request_id;
+	enum cam_hw_config_reapply_type reapply_type;
 	bool                            init_packet;
-	bool                            reapply;
 	bool                            cdm_reset_before_apply;
 };
 
