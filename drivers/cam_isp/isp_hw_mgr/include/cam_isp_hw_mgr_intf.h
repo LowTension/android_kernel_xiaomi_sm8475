@@ -63,9 +63,19 @@ enum cam_isp_hw_event_type {
 	CAM_ISP_HW_EVENT_EPOCH,
 	CAM_ISP_HW_EVENT_EOF,
 	CAM_ISP_HW_EVENT_DONE,
+	CAM_ISP_HW_SECONDARY_EVENT,
 	CAM_ISP_HW_EVENT_MAX
 };
 
+/**
+ *  enum cam_isp_hw_secondary-event_type - Collection of the ISP hardware secondary events
+ */
+enum cam_isp_hw_secondary_event_type {
+	CAM_ISP_HW_SEC_EVENT_SOF,
+	CAM_ISP_HW_SEC_EVENT_EPOCH,
+	CAM_ISP_HW_SEC_EVENT_OUT_OF_SYNC_FRAME_DROP,
+	CAM_ISP_HW_SEC_EVENT_EVENT_MAX,
+};
 
 /**
  * enum cam_isp_hw_err_type - Collection of the ISP error types for
@@ -81,6 +91,7 @@ enum cam_isp_hw_err_type {
 	CAM_ISP_HW_ERROR_CSID_FIFO_OVERFLOW = 0x0040,
 	CAM_ISP_HW_ERROR_RECOVERY_OVERFLOW = 0x0080,
 	CAM_ISP_HW_ERROR_CSID_FRAME_SIZE = 0x0100,
+	CAM_ISP_HW_ERROR_CSID_SENSOR_FRAME_DROP = 0x0200,
 };
 
 /**
@@ -96,12 +107,14 @@ enum cam_isp_hw_stop_cmd {
  * struct cam_isp_stop_args - hardware stop arguments
  *
  * @hw_stop_cmd:               Hardware stop command type information
- * @stop_only                  Send stop only to hw drivers. No Deinit to be
+ * @internal_trigger:          Stop triggered internally for reset & recovery
+ * @stop_only:                 Send stop only to hw drivers. No Deinit to be
  *                             done.
  *
  */
 struct cam_isp_stop_args {
 	enum cam_isp_hw_stop_cmd      hw_stop_cmd;
+	bool                          internal_trigger;
 	bool                          stop_only;
 };
 
@@ -216,13 +229,11 @@ struct cam_isp_prepare_hw_update_data {
 /**
  * struct cam_isp_hw_sof_event_data - Event payload for CAM_HW_EVENT_SOF
  *
- * @is_secondary_event: Event notified as secondary
  * @timestamp         : Time stamp for the sof event
  * @boot_time         : Boot time stamp for the sof event
  *
  */
 struct cam_isp_hw_sof_event_data {
-	bool           is_secondary_evt;
 	uint64_t       timestamp;
 	uint64_t       boot_time;
 };
@@ -293,6 +304,16 @@ struct cam_isp_hw_error_event_data {
 	uint64_t             timestamp;
 	bool                 recovery_enabled;
 	bool                 enable_req_dump;
+};
+
+/**
+ * struct cam_isp_hw_secondary_event_data - Event payload for secondary events
+ *
+ * @evt_type     : Event notified as secondary
+ *
+ */
+struct cam_isp_hw_secondary_event_data {
+	enum cam_isp_hw_secondary_event_type  evt_type;
 };
 
 /* enum cam_isp_hw_mgr_command - Hardware manager command type */

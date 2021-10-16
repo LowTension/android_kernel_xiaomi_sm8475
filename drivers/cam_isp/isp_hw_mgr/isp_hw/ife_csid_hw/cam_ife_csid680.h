@@ -1141,7 +1141,7 @@ static struct cam_ife_csid_ver2_common_reg_info
 	.timestamp_strobe_val                    = 0x2,
 	.rst_location_shift_val                  = 4,
 	.rst_mode_shift_val                      = 0,
-	.epoch_div_factor                        = 4,
+	.epoch_div_factor                        = 2,
 	.global_reset                            = 1,
 	.rup_supported                           = 1,
 	.only_master_rup                         = 1,

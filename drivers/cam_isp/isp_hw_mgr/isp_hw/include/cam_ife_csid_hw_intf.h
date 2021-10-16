@@ -54,6 +54,17 @@ enum cam_ife_cid_res_id {
 };
 
 /**
+ * enum cam_ife_csid_secondary_evt_type - Specify the event type
+ */
+enum cam_ife_csid_secondary_evt_type {
+	CAM_IFE_CSID_EVT_SOF = 1,
+	CAM_IFE_CSID_EVT_EPOCH,
+	CAM_IFE_CSID_EVT_EOF,
+	CAM_IFE_CSID_EVT_SENSOR_SYNC_FRAME_DROP,
+	CAM_IFE_CSID_EVT_MAX,
+};
+
+/**
  * struct cam_ife_csid_hw_caps- get the CSID hw capability
  * @num_rdis:             number of rdis supported by CSID HW device
  * @num_pix:              number of pxl paths supported by CSID HW device
@@ -143,6 +154,17 @@ struct cam_isp_in_port_generic_info {
 };
 
 /**
+ * struct cam_csid_secondary_evt_config - secondary event enablement
+ * @evt_type:           Type of secondary event enabled [SOF/EPOCH/EOF...]
+ * @en_secondary_evt:   Enable secondary event
+ *
+ */
+struct cam_csid_secondary_evt_config {
+	enum cam_ife_csid_secondary_evt_type evt_type;
+	bool                                 en_secondary_evt;
+};
+
+/**
  * struct cam_csid_hw_reserve_resource- hw reserve
  * @res_type :           Reource type CID or PATH
  *                       if type is CID, then res_id is not required,
@@ -159,13 +181,13 @@ struct cam_isp_in_port_generic_info {
  * @dual_core_id:        In case of dual csid, core id of another hw
  *                       reserve
  * @node_res :           Reserved resource structure pointer
+ * @sec_evt_config:      Config to enable secondary events for the given resource
+ *                       depending on the use-case
  * @crop_enable :        Flag to indicate CSID crop enable
  * @drop_enable :        Flag to indicate CSID drop enable
  * @sfe_inline_shdr:     Flag to indicate if sfe is inline shdr
  * @is_offline :         Flag to indicate offline
  * @need_top_cfg:        Flag to indicate if top cfg is needed
- * @en_secondary_evt:    Flag to enable secondary event for the given resource
- *                       depending on the use-case
  * @tasklet:             Tasklet to schedule bottom halves
  * @buf_done_controller: IRQ controller for buf done for version 680 hw
  * @cdm_ops:             CDM Ops
@@ -185,12 +207,12 @@ struct cam_csid_hw_reserve_resource_args {
 	uint32_t                                  master_idx;
 	uint32_t                                  dual_core_id;
 	struct cam_isp_resource_node             *node_res;
+	struct cam_csid_secondary_evt_config      sec_evt_config;
 	bool                                      crop_enable;
 	bool                                      drop_enable;
 	bool                                      sfe_inline_shdr;
 	bool                                      is_offline;
 	bool                                      need_top_cfg;
-	bool                                      en_secondary_evt;
 	void                                     *tasklet;
 	void                                     *buf_done_controller;
 	void                                     *cdm_ops;

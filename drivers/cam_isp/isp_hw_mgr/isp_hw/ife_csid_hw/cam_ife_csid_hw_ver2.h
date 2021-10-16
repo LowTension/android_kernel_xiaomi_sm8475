@@ -134,6 +134,7 @@ struct cam_ife_csid_ver2_camif_data {
  * @cid:                    cid value for path
  * @path_format:            Array of Path format which contains format
  *                          info i.e Decode format, Packing format etc
+ * @sec_evt_config:         Secondary event config from HW mgr for a given path
  * @in_format:              Array of input format which contains format type
  * @out_format:             output format
  * @start_pixel:            start pixel for horizontal crop
@@ -165,47 +166,45 @@ struct cam_ife_csid_ver2_camif_data {
  *                          If we know the number of paths to avoid configuring discard
  *                          for before processing discard config we can skip it for
  *                          the corresponding paths
- * @en_secondary_evt:       Enable secondary evt for this path, to notify
- *                          hw manager
  * @sfe_inline_shdr:        flag to indicate if sfe is inline shdr
  *
  */
 struct cam_ife_csid_ver2_path_cfg {
-	struct cam_ife_csid_ver2_camif_data camif_data;
-	struct timespec64                   error_ts;
-	struct cam_ife_csid_path_format     path_format[CAM_ISP_VC_DT_CFG];
-	uint32_t                            cid;
-	uint32_t                            in_format[CAM_ISP_VC_DT_CFG];
-	uint32_t                            out_format;
-	uint32_t                            start_pixel;
-	uint32_t                            end_pixel;
-	uint32_t                            width;
-	uint32_t                            start_line;
-	uint32_t                            end_line;
-	uint32_t                            height;
-	uint32_t                            master_idx;
-	uint64_t                            clk_rate;
-	uint32_t                            horizontal_bin;
-	uint32_t                            vertical_bin;
-	uint32_t                            qcfa_bin;
-	uint32_t                            hor_ver_bin;
-	uint32_t                            num_bytes_out;
-	uint32_t                            irq_handle;
-	uint32_t                            err_irq_handle;
-	uint32_t                            discard_irq_handle;
-	uint32_t                            irq_reg_idx;
-	uint32_t                            sof_cnt;
-	uint32_t                            num_frames_discard;
-	enum cam_isp_hw_sync_mode           sync_mode;
-	bool                                vfr_en;
-	bool                                frame_id_dec_en;
-	bool                                crop_enable;
-	bool                                drop_enable;
-	bool                                handle_camif_irq;
-	bool                                discard_init_frames;
-	bool                                skip_discard_frame_cfg;
-	bool                                en_secondary_evt;
-	bool                                sfe_inline_shdr;
+	struct cam_ife_csid_ver2_camif_data  camif_data;
+	struct timespec64                    error_ts;
+	struct cam_ife_csid_path_format      path_format[CAM_ISP_VC_DT_CFG];
+	struct cam_csid_secondary_evt_config sec_evt_config;
+	uint32_t                             cid;
+	uint32_t                             in_format[CAM_ISP_VC_DT_CFG];
+	uint32_t                             out_format;
+	uint32_t                             start_pixel;
+	uint32_t                             end_pixel;
+	uint32_t                             width;
+	uint32_t                             start_line;
+	uint32_t                             end_line;
+	uint32_t                             height;
+	uint32_t                             master_idx;
+	uint64_t                             clk_rate;
+	uint32_t                             horizontal_bin;
+	uint32_t                             vertical_bin;
+	uint32_t                             qcfa_bin;
+	uint32_t                             hor_ver_bin;
+	uint32_t                             num_bytes_out;
+	uint32_t                             irq_handle;
+	uint32_t                             err_irq_handle;
+	uint32_t                             discard_irq_handle;
+	uint32_t                             irq_reg_idx;
+	uint32_t                             sof_cnt;
+	uint32_t                             num_frames_discard;
+	enum cam_isp_hw_sync_mode            sync_mode;
+	bool                                 vfr_en;
+	bool                                 frame_id_dec_en;
+	bool                                 crop_enable;
+	bool                                 drop_enable;
+	bool                                 handle_camif_irq;
+	bool                                 discard_init_frames;
+	bool                                 skip_discard_frame_cfg;
+	bool                                 sfe_inline_shdr;
 };
 
 struct cam_ife_csid_ver2_top_reg_info {

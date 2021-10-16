@@ -36,6 +36,7 @@ struct cam_vfe_top_priv_common {
 	struct cam_hw_soc_info         *soc_info;
 	unsigned long                   applied_clk_rate;
 	unsigned long                   req_clk_rate[CAM_VFE_TOP_MUX_MAX];
+	bool                            skip_clk_data_rst;
 
 };
 

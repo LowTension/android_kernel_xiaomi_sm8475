@@ -103,6 +103,9 @@ enum cam_isp_state_change_trigger {
 	CAM_ISP_STATE_CHANGE_TRIGGER_DONE,
 	CAM_ISP_STATE_CHANGE_TRIGGER_EOF,
 	CAM_ISP_STATE_CHANGE_TRIGGER_FLUSH,
+	CAM_ISP_STATE_CHANGE_TRIGGER_SEC_EVT_SOF,
+	CAM_ISP_STATE_CHANGE_TRIGGER_SEC_EVT_EPOCH,
+	CAM_ISP_STATE_CHANGE_TRIGGER_FRAME_DROP,
 	CAM_ISP_STATE_CHANGE_TRIGGER_MAX
 };
 
@@ -111,13 +114,15 @@ enum cam_isp_state_change_trigger {
  *
  * @dentry:                     Debugfs entry
  * @enable_state_monitor_dump:  Enable isp state monitor dump
- * @enable_cdm_cmd_buff_dump: Enable CDM Command buffer dump
+ * @enable_cdm_cmd_buff_dump:   Enable CDM Command buffer dump
+ * @disable_internal_recovery:  Disable internal kernel recovery
  *
  */
 struct cam_isp_ctx_debug {
 	struct dentry  *dentry;
 	uint32_t        enable_state_monitor_dump;
 	uint8_t         enable_cdm_cmd_buff_dump;
+	bool            disable_internal_recovery;
 };
 
 /**
@@ -248,6 +253,7 @@ struct cam_isp_context_event_record {
  * @subscribe_event:           The irq event mask that CRM subscribes to, IFE
  *                             will invoke CRM cb at those event.
  * @last_applied_req_id:       Last applied request id
+ * @recovery_req_id:           Req ID flagged for internal recovery
  * @last_sof_timestamp:        SOF timestamp of the last frame
  * @bubble_frame_cnt:          Count of the frame after bubble
  * @state_monitor_head:        Write index to the state monitoring array
@@ -264,7 +270,6 @@ struct cam_isp_context_event_record {
  * @custom_enabled:            Custom HW enabled for this ctx
  * @use_frame_header_ts:       Use frame header for qtimer ts
  * @support_consumed_addr:     Indicate whether HW has last consumed addr reg
- * @aeb_enabled:               Indicate if stream is for AEB
  * @apply_in_progress          Whether request apply is in progress
  * @use_default_apply:         Use default settings in case of frame skip
  * @init_timestamp:            Timestamp at which this context is initialized
@@ -275,12 +280,14 @@ struct cam_isp_context_event_record {
  * @trigger_id:                ID provided by CRM for each ctx on the link
  * @last_bufdone_err_apply_req_id:  last bufdone error apply request id
  * @v4l2_event_sub_ids         contains individual bits representing subscribed v4l2 ids
+ * @aeb_enabled:               Indicate if stream is for AEB
+ * @do_internal_recovery:      Enable KMD halt/reset/resume internal recovery
  *
  */
 struct cam_isp_context {
 	struct cam_context              *base;
 
-	int64_t                          frame_id;
+	uint64_t                         frame_id;
 	uint32_t                         frame_id_meta;
 	uint32_t                         substate_activated;
 	atomic_t                         process_bubble;
@@ -297,6 +304,7 @@ struct cam_isp_context {
 	int64_t                          reported_req_id;
 	uint32_t                         subscribe_event;
 	int64_t                          last_applied_req_id;
+	uint64_t                         recovery_req_id;
 	uint64_t                         last_sof_timestamp;
 	uint32_t                         bubble_frame_cnt;
 	atomic64_t                       state_monitor_head;
@@ -315,8 +323,8 @@ struct cam_isp_context {
 	bool                                  custom_enabled;
 	bool                                  use_frame_header_ts;
 	bool                                  support_consumed_addr;
-	bool                                  aeb_enabled;
 	atomic_t                              apply_in_progress;
+	atomic_t                              internal_recovery_set;
 	bool                                  use_default_apply;
 	unsigned int                          init_timestamp;
 	uint32_t                              isp_device_type;
@@ -325,6 +333,8 @@ struct cam_isp_context {
 	int32_t                               trigger_id;
 	int64_t                               last_bufdone_err_apply_req_id;
 	uint32_t                              v4l2_event_sub_ids;
+	bool                                  aeb_enabled;
+	bool                                  do_internal_recovery;
 };
 
 /**
