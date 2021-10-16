@@ -678,20 +678,51 @@ int cam_sfe_add_command_buffers(
 	return rc;
 }
 
+static void cam_isp_validate_for_sfe_scratch(
+	struct cam_isp_sfe_scratch_buf_res_info *sfe_res_info,
+	uint32_t res_type, uint32_t out_base)
+{
+	uint32_t res_id_out = res_type & 0xFF;
+
+	if ((res_id_out) < ((out_base & 0xFF) +
+		sfe_res_info->num_active_fe_rdis)) {
+		CAM_DBG(CAM_ISP,
+			"Buffer found for SFE port: 0x%x - skip scratch buffer",
+			res_type);
+		sfe_res_info->sfe_rdi_cfg_mask |= (1 << res_id_out);
+	}
+}
+
+static void cam_isp_validate_for_ife_scratch(
+	struct cam_isp_ife_scratch_buf_res_info *ife_res_info,
+	uint32_t res_type)
+{
+	int i;
+
+	for (i = 0; i < ife_res_info->num_ports; i++) {
+		if (res_type == ife_res_info->ife_scratch_resources[i]) {
+			CAM_DBG(CAM_ISP,
+				"Buffer found for IFE port: 0x%x - skip scratch buffer",
+				res_type);
+			ife_res_info->ife_scratch_cfg_mask |= (1 << i);
+		}
+	}
+}
+
 int cam_isp_add_io_buffers(
-	int                                   iommu_hdl,
-	int                                   sec_iommu_hdl,
-	struct cam_hw_prepare_update_args    *prepare,
-	uint32_t                              base_idx,
-	struct cam_kmd_buf_info              *kmd_buf_info,
-	struct cam_isp_hw_mgr_res            *res_list_isp_out,
-	struct list_head                     *res_list_in_rd,
-	uint32_t                              out_base,
-	uint32_t                              out_max,
-	bool                                  fill_fence,
-	enum cam_isp_hw_type                  hw_type,
-	struct cam_isp_frame_header_info     *frame_header_info,
-	struct cam_isp_check_sfe_fe_io_cfg   *check_sfe_fe_cfg)
+	int                                      iommu_hdl,
+	int                                      sec_iommu_hdl,
+	struct cam_hw_prepare_update_args       *prepare,
+	uint32_t                                 base_idx,
+	struct cam_kmd_buf_info                 *kmd_buf_info,
+	struct cam_isp_hw_mgr_res               *res_list_isp_out,
+	struct list_head                        *res_list_in_rd,
+	uint32_t                                 out_base,
+	uint32_t                                 out_max,
+	bool                                     fill_fence,
+	enum cam_isp_hw_type                     hw_type,
+	struct cam_isp_frame_header_info        *frame_header_info,
+	struct cam_isp_check_io_cfg_for_scratch *scratch_check_cfg)
 {
 	int                                 rc = 0;
 	dma_addr_t                          io_addr[CAM_PACKET_MAX_PLANES];
@@ -750,14 +781,22 @@ int cam_isp_add_io_buffers(
 				continue;
 
 			res_id_out = io_cfg[i].resource_type & 0xFF;
-			if (check_sfe_fe_cfg->sfe_fe_enabled &&
-				(res_id_out < ((out_base & 0xFF) +
-				 check_sfe_fe_cfg->num_active_fe_rdis))) {
-				CAM_DBG(CAM_ISP,
-					"SFE Write/Fetch engine cfg skip scratch buffer for res 0x%x",
+			if ((hw_type == CAM_ISP_HW_TYPE_SFE)  &&
+				(scratch_check_cfg->validate_for_sfe)) {
+				struct cam_isp_sfe_scratch_buf_res_info *sfe_res_info =
+					&scratch_check_cfg->sfe_scratch_res_info;
+
+				cam_isp_validate_for_sfe_scratch(sfe_res_info,
+					io_cfg[i].resource_type, out_base);
+			}
+
+			if ((hw_type == CAM_ISP_HW_TYPE_VFE) &&
+				(scratch_check_cfg->validate_for_ife)) {
+				struct cam_isp_ife_scratch_buf_res_info *ife_res_info =
+					&scratch_check_cfg->ife_scratch_res_info;
+
+				cam_isp_validate_for_ife_scratch(ife_res_info,
 					io_cfg[i].resource_type);
-				check_sfe_fe_cfg->sfe_rdi_cfg_mask |=
-					1 << res_id_out;
 			}
 
 			CAM_DBG(CAM_ISP,
