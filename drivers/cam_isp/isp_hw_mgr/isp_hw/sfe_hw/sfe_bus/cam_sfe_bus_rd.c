@@ -673,6 +673,7 @@ static int cam_sfe_bus_rd_handle_irq_bottom_half(
 	struct cam_sfe_bus_rd_priv            *bus_priv;
 	struct cam_sfe_bus_rd_common_data     *common_data = NULL;
 	struct cam_isp_hw_event_info           evt_info;
+	struct cam_isp_hw_error_event_info     err_evt_info;
 	uint32_t status = 0, constraint_violation = 0;
 
 	if (!handler_priv || !evt_payload_priv)
@@ -690,10 +691,12 @@ static int cam_sfe_bus_rd_handle_irq_bottom_half(
 			bus_priv->common_data.core_index,
 			constraint_violation);
 
+		evt_info.hw_type  = CAM_ISP_HW_TYPE_SFE;
 		evt_info.hw_idx = bus_priv->common_data.core_index;
 		evt_info.res_type = CAM_ISP_RESOURCE_SFE_RD;
 		evt_info.res_id = CAM_SFE_BUS_RD_MAX;
-		evt_info.err_type = CAM_SFE_IRQ_STATUS_VIOLATION;
+		err_evt_info.err_type = CAM_SFE_IRQ_STATUS_VIOLATION;
+		evt_info.event_data = (void *)&err_evt_info;
 
 		if (common_data->event_cb)
 			common_data->event_cb(NULL,

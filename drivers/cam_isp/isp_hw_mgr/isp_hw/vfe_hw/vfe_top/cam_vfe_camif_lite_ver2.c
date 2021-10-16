@@ -512,6 +512,7 @@ static int cam_vfe_camif_lite_handle_irq_bottom_half(
 	soc_private =
 		(struct cam_vfe_soc_private *)soc_info->soc_private;
 
+	evt_info.hw_type  = CAM_ISP_HW_TYPE_VFE;
 	evt_info.hw_idx   = camif_lite_node->hw_intf->hw_idx;
 	evt_info.res_id   = camif_lite_node->res_id;
 	evt_info.res_type = camif_lite_node->res_type;

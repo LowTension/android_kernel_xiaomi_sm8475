@@ -3109,6 +3109,7 @@ static int cam_tfe_csid_evt_bottom_half_handler(
 	struct cam_tfe_csid_hw *csid_hw;
 	struct cam_csid_evt_payload *evt_payload;
 	const struct cam_tfe_csid_reg_offset    *csid_reg;
+	struct cam_isp_hw_error_event_info err_evt_info;
 	struct cam_isp_hw_event_info event_info;
 	int i;
 	int rc = 0;
@@ -3175,13 +3176,14 @@ static int cam_tfe_csid_evt_bottom_half_handler(
 	 * which we want to offload to bottom half from
 	 * irq handlers
 	 */
-	event_info.err_type = evt_payload->evt_type;
+	err_evt_info.err_type = evt_payload->evt_type;
 	event_info.hw_idx = evt_payload->hw_idx;
 
 	switch (evt_payload->evt_type) {
 	case CAM_ISP_HW_ERROR_CSID_FATAL:
 		if (csid_hw->fatal_err_detected)
 			break;
+		event_info.event_data = (void *)&err_evt_info;
 		csid_hw->fatal_err_detected = true;
 		rc = csid_hw->event_cb(NULL,
 			CAM_ISP_HW_EVENT_ERROR, (void *)&event_info);
