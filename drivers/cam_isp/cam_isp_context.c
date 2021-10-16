@@ -6238,6 +6238,17 @@ static int __cam_isp_ctx_apply_default_settings(
 	if (!ctx_isp->use_default_apply)
 		return 0;
 
+	if (!(apply->trigger_point & ctx_isp->subscribe_event)) {
+		CAM_WARN(CAM_ISP,
+			"Trigger: %u not subscribed for: %u",
+			apply->trigger_point, ctx_isp->subscribe_event);
+		return 0;
+	}
+
+	/* Allow apply default settings for IFE only at SOF */
+	if (apply->trigger_point != CAM_TRIGGER_POINT_SOF)
+		return 0;
+
 	CAM_DBG(CAM_ISP,
 		"Enter: apply req in Substate %d request _id:%lld",
 		 ctx_isp->substate_activated, apply->request_id);

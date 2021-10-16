@@ -922,7 +922,7 @@ static int __cam_req_mgr_send_req(struct cam_req_mgr_core_link *link,
 			apply_req.dev_hdl = dev->dev_hdl;
 			apply_req.request_id =
 				link->req.prev_apply_data[pd].req_id;
-			apply_req.trigger_point = 0;
+			apply_req.trigger_point = trigger;
 			apply_req.report_if_bubble = 0;
 			if ((dev->ops) && (dev->ops->notify_frame_skip))
 				dev->ops->notify_frame_skip(&apply_req);
@@ -1002,7 +1002,7 @@ static int __cam_req_mgr_send_req(struct cam_req_mgr_core_link *link,
 				apply_req.dev_hdl = dev->dev_hdl;
 				apply_req.request_id =
 					link->req.prev_apply_data[pd].req_id;
-				apply_req.trigger_point = 0;
+				apply_req.trigger_point = trigger;
 				apply_req.report_if_bubble = 0;
 				if ((dev->ops) && (dev->ops->notify_frame_skip))
 					dev->ops->notify_frame_skip(&apply_req);
