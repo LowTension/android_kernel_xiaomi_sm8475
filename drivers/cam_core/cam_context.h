@@ -257,9 +257,9 @@ struct cam_context {
 	uint32_t                       max_hw_update_entries;
 	uint32_t                       max_in_map_entries;
 	uint32_t                       max_out_map_entries;
-	struct cam_hw_update_entry    *hw_update_entry;
-	struct cam_hw_fence_map_entry *in_map_entries;
-	struct cam_hw_fence_map_entry *out_map_entries;
+	struct cam_hw_update_entry    **hw_update_entry;
+	struct cam_hw_fence_map_entry **in_map_entries;
+	struct cam_hw_fence_map_entry **out_map_entries;
 	cam_ctx_mini_dump_cb_func      mini_dump_cb;
 	int                            img_iommu_hdl;
 };
