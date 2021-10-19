@@ -18,12 +18,14 @@
  *                           This handle is used for all further interface
  *                           with CPAS.
  * @cpas_version:            CPAS version
+ * @* @rt_wrapper_base:      Base address of the RT-Wrapper if the hw is in rt-wrapper
  * @num_pid:                 Number of pids of sfe
  * @pid:                     SFE pid values list
  */
 struct cam_sfe_soc_private {
 	uint32_t    cpas_handle;
 	uint32_t    cpas_version;
+	uint32_t    rt_wrapper_base;
 	uint32_t    num_pid;
 	uint32_t    pid[CAM_ISP_HW_MAX_PID_VAL];
 };

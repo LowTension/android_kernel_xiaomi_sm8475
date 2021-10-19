@@ -37,6 +37,14 @@ static int cam_ife_csid_get_dt_properties(struct cam_hw_soc_info *soc_info)
 		soc_private->is_ife_csid_lite = true;
 	}
 
+	rc = of_property_read_u32(of_node, "rt-wrapper-base", &soc_private->rt_wrapper_base);
+	if (rc) {
+		soc_private->rt_wrapper_base = 0;
+		CAM_DBG(CAM_ISP, "rc: %d Error reading rt_wrapper_base for core_idx: %u",
+			rc, soc_info->index);
+		rc = 0;
+	}
+
 	return rc;
 }
 

@@ -22,6 +22,7 @@
  *                           This handle is used for all further interface
  *                           with CPAS.
  * @cpas_version:            Has cpas version read from Hardware
+ * @rt_wrapper_base:         Base address of the RT-Wrapper if the hw is in rt-wrapper
  * @dsp_clk_index:           DSP clk index in optional clocks
  * @ubwc_static_ctrl:        UBWC static control configuration
  * @is_ife_lite:             Flag to indicate full vs lite IFE
@@ -32,6 +33,7 @@
 struct cam_vfe_soc_private {
 	uint32_t    cpas_handle;
 	uint32_t    cpas_version;
+	uint32_t    rt_wrapper_base;
 	int32_t     dsp_clk_index;
 	uint32_t    ubwc_static_ctrl[UBWC_STATIC_CONFIG_MAX];
 	bool        is_ife_lite;
