@@ -788,7 +788,7 @@ int cam_vfe_top_ver4_stop(void *device_priv,
 		for (i = 0; i < top_priv->top_common.num_mux; i++) {
 			if (top_priv->top_common.mux_rsrc[i].res_id ==
 				mux_res->res_id) {
-				if (!top_priv->top_common.skip_clk_data_rst)
+				if (!top_priv->top_common.skip_data_rst_on_stop)
 					top_priv->top_common.req_clk_rate[i] = 0;
 				memset(&top_priv->top_common.req_axi_vote[i],
 					0, sizeof(struct cam_axi_vote));
@@ -1357,8 +1357,9 @@ static int cam_vfe_resource_stop(
 	struct cam_isp_resource_node *vfe_res)
 {
 	struct cam_vfe_mux_ver4_data        *vfe_priv;
-	int                                        rc = 0;
-	uint32_t                                   val = 0;
+	struct cam_vfe_top_ver4_priv        *top_priv;
+	int                                  rc = 0;
+	uint32_t                             val = 0;
 
 	if (!vfe_res) {
 		CAM_ERR(CAM_ISP, "Error, Invalid input arguments");
@@ -1370,6 +1371,7 @@ static int cam_vfe_resource_stop(
 		return 0;
 
 	vfe_priv = (struct cam_vfe_mux_ver4_data *)vfe_res->res_priv;
+	top_priv = vfe_priv->top_priv;
 
 	if (vfe_priv->is_lite || !vfe_priv->is_pixel_path)
 		goto skip_core_decfg;
@@ -1415,7 +1417,10 @@ skip_core_decfg:
 		vfe_priv->irq_err_handle = 0;
 	}
 
-	vfe_priv->epoch_factor = 0;
+	/* Skip epoch factor reset for internal recovery */
+	if (!top_priv->top_common.skip_data_rst_on_stop)
+		vfe_priv->epoch_factor = 0;
+
 	CAM_DBG(CAM_ISP, "VFE:%d Res: %s Stopped",
 		vfe_res->hw_intf->hw_idx,
 		vfe_res->res_name);

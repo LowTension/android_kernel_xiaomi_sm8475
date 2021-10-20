@@ -146,7 +146,7 @@ static int cam_vfe_top_calc_hw_clk_rate(
 			max_req_clk_rate = top_common->req_clk_rate[i];
 	}
 
-	if (start_stop && !top_common->skip_clk_data_rst) {
+	if (start_stop && !top_common->skip_data_rst_on_stop) {
 		/* need to vote current clk immediately */
 		*final_clk_rate = max_req_clk_rate;
 		/* Reset everything, we can start afresh */
@@ -598,7 +598,7 @@ int cam_vfe_top_apply_clk_bw_update(struct cam_vfe_top_priv_common *top_common,
 	}
 
 	if (clk_bw_args->skip_clk_data_rst) {
-		top_common->skip_clk_data_rst = true;
+		top_common->skip_data_rst_on_stop = true;
 		CAM_DBG(CAM_ISP, "VFE:%u requested to avoid clk data rst", hw_intf->hw_idx);
 		return 0;
 	}
@@ -740,7 +740,7 @@ int cam_vfe_top_apply_clock_start_stop(struct cam_vfe_top_priv_common *top_commo
 
 end:
 	top_common->clk_state = CAM_CLK_BW_STATE_INIT;
-	top_common->skip_clk_data_rst = false;
+	top_common->skip_data_rst_on_stop = false;
 	return rc;
 }
 

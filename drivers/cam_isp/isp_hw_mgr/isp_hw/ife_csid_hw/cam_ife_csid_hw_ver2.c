@@ -4220,13 +4220,20 @@ int cam_ife_csid_ver2_start(void *hw_priv, void *args,
 		}
 	}
 
-	/* Configure RUP/AUP/MUP @ streamon for all paths together */
+	/*
+	 * Configure RUP/AUP/MUP @ streamon for all enabled paths
+	 * For internal recovery - skip this, CDM packet corresponding
+	 * to the request being recovered will apply the appropriate RUP/AUP/MUP
+	 */
 	rup_aup_mask |= (csid_hw->rx_cfg.mup << csid_reg->cmn_reg->mup_shift_val);
-	cam_io_w_mb(rup_aup_mask,
-		soc_info->reg_map[CAM_IFE_CSID_CLC_MEM_BASE_ID].mem_base +
-		csid_reg->cmn_reg->rup_aup_cmd_addr);
-	CAM_DBG(CAM_ISP, "CSID:%u RUP_AUP_MUP: 0x%x at start",
-		csid_hw->hw_intf->hw_idx, rup_aup_mask);
+	if (!start_args->is_internal_start)
+		cam_io_w_mb(rup_aup_mask,
+			soc_info->reg_map[CAM_IFE_CSID_CLC_MEM_BASE_ID].mem_base +
+			csid_reg->cmn_reg->rup_aup_cmd_addr);
+
+	CAM_DBG(CAM_ISP, "CSID:%u RUP_AUP_MUP: 0x%x at start updated: %s",
+		csid_hw->hw_intf->hw_idx, rup_aup_mask,
+		CAM_BOOL_TO_YESNO(!start_args->is_internal_start));
 
 	cam_ife_csid_ver2_enable_csi2(csid_hw);
 
