@@ -554,7 +554,7 @@ static int cam_vfe_bus_ver3_get_comp_vfe_out_res_id_list(
 		out_list[count++] = CAM_ISP_IFE_OUT_RES_STATS_BAYER_RS;
 
 	if (comp_mask & (BIT_ULL(CAM_VFE_BUS_VER3_VFE_OUT_PDAF_PARSED)))
-		out_list[count++] = CAM_VFE_BUS_VER3_VFE_OUT_PDAF_PARSED;
+		out_list[count++] = CAM_ISP_IFE_OUT_RES_PDAF_PARSED_DATA;
 
 	*num_out = count;
 	return 0;
