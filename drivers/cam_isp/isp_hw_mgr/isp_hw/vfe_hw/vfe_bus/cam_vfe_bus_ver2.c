@@ -1447,6 +1447,7 @@ static int cam_vfe_bus_err_bottom_half(void *handler_priv,
 	struct cam_vfe_bus_ver2_priv *bus_priv = handler_priv;
 	struct cam_vfe_bus_ver2_common_data *common_data;
 	struct cam_isp_hw_event_info evt_info;
+	struct cam_isp_hw_error_event_info err_evt_info;
 	uint32_t val = 0;
 
 	if (!handler_priv || !evt_payload_priv)
@@ -1536,6 +1537,9 @@ static int cam_vfe_bus_err_bottom_half(void *handler_priv,
 	evt_info.hw_idx = common_data->core_index;
 	evt_info.res_type = CAM_ISP_RESOURCE_VFE_OUT;
 	evt_info.res_id = CAM_VFE_BUS_VER2_VFE_OUT_MAX;
+
+	err_evt_info.err_type = CAM_VFE_IRQ_STATUS_VIOLATION;
+	evt_info.event_data = (void *)&err_evt_info;
 
 	if (common_data->event_cb)
 		common_data->event_cb(NULL, CAM_ISP_HW_EVENT_ERROR,
