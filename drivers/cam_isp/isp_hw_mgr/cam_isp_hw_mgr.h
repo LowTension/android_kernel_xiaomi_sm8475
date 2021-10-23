@@ -69,6 +69,7 @@ struct cam_isp_hw_mgr {
  *                       acquired
  * @is_secure            informs whether the resource is in secure mode or not
  * @num_children:        number of the child resource node.
+ * @use_wm_pack:         Flag to indicate if WM is to be used for packing
  *
  */
 struct cam_isp_hw_mgr_res {
@@ -79,6 +80,7 @@ struct cam_isp_hw_mgr_res {
 	struct cam_isp_resource_node    *hw_res[CAM_ISP_HW_SPLIT_MAX];
 	uint32_t                         is_secure;
 	uint32_t                         num_children;
+	bool                             use_wm_pack;
 };
 
 

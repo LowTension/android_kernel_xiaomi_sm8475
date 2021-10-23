@@ -124,6 +124,7 @@
 #define CAM_ISP_GENERIC_BLOB_TYPE_BW_LIMITER_CFG            16
 #define CAM_ISP_GENERIC_BLOB_TYPE_FPS_CONFIG                17
 #define CAM_ISP_GENERIC_BLOB_TYPE_INIT_CONFIG               18
+#define CAM_ISP_GENERIC_BLOB_TYPE_RDI_LCR_CONFIG            19
 #define CAM_ISP_GENERIC_BLOB_TYPE_SFE_CLOCK_CONFIG          21
 #define CAM_ISP_GENERIC_BLOB_TYPE_SFE_CORE_CONFIG           22
 #define CAM_ISP_GENERIC_BLOB_TYPE_SFE_OUT_CONFIG            23
@@ -1000,6 +1001,32 @@ struct cam_isp_init_config {
 	} epoch_cfg;
 
 	__u32             additional_params[19];
+};
+
+/**
+ * struct cam_isp_lcr_rdi_config - RDI res id to be muxed to LCR
+ *
+ *    Configure RDI Res id for LCR
+ *
+ * @res_id                   : Out port Res id, it is same as the out port
+ *                             configured during acquire. It would vary
+ *                             as per SFE or IFE. Based on this res id,
+ *                             Mux register in IFE will be programmed.
+ *                             Examples:
+ *                             IFE:
+ *                             CAM_ISP_IFE_OUT_RES_RDI_0
+ *                             SFE:
+ *                             CAM_ISP_SFE_OUT_RES_RDI_0
+ *                             This blob is expected as a part of init packet for
+ *                             all LCR cases. For SHDR-LCR cases, this can be used
+ *                             per request. For non-shdr cases, this blob is not
+ *                             expected as the input to LCR will remain same throughout
+ *                             the session
+ * @reserved                 : Reserved field
+ */
+struct cam_isp_lcr_rdi_config {
+	__u32                                   res_id;
+	__u32                                   reserved[5];
 };
 
 #define CAM_ISP_ACQUIRE_COMMON_VER0         0x1000

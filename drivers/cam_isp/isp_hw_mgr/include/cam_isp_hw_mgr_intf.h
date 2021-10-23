@@ -371,6 +371,18 @@ struct cam_isp_start_args {
 };
 
 /**
+ * struct cam_isp_lcr_rdi_cfg_args - isp hardware start arguments
+ *
+ * @rdi_lcr_cfg:            RDI LCR cfg received from User space.
+ * @is_init:                Flag to indicate if init packet.
+ *
+ */
+struct cam_isp_lcr_rdi_cfg_args {
+	struct cam_isp_lcr_rdi_config *rdi_lcr_cfg;
+	bool                           is_init;
+};
+
+/**
  * cam_isp_hw_mgr_init()
  *
  * @brief:              Initialization function for the ISP hardware manager

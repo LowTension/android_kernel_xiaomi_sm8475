@@ -472,6 +472,21 @@ static struct cam_vfe_top_ver4_pdaf_violation_desc vfe780_pdaf_violation_desc[] 
 	},
 };
 
+static struct cam_vfe_top_ver4_pdaf_lcr_res_info vfe780_pdaf_lcr_res_mask[] = {
+	{
+		.res_id = CAM_ISP_HW_VFE_IN_RDI0,
+		.val = 0,
+	},
+	{
+		.res_id = CAM_ISP_HW_VFE_IN_RDI1,
+		.val = 1,
+	},
+	{
+		.res_id = CAM_ISP_HW_VFE_IN_RDI2,
+		.val= 2,
+	},
+};
+
 static struct cam_irq_register_set vfe780_top_irq_reg_set[2] = {
 	{
 		.mask_reg_offset   = 0x00000034,
@@ -530,6 +545,8 @@ static struct cam_vfe_top_ver4_reg_offset_common vfe780_top_common_reg = {
 	.bus_overflow_status      = 0x00000C68,
 	.top_debug_cfg            = 0x000000FC,
 	.num_top_debug_reg        = CAM_VFE_780_NUM_DBG_REG,
+	.pdaf_input_cfg_0         = 0x00000130,
+	.pdaf_input_cfg_1         = 0x00000134,
 	.top_debug = {
 		0x000000A0,
 		0x000000A4,
@@ -818,6 +835,8 @@ static struct cam_vfe_top_ver4_hw_info vfe780_top_hw_info = {
 	.num_pdaf_violation_errors       = ARRAY_SIZE(vfe780_pdaf_violation_desc),
 	.pdaf_violation_desc             = vfe780_pdaf_violation_desc,
 	.debug_reg_info                  = &vfe780_dbg_reg_info,
+	.pdaf_lcr_res_mask               = vfe780_pdaf_lcr_res_mask,
+	.num_pdaf_lcr_res                = ARRAY_SIZE(vfe780_pdaf_lcr_res_mask),
 };
 
 static struct cam_irq_register_set vfe780_bus_irq_reg[2] = {
