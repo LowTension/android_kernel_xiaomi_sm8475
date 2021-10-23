@@ -628,7 +628,8 @@ static struct cam_ife_csid_ver2_path_reg_info
 		.capabilities                     = CAM_IFE_CSID_CAP_INPUT_LCR |
 							CAM_IFE_CSID_CAP_MIPI10_UNPACK |
 							CAM_IFE_CSID_CAP_MIPI12_UNPACK |
-							CAM_IFE_CSID_CAP_MIPI14_UNPACK,
+							CAM_IFE_CSID_CAP_MIPI14_UNPACK |
+							CAM_IFE_CSID_CAP_LINE_SMOOTHING_IN_RDI,
 		.overflow_ctrl_mode_val           = 0x8,
 		.offline_mode_supported           = 1,
 		.mipi_pack_supported              = 1,
@@ -652,6 +653,7 @@ static struct cam_ife_csid_ver2_path_reg_info
 		.top_irq_mask                     = 0x100,
 		.epoch0_shift_val                 = 16,
 		.epoch1_shift_val                 = 0,
+		.pix_store_en_shift_val           = 10,
 };
 
 static struct cam_ife_csid_ver2_path_reg_info
@@ -726,7 +728,8 @@ static struct cam_ife_csid_ver2_path_reg_info
 		.capabilities                     = CAM_IFE_CSID_CAP_INPUT_LCR |
 							CAM_IFE_CSID_CAP_MIPI10_UNPACK |
 							CAM_IFE_CSID_CAP_MIPI12_UNPACK |
-							CAM_IFE_CSID_CAP_MIPI14_UNPACK,
+							CAM_IFE_CSID_CAP_MIPI14_UNPACK |
+							CAM_IFE_CSID_CAP_LINE_SMOOTHING_IN_RDI,
 		.overflow_ctrl_mode_val           = 0x8,
 		.mipi_pack_supported              = 1,
 		.offline_mode_supported           = 1,
@@ -750,6 +753,7 @@ static struct cam_ife_csid_ver2_path_reg_info
 		.top_irq_mask                     = 0x200,
 		.epoch0_shift_val                 = 16,
 		.epoch1_shift_val                 = 0,
+		.pix_store_en_shift_val           = 10,
 };
 
 static struct cam_ife_csid_ver2_path_reg_info
@@ -824,7 +828,8 @@ static struct cam_ife_csid_ver2_path_reg_info
 		.capabilities                     = CAM_IFE_CSID_CAP_INPUT_LCR |
 							CAM_IFE_CSID_CAP_MIPI10_UNPACK |
 							CAM_IFE_CSID_CAP_MIPI12_UNPACK |
-							CAM_IFE_CSID_CAP_MIPI14_UNPACK,
+							CAM_IFE_CSID_CAP_MIPI14_UNPACK |
+							CAM_IFE_CSID_CAP_LINE_SMOOTHING_IN_RDI,
 		.overflow_ctrl_mode_val           = 0x8,
 		.mipi_pack_supported              = 1,
 		.offline_mode_supported           = 1,
@@ -848,6 +853,7 @@ static struct cam_ife_csid_ver2_path_reg_info
 		.top_irq_mask                     = 0x400,
 		.epoch0_shift_val                 = 16,
 		.epoch1_shift_val                 = 0,
+		.pix_store_en_shift_val           = 10,
 };
 
 static struct cam_ife_csid_ver2_path_reg_info
@@ -1036,8 +1042,8 @@ static struct cam_ife_csid_ver2_path_reg_info
 		.camif_irq_mask                  = 0x800000,
 		.rup_aup_mask                    = 0x1000100,
 		.top_irq_mask                    = 0x1000,
-		.epoch0_shift_val                 = 16,
-		.epoch1_shift_val                 = 0,
+		.epoch0_shift_val                = 16,
+		.epoch1_shift_val                = 0,
 };
 
 static struct cam_ife_csid_csi2_rx_reg_info
