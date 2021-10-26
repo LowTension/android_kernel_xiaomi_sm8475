@@ -920,7 +920,7 @@ int cam_hw_cdm_submit_bl(struct cam_hw_info *cdm_hw,
 	struct cam_cdm_client *client)
 {
 	unsigned int i;
-	int rc;
+	int rc = 0;
 	struct cam_cdm_bl_request *cdm_cmd = req->data;
 	struct cam_cdm *core = (struct cam_cdm *)cdm_hw->core_info;
 	struct cam_cdm_bl_fifo *bl_fifo = NULL;
