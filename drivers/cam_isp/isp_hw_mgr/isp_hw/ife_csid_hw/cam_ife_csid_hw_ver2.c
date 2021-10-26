@@ -1113,15 +1113,20 @@ static int cam_ife_csid_ver2_rx_err_bottom_half(
 		csid_hw->hw_intf->hw_idx,
 		payload->irq_reg_val[CAM_IFE_CSID_IRQ_REG_RX]);
 
-	if (csid_hw->flags.fatal_err_detected) {
-		event_type |= CAM_ISP_HW_ERROR_CSID_FATAL;
-		cam_subdev_notify_message(CAM_CSIPHY_DEVICE_TYPE,
-			CAM_SUBDEV_MESSAGE_IRQ_ERR, (void *)&data_idx);
-	}
+	if (!csid_hw->flags.reset_awaited) {
+		if (csid_hw->flags.fatal_err_detected) {
+			event_type |= CAM_ISP_HW_ERROR_CSID_FATAL;
 
-	if (event_type)
-		cam_ife_csid_ver2_handle_event_err(csid_hw,
-			rx_irq_status, event_type, false, NULL);
+			cam_subdev_notify_message(CAM_CSIPHY_DEVICE_TYPE,
+				CAM_SUBDEV_MESSAGE_IRQ_ERR, (void *)&data_idx);
+		}
+
+		if (event_type) {
+			cam_ife_csid_ver2_handle_event_err(csid_hw,
+				rx_irq_status, event_type, false, NULL);
+			csid_hw->flags.reset_awaited = true;
+		}
+	}
 unlock:
 	spin_unlock(&csid_hw->lock_state);
 end:
@@ -4301,6 +4306,7 @@ int cam_ife_csid_ver2_start(void *hw_priv, void *args,
 		cam_ife_csid_ver2_enable_path(csid_hw, res);
 	}
 
+	csid_hw->flags.reset_awaited = false;
 end:
 	mutex_unlock(&csid_hw->hw_info->hw_mutex);
 	return rc;
