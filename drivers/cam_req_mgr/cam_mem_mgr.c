@@ -1946,11 +1946,10 @@ int cam_mem_mgr_send_buffer_to_presil(int32_t iommu_hdl, int32_t buf_handle)
 	/* Sending Presil IO Buf to PC side ( as iova start address indicates) */
 	uint64_t io_buf_addr;
 	size_t io_buf_size;
-	int i, fd = -1, idx = 0;
+	int i, j, fd = -1, idx = 0;
 	uint8_t *iova_ptr = NULL;
 	uint64_t dmabuf = 0;
 	bool is_mapped_in_cb = false;
-
 
 	CAM_DBG(CAM_PRESIL, "buf handle 0x%0x", buf_handle);
 
@@ -1960,8 +1959,28 @@ int cam_mem_mgr_send_buffer_to_presil(int32_t iommu_hdl, int32_t buf_handle)
 			is_mapped_in_cb = true;
 	}
 
-	if (!is_mapped_in_cb)
-		return 0;
+	if (!is_mapped_in_cb) {
+		for (j = 0; j < CAM_MEM_BUFQ_MAX; j++) {
+			if (tbl.bufq[j].i_ino == tbl.bufq[idx].i_ino) {
+				for (i = 0; i < tbl.bufq[j].num_hdl; i++) {
+					if (tbl.bufq[j].hdls[i] == iommu_hdl)
+						is_mapped_in_cb = true;
+				}
+			}
+		}
+
+		if (!is_mapped_in_cb) {
+			CAM_DBG(CAM_PRESIL,
+				"Still Could not find idx=%d, FD %d buf_handle 0x%0x",
+				idx, GET_FD_FROM_HANDLE(buf_handle), buf_handle);
+
+			/*
+			 * Okay to return 0, since this function also gets called for buffers that
+			 * are shared only between umd/kmd, these may not be mapped with smmu
+			 */
+			return 0;
+		}
+	}
 
 	if ((tbl.bufq[idx].buf_handle != 0) && (tbl.bufq[idx].active) &&
 		(tbl.bufq[idx].buf_handle == buf_handle)) {

@@ -788,7 +788,8 @@ int cam_vfe_top_ver4_stop(void *device_priv,
 		for (i = 0; i < top_priv->top_common.num_mux; i++) {
 			if (top_priv->top_common.mux_rsrc[i].res_id ==
 				mux_res->res_id) {
-				top_priv->top_common.req_clk_rate[i] = 0;
+				if (!top_priv->top_common.skip_clk_data_rst)
+					top_priv->top_common.req_clk_rate[i] = 0;
 				memset(&top_priv->top_common.req_axi_vote[i],
 					0, sizeof(struct cam_axi_vote));
 				top_priv->top_common.axi_vote_control[i] =

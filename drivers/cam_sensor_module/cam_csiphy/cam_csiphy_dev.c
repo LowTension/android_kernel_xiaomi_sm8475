@@ -16,15 +16,17 @@ static struct dentry *root_dentry;
 static void cam_csiphy_subdev_handle_message(
 		struct v4l2_subdev *sd,
 		enum cam_subdev_message_type_t message_type,
-		uint32_t data)
+		void *data)
 {
 	struct csiphy_device *csiphy_dev = v4l2_get_subdevdata(sd);
+	uint32_t data_idx;
 
 	switch (message_type) {
 	case CAM_SUBDEV_MESSAGE_IRQ_ERR:
+		data_idx = *(uint32_t *)data;
 		CAM_INFO(CAM_CSIPHY, "subdev index : %d CSIPHY index: %d",
-				csiphy_dev->soc_info.index, data);
-		if (data == csiphy_dev->soc_info.index) {
+				csiphy_dev->soc_info.index, data_idx);
+		if (data_idx == csiphy_dev->soc_info.index) {
 			cam_csiphy_common_status_reg_dump(csiphy_dev);
 
 			if (csiphy_dev->en_full_phy_reg_dump)
@@ -313,16 +315,6 @@ static int cam_csiphy_component_bind(struct device *dev,
 	snprintf(wq_name, 32, "%s%d%s", "csiphy",
 		new_csiphy_dev->soc_info.index, "_wq");
 
-	new_csiphy_dev->work_queue = alloc_workqueue("wq_name",
-		WQ_UNBOUND | WQ_MEM_RECLAIM, 1);
-	if (!new_csiphy_dev->work_queue) {
-		CAM_ERR(CAM_CSIPHY,
-			"Error allocating workqueue for csiphy: %d",
-			new_csiphy_dev->soc_info.index);
-		rc = -ENOMEM;
-		goto cpas_unregister;
-	}
-
 	rc = cam_csiphy_register_baseaddress(new_csiphy_dev);
 	if (rc) {
 		CAM_ERR(CAM_CSIPHY, "Failed to register baseaddress, rc: %d", rc);
@@ -338,8 +330,6 @@ static int cam_csiphy_component_bind(struct device *dev,
 
 cpas_unregister:
 	cam_cpas_unregister_client(new_csiphy_dev->cpas_handle);
-	if (new_csiphy_dev->work_queue)
-		destroy_workqueue(new_csiphy_dev->work_queue);
 csiphy_unregister_subdev:
 	cam_unregister_subdev(&(new_csiphy_dev->v4l2_dev_str));
 csiphy_no_resource:

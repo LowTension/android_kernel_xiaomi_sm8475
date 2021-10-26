@@ -473,6 +473,7 @@ static int cam_vfe_rdi_handle_irq_bottom_half(void *handler_priv,
 	struct cam_vfe_mux_rdi_data         *rdi_priv;
 	struct cam_vfe_top_irq_evt_payload  *payload;
 	struct cam_isp_hw_event_info         evt_info;
+	struct cam_isp_hw_error_event_info	 err_evt_info;
 	uint32_t                             irq_status0;
 	uint32_t                             irq_status1;
 	uint32_t                             irq_rdi_status;
@@ -495,6 +496,7 @@ static int cam_vfe_rdi_handle_irq_bottom_half(void *handler_priv,
 	irq_status0 = payload->irq_reg_val[CAM_IFE_IRQ_CAMIF_REG_STATUS0];
 	irq_status1 = payload->irq_reg_val[CAM_IFE_IRQ_CAMIF_REG_STATUS1];
 
+	evt_info.hw_type  = CAM_ISP_HW_TYPE_VFE;
 	evt_info.hw_idx   = rdi_node->hw_intf->hw_idx;
 	evt_info.res_id   = rdi_node->res_id;
 	evt_info.res_type = rdi_node->res_type;
@@ -564,6 +566,8 @@ static int cam_vfe_rdi_handle_irq_bottom_half(void *handler_priv,
 			evt_info.res_id = CAM_ISP_IFE_OUT_RES_RDI_3;
 			}
 
+		err_evt_info.err_type = CAM_VFE_IRQ_STATUS_OVERFLOW;
+		evt_info.event_data = (void *)&err_evt_info;
 		if (rdi_priv->event_cb)
 			rdi_priv->event_cb(rdi_priv->priv,
 			CAM_ISP_HW_EVENT_ERROR,

@@ -1361,6 +1361,7 @@ static int cam_vfe_camif_ver3_handle_irq_bottom_half(void *handler_priv,
 	struct cam_vfe_mux_camif_ver3_data *camif_priv;
 	struct cam_vfe_top_irq_evt_payload *payload;
 	struct cam_isp_hw_event_info evt_info;
+	struct cam_isp_hw_error_event_info err_evt_info;
 	struct cam_hw_soc_info *soc_info = NULL;
 	struct cam_vfe_soc_private *soc_private = NULL;
 	uint32_t irq_status[CAM_IFE_IRQ_REGISTERS_MAX] = {0};
@@ -1386,6 +1387,7 @@ static int cam_vfe_camif_ver3_handle_irq_bottom_half(void *handler_priv,
 	for (i = 0; i < CAM_IFE_IRQ_REGISTERS_MAX; i++)
 		irq_status[i] = payload->irq_reg_val[i];
 
+	evt_info.hw_type  = CAM_ISP_HW_TYPE_VFE;
 	evt_info.hw_idx   = camif_node->hw_intf->hw_idx;
 	evt_info.res_id   = camif_node->res_id;
 	evt_info.res_type = camif_node->res_type;
@@ -1470,7 +1472,8 @@ static int cam_vfe_camif_ver3_handle_irq_bottom_half(void *handler_priv,
 			ts.tv_sec, ts.tv_nsec);
 
 		ret = CAM_VFE_IRQ_STATUS_OVERFLOW;
-		evt_info.err_type = CAM_VFE_IRQ_STATUS_OVERFLOW;
+		err_evt_info.err_type = CAM_VFE_IRQ_STATUS_OVERFLOW;
+		evt_info.event_data = (void *)&err_evt_info;
 
 		CAM_INFO(CAM_ISP, "ife_clk_src:%lld",
 			soc_private->ife_clk_src);
@@ -1503,7 +1506,8 @@ static int cam_vfe_camif_ver3_handle_irq_bottom_half(void *handler_priv,
 			ts.tv_sec, ts.tv_nsec);
 
 		ret = CAM_VFE_IRQ_STATUS_VIOLATION;
-		evt_info.err_type = CAM_VFE_IRQ_STATUS_VIOLATION;
+		err_evt_info.err_type = CAM_VFE_IRQ_STATUS_VIOLATION;
+		evt_info.event_data = (void *)&err_evt_info;
 
 		CAM_INFO(CAM_ISP, "ife_clk_src:%lld",
 			soc_private->ife_clk_src);

@@ -1803,7 +1803,8 @@ static int cam_sfe_bus_handle_sfe_out_done_bottom_half(
 	struct cam_isp_resource_node           *sfe_out = handler_priv;
 	struct cam_sfe_bus_wr_out_data         *rsrc_data = sfe_out->res_priv;
 	struct cam_sfe_bus_wr_irq_evt_payload  *evt_payload = evt_payload_priv;
-	struct cam_isp_hw_compdone_event_info    evt_info = {0};
+	struct cam_isp_hw_event_info            evt_info;
+	struct cam_isp_hw_compdone_event_info   compdone_evt_info = {0};
 	void                                   *ctx = NULL;
 	uint32_t                       out_list[CAM_SFE_BUS_SFE_OUT_MAX];
 
@@ -1838,14 +1839,15 @@ static int cam_sfe_bus_handle_sfe_out_done_bottom_half(
 			goto end;
 		}
 
-		evt_info.num_res = num_out;
+		compdone_evt_info.num_res = num_out;
 		for (i = 0; i < num_out; i++) {
-			evt_info.res_id[i] = out_list[i];
+			compdone_evt_info.res_id[i] = out_list[i];
 			cam_sfe_bus_get_last_consumed_addr(
 				rsrc_data->bus_priv,
-				evt_info.res_id[i], &val);
-			evt_info.last_consumed_addr[i] = val;
+				compdone_evt_info.res_id[i], &val);
+			compdone_evt_info.last_consumed_addr[i] = val;
 		}
+		evt_info.event_data = (void *)&compdone_evt_info;
 		if (rsrc_data->common_data->event_cb)
 			rsrc_data->common_data->event_cb(ctx, evt_id,
 				(void *)&evt_info);
@@ -2147,11 +2149,14 @@ static int cam_sfe_bus_wr_irq_bottom_half(
 	cam_sfe_bus_wr_put_evt_payload(common_data, &evt_payload);
 
 	if (!skip_err_notify) {
+		struct cam_isp_hw_error_event_info err_evt_info;
+
 		evt_info.hw_idx = common_data->core_index;
 		evt_info.hw_type = CAM_ISP_HW_TYPE_SFE;
 		evt_info.res_type = CAM_ISP_RESOURCE_SFE_OUT;
 		evt_info.res_id = CAM_SFE_BUS_SFE_OUT_MAX;
-		evt_info.err_type = CAM_SFE_IRQ_STATUS_VIOLATION;
+		err_evt_info.err_type = CAM_SFE_IRQ_STATUS_VIOLATION;
+		evt_info.event_data = (void *)&err_evt_info;
 
 		if (common_data->event_cb) {
 			struct cam_isp_resource_node      *out_rsrc_node = NULL;

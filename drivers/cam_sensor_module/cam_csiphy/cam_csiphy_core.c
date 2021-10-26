@@ -1484,33 +1484,40 @@ int cam_csiphy_util_update_aon_ops(
 	return rc;
 }
 
-static void __cam_csiphy_read_2phase_bist_debug_status(
-	struct csiphy_device *csiphy_dev)
+static void __cam_csiphy_read_2phase_bist_counter_status(
+	struct csiphy_device *csiphy_dev, uint32_t *counter)
 {
-	int i = 0;
+	int i = 0, lane_count;
 	int bist_status_arr_size =
-		csiphy_dev->ctrl_reg->csiphy_bist_reg->num_status_err_check_reg;
-	struct csiphy_reg_t *csiphy_common_reg = NULL;
-	void __iomem *csiphybase = NULL;
+		csiphy_dev->ctrl_reg->csiphy_bist_reg->number_of_counters;
+	uint32_t base_offset = 0;
+	void __iomem *phy_base = NULL;
+	uint32_t val = 0;
+	uint32_t offset_betwn_lane = 0;
+	struct bist_reg_settings_t *bist_reg = NULL;
 
-	csiphybase = csiphy_dev->soc_info.reg_map[0].mem_base;
+	phy_base = csiphy_dev->soc_info.reg_map[0].mem_base;
+	bist_reg = csiphy_dev->ctrl_reg->csiphy_bist_reg;
+	offset_betwn_lane =
+		csiphy_dev->ctrl_reg->csiphy_reg.size_offset_betn_lanes;
 
 	for (i = 0; i < bist_status_arr_size; i++) {
-		csiphy_common_reg = &csiphy_dev->ctrl_reg->csiphy_bist_reg
-			->bist_status_err_check_arr[i];
-		switch (csiphy_common_reg->csiphy_param_type) {
-		case CSIPHY_2PH_REGS:
-			CAM_INFO(CAM_CSIPHY, "OFFSET: 0x%x value: 0x%x",
-				csiphybase + csiphy_common_reg->reg_addr,
-				cam_io_r(csiphybase + csiphy_common_reg->reg_addr));
-		break;
+		base_offset = bist_reg->bist_counter_2ph_base_offset + (0x4 * i);
+		val = 0;
+		for (lane_count = 0; lane_count < CAM_CSIPHY_MAX_DPHY_LANES; lane_count++) {
+			CAM_DBG(CAM_CSIPHY, "value to be read from addr: 0x%x is 0x%x",
+				base_offset + (lane_count * offset_betwn_lane),
+				(cam_io_r(phy_base + base_offset + (lane_count * offset_betwn_lane))));
+			val |= ((cam_io_r(phy_base + base_offset + (lane_count * offset_betwn_lane))));
 		}
+		*counter |= (val << (i * 8));
+		CAM_DBG(CAM_CSIPHY, "COUNTER VALUE is 0x%x", *counter);
 	}
 
 	return;
 }
 
-static void __cam_csiphy_poll_2phase_pattern_status(
+static void __cam_csiphy_get_2phase_pattern_status(
 	struct csiphy_device *csiphy_dev)
 {
 	int i = 0;
@@ -1518,32 +1525,19 @@ static void __cam_csiphy_poll_2phase_pattern_status(
 		csiphy_dev->ctrl_reg->csiphy_bist_reg->num_status_reg;
 	struct csiphy_reg_t *csiphy_common_reg = NULL;
 	void __iomem *csiphybase = NULL;
-	uint32_t status = 0x00;
+	uint32_t status = 0;
+	uint32_t counter = 0;
+	struct bist_reg_settings_t *bist_reg = NULL;
 
+	CAM_DBG(CAM_CSIPHY, "ENTER");
 	csiphybase = csiphy_dev->soc_info.reg_map[0].mem_base;
-
-	do {
-		usleep_range(2000, 2010);
-		for (i = 0; i < bist_status_arr_size; i++) {
-			csiphy_common_reg = &csiphy_dev->ctrl_reg->csiphy_bist_reg->bist_arry[i];
-			switch (csiphy_common_reg->csiphy_param_type) {
-			case CSIPHY_2PH_REGS:
-				status |= cam_io_r(csiphybase + csiphy_common_reg->reg_addr);
-			break;
-			}
-
-			if (status != 0) {
-				CAM_INFO(CAM_CSIPHY, "PN9 Pattern Test is completed");
-				break;
-			}
-		}
-	} while (!status);
+	bist_reg = csiphy_dev->ctrl_reg->csiphy_bist_reg;
 
 	/* This loop is to read every lane status value
 	 * in case if loop breaks with only last lane.
 	 */
 	for (i = 0; i < bist_status_arr_size; i++) {
-		csiphy_common_reg = &csiphy_dev->ctrl_reg->csiphy_bist_reg->bist_arry[i];
+		csiphy_common_reg = &bist_reg->bist_status_arr[i];
 		switch (csiphy_common_reg->csiphy_param_type) {
 		case CSIPHY_2PH_REGS:
 			status |= cam_io_r(csiphybase + csiphy_common_reg->reg_addr);
@@ -1551,41 +1545,110 @@ static void __cam_csiphy_poll_2phase_pattern_status(
 		}
 	}
 
-	if (status == csiphy_dev->ctrl_reg->csiphy_bist_reg->expected_status_val)
-		CAM_INFO(CAM_CSIPHY, "PN9 Pattern received successfully");
-	else
-		__cam_csiphy_read_2phase_bist_debug_status(csiphy_dev);
+	/* Read the Counter value for possible corrupted headers */
+	__cam_csiphy_read_2phase_bist_counter_status(csiphy_dev, &counter);
 
-	return;
-}
-
-static void __cam_csiphy_read_3phase_bist_debug_status(
-	struct csiphy_device *csiphy_dev)
-{
-	int i = 0;
-	int bist_status_arr_size =
-		csiphy_dev->ctrl_reg->csiphy_bist_reg->num_status_err_check_reg;
-	struct csiphy_reg_t *csiphy_common_reg = NULL;
-	void __iomem *csiphybase = NULL;
-
-	csiphybase = csiphy_dev->soc_info.reg_map[0].mem_base;
-
-	for (i = 0; i < bist_status_arr_size; i++) {
-		csiphy_common_reg = &csiphy_dev->ctrl_reg->csiphy_bist_reg
-			->bist_status_err_check_arr[i];
-		switch (csiphy_common_reg->csiphy_param_type) {
-		case CSIPHY_3PH_REGS:
-				CAM_INFO(CAM_CSIPHY, "OFFSET: 0x%x value: 0x%x",
-					csiphybase + csiphy_common_reg->reg_addr,
-					cam_io_r(csiphybase + csiphy_common_reg->reg_addr));
-		break;
+	if ((status & PREAMBLE_PATTERN_BIST_DONE) &&
+		(status & bist_reg->error_status_val_2ph)) {
+		/**
+		 * This condition happen when CSIPHY try to read status after sensor
+		 * streamoff. In this case error bit is set due to postamble detection
+		 * which is bit(4). In this scenraio this is not consider as an error.
+		 * We need to check for status2/3 counter value to determine if there are
+		 * more header that is corrupted than 2. Counter always shows value of 2
+		 * with postamble packet.
+		 *
+		 */
+		if (counter <= PREAMBLE_MAX_ERR_COUNT_ALLOWED) {
+			CAM_INFO(CAM_CSIPHY,
+				"PN9 Pattern rxced succesfully:: counter value: 0x%x, Status0: 0x%x",
+				counter, status);
+		} else {
+			CAM_INFO(CAM_CSIPHY,
+				"PN9 Pattern is corrupted:: counter value: 0x%x, Status0: 0x%x",
+				counter, status);
 		}
+	} else if ((status & PREAMBLE_PATTERN_BIST_DONE) &&
+		!(status & bist_reg->error_status_val_2ph)) {
+		/**
+		 * This condition happen when CSIPHY try to read status with some counter
+		 * value is set to check against. In this case error bit is not expected
+		 * to be set.
+		 */
+		CAM_INFO(CAM_CSIPHY,
+			"PN9 Pattern rxced succesfully:: counter value: 0x%x, Status0: 0x%x",
+			counter, status);
+	} else {
+		CAM_INFO(CAM_CSIPHY,
+			"PN9 Pattern is corrupted:: counter value: 0x%x Status0: 0x%x",
+			counter, status);
 	}
 
 	return;
 }
 
-static void __cam_csiphy_poll_3phase_pattern_status(
+static void __cam_csiphy_2ph_status_checker_ops(
+	struct csiphy_device *csiphy_dev, bool set)
+{
+	int i = 0;
+	void __iomem *csiphybase = NULL;
+	uint32_t base_offset = 0;
+	uint32_t read_back_value;
+	uint32_t lane_offset = 0;
+	uint32_t offset_betwn_lane = 0;
+	struct bist_reg_settings_t *bist_reg = NULL;
+
+	csiphybase = csiphy_dev->soc_info.reg_map[0].mem_base;
+	bist_reg = csiphy_dev->ctrl_reg->csiphy_bist_reg;
+	base_offset = bist_reg->set_status_update_2ph_base_offset;
+	offset_betwn_lane =
+		csiphy_dev->ctrl_reg->csiphy_reg.size_offset_betn_lanes;
+
+	/* Set checker bit to read the correct status1 value */
+	for (i = 0; i < CAM_CSIPHY_MAX_DPHY_LANES; i++) {
+		lane_offset = base_offset + (i * offset_betwn_lane);
+		read_back_value = cam_io_r(csiphybase + lane_offset);
+		set ? (read_back_value |= PREAMBLE_PATTERN_SET_CHECKER) :
+			(read_back_value &= ~PREAMBLE_PATTERN_SET_CHECKER);
+		cam_io_w_mb(read_back_value, csiphybase + lane_offset);
+	}
+}
+
+static void __cam_csiphy_read_3phase_bist_counter_status(
+	struct csiphy_device *csiphy_dev, uint32_t *counter)
+{
+	int i = 0, lane_count;
+	int bist_status_arr_size =
+		csiphy_dev->ctrl_reg->csiphy_bist_reg->number_of_counters;
+	uint32_t base_offset = 0;
+	void __iomem *phy_base = NULL;
+	uint32_t val = 0;
+	uint32_t offset_betwn_lane = 0;
+	struct bist_reg_settings_t *bist_reg = NULL;
+
+	phy_base = csiphy_dev->soc_info.reg_map[0].mem_base;
+	bist_reg = csiphy_dev->ctrl_reg->csiphy_bist_reg;
+	offset_betwn_lane =
+		csiphy_dev->ctrl_reg->csiphy_reg.size_offset_betn_lanes;
+
+	for (i = 0; i < bist_status_arr_size; i++) {
+		base_offset = bist_reg->bist_counter_3ph_base_offset + (0x4 * i);
+		val = 0;
+		for (lane_count = 0; lane_count < CAM_CSIPHY_MAX_CPHY_LANES; lane_count++) {
+			CAM_DBG(CAM_CSIPHY, "value to be read from addr: 0x%x is 0x%x",
+				base_offset + (lane_count * offset_betwn_lane),
+				(cam_io_r(phy_base + base_offset + (lane_count * offset_betwn_lane))));
+			val |= ((cam_io_r(phy_base + base_offset + (lane_count * offset_betwn_lane))));
+		}
+
+		*counter |= (val << (i * 8));
+		CAM_DBG(CAM_CSIPHY, "COUNTER VALUE is 0x%x", *counter);
+	}
+
+	return;
+}
+
+static void __cam_csiphy_get_3phase_pattern_status(
 	struct csiphy_device *csiphy_dev)
 {
 	int i = 0;
@@ -1593,31 +1656,25 @@ static void __cam_csiphy_poll_3phase_pattern_status(
 		csiphy_dev->ctrl_reg->csiphy_bist_reg->num_status_reg;
 	struct csiphy_reg_t *csiphy_common_reg = NULL;
 	void __iomem *csiphybase = NULL;
-	uint32_t status1 = 0x00;
+	uint32_t base_offset = 0;
+	uint32_t lane_offset = 0;
+	uint32_t status1 = 0, status0 = 0;
+	uint32_t counter = 0;
+	uint32_t offset_betwn_lane = 0;
+	struct bist_reg_settings_t *bist_reg = NULL;
 
+	CAM_DBG(CAM_CSIPHY, "ENTER");
 	csiphybase = csiphy_dev->soc_info.reg_map[0].mem_base;
-
-	do {
-		usleep_range(2000, 2010);
-		for (i = 0; i < bist_status_arr_size; i++) {
-			csiphy_common_reg = &csiphy_dev->ctrl_reg->csiphy_bist_reg->bist_status_arr[i];
-			switch (csiphy_common_reg->csiphy_param_type) {
-			case CSIPHY_3PH_REGS:
-				status1 |= cam_io_r(csiphybase + csiphy_common_reg->reg_addr);
-			break;
-			}
-			if (status1 != 0) {
-				CAM_INFO(CAM_CSIPHY, "PN9 Pattern test is completed");
-				break;
-			}
-		}
-	} while (!status1);
+	bist_reg = csiphy_dev->ctrl_reg->csiphy_bist_reg;
+	base_offset = bist_reg->bist_sensor_data_3ph_status_base_offset;
+	offset_betwn_lane =
+		csiphy_dev->ctrl_reg->csiphy_reg.size_offset_betn_lanes;
 
 	/* This loop is to read every lane status value
 	 * in case if loop breaks with only last lane.
 	 */
 	for (i = 0; i < bist_status_arr_size; i++) {
-		csiphy_common_reg = &csiphy_dev->ctrl_reg->csiphy_bist_reg->bist_status_arr[i];
+		csiphy_common_reg = &bist_reg->bist_status_arr[i];
 		switch (csiphy_common_reg->csiphy_param_type) {
 		case CSIPHY_3PH_REGS:
 			status1 |= cam_io_r(csiphybase + csiphy_common_reg->reg_addr);
@@ -1625,44 +1682,97 @@ static void __cam_csiphy_poll_3phase_pattern_status(
 		}
 	}
 
-	if (status1 == csiphy_dev->ctrl_reg->csiphy_bist_reg->expected_status_val)
-		CAM_INFO(CAM_CSIPHY, "PN9 Pattern received successfully");
-	else
-		__cam_csiphy_read_3phase_bist_debug_status(csiphy_dev);
+	/* Read Status0 value to detect sensor related communication */
+	for (i = 0; i < CAM_CSIPHY_MAX_CPHY_LANES; i++) {
+		lane_offset = base_offset + (i * offset_betwn_lane);
+		status0 |= cam_io_r(csiphybase + lane_offset);
+	}
+
+
+	/* Read the Counter value for possible corrupted headers */
+	__cam_csiphy_read_3phase_bist_counter_status(csiphy_dev, &counter);
+
+	if ((status1 & PREAMBLE_PATTERN_BIST_DONE) &&
+		(status1 & bist_reg->error_status_val_3ph)) {
+		/**
+		 * This condition happen when CSIPHY try to read status after sensor
+		 * streamoff. In this case error bit is set due to postamble detection
+		 * which is bit(4). In this scenraio this is not consider as an error.
+		 * We need to check for status2/3 counter value to determine if there are
+		 * more header that is corrupted than 2. Counter always shows value of 2
+		 * with postamble packet.
+		 *
+		 */
+		if (counter <= PREAMBLE_MAX_ERR_COUNT_ALLOWED) {
+			CAM_INFO(CAM_CSIPHY,
+				"PN9 Pattern rxced succesfully after sensor streamoff:: counter value: 0x%x Status1: 0x%x Status0: 0x%x",
+				counter, status1, status0);
+		} else {
+			CAM_INFO(CAM_CSIPHY,
+				"PN9 Pattern is corrupted:: counter value: 0x%x Status1: 0x%x Status0: 0x%x",
+				counter, status1, status0);
+		}
+	} else if ((status1 & PREAMBLE_PATTERN_BIST_DONE) &&
+		!(status1 & bist_reg->error_status_val_3ph)) {
+		/**
+		 * This condition happen when CSIPHY try to read status with some counter
+		 * value is set to check against. In this case error bit is not expected
+		 * to be set.
+		 */
+		CAM_INFO(CAM_CSIPHY,
+			"PN9 Pattern rxced succesfully before sensor streamoff:: counter value: 0x%x Status1: 0x%x Status0: 0x%x",
+			counter, status1, status0);
+	} else {
+		CAM_INFO(CAM_CSIPHY,
+			"PN9 Pattern is corrupted:: counter value: 0x%x Status1: 0x%x Status0: 0x%x",
+			counter, status1, status0);
+	}
 
 	return;
 }
 
-static void __cam_csiphy_poll_preamble_status(
+static void __cam_csiphy_3ph_status_checker_ops(
+	struct csiphy_device *csiphy_dev, bool set)
+{
+	int i = 0;
+	void __iomem *csiphybase = NULL;
+	uint32_t base_offset = 0;
+	uint32_t read_back_value;
+	uint32_t lane_offset = 0;
+	uint32_t offset_betwn_lane = 0;
+
+	csiphybase = csiphy_dev->soc_info.reg_map[0].mem_base;
+	base_offset =
+		csiphy_dev->ctrl_reg->csiphy_bist_reg->set_status_update_3ph_base_offset;
+	offset_betwn_lane =
+		csiphy_dev->ctrl_reg->csiphy_reg.size_offset_betn_lanes;
+	/* Set checker bit to read the correct status1 value */
+	for (i = 0; i < CAM_CSIPHY_MAX_CPHY_LANES; i++) {
+		lane_offset = base_offset + (i * offset_betwn_lane);
+		read_back_value = cam_io_r(csiphybase + lane_offset);
+		set ? (read_back_value |= PREAMBLE_PATTERN_SET_CHECKER) :
+			(read_back_value &= ~PREAMBLE_PATTERN_SET_CHECKER);
+		cam_io_w_mb(read_back_value, csiphybase + lane_offset);
+	}
+}
+
+static void __cam_csiphy_get_preamble_status(
 	struct csiphy_device *csiphy_dev, int offset)
 {
 	bool is_3phase = false;
 
 	is_3phase = csiphy_dev->csiphy_info[offset].csiphy_3phase;
 
-	if (is_3phase)
-		__cam_csiphy_poll_3phase_pattern_status(csiphy_dev);
-	else
-		__cam_csiphy_poll_2phase_pattern_status(csiphy_dev);
-
-	return;
-}
-
-static void csiphy_work_queue_ops(struct work_struct *work)
-{
-	struct csiphy_work_queue *wq = NULL;
-	struct csiphy_device *csiphy_dev = NULL;
-	int32_t offset = -1;
-
-	wq = container_of(work, struct csiphy_work_queue, work);
-	if (wq) {
-		csiphy_dev = wq->csiphy_dev;
-		offset = wq->acquire_idx;
-
-		__cam_csiphy_poll_preamble_status(csiphy_dev, offset);
+	if (is_3phase) {
+		__cam_csiphy_3ph_status_checker_ops(csiphy_dev, true);
+		__cam_csiphy_get_3phase_pattern_status(csiphy_dev);
+		__cam_csiphy_3ph_status_checker_ops(csiphy_dev, false);
+	} else {
+		__cam_csiphy_2ph_status_checker_ops(csiphy_dev, true);
+		__cam_csiphy_get_2phase_pattern_status(csiphy_dev);
+		__cam_csiphy_2ph_status_checker_ops(csiphy_dev, false);
 	}
-
-	kfree(wq);
+	return;
 }
 
 int32_t cam_csiphy_core_cfg(void *phy_dev,
@@ -1919,6 +2029,9 @@ int32_t cam_csiphy_core_cfg(void *phy_dev,
 			cam_csiphy_prgm_cmn_data(csiphy_dev, true);
 		}
 
+		if (csiphy_dev->preamble_enable)
+			__cam_csiphy_get_preamble_status(csiphy_dev, offset);
+
 		rc = cam_csiphy_disable_hw(csiphy_dev);
 		if (rc < 0)
 			CAM_ERR(CAM_CSIPHY, "Failed in csiphy release");
@@ -2025,7 +2138,6 @@ int32_t cam_csiphy_core_cfg(void *phy_dev,
 	}
 	case CAM_START_DEV: {
 		struct cam_start_stop_dev_cmd config;
-		struct csiphy_work_queue *wq;
 		int32_t offset;
 		int clk_vote_level = -1;
 
@@ -2204,19 +2316,6 @@ int32_t cam_csiphy_core_cfg(void *phy_dev,
 		CAM_DBG(CAM_CSIPHY, "START DEV CNT: %d",
 			csiphy_dev->start_dev_count);
 		csiphy_dev->csiphy_state = CAM_CSIPHY_START;
-
-		if (csiphy_dev->preamble_enable) {
-			wq = kzalloc(sizeof(struct csiphy_work_queue),
-				GFP_ATOMIC);
-			if (wq) {
-				INIT_WORK((struct work_struct *)
-					&wq->work, csiphy_work_queue_ops);
-				wq->csiphy_dev = csiphy_dev;
-				wq->acquire_idx = offset;
-				queue_work(csiphy_dev->work_queue,
-					&wq->work);
-			}
-		}
 
 		CAM_INFO(CAM_CSIPHY,
 			"CAM_START_PHYDEV: CSIPHY_IDX: %d, Device_slot: %d, cp_mode: %d, Datarate: %llu, Settletime: %llu",

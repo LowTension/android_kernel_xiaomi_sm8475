@@ -67,6 +67,11 @@
 #define DPHY_LANE_3    BIT(6)
 #define DPHY_CLK_LN    BIT(7)
 
+/* PRBS Pattern Macros */
+#define PREAMBLE_PATTERN_SET_CHECKER    BIT(4)
+#define PREAMBLE_PATTERN_BIST_DONE      BIT(0)
+#define PREAMBLE_MAX_ERR_COUNT_ALLOWED  2
+
 enum cam_csiphy_state {
 	CAM_CSIPHY_INIT,
 	CAM_CSIPHY_ACQUIRE,
@@ -214,13 +219,20 @@ struct data_rate_settings_t {
 };
 
 struct bist_reg_settings_t {
-	uint32_t expected_status_val;
-	ssize_t num_data_settings;
+	uint32_t error_status_val_3ph;
+	uint32_t error_status_val_2ph;
+	uint32_t set_status_update_3ph_base_offset;
+	uint32_t set_status_update_2ph_base_offset;
+	uint32_t bist_status_3ph_base_offset;
+	uint32_t bist_status_2ph_base_offset;
+	uint32_t bist_sensor_data_3ph_status_base_offset;
+	uint32_t bist_counter_3ph_base_offset;
+	uint32_t bist_counter_2ph_base_offset;
+	uint32_t number_of_counters;
 	ssize_t num_status_reg;
-	ssize_t num_status_err_check_reg;
+	ssize_t num_data_settings;
 	struct csiphy_reg_t *bist_arry;
 	struct csiphy_reg_t *bist_status_arr;
-	struct csiphy_reg_t *bist_status_err_check_arr;
 };
 
 /**
@@ -319,7 +331,6 @@ struct csiphy_work_queue {
  * @en_lane_status_reg_dump    : Debugfs flag to enable cphy/dphy lane status dump
  * @en_full_phy_reg_dump       : Debugfs flag to enable the dump for all the Phy registers
  * @preamble_enable            : To enable preamble pattern
- * @work_queue                 : Work queue to offload the work
  */
 struct csiphy_device {
 	char                           device_name[CAM_CTX_DEV_NAME_MAX_LENGTH];
@@ -354,7 +365,6 @@ struct csiphy_device {
 	bool                           en_lane_status_reg_dump;
 	bool                           en_full_phy_reg_dump;
 	uint16_t                       preamble_enable;
-	struct workqueue_struct       *work_queue;
 };
 
 /**

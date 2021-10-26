@@ -48,10 +48,12 @@ struct cam_isp_bw_control_args {
  *
  * @hw_intf:             Isp hw intf pointer
  * @request_id:          Request Id
+ * @skip_clk_data_rst:   Skip resetting any clk info
  */
 struct cam_isp_apply_clk_bw_args {
 	struct cam_hw_intf                *hw_intf;
 	uint64_t                           request_id;
+	bool                               skip_clk_data_rst;
 };
 
 /*
@@ -271,6 +273,34 @@ struct cam_isp_blanking_config {
 	struct cam_isp_resource_node       *node_res;
 };
 
+/**
+ * struct cam_isp_hw_error_event_info:
+ *
+ * @brief:              Structure to pass error event details to hw mgr
+ *
+ * @err_type:           Type of error being reported
+ *
+ */
+struct cam_isp_hw_error_event_info {
+	uint32_t    err_type;
+};
+
+/**
+ * struct cam_isp_hw_compdone_event_info:
+ *
+ * @brief:              Structure to pass bufdone event details to hw mgr
+ *
+ * @num_res:            Number of valid resource IDs in this event
+ * @res_id:             Resource IDs to report buf dones
+ * @last_consumed_addr: Last consumed addr for resource ID at that index
+ *
+ */
+struct cam_isp_hw_compdone_event_info {
+	uint32_t num_res;
+	uint32_t res_id[CAM_NUM_OUT_PER_COMP_IRQ_MAX];
+	uint32_t last_consumed_addr[CAM_NUM_OUT_PER_COMP_IRQ_MAX];
+};
+
 /*
  * struct cam_isp_hw_event_info:
  *
@@ -280,10 +310,10 @@ struct cam_isp_blanking_config {
  * @is_secondary_evt:  Indicates if event was requested by hw mgr
  * @res_id:            Unique resource ID
  * @hw_idx:            IFE hw index
- * @err_type:          Error type if any
  * @reg_val:           Any critical register value captured during irq handling
  * @hw_type:           Hw Type sending the event
  * @in_core_idx:       Input core type if CSID error evt
+ * @event_data:        Any additional data specific to this event
  *
  */
 struct cam_isp_hw_event_info {
@@ -291,32 +321,10 @@ struct cam_isp_hw_event_info {
 	bool                           is_secondary_evt;
 	uint32_t                       res_id;
 	uint32_t                       hw_idx;
-	uint32_t                       err_type;
 	uint32_t                       reg_val;
 	uint32_t                       hw_type;
 	uint32_t                       in_core_idx;
-};
-
-/**
- * struct cam_isp_hw_compdone_event_info:
- *
- * @brief:              Structure to pass bufdone event details to hw mgr
- *
- * @res_type:           Type of IFE/SFE resource
- * @hw_idx:             IFE/SFE hw index
- * @num_res:            Number of valid resource IDs in this event
- * @hw_type:            Hw Type sending the event (IFE or SFE)
- * @res_id:             Resource IDs to report buf dones
- * @last_consumed_addr: Last consumed addr for resource ID at that index
- *
- */
-struct cam_isp_hw_compdone_event_info {
-	enum cam_isp_resource_type     res_type;
-	uint32_t                       hw_idx;
-	uint32_t                       hw_type;
-	uint32_t num_res;
-	uint32_t res_id[CAM_NUM_OUT_PER_COMP_IRQ_MAX];
-	uint32_t last_consumed_addr[CAM_NUM_OUT_PER_COMP_IRQ_MAX];
+	void                          *event_data;
 };
 
 /*

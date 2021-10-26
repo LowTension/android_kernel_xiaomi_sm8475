@@ -62,6 +62,7 @@ struct cam_sfe_top_priv {
 	struct cam_sfe_top_hw_info     *hw_info;
 	uint32_t                        num_clc_module;
 	struct cam_sfe_top_debug_info  (*clc_dbg_mod_info)[CAM_SFE_TOP_DBG_REG_MAX][8];
+	bool                            skip_clk_data_rst;
 };
 
 struct cam_sfe_path_data {
@@ -587,7 +588,7 @@ int cam_sfe_top_calc_hw_clk_rate(
 			max_req_clk_rate = top_priv->req_clk_rate[i];
 	}
 
-	if (start_stop) {
+	if (start_stop && !top_priv->skip_clk_data_rst) {
 		/* need to vote current clk immediately */
 		*final_clk_rate = max_req_clk_rate;
 		/* Reset everything, we can start afresh */
@@ -816,6 +817,13 @@ static int cam_sfe_top_apply_clk_bw_update(struct cam_sfe_top_priv *top_priv,
 		goto end;
 	}
 
+	if (clk_bw_args->skip_clk_data_rst) {
+		top_priv->skip_clk_data_rst = true;
+		CAM_DBG(CAM_SFE, "SFE:%u requested to avoid clk data rst",
+			hw_intf->hw_idx);
+		return 0;
+	}
+
 	rc = cam_sfe_top_calc_hw_clk_rate(top_priv, false, &final_clk_rate, request_id);
 	if (rc) {
 		CAM_ERR(CAM_SFE,
@@ -951,6 +959,7 @@ static int cam_sfe_top_apply_clock_start_stop(struct cam_sfe_top_priv *top_priv)
 
 end:
 	top_priv->clk_state = CAM_CLK_BW_STATE_INIT;
+	top_priv->skip_clk_data_rst = false;
 	return rc;
 }
 
@@ -1384,12 +1393,15 @@ static int cam_sfe_top_handle_err_irq_bottom_half(
 
 	if (irq_status[0] &
 		top_priv->common_data.common_reg_data->error_irq_mask) {
+		struct cam_isp_hw_error_event_info err_evt_info;
+
 		viol_sts = payload->violation_status;
 		CAM_INFO(CAM_SFE, "Violation status 0x%x",
 			viol_sts);
 		cam_sfe_top_print_top_irq_error(top_priv,
 			irq_status[0], viol_sts);
-		evt_info.err_type = CAM_SFE_IRQ_STATUS_VIOLATION;
+		err_evt_info.err_type = CAM_SFE_IRQ_STATUS_VIOLATION;
+		evt_info.event_data = (void *)&err_evt_info;
 		cam_sfe_top_print_debug_reg_info(top_priv);
 		if (top_priv->event_cb)
 			top_priv->event_cb(top_priv->priv_per_stream,
@@ -1664,7 +1676,8 @@ int cam_sfe_top_stop(
 	sfe_res->res_state = CAM_ISP_RESOURCE_STATE_RESERVED;
 	for (i = 0; i < CAM_SFE_TOP_IN_PORT_MAX; i++) {
 		if (top_priv->in_rsrc[i].res_id == sfe_res->res_id) {
-			top_priv->req_clk_rate[i] = 0;
+			if (!top_priv->skip_clk_data_rst)
+				top_priv->req_clk_rate[i] = 0;
 			memset(&top_priv->req_axi_vote[i], 0,
 				sizeof(struct cam_axi_vote));
 			top_priv->axi_vote_control[i] =
@@ -1712,7 +1725,8 @@ int cam_sfe_top_stop(
 	 * when all resources are streamed off
 	 */
 	if (!top_priv->start_stop_cnt) {
-		top_priv->applied_clk_rate = 0;
+		if (!top_priv->skip_clk_data_rst)
+			top_priv->applied_clk_rate = 0;
 
 		if (top_priv->error_irq_handle > 0) {
 			cam_irq_controller_unsubscribe_irq(

@@ -516,7 +516,6 @@ static int cam_vfe_fe_handle_irq_bottom_half(void *handler_priv,
 	struct cam_isp_resource_node         *fe_node;
 	struct cam_vfe_mux_fe_data           *fe_priv;
 	struct cam_vfe_top_irq_evt_payload   *payload;
-	struct cam_isp_hw_event_info          evt_info;
 	uint32_t                              irq_status0;
 	uint32_t                              irq_status1;
 
@@ -530,10 +529,6 @@ static int cam_vfe_fe_handle_irq_bottom_half(void *handler_priv,
 	payload = evt_payload_priv;
 	irq_status0 = payload->irq_reg_val[CAM_IFE_IRQ_CAMIF_REG_STATUS0];
 	irq_status1 = payload->irq_reg_val[CAM_IFE_IRQ_CAMIF_REG_STATUS1];
-
-	evt_info.hw_idx = fe_node->hw_intf->hw_idx;
-	evt_info.res_id = fe_node->res_id;
-	evt_info.res_type = fe_node->res_type;
 
 	CAM_DBG(CAM_ISP, "event ID, irq_status_0 = 0x%x", irq_status0);
 
@@ -574,8 +569,8 @@ static int cam_vfe_fe_handle_irq_bottom_half(void *handler_priv,
 	if (irq_status1 & fe_priv->reg_data->error_irq_mask1) {
 		CAM_DBG(CAM_ISP, "Received ERROR");
 		ret = CAM_ISP_HW_ERROR_OVERFLOW;
-		evt_info.err_type = CAM_VFE_IRQ_STATUS_OVERFLOW;
 		cam_vfe_fe_reg_dump(fe_node);
+		/* No HW mgr notification on error */
 	} else {
 		ret = CAM_ISP_HW_ERROR_NONE;
 	}
