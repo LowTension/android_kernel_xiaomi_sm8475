@@ -370,6 +370,7 @@ struct cam_cre_hw_mgr {
 	int32_t       iommu_hdl;
 	int32_t       iommu_sec_hdl;
 	uint32_t      num_cre;
+	uint64_t      cre_debug_clk;
 	bool          secure_mode;
 	void    *ctx_bitmap;
 	size_t   ctx_bitmap_size;
