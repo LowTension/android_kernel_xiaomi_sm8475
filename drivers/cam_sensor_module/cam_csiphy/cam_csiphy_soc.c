@@ -14,6 +14,7 @@
 #include "include/cam_csiphy_1_2_5_hwreg.h"
 #include "include/cam_csiphy_2_0_hwreg.h"
 #include "include/cam_csiphy_2_1_0_hwreg.h"
+#include "include/cam_csiphy_2_1_1_hwreg.h"
 
 /* Clock divide factor for CPHY spec v1.0 */
 #define CSIPHY_DIVISOR_16                    16
@@ -472,6 +473,23 @@ int32_t cam_csiphy_parse_dt_info(struct platform_device *pdev,
 		csiphy_dev->clk_lane = 0;
 		csiphy_dev->ctrl_reg->data_rates_settings_table = &data_rate_delta_table_2_1_0;
 		csiphy_dev->ctrl_reg->csiphy_bist_reg = &bist_setting_2_1_0;
+	} else if (of_device_is_compatible(soc_info->dev->of_node,
+		"qcom,csiphy-v2.1.1")) {
+		csiphy_dev->ctrl_reg->csiphy_2ph_reg = csiphy_2ph_v2_1_1_reg;
+		csiphy_dev->ctrl_reg->csiphy_2ph_combo_mode_reg = csiphy_2ph_v2_1_1_combo_mode_reg;
+		csiphy_dev->ctrl_reg->csiphy_3ph_reg = csiphy_3ph_v2_1_1_reg;
+		csiphy_dev->ctrl_reg->csiphy_2ph_3ph_mode_reg = NULL;
+		csiphy_dev->ctrl_reg->csiphy_irq_reg = csiphy_irq_reg_2_1_1;
+		csiphy_dev->ctrl_reg->csiphy_common_reg = csiphy_common_reg_2_1_1;
+		csiphy_dev->ctrl_reg->csiphy_reset_enter_regs = csiphy_reset_enter_reg_2_1_1;
+		csiphy_dev->ctrl_reg->csiphy_reset_exit_regs = csiphy_reset_exit_reg_2_1_1;
+		csiphy_dev->ctrl_reg->csiphy_reg = csiphy_v2_1_1;
+		csiphy_dev->ctrl_reg->getclockvoting = get_clk_voting_dynamic;
+		csiphy_dev->hw_version = CSIPHY_VERSION_V211;
+		csiphy_dev->is_divisor_32_comp = true;
+		csiphy_dev->clk_lane = 0;
+		csiphy_dev->ctrl_reg->data_rates_settings_table = &data_rate_delta_table_2_1_1;
+		csiphy_dev->ctrl_reg->csiphy_bist_reg = &bist_setting_2_1_1;
 	} else {
 		CAM_ERR(CAM_CSIPHY, "invalid hw version : 0x%x",
 			csiphy_dev->hw_version);
