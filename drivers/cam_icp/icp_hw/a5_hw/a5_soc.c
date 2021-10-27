@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/io.h>
@@ -11,6 +11,7 @@
 #include "a5_soc.h"
 #include "cam_soc_util.h"
 #include "cam_debug_util.h"
+#include "hfi_intf.h"
 
 static int cam_a5_get_dt_properties(struct cam_hw_soc_info *soc_info)
 {
@@ -192,6 +193,12 @@ int cam_a5_enable_soc_resources(struct cam_hw_soc_info *soc_info)
 		CAM_SVS_VOTE, true);
 	if (rc)
 		CAM_ERR(CAM_ICP, "enable platform failed");
+	else {
+		int32_t clk_rate = 0;
+
+		clk_rate = clk_get_rate(soc_info->clk[soc_info->src_clk_idx]);
+		hfi_send_freq_info(clk_rate);
+	}
 
 	return rc;
 }
@@ -203,6 +210,8 @@ int cam_a5_disable_soc_resources(struct cam_hw_soc_info *soc_info)
 	rc = cam_soc_util_disable_platform_resource(soc_info, true, true);
 	if (rc)
 		CAM_ERR(CAM_ICP, "disable platform failed");
+	else
+		hfi_send_freq_info(0);
 
 	return rc;
 }
@@ -212,6 +221,7 @@ int cam_a5_update_clk_rate(struct cam_hw_soc_info *soc_info,
 {
 	int32_t src_clk_idx = 0;
 	int32_t clk_rate = 0;
+	int rc = 0;
 
 	if (!soc_info) {
 		CAM_ERR(CAM_ICP, "Invalid args");
@@ -248,5 +258,10 @@ int cam_a5_update_clk_rate(struct cam_hw_soc_info *soc_info,
 		clk_rate = soc_info->clk_rate[CAM_TURBO_VOTE][src_clk_idx];
 	}
 
-	return cam_soc_util_set_src_clk_rate(soc_info, clk_rate);
+	rc = cam_soc_util_set_src_clk_rate(soc_info, clk_rate);
+	if (rc)
+		return rc;
+
+	hfi_send_freq_info(clk_rate);
+	return 0;
 }

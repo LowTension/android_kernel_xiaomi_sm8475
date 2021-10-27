@@ -9,6 +9,7 @@
 #include "cam_debug_util.h"
 #include "cam_soc_util.h"
 #include "lx7_soc.h"
+#include "hfi_intf.h"
 
 static int __ubwc_config_get(struct device_node *np, char *name, uint32_t *cfg)
 {
@@ -141,6 +142,12 @@ int cam_lx7_soc_resources_enable(struct cam_hw_soc_info *soc_info)
 						CAM_SVS_VOTE, true);
 	if (rc)
 		CAM_ERR(CAM_ICP, "failed to enable soc resources rc=%d", rc);
+	else {
+		int32_t clk_rate = 0;
+
+		clk_rate = clk_get_rate(soc_info->clk[soc_info->src_clk_idx]);
+		hfi_send_freq_info(clk_rate);
+	}
 
 	return rc;
 }
@@ -152,6 +159,8 @@ int cam_lx7_soc_resources_disable(struct cam_hw_soc_info *soc_info)
 	rc = cam_soc_util_disable_platform_resource(soc_info, true, true);
 	if (rc)
 		CAM_ERR(CAM_ICP, "failed to disable soc resources rc=%d", rc);
+	else
+		hfi_send_freq_info(0);
 
 	return rc;
 }
@@ -161,6 +170,7 @@ int cam_lx7_update_clk_rate(struct cam_hw_soc_info *soc_info,
 {
 	int32_t src_clk_idx = 0;
 	int32_t clk_rate = 0;
+	int rc = 0;
 
 	if (!soc_info) {
 		CAM_ERR(CAM_ICP, "Invalid args");
@@ -197,5 +207,10 @@ int cam_lx7_update_clk_rate(struct cam_hw_soc_info *soc_info,
 		clk_rate = soc_info->clk_rate[CAM_TURBO_VOTE][src_clk_idx];
 	}
 
-	return cam_soc_util_set_src_clk_rate(soc_info, clk_rate);
+	rc = cam_soc_util_set_src_clk_rate(soc_info, clk_rate);
+	if (rc)
+		return rc;
+
+	hfi_send_freq_info(clk_rate);
+	return 0;
 }
