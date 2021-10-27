@@ -168,6 +168,7 @@ struct cam_ife_csid_ver2_camif_data {
  *                          for before processing discard config we can skip it for
  *                          the corresponding paths
  * @sfe_shdr:               flag to indicate if sfe is inline shdr
+ * @lcr_en:                 Flag to indicate if path is part can be input to LCR
  *
  */
 struct cam_ife_csid_ver2_path_cfg {
@@ -206,6 +207,7 @@ struct cam_ife_csid_ver2_path_cfg {
 	bool                                 discard_init_frames;
 	bool                                 skip_discard_frame_cfg;
 	bool                                 sfe_shdr;
+	bool                                 lcr_en;
 };
 
 struct cam_ife_csid_ver2_top_reg_info {
@@ -351,6 +353,7 @@ struct cam_ife_csid_ver2_path_reg_info {
 	uint32_t epoch1_cfg_val;
 	uint32_t epoch0_shift_val;
 	uint32_t epoch1_shift_val;
+	uint32_t sof_retiming_dis_shift;
 	uint32_t capabilities;
 };
 
