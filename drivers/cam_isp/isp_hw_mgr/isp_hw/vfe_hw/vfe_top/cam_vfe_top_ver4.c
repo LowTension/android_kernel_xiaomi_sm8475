@@ -1089,6 +1089,7 @@ static int cam_vfe_handle_irq_bottom_half(void *handler_priv,
 	struct cam_vfe_mux_ver4_data *vfe_priv;
 	struct cam_vfe_top_irq_evt_payload *payload;
 	struct cam_isp_hw_event_info evt_info;
+	struct cam_isp_hw_error_event_info err_evt_info;
 	uint32_t irq_status[CAM_IFE_IRQ_REGISTERS_MAX] = {0};
 	struct timespec64 ts;
 	int i = 0;
@@ -1192,6 +1193,8 @@ static int cam_vfe_handle_irq_bottom_half(void *handler_priv,
 		& vfe_priv->reg_data->error_irq_mask) {
 		CAM_ERR(CAM_ISP, "VFE:%d Error", evt_info.hw_idx);
 
+		err_evt_info.err_type = CAM_VFE_IRQ_STATUS_VIOLATION;
+		evt_info.event_data = (void *)&err_evt_info;
 		ktime_get_boottime_ts64(&ts);
 		CAM_INFO(CAM_ISP,
 			"current monotonic time stamp seconds %lld:%lld",
