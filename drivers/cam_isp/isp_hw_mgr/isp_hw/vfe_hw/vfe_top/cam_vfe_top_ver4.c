@@ -182,6 +182,7 @@ static int cam_vfe_top_ver4_mux_get_base(struct cam_vfe_top_ver4_priv *top_priv,
 	uint32_t                          mem_base = 0;
 	struct cam_isp_hw_get_cmd_update *cdm_args  = cmd_args;
 	struct cam_cdm_utils_ops         *cdm_util_ops = NULL;
+	struct cam_vfe_soc_private       *soc_private;
 
 	if (arg_size != sizeof(struct cam_isp_hw_get_cmd_update)) {
 		CAM_ERR(CAM_ISP, "Error, Invalid cmd size");
@@ -191,6 +192,12 @@ static int cam_vfe_top_ver4_mux_get_base(struct cam_vfe_top_ver4_priv *top_priv,
 	if (!cdm_args || !cdm_args->res || !top_priv ||
 		!top_priv->top_common.soc_info) {
 		CAM_ERR(CAM_ISP, "Error, Invalid args");
+		return -EINVAL;
+	}
+
+	soc_private = top_priv->top_common.soc_info->soc_private;
+	if (!soc_private) {
+		CAM_ERR(CAM_ISP, "soc_private is null");
 		return -EINVAL;
 	}
 
@@ -212,16 +219,20 @@ static int cam_vfe_top_ver4_mux_get_base(struct cam_vfe_top_ver4_priv *top_priv,
 
 	mem_base = CAM_SOC_GET_REG_MAP_CAM_BASE(
 		top_priv->top_common.soc_info, VFE_CORE_BASE_IDX);
-	if (cdm_args->cdm_id == CAM_CDM_RT)
-		mem_base -= CAM_SOC_GET_REG_MAP_CAM_BASE(
-			top_priv->top_common.soc_info, RT_BASE_IDX);
+	if (cdm_args->cdm_id == CAM_CDM_RT) {
+		if (!soc_private->rt_wrapper_base) {
+			CAM_ERR(CAM_ISP, "rt_wrapper_base_addr is null");
+			return -EINVAL;
+		}
+
+		mem_base -= soc_private->rt_wrapper_base;
+	}
 
 	CAM_DBG(CAM_ISP, "core %d mem_base 0x%x, cdm_id: %u",
 		top_priv->top_common.soc_info->index, mem_base,
 		cdm_args->cdm_id);
 
-	cdm_util_ops->cdm_write_changebase(
-		cdm_args->cmd.cmd_buf_addr, mem_base);
+	cdm_util_ops->cdm_write_changebase(cdm_args->cmd.cmd_buf_addr, mem_base);
 	cdm_args->cmd.used_bytes = (size * 4);
 
 	return 0;
