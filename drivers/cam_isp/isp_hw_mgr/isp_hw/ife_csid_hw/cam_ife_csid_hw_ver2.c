@@ -1218,20 +1218,30 @@ void cam_ife_csid_hw_ver2_mup_mismatch_handler(
 void cam_ife_csid_ver2_print_illegal_programming_irq_status(
 	void *csid, void *resource)
 {
-	struct cam_ife_csid_ver2_hw       *csid_hw = csid;
-        struct cam_isp_resource_node      *res = resource;
-	struct cam_ife_csid_ver2_reg_info *csid_reg = csid_hw->core_info->csid_reg;
-	struct cam_ife_csid_ver2_path_cfg *path_cfg =
-		(struct cam_ife_csid_ver2_path_cfg *)res->res_priv;
-	struct cam_ife_csid_cid_data      *cid_data = &csid_hw->cid_data[path_cfg->cid];
-	struct cam_hw_soc_info            *soc_info = &csid_hw->hw_info->soc_info;
-	void __iomem                      *base =
-		soc_info->reg_map[CAM_IFE_CSID_CLC_MEM_BASE_ID].mem_base;
-	const struct cam_ife_csid_ver2_path_reg_info *path_reg =
-		csid_reg->path_reg[res->res_id];
+	struct cam_ife_csid_ver2_hw                        *csid_hw = csid;
+	struct cam_isp_resource_node                       *res = resource;
+	struct cam_ife_csid_ver2_reg_info                  *csid_reg;
+	struct cam_ife_csid_ver2_path_cfg                  *path_cfg;
+	struct cam_ife_csid_cid_data                       *cid_data;
+	struct cam_hw_soc_info                             *soc_info;
+	void __iomem                                       *base;
+	const struct cam_ife_csid_ver2_path_reg_info       *path_reg;
 	uint32_t vcdt_cfg0 = 0, cfg0 = 0, mup_rup_cfg = 0, cfg1 = 0;
 	uint32_t decode_fmt = 0, decode_fmt1 = 0;
 	uint32_t vc, dt, vc1, dt1;
+
+	csid_reg = csid_hw->core_info->csid_reg;
+	path_cfg = (struct cam_ife_csid_ver2_path_cfg *)res->res_priv;
+	if (!path_cfg || (path_cfg->cid >= CAM_IFE_CSID_CID_MAX)) {
+		CAM_ERR(CAM_ISP, "Invalid params: path_cfg: %pK, num_cids: %d",
+			path_cfg, (path_cfg ? (path_cfg->cid) : -1));
+		return;
+	}
+
+	cid_data = &csid_hw->cid_data[path_cfg->cid];
+	soc_info = &csid_hw->hw_info->soc_info;
+	base = soc_info->reg_map[CAM_IFE_CSID_CLC_MEM_BASE_ID].mem_base;
+	path_reg = csid_reg->path_reg[res->res_id];
 
 	cfg0 = cam_io_r_mb(base + path_reg->cfg0_addr);
 	cfg1 = cam_io_r_mb(base + path_reg->cfg1_addr);
@@ -1507,10 +1517,14 @@ static int cam_ife_csid_ver2_ipp_bottom_half(
 	uint32_t                                      err_mask;
 	uint32_t                                      err_type = 0;
 	void    __iomem                              *base;
+	int                                           rc = 0;
 
 	if (!handler_priv || !evt_payload_priv) {
-		CAM_ERR(CAM_ISP, "Invalid params");
-		return -EINVAL;
+		CAM_ERR(CAM_ISP, "Invalid params. evt_payload_priv: %s, handler_priv: %s",
+			CAM_IS_NULL_TO_STR(evt_payload_priv),
+			CAM_IS_NULL_TO_STR(handler_priv));
+		rc = -EINVAL;
+		goto end;
 	}
 
 	payload = evt_payload_priv;
@@ -1521,6 +1535,14 @@ static int cam_ife_csid_ver2_ipp_bottom_half(
 	soc_info = &csid_hw->hw_info->soc_info;
 	base  = soc_info->reg_map[CAM_IFE_CSID_CLC_MEM_BASE_ID].mem_base;
 	path_cfg = (struct cam_ife_csid_ver2_path_cfg *)res->res_priv;
+
+	if (!path_cfg || (path_cfg->irq_reg_idx >= CAM_IFE_CSID_IRQ_REG_MAX)) {
+		CAM_ERR(CAM_ISP, "Invalid params: path_cfg: %pK, irq_reg_idx: %d",
+			path_cfg, (path_cfg ? (path_cfg->irq_reg_idx) : -1));
+		rc = -EINVAL;
+		goto end;
+	}
+
 	irq_status_ipp = payload->irq_reg_val[path_cfg->irq_reg_idx];
 
 	CAM_DBG(CAM_ISP, "CSID[%u] IPP status:0x%x", csid_hw->hw_intf->hw_idx,
@@ -1588,7 +1610,7 @@ end:
 			&csid_hw->path_free_payload_list,
 			&csid_hw->path_payload_lock);
 
-	return 0;
+	return rc;
 }
 
 static int cam_ife_csid_ver2_ppp_bottom_half(
@@ -1607,10 +1629,14 @@ static int cam_ife_csid_ver2_ppp_bottom_half(
 	uint32_t                                      irq_status_ppp;
 	uint32_t                                      err_mask;
 	uint32_t                                      err_type = 0;
+	int                                           rc = 0;
 
 	if (!handler_priv || !evt_payload_priv) {
-		CAM_ERR(CAM_ISP, "Invalid params");
-		return -EINVAL;
+		CAM_ERR(CAM_ISP, "Invalid params. evt_payload_priv: %s, handler_priv: %s",
+			CAM_IS_NULL_TO_STR(evt_payload_priv),
+			CAM_IS_NULL_TO_STR(handler_priv));
+		rc = -EINVAL;
+		goto end;
 	}
 
 	payload = evt_payload_priv;
@@ -1620,6 +1646,13 @@ static int cam_ife_csid_ver2_ppp_bottom_half(
 	soc_info = &csid_hw->hw_info->soc_info;
 	base  = soc_info->reg_map[CAM_IFE_CSID_CLC_MEM_BASE_ID].mem_base;
 	path_cfg = (struct cam_ife_csid_ver2_path_cfg *)res->res_priv;
+
+	if (!path_cfg || (path_cfg->irq_reg_idx >= CAM_IFE_CSID_IRQ_REG_MAX)) {
+		CAM_ERR(CAM_ISP, "Invalid params: path_cfg: %pK, irq_reg_idx: %d",
+			path_cfg, (path_cfg ? (path_cfg->irq_reg_idx) : -1));
+		rc = -EINVAL;
+		goto end;
+	}
 
 	irq_status_ppp = payload->irq_reg_val[path_cfg->irq_reg_idx];
 
@@ -1662,7 +1695,7 @@ end:
 			&csid_hw->path_free_payload_list,
 			&csid_hw->path_payload_lock);
 
-	return 0;
+	return rc;
 }
 
 static int cam_ife_csid_ver2_rdi_bottom_half(
@@ -1683,17 +1716,28 @@ static int cam_ife_csid_ver2_rdi_bottom_half(
 	uint32_t                                      err_type = 0;
 	bool                                          skip_evt_notify = false;
 	struct cam_isp_hw_event_info                  evt_info;
+	int                                           rc = 0;
 
 	if (!handler_priv || !evt_payload_priv) {
-		CAM_ERR(CAM_ISP, "Invalid params");
-		return -EINVAL;
+		CAM_ERR(CAM_ISP, "Invalid params. evt_payload_priv: %s, handler_priv: %s",
+			CAM_IS_NULL_TO_STR(evt_payload_priv),
+			CAM_IS_NULL_TO_STR(handler_priv));
+		rc = -EINVAL;
+		goto end;
 	}
 
+	payload = evt_payload_priv;
 	res   =  handler_priv;
 	hw_info = (struct cam_hw_info *)res->hw_intf->hw_priv;
 	csid_hw = (struct cam_ife_csid_ver2_hw *)hw_info->core_info;
-	payload = evt_payload_priv;
 	path_cfg = (struct cam_ife_csid_ver2_path_cfg *)res->res_priv;
+
+	if (!path_cfg || (path_cfg->irq_reg_idx >= CAM_IFE_CSID_IRQ_REG_MAX)) {
+		CAM_ERR(CAM_ISP, "Invalid params: path_cfg: %pK, irq_reg_idx: %d",
+			path_cfg, (path_cfg ? (path_cfg->irq_reg_idx) : -1));
+		rc = -EINVAL;
+		goto end;
+	}
 
 	evt_info.hw_idx   = csid_hw->hw_intf->hw_idx;
 	evt_info.res_type = CAM_ISP_RESOURCE_PIX_PATH;
@@ -1801,12 +1845,11 @@ static int cam_ife_csid_ver2_rdi_bottom_half(
 				CAM_ISP_HW_EVENT_EPOCH,
 				(void *)&evt_info);
 end:
-
 	cam_ife_csid_ver2_put_evt_payload(csid_hw, &payload,
 			&csid_hw->path_free_payload_list,
 			&csid_hw->path_payload_lock);
 
-	return 0;
+	return rc;
 }
 
 int cam_ife_csid_ver2_get_hw_caps(void *hw_priv,
