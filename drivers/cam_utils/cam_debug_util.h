@@ -14,6 +14,8 @@ extern unsigned long long debug_mdl;
 extern unsigned int debug_type;
 extern unsigned int debug_priority;
 
+#define CAM_IS_NULL_TO_STR(ptr) ((ptr) ? "Non-NULL" : "NULL")
+
 /* Module IDs used for debug logging */
 enum cam_debug_module_id {
 	CAM_CDM,                 /* bit 0 */
