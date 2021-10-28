@@ -5953,9 +5953,9 @@ static int cam_ife_mgr_config_hw(void *hw_mgr_priv,
 				CAM_ERR(CAM_ISP,
 					"config done completion timeout for req_id=%llu ctx_index %d",
 					cfg->request_id, ctx->ctx_index);
-				if (cam_cdm_detect_hang_error(ctx->cdm_handle))
-					cam_cdm_dump_debug_registers(
-						ctx->cdm_handle);
+				if (!cam_cdm_detect_hang_error(ctx->cdm_handle))
+					CAM_ERR(CAM_ISP, "CDM Workqueue delayed");
+
 				rc = -ETIMEDOUT;
 			} else {
 				CAM_DBG(CAM_ISP,
