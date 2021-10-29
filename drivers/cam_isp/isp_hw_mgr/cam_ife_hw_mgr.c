@@ -786,8 +786,9 @@ err:
 }
 
 static int cam_ife_mgr_csid_start_hw(
-	struct cam_ife_hw_mgr_ctx *ctx,
-	uint32_t primary_rdi_csid_res)
+	struct   cam_ife_hw_mgr_ctx *ctx,
+	uint32_t primary_rdi_csid_res,
+	bool     is_internal_start)
 {
 	struct cam_isp_hw_mgr_res      *hw_mgr_res;
 	struct cam_isp_resource_node   *isp_res;
@@ -825,6 +826,7 @@ static int cam_ife_mgr_csid_start_hw(
 			hw_intf =  res[0]->hw_intf;
 			start_args.num_res = cnt;
 			start_args.node_res = res;
+			start_args.is_internal_start = is_internal_start;
 			hw_intf->hw_ops.start(hw_intf->hw_priv, &start_args,
 			    sizeof(start_args));
 		}
@@ -6200,7 +6202,7 @@ static int cam_ife_mgr_stop_hw(void *hw_mgr_priv, void *stop_hw_args)
 	/* Ensure HW layer does not reset any clk data since it's
 	 * internal stream off/resume
 	 */
-	if (stop_isp->internal_trigger)
+	if (stop_isp->is_internal_stop)
 		cam_ife_mgr_finish_clk_bw_update(ctx, 0, true);
 
 	/* check to avoid iterating loop */
@@ -6239,7 +6241,7 @@ static int cam_ife_mgr_stop_hw(void *hw_mgr_priv, void *stop_hw_args)
 	cam_tasklet_stop(ctx->common.tasklet_info);
 
 	/* reset scratch buffer/mup expect INIT again for UMD triggered stop/flush */
-	if (!stop_isp->internal_trigger) {
+	if (!stop_isp->is_internal_stop) {
 		ctx->current_mup = 0;
 		if (ctx->sfe_info.scratch_config)
 			memset(ctx->sfe_info.scratch_config, 0,
@@ -6258,7 +6260,7 @@ static int cam_ife_mgr_stop_hw(void *hw_mgr_priv, void *stop_hw_args)
 			ctx->applied_req_id, ctx->ctx_index);
 
 	/* Reset CDM for KMD internal stop */
-	if (stop_isp->internal_trigger) {
+	if (stop_isp->is_internal_stop) {
 		rc = cam_cdm_reset_hw(ctx->cdm_handle);
 		if (rc) {
 			CAM_WARN(CAM_ISP, "CDM: %u reset failed rc: %d in ctx: %u",
@@ -6416,7 +6418,7 @@ static int cam_ife_mgr_restart_hw(void *start_hw_args)
 
 	CAM_DBG(CAM_ISP, "START CSID HW ... in ctx id:%d", ctx->ctx_index);
 	/* Start the IFE CSID HW devices */
-	cam_ife_mgr_csid_start_hw(ctx, CAM_IFE_PIX_PATH_RES_MAX);
+	cam_ife_mgr_csid_start_hw(ctx, CAM_IFE_PIX_PATH_RES_MAX, false);
 
 	/* Start IFE root node: do nothing */
 	CAM_DBG(CAM_ISP, "Exit...(success)");
@@ -6757,7 +6759,8 @@ start_only:
 	CAM_DBG(CAM_ISP, "START CSID HW ... in ctx id:%d",
 		ctx->ctx_index);
 	/* Start the IFE CSID HW devices */
-	cam_ife_mgr_csid_start_hw(ctx, primary_rdi_csid_res);
+	cam_ife_mgr_csid_start_hw(ctx, primary_rdi_csid_res,
+		start_isp->is_internal_start);
 
 	/* Start IFE root node: do nothing */
 	CAM_DBG(CAM_ISP, "Start success for ctx id:%d", ctx->ctx_index);

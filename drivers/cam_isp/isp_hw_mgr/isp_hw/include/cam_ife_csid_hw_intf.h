@@ -283,6 +283,7 @@ struct cam_csid_hw_stop_args {
 struct cam_csid_hw_start_args {
 	struct cam_isp_resource_node            **node_res;
 	uint32_t                                  num_res;
+	bool                                      is_internal_start;
 };
 
 
