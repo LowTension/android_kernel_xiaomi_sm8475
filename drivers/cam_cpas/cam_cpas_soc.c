@@ -229,6 +229,8 @@ static int cam_cpas_parse_node_tree(struct cam_cpas *cpas_core,
 		if (!level_node)
 			continue;
 
+		CAM_DBG(CAM_CPAS, "Parsing level %d nodes", level_idx);
+
 		camnoc_max_needed = of_property_read_bool(level_node,
 			"camnoc-max-needed");
 		for_each_available_child_of_node(level_node, curr_node) {
@@ -245,6 +247,9 @@ static int cam_cpas_parse_node_tree(struct cam_cpas *cpas_core,
 				CAM_ERR(CAM_CPAS, "Node index not found");
 				return rc;
 			}
+
+			CAM_DBG(CAM_CPAS, "Parsing Node with cell index %d",
+					curr_node_ptr->cell_idx);
 
 			if (curr_node_ptr->cell_idx >=
 				CAM_CPAS_MAX_TREE_NODES) {

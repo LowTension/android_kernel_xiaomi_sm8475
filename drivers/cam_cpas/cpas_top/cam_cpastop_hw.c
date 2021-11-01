@@ -738,6 +738,8 @@ static int cam_cpastop_print_poweron_settings(struct cam_hw_info *cpas_hw)
 			cam_cpas_util_reg_read(cpas_hw, CAM_CPAS_REG_CAMNOC,
 				&camnoc_info->specific[i].flag_out_set0_low);
 			cam_cpas_util_reg_read(cpas_hw, CAM_CPAS_REG_CAMNOC,
+				&camnoc_info->specific[i].dynattr_mainctl);
+			cam_cpas_util_reg_read(cpas_hw, CAM_CPAS_REG_CAMNOC,
 				&camnoc_info->specific[i].qosgen_mainctl);
 			cam_cpas_util_reg_read(cpas_hw, CAM_CPAS_REG_CAMNOC,
 				&camnoc_info->specific[i].qosgen_shaping_low);
@@ -776,6 +778,8 @@ static int cam_cpastop_poweron(struct cam_hw_info *cpas_hw)
 				&camnoc_info->specific[i].ubwc_ctl);
 			cam_cpas_util_reg_update(cpas_hw, CAM_CPAS_REG_CAMNOC,
 				&camnoc_info->specific[i].flag_out_set0_low);
+			cam_cpas_util_reg_update(cpas_hw, CAM_CPAS_REG_CAMNOC,
+				&camnoc_info->specific[i].dynattr_mainctl);
 			cam_cpas_util_reg_update(cpas_hw, CAM_CPAS_REG_CAMNOC,
 				&camnoc_info->specific[i].qosgen_mainctl);
 			cam_cpas_util_reg_update(cpas_hw, CAM_CPAS_REG_CAMNOC,
