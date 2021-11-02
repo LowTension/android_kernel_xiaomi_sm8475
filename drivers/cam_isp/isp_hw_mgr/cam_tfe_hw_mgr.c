@@ -374,6 +374,7 @@ static void cam_tfe_hw_mgr_stop_hw_res(
 				CAM_ISP_HW_CMD_STOP_BUS_ERR_IRQ,
 				&dummy_args, sizeof(dummy_args));
 		}
+		isp_hw_res->hw_res[i]->rdi_only_ctx = false;
 	}
 }
 
@@ -601,6 +602,9 @@ static int cam_tfe_mgr_csid_stop_hw(
 		stop.node_res = stop_res;
 		stop.stop_cmd = stop_cmd;
 		hw_intf->hw_ops.stop(hw_intf->hw_priv, &stop, sizeof(stop));
+
+		for (i = 0; i < cnt; i++)
+			stop_res[i]->rdi_only_ctx = false;
 	}
 
 	return 0;
