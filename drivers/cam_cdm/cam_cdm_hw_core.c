@@ -961,7 +961,7 @@ int cam_hw_cdm_submit_bl(struct cam_hw_info *cdm_hw,
 		dma_addr_t hw_vaddr_ptr = 0;
 		size_t len = 0;
 
-		if ((!cdm_cmd->cmd[i].len) && (cdm_cmd->cmd[i].len > CAM_CDM_MAX_BL_LENGTH)) {
+		if ((!cdm_cmd->cmd[i].len) || (cdm_cmd->cmd[i].len > CAM_CDM_MAX_BL_LENGTH)) {
 			CAM_ERR(CAM_CDM,
 				"cmd len=: %d is invalid_ent: %d, num_cmd_ent: %d",
 				cdm_cmd->cmd[i].len, i,
@@ -1312,11 +1312,7 @@ static void cam_hw_cdm_work(struct work_struct *work)
 		mutex_lock(&cdm_hw->hw_mutex);
 		for (i = 0; i < core->offsets->reg_data->num_bl_fifo; i++)
 			mutex_lock(&core->bl_fifo[i].fifo_lock);
-		/*
-		 * First pause CDM, If it fails still proceed
-		 * to dump debug info
-		 */
-		cam_hw_cdm_pause_core(cdm_hw, true);
+
 		cam_hw_cdm_dump_core_debug_registers(cdm_hw, true);
 
 		if (payload->irq_status &
@@ -1341,8 +1337,7 @@ static void cam_hw_cdm_work(struct work_struct *work)
 				kfree(node);
 			}
 		}
-		/* Resume CDM back */
-		cam_hw_cdm_pause_core(cdm_hw, false);
+
 		for (i = 0; i < core->offsets->reg_data->num_bl_fifo; i++)
 			mutex_unlock(&core->bl_fifo[i].fifo_lock);
 
