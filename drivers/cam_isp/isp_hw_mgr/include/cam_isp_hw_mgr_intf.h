@@ -68,6 +68,30 @@ enum cam_isp_hw_event_type {
 };
 
 /**
+ * cam_isp_hw_evt_type_to_string() - convert cam_isp_hw_event_type to string for printing logs
+ */
+static inline const char *cam_isp_hw_evt_type_to_string(
+	enum cam_isp_hw_event_type evt_type)
+{
+	switch (evt_type) {
+	case CAM_ISP_HW_EVENT_ERROR:
+		return "ERROR";
+	case CAM_ISP_HW_EVENT_SOF:
+		return "SOF";
+	case CAM_ISP_HW_EVENT_REG_UPDATE:
+		return "REG_UPDATE";
+	case CAM_ISP_HW_EVENT_EPOCH:
+		return "EPOCH";
+	case CAM_ISP_HW_EVENT_EOF:
+		return "EOF";
+	case CAM_ISP_HW_EVENT_DONE:
+		return "BUF_DONE";
+	default:
+		return "INVALID_EVT";
+	}
+}
+
+/**
  *  enum cam_isp_hw_secondary-event_type - Collection of the ISP hardware secondary events
  */
 enum cam_isp_hw_secondary_event_type {
