@@ -141,6 +141,7 @@ struct cam_sfe_bus_wr_wm_resource_data {
 	bool                 init_cfg_done;
 	bool                 hfr_cfg_done;
 	bool                 use_wm_pack;
+	bool                 en_line_done;
 };
 
 struct cam_sfe_bus_wr_comp_grp_data {
@@ -863,8 +864,7 @@ static int cam_sfe_bus_start_wm(struct cam_isp_resource_node *wm_res)
 		common_data->mem_base + rsrc_data->hw_regs->packer_cfg);
 
 	/* configure line_done_cfg for RDI0-2 */
-	if ((rsrc_data->index >= 8) &&
-		(rsrc_data->index <= 10)) {
+	if (rsrc_data->en_line_done) {
 		CAM_DBG(CAM_SFE, "configure line_done_cfg 0x%x for WM: %d",
 			rsrc_data->common_data->line_done_cfg,
 			rsrc_data->index);
@@ -944,7 +944,8 @@ static int cam_sfe_bus_init_wm_resource(uint32_t index,
 	struct cam_sfe_bus_wr_priv      *bus_priv,
 	struct cam_sfe_bus_wr_hw_info   *hw_info,
 	struct cam_isp_resource_node    *wm_res,
-	uint8_t                         *wm_name)
+	uint8_t                         *wm_name,
+	bool                             en_line_done)
 {
 	struct cam_sfe_bus_wr_wm_resource_data *rsrc_data;
 
@@ -957,6 +958,7 @@ static int cam_sfe_bus_init_wm_resource(uint32_t index,
 	wm_res->res_priv = rsrc_data;
 
 	rsrc_data->index = index;
+	rsrc_data->en_line_done = en_line_done;
 	rsrc_data->hw_regs = &hw_info->bus_client_reg[index];
 	rsrc_data->common_data = &bus_priv->common_data;
 
@@ -1943,7 +1945,8 @@ static int cam_sfe_bus_init_sfe_out_resource(
 			hw_info->sfe_out_hw_info[index].wm_idx,
 			bus_priv, hw_info,
 			&rsrc_data->wm_res[i],
-			hw_info->sfe_out_hw_info[index].name);
+			hw_info->sfe_out_hw_info[index].name,
+			hw_info->sfe_out_hw_info[index].en_line_done);
 	if (rc < 0) {
 		CAM_ERR(CAM_SFE, "SFE:%d init WM:%d failed rc:%d",
 			bus_priv->common_data.core_index, i, rc);
