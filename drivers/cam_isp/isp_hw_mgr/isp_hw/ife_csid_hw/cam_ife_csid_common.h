@@ -358,7 +358,7 @@ int cam_ife_csid_is_pix_res_format_supported(
 
 int cam_ife_csid_get_format_rdi(
 	uint32_t in_format, uint32_t out_format,
-	struct cam_ife_csid_path_format *path_format, bool rpp,
+	struct cam_ife_csid_path_format *path_format, bool mipi_pack_supported,
 	bool mipi_unpacked);
 
 int cam_ife_csid_get_format_ipp_ppp(
