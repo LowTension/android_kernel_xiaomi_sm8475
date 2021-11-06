@@ -301,6 +301,20 @@ int cam_req_mgr_ordered_list_cmp(void *priv,
 		list_entry(head_2, struct cam_subdev, list));
 }
 
+int cam_compat_util_get_dmabuf_va(struct dma_buf *dmabuf, uintptr_t *vaddr)
+{
+	struct dma_buf_map mapping;
+	int error_code = dma_buf_vmap(dmabuf, &mapping);
+
+	if (error_code)
+		*vaddr = 0;
+	else
+		*vaddr = (mapping.is_iomem) ?
+			(uintptr_t)mapping.vaddr_iomem : (uintptr_t)mapping.vaddr;
+
+	return error_code;
+}
+
 int cam_get_ddr_type(void)
 {
 	/* We assume all chipsets running kernel version 5.15+
@@ -314,6 +328,21 @@ int cam_req_mgr_ordered_list_cmp(void *priv,
 {
 	return cam_subdev_list_cmp(list_entry(head_1, struct cam_subdev, list),
 		list_entry(head_2, struct cam_subdev, list));
+}
+
+int cam_compat_util_get_dmabuf_va(struct dma_buf *dmabuf, uintptr_t *vaddr)
+{
+	int error_code = 0;
+	void *addr = dma_buf_vmap(dmabuf);
+
+	if (!addr) {
+		*vaddr = 0;
+		error_code = -ENOSPC;
+	} else {
+		*vaddr = (uintptr_t)addr;
+	}
+
+	return error_code;
 }
 
 int cam_get_ddr_type(void)
