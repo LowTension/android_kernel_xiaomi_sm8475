@@ -14,6 +14,7 @@
 #include <media/cam_sensor.h>
 #define TPG_HW_VERSION_1_0 0x10000000
 #define TPG_HW_VERSION_1_1 0x10000001
+#define TPG_HW_VERSION_1_2 0x10000002
 #define TPG_HW_VERSION_1_3 0x10000003
 
 
