@@ -2925,21 +2925,14 @@ static int cam_cpas_util_create_debugfs(struct cam_cpas *cpas_core)
 	/* Store parent inode for cleanup in caller */
 	cpas_core->dentry = dbgfileptr;
 
-	dbgfileptr = debugfs_create_bool("ahb_bus_scaling_disable", 0644,
+	debugfs_create_bool("ahb_bus_scaling_disable", 0644,
 		cpas_core->dentry, &cpas_core->ahb_bus_scaling_disable);
 
-	dbgfileptr = debugfs_create_bool("full_state_dump", 0644,
+	debugfs_create_bool("full_state_dump", 0644,
 		cpas_core->dentry, &cpas_core->full_state_dump);
 
-	dbgfileptr = debugfs_create_bool("smart_qos_dump", 0644,
+	debugfs_create_bool("smart_qos_dump", 0644,
 		cpas_core->dentry, &cpas_core->smart_qos_dump);
-
-	if (IS_ERR(dbgfileptr)) {
-		if (PTR_ERR(dbgfileptr) == -ENODEV)
-			CAM_WARN(CAM_CPAS, "DebugFS not enabled in kernel!");
-		else
-			rc = PTR_ERR(dbgfileptr);
-	}
 end:
 	return rc;
 }

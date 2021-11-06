@@ -1077,14 +1077,9 @@ static int cam_sync_create_debugfs(void)
 	/* Store parent inode for cleanup in caller */
 	sync_dev->dentry = dbgfileptr;
 
-	dbgfileptr = debugfs_create_bool("trigger_cb_without_switch", 0644,
+	debugfs_create_bool("trigger_cb_without_switch", 0644,
 		sync_dev->dentry, &trigger_cb_without_switch);
-	if (IS_ERR(dbgfileptr)) {
-		if (PTR_ERR(dbgfileptr) == -ENODEV)
-			CAM_WARN(CAM_SYNC, "DebugFS not enabled in kernel!");
-		else
-			rc = PTR_ERR(dbgfileptr);
-	}
+
 end:
 	return rc;
 }
