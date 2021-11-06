@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2014-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2021, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CAM_COMPAT_H_
@@ -9,36 +9,23 @@
 #include <linux/version.h>
 #include <linux/platform_device.h>
 #include <linux/component.h>
+#include <linux/iommu.h>
+#include <linux/qcom_scm.h>
 
 #include "cam_csiphy_dev.h"
 #include "cam_cpastop_hw.h"
 #include "cam_smmu_api.h"
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 7, 0)
-
-#define VFL_TYPE_VIDEO VFL_TYPE_GRABBER
-
-#endif
-
-#if KERNEL_VERSION(5, 4, 0) <= LINUX_VERSION_CODE
-
-#include <linux/msm_ion.h>
-#include <linux/iommu.h>
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0)
 #include <linux/ion.h>
-#include <linux/qcom_scm.h>
-
-#else
-
 #include <linux/msm_ion.h>
-#include <linux/ion_kernel.h>
-#include <soc/qcom/scm.h>
-
+#define VFL_TYPE_VIDEO VFL_TYPE_GRABBER
 #endif
 
-#if KERNEL_VERSION(5, 10, 0) <= LINUX_VERSION_CODE
-
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0) && \
+	LINUX_VERSION_CODE < KERNEL_VERSION(5, 15, 0)
+#include <soc/qcom/of_common.h>
 #include <linux/qcom-dma-mapping.h>
-
 #endif
 
 struct cam_fw_alloc_info {
@@ -58,5 +45,6 @@ int cam_csiphy_notify_secure_mode(struct csiphy_device *csiphy_dev,
 void cam_free_clear(const void *);
 void cam_check_iommu_faults(struct iommu_domain *domain,
 	struct cam_smmu_pf_info *pf_info);
+int cam_get_ddr_type(void);
 
 #endif /* _CAM_COMPAT_H_ */

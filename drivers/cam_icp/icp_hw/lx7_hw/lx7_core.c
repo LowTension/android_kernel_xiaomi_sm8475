@@ -20,6 +20,7 @@
 #include "lx7_reg.h"
 #include "lx7_soc.h"
 #include "cam_common_util.h"
+#include "cam_compat.h"
 
 #define TZ_STATE_SUSPEND 0
 #define TZ_STATE_RESUME  1
@@ -45,7 +46,7 @@ static int cam_lx7_ubwc_configure(struct cam_hw_soc_info *soc_info)
 
 	soc_priv = soc_info->soc_private;
 
-	ddr_type = of_fdt_get_ddrtype();
+	ddr_type = cam_get_ddr_type();
 	if (ddr_type == DDR_TYPE_LPDDR5 || ddr_type == DDR_TYPE_LPDDR5X)
 		i = 1;
 
