@@ -138,6 +138,7 @@ struct cam_sfe_bus_sfe_out_hw_info {
 	uint32_t                            mid[CAM_SFE_BUS_MAX_MID_PER_PORT];
 	uint32_t                            num_wm;
 	uint32_t                            wm_idx;
+	uint32_t                            en_line_done;
 	uint8_t                            *name;
 };
 

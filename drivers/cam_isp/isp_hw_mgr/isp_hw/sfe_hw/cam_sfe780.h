@@ -1295,6 +1295,7 @@ static struct cam_sfe_bus_wr_hw_info sfe780_bus_wr_hw_info = {
 			.mid[0]        = 45,
 			.num_wm        = 1,
 			.wm_idx        = 11,
+			.en_line_done  = 1,
 			.name          = "RDI_0",
 		},
 		{
@@ -1305,6 +1306,7 @@ static struct cam_sfe_bus_wr_hw_info sfe780_bus_wr_hw_info = {
 			.mid[0]        = 46,
 			.num_wm        = 1,
 			.wm_idx        = 12,
+			.en_line_done  = 1,
 			.name          = "RDI_1",
 		},
 		{
@@ -1315,6 +1317,7 @@ static struct cam_sfe_bus_wr_hw_info sfe780_bus_wr_hw_info = {
 			.mid[0]        = 47,
 			.num_wm        = 1,
 			.wm_idx        = 13,
+			.en_line_done  = 1,
 			.name          = "RDI_2",
 		},
 		{
