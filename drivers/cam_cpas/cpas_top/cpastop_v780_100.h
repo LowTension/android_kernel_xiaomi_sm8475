@@ -1141,7 +1141,7 @@ static struct cam_camnoc_specific
 	},
 	{
 		.port_name = "ICP_RD_WR",
-		.enable = true,
+		.enable = false,
 		.dynattr_mainctl = {
 			.enable = true,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
@@ -1150,7 +1150,7 @@ static struct cam_camnoc_specific
 			.value = 0x10,
 		},
 		.qosgen_mainctl = {
-			.enable = true,
+			.enable = false,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
 			.offset = 0x5608, /* ICP_RD_WR : NOC_XM_ICP_QOSGEN_MAINCTL */
@@ -1213,4 +1213,3 @@ static struct cam_cpas_camnoc_qchannel cam780_cpas100_qchannel_info = {
 	.qchannel_status = 0x60,
 };
 #endif /* _CPASTOP_V780_100_H_ */
-
