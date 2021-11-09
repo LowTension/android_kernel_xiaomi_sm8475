@@ -99,6 +99,82 @@ static int cam_vfe_top_ver4_get_path_port_map(struct cam_vfe_top_ver4_priv *top_
 	return 0;
 }
 
+static int cam_vfe_top_ver4_pdaf_lcr_config(struct cam_vfe_top_ver4_priv *top_priv,
+	void *cmd_args, uint32_t arg_size)
+{
+	struct cam_vfe_top_ver4_hw_info  *hw_info;
+	struct cam_isp_hw_get_cmd_update *cdm_args = NULL;
+	struct cam_cdm_utils_ops         *cdm_util_ops = NULL;
+	uint32_t                          i;
+	uint32_t                          reg_val_idx = 0;
+	uint32_t                          num_reg_vals;
+	uint32_t                          reg_val_pair[4];
+	struct cam_isp_lcr_rdi_cfg_args  *cfg_args;
+	size_t                            size;
+
+	if (!cmd_args || !top_priv) {
+		CAM_ERR(CAM_ISP, "Error, Invalid args");
+		return -EINVAL;
+	}
+
+	cdm_args = (struct cam_isp_hw_get_cmd_update *)cmd_args;
+	if (!cdm_args->res) {
+		CAM_ERR(CAM_ISP, "Error, Invalid res");
+		return -EINVAL;
+	}
+
+	hw_info = top_priv->common_data.hw_info;
+	if (!hw_info->num_pdaf_lcr_res || !hw_info->pdaf_lcr_res_mask) {
+		CAM_DBG(CAM_ISP, "PDAF LCR is not supported");
+		return 0;
+	}
+
+	cfg_args = (struct cam_isp_lcr_rdi_cfg_args *)cdm_args->data;
+	cdm_util_ops =
+		(struct cam_cdm_utils_ops *)cdm_args->res->cdm_ops;
+	if (!cdm_util_ops) {
+		CAM_ERR(CAM_ISP, "Invalid CDM ops");
+		return -EINVAL;
+	}
+
+	for (i = 0; i < hw_info->num_pdaf_lcr_res; i++)
+		if (cdm_args->res->res_id ==
+			hw_info->pdaf_lcr_res_mask[i].res_id)
+			break;
+
+	if (i == hw_info->num_pdaf_lcr_res) {
+		CAM_ERR(CAM_ISP, "Res :%d is not supported for mux",
+			cfg_args->rdi_lcr_cfg->res_id);
+		return -EINVAL;
+	}
+
+	if (cfg_args->is_init)
+		num_reg_vals = 2;
+	else
+		num_reg_vals = 1;
+
+	size = cdm_util_ops->cdm_required_size_reg_random(num_reg_vals);
+	/* since cdm returns dwords, we need to convert it into bytes */
+	if ((size * 4) > cdm_args->cmd.size) {
+		CAM_ERR(CAM_ISP, "buf size:%d is not sufficient, expected: %d",
+			cdm_args->cmd.size, (size*4));
+		return -EINVAL;
+	}
+
+	if (cfg_args->is_init) {
+		reg_val_pair[reg_val_idx++] = hw_info->common_reg->pdaf_input_cfg_1;
+		reg_val_pair[reg_val_idx++] = 0;
+	}
+
+	reg_val_pair[reg_val_idx++] = hw_info->common_reg->pdaf_input_cfg_0;
+	reg_val_pair[reg_val_idx++] = hw_info->pdaf_lcr_res_mask[i].val;
+	cdm_util_ops->cdm_write_regrandom(cdm_args->cmd.cmd_buf_addr,
+		num_reg_vals, reg_val_pair);
+	cdm_args->cmd.used_bytes = size * 4;
+
+	return 0;
+}
+
 static int cam_vfe_top_ver4_mux_get_base(struct cam_vfe_top_ver4_priv *top_priv,
 	void *cmd_args, uint32_t arg_size)
 {
@@ -106,6 +182,7 @@ static int cam_vfe_top_ver4_mux_get_base(struct cam_vfe_top_ver4_priv *top_priv,
 	uint32_t                          mem_base = 0;
 	struct cam_isp_hw_get_cmd_update *cdm_args  = cmd_args;
 	struct cam_cdm_utils_ops         *cdm_util_ops = NULL;
+	struct cam_vfe_soc_private       *soc_private;
 
 	if (arg_size != sizeof(struct cam_isp_hw_get_cmd_update)) {
 		CAM_ERR(CAM_ISP, "Error, Invalid cmd size");
@@ -115,6 +192,12 @@ static int cam_vfe_top_ver4_mux_get_base(struct cam_vfe_top_ver4_priv *top_priv,
 	if (!cdm_args || !cdm_args->res || !top_priv ||
 		!top_priv->top_common.soc_info) {
 		CAM_ERR(CAM_ISP, "Error, Invalid args");
+		return -EINVAL;
+	}
+
+	soc_private = top_priv->top_common.soc_info->soc_private;
+	if (!soc_private) {
+		CAM_ERR(CAM_ISP, "soc_private is null");
 		return -EINVAL;
 	}
 
@@ -136,16 +219,20 @@ static int cam_vfe_top_ver4_mux_get_base(struct cam_vfe_top_ver4_priv *top_priv,
 
 	mem_base = CAM_SOC_GET_REG_MAP_CAM_BASE(
 		top_priv->top_common.soc_info, VFE_CORE_BASE_IDX);
-	if (cdm_args->cdm_id == CAM_CDM_RT)
-		mem_base -= CAM_SOC_GET_REG_MAP_CAM_BASE(
-			top_priv->top_common.soc_info, RT_BASE_IDX);
+	if (cdm_args->cdm_id == CAM_CDM_RT) {
+		if (!soc_private->rt_wrapper_base) {
+			CAM_ERR(CAM_ISP, "rt_wrapper_base_addr is null");
+			return -EINVAL;
+		}
+
+		mem_base -= soc_private->rt_wrapper_base;
+	}
 
 	CAM_DBG(CAM_ISP, "core %d mem_base 0x%x, cdm_id: %u",
 		top_priv->top_common.soc_info->index, mem_base,
 		cdm_args->cdm_id);
 
-	cdm_util_ops->cdm_write_changebase(
-		cdm_args->cmd.cmd_buf_addr, mem_base);
+	cdm_util_ops->cdm_write_changebase(cdm_args->cmd.cmd_buf_addr, mem_base);
 	cdm_args->cmd.used_bytes = (size * 4);
 
 	return 0;
@@ -788,7 +875,7 @@ int cam_vfe_top_ver4_stop(void *device_priv,
 		for (i = 0; i < top_priv->top_common.num_mux; i++) {
 			if (top_priv->top_common.mux_rsrc[i].res_id ==
 				mux_res->res_id) {
-				if (!top_priv->top_common.skip_clk_data_rst)
+				if (!top_priv->top_common.skip_data_rst_on_stop)
 					top_priv->top_common.req_clk_rate[i] = 0;
 				memset(&top_priv->top_common.req_axi_vote[i],
 					0, sizeof(struct cam_axi_vote));
@@ -886,6 +973,10 @@ int cam_vfe_top_ver4_process_cmd(void *device_priv, uint32_t cmd_type,
 		break;
 	case CAM_ISP_HW_CMD_INIT_CONFIG_UPDATE:
 		rc = cam_vfe_init_config_update(cmd_args, arg_size);
+		break;
+	case CAM_ISP_HW_CMD_RDI_LCR_CFG:
+		rc = cam_vfe_top_ver4_pdaf_lcr_config(top_priv, cmd_args,
+			arg_size);
 		break;
 	default:
 		rc = -EINVAL;
@@ -1009,6 +1100,7 @@ static int cam_vfe_handle_irq_bottom_half(void *handler_priv,
 	struct cam_vfe_mux_ver4_data *vfe_priv;
 	struct cam_vfe_top_irq_evt_payload *payload;
 	struct cam_isp_hw_event_info evt_info;
+	struct cam_isp_hw_error_event_info err_evt_info;
 	uint32_t irq_status[CAM_IFE_IRQ_REGISTERS_MAX] = {0};
 	struct timespec64 ts;
 	int i = 0;
@@ -1112,6 +1204,8 @@ static int cam_vfe_handle_irq_bottom_half(void *handler_priv,
 		& vfe_priv->reg_data->error_irq_mask) {
 		CAM_ERR(CAM_ISP, "VFE:%d Error", evt_info.hw_idx);
 
+		err_evt_info.err_type = CAM_VFE_IRQ_STATUS_VIOLATION;
+		evt_info.event_data = (void *)&err_evt_info;
 		ktime_get_boottime_ts64(&ts);
 		CAM_INFO(CAM_ISP,
 			"current monotonic time stamp seconds %lld:%lld",
@@ -1357,8 +1451,9 @@ static int cam_vfe_resource_stop(
 	struct cam_isp_resource_node *vfe_res)
 {
 	struct cam_vfe_mux_ver4_data        *vfe_priv;
-	int                                        rc = 0;
-	uint32_t                                   val = 0;
+	struct cam_vfe_top_ver4_priv        *top_priv;
+	int                                  rc = 0;
+	uint32_t                             val = 0;
 
 	if (!vfe_res) {
 		CAM_ERR(CAM_ISP, "Error, Invalid input arguments");
@@ -1370,6 +1465,7 @@ static int cam_vfe_resource_stop(
 		return 0;
 
 	vfe_priv = (struct cam_vfe_mux_ver4_data *)vfe_res->res_priv;
+	top_priv = vfe_priv->top_priv;
 
 	if (vfe_priv->is_lite || !vfe_priv->is_pixel_path)
 		goto skip_core_decfg;
@@ -1415,7 +1511,10 @@ skip_core_decfg:
 		vfe_priv->irq_err_handle = 0;
 	}
 
-	vfe_priv->epoch_factor = 0;
+	/* Skip epoch factor reset for internal recovery */
+	if (!top_priv->top_common.skip_data_rst_on_stop)
+		vfe_priv->epoch_factor = 0;
+
 	CAM_DBG(CAM_ISP, "VFE:%d Res: %s Stopped",
 		vfe_res->hw_intf->hw_idx,
 		vfe_res->res_name);

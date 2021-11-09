@@ -142,6 +142,7 @@ struct cam_vfe_hw_vfe_bus_rd_acquire_args {
  * @dual_slave_core:         If Master and Slave exists, HW Index of Slave
  * @cdm_ops:                 CDM operations
  * @disable_ubwc_comp:       Disable UBWC compression
+ * @use_wm_pack:             Use WM Packing
  */
 struct cam_vfe_hw_vfe_out_acquire_args {
 	struct cam_isp_resource_node         *rsrc_node;
@@ -153,6 +154,7 @@ struct cam_vfe_hw_vfe_out_acquire_args {
 	uint32_t                              dual_slave_core;
 	struct cam_cdm_utils_ops             *cdm_ops;
 	bool                                  disable_ubwc_comp;
+	bool                                  use_wm_pack;
 };
 
 /*

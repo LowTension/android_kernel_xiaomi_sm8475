@@ -11,7 +11,6 @@
 #include "cam_cpas_api.h"
 
 #define SFE_CORE_BASE_IDX           0
-#define SFE_RT_CDM_BASE_IDX         1
 #define CAM_SFE_HW_NUM_MAX          2
 
 enum cam_sfe_core_id {
@@ -307,6 +306,7 @@ struct cam_sfe_hw_sfe_in_acquire_args {
  * @split_id:                In case of Dual SFE, this is Left or Right.
  * @is_master:               In case of Dual SFE, this is Master or Slave.
  * @cdm_ops:                 CDM operations
+ * @use_wm_pack:             Flag to indicalte packing at WM side
  */
 struct cam_sfe_hw_sfe_out_acquire_args {
 	struct cam_isp_resource_node         *rsrc_node;
@@ -316,6 +316,7 @@ struct cam_sfe_hw_sfe_out_acquire_args {
 	enum cam_isp_hw_split_id              split_id;
 	uint32_t                              is_master;
 	struct cam_cdm_utils_ops             *cdm_ops;
+	bool                                  use_wm_pack;
 };
 
 /*

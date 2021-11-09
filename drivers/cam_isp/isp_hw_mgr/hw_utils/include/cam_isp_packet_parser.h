@@ -14,9 +14,10 @@
 #include "cam_packet_util.h"
 #include "cam_cdm_intf_api.h"
 
-/* enum cam_isp_cdm_bl_type - isp cdm packet type*/
+/* enum cam_isp_cdm_bl_type - isp cdm packet type */
 enum cam_isp_cdm_bl_type {
 	CAM_ISP_UNUSED_BL,
+	CAM_ISP_COMMON_CFG_BL,
 	CAM_ISP_IQ_BL,
 	CAM_ISP_IOCFG_BL,
 	CAM_ISP_BL_MAX,

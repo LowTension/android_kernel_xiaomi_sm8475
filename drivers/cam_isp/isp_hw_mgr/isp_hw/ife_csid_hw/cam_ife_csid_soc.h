@@ -16,12 +16,14 @@
  * @cpas_handle:             Handle returned on registering with CPAS driver.
  *                           This handle is used for all further interface
  *                           with CPAS.
+ * @rt_wrapper_base:        Base address of the RT-Wrapper if the hw is in rt-wrapper
  * @is_ife_csid_lite:        Flag to indicate Whether a full csid or a Lite csid
  * @max_width_enabled:       Flag to enable max width restriction
  * @max_width:               Maxinum allowed width
  */
 struct cam_csid_soc_private {
 	uint32_t cpas_handle;
+	uint32_t rt_wrapper_base;
 	bool     is_ife_csid_lite;
 	bool     max_width_enabled;
 	uint32_t max_width;

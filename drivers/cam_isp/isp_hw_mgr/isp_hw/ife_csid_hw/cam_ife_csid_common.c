@@ -86,6 +86,8 @@ int cam_ife_csid_is_pix_res_format_supported(
 	case CAM_FORMAT_DPCM_14_8_14:
 	case CAM_FORMAT_DPCM_14_10_14:
 	case CAM_FORMAT_DPCM_12_10_12:
+	case CAM_FORMAT_YUV422:
+	case CAM_FORMAT_YUV422_10:
 		rc = 0;
 		break;
 	default:
@@ -96,7 +98,8 @@ int cam_ife_csid_is_pix_res_format_supported(
 
 int cam_ife_csid_get_format_rdi(
 	uint32_t in_format, uint32_t out_format,
-	struct cam_ife_csid_path_format *path_format, bool rpp)
+	struct cam_ife_csid_path_format *path_format, bool rpp,
+	bool mipi_unpacked)
 {
 	int rc = 0;
 
@@ -109,10 +112,17 @@ int cam_ife_csid_get_format_rdi(
 				path_format->decode_fmt = 0x0;
 				path_format->packing_fmt = 0x1;
 			}
+
+			if (mipi_unpacked) {
+				path_format->decode_fmt = 0x0;
+				path_format->packing_fmt = 0x0;
+				path_format->plain_fmt = 0x0;
+			}
 			break;
 		case CAM_FORMAT_PLAIN8:
 			path_format->decode_fmt = 0x0;
 			path_format->plain_fmt = 0x0;
+			path_format->packing_fmt = 0;
 			break;
 		default:
 			rc = -EINVAL;
@@ -129,9 +139,16 @@ int cam_ife_csid_get_format_rdi(
 				path_format->decode_fmt = 0x1;
 				path_format->packing_fmt = 0x1;
 			}
+
+			if (mipi_unpacked) {
+				path_format->decode_fmt = 0x1;
+				path_format->packing_fmt = 0x0;
+				path_format->plain_fmt = 0x0;
+			}
 			break;
 		case CAM_FORMAT_PLAIN8:
 			path_format->decode_fmt = 0x1;
+			path_format->packing_fmt = 0;
 			path_format->plain_fmt = 0x0;
 			break;
 		default:
@@ -149,10 +166,17 @@ int cam_ife_csid_get_format_rdi(
 				path_format->decode_fmt = 0x2;
 				path_format->packing_fmt = 0x1;
 			}
+
+			if (mipi_unpacked) {
+				path_format->decode_fmt = 0x2;
+				path_format->packing_fmt = 0x0;
+				path_format->plain_fmt = 0x1;
+			}
 			break;
 		case CAM_FORMAT_PLAIN16_10:
 			path_format->decode_fmt = 0x2;
 			path_format->plain_fmt = 0x1;
+			path_format->packing_fmt = 0;
 			break;
 		default:
 			rc = -EINVAL;
@@ -168,10 +192,17 @@ int cam_ife_csid_get_format_rdi(
 				path_format->decode_fmt = 0x3;
 				path_format->packing_fmt = 0x1;
 			}
+
+			if (mipi_unpacked) {
+				path_format->decode_fmt = 0x3;
+				path_format->packing_fmt = 0x0;
+				path_format->plain_fmt = 0x1;
+			}
 			break;
 		case CAM_FORMAT_PLAIN16_12:
 			path_format->decode_fmt = 0x3;
 			path_format->plain_fmt = 0x1;
+			path_format->packing_fmt = 0;
 			break;
 		default:
 			rc = -EINVAL;
@@ -187,10 +218,17 @@ int cam_ife_csid_get_format_rdi(
 				path_format->decode_fmt = 0x4;
 				path_format->packing_fmt = 0x1;
 			}
+
+			if (mipi_unpacked) {
+				path_format->decode_fmt = 0x4;
+				path_format->packing_fmt = 0x0;
+				path_format->plain_fmt = 0x1;
+			}
 			break;
 		case CAM_FORMAT_PLAIN16_14:
 			path_format->decode_fmt = 0x4;
 			path_format->plain_fmt = 0x1;
+			path_format->packing_fmt = 0;
 			break;
 		default:
 			rc = -EINVAL;
@@ -206,10 +244,17 @@ int cam_ife_csid_get_format_rdi(
 				path_format->decode_fmt = 0x5;
 				path_format->packing_fmt = 0x1;
 			}
+
+			if (mipi_unpacked) {
+				path_format->decode_fmt = 0x5;
+				path_format->packing_fmt = 0x0;
+				path_format->plain_fmt = 0x1;
+			}
 			break;
 		case CAM_FORMAT_PLAIN16_16:
 			path_format->decode_fmt = 0x5;
 			path_format->plain_fmt = 0x1;
+			path_format->packing_fmt = 0;
 			break;
 		default:
 			rc = -EINVAL;
@@ -225,10 +270,17 @@ int cam_ife_csid_get_format_rdi(
 				path_format->decode_fmt = 0x6;
 				path_format->packing_fmt = 0x1;
 			}
+
+			if (mipi_unpacked) {
+				path_format->decode_fmt = 0x6;
+				path_format->packing_fmt = 0x0;
+				path_format->plain_fmt = 0x2;
+			}
 			break;
 		case CAM_FORMAT_PLAIN32_20:
 			path_format->decode_fmt = 0x6;
 			path_format->plain_fmt = 0x2;
+			path_format->packing_fmt = 0;
 			break;
 		default:
 			rc = -EINVAL;
@@ -239,30 +291,37 @@ int cam_ife_csid_get_format_rdi(
 	case CAM_FORMAT_DPCM_10_6_10:
 		path_format->decode_fmt  = 0x7;
 		path_format->plain_fmt = 0x1;
+		path_format->packing_fmt = 0;
 		break;
 	case CAM_FORMAT_DPCM_10_8_10:
 		path_format->decode_fmt  = 0x8;
 		path_format->plain_fmt = 0x1;
+		path_format->packing_fmt = 0;
 		break;
 	case CAM_FORMAT_DPCM_12_6_12:
 		path_format->decode_fmt  = 0x9;
 		path_format->plain_fmt = 0x1;
+		path_format->packing_fmt = 0;
 		break;
 	case CAM_FORMAT_DPCM_12_8_12:
 		path_format->decode_fmt  = 0xA;
 		path_format->plain_fmt = 0x1;
+		path_format->packing_fmt = 0;
 		break;
 	case CAM_FORMAT_DPCM_14_8_14:
 		path_format->decode_fmt  = 0xB;
 		path_format->plain_fmt = 0x1;
+		path_format->packing_fmt = 0;
 		break;
 	case CAM_FORMAT_DPCM_14_10_14:
 		path_format->decode_fmt  = 0xC;
 		path_format->plain_fmt = 0x1;
+		path_format->packing_fmt = 0;
 		break;
 	case CAM_FORMAT_DPCM_12_10_12:
 		path_format->decode_fmt  = 0xD;
 		path_format->plain_fmt = 0x1;
+		path_format->packing_fmt = 0;
 		break;
 	case CAM_FORMAT_YUV422:
 		path_format->decode_fmt  = 0x1;
@@ -625,6 +684,7 @@ int cam_ife_csid_get_base(struct cam_hw_soc_info *soc_info,
 	struct cam_cdm_utils_ops         *cdm_util_ops = NULL;
 	size_t                           size = 0;
 	uint32_t                          mem_base = 0;
+	struct cam_csid_soc_private      *soc_private;
 
 
 	if (arg_size != sizeof(struct cam_isp_hw_get_cmd_update)) {
@@ -632,8 +692,14 @@ int cam_ife_csid_get_base(struct cam_hw_soc_info *soc_info,
 		return -EINVAL;
 	}
 
-	if (!cdm_args || !cdm_args->res) {
+	if (!cdm_args || !cdm_args->res || !soc_info) {
 		CAM_ERR(CAM_ISP, "Error, Invalid args");
+		return -EINVAL;
+	}
+
+	soc_private = soc_info->soc_private;
+	if (!soc_private) {
+		CAM_ERR(CAM_ISP, "soc_private is null");
 		return -EINVAL;
 	}
 
@@ -654,14 +720,19 @@ int cam_ife_csid_get_base(struct cam_hw_soc_info *soc_info,
 	}
 
 	mem_base = CAM_SOC_GET_REG_MAP_CAM_BASE(soc_info, base_id);
-	if (cdm_args->cdm_id == CAM_CDM_RT)
-		mem_base -= CAM_SOC_GET_REG_MAP_CAM_BASE(soc_info, RT_BASE_IDX);
+	if (cdm_args->cdm_id == CAM_CDM_RT) {
+		if (!soc_private->rt_wrapper_base) {
+			CAM_ERR(CAM_ISP, "rt_wrapper_base_addr is null");
+			return -EINVAL;
+		}
+
+		mem_base -= soc_private->rt_wrapper_base;
+	}
 
 	CAM_DBG(CAM_ISP, "core %d mem_base 0x%x, cdm_id:%u",
 		soc_info->index, mem_base, cdm_args->cdm_id);
 
-	cdm_util_ops->cdm_write_changebase(
-	cdm_args->cmd.cmd_buf_addr, mem_base);
+	cdm_util_ops->cdm_write_changebase(cdm_args->cmd.cmd_buf_addr, mem_base);
 	cdm_args->cmd.used_bytes = (size * 4);
 
 	return 0;

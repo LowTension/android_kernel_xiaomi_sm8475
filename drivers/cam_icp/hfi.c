@@ -38,6 +38,7 @@
 
 static struct hfi_info *g_hfi;
 unsigned int g_icp_mmu_hdl;
+
 static DEFINE_MUTEX(hfi_cmd_q_mutex);
 static DEFINE_MUTEX(hfi_msg_q_mutex);
 
@@ -460,6 +461,9 @@ int hfi_set_debug_level(u64 icp_dbg_type, uint32_t lvl)
 	if (lvl > val)
 		return -EINVAL;
 
+	if (g_hfi)
+		g_hfi->dbg_lvl = lvl;
+
 	size = sizeof(struct hfi_cmd_prop) +
 		sizeof(struct hfi_debug);
 
@@ -511,6 +515,50 @@ int hfi_set_fw_dump_level(uint32_t lvl)
 			 fw_dump_level_switch_prop->num_prop,
 			 fw_dump_level_switch_prop->prop_data[0],
 			 fw_dump_level_switch_prop->prop_data[1]);
+
+	hfi_write_cmd(prop);
+	kfree(prop);
+	return 0;
+}
+
+int hfi_send_freq_info(int32_t freq)
+{
+	uint8_t *prop = NULL;
+	struct hfi_cmd_prop *dbg_prop = NULL;
+	uint32_t size = 0;
+
+	if (!g_hfi) {
+		CAM_ERR(CAM_HFI, "HFI interface not setup");
+		return -ENODEV;
+	}
+
+	if (!(g_hfi->dbg_lvl & HFI_DEBUG_MSG_PERF))
+		return -EINVAL;
+
+	size = sizeof(struct hfi_cmd_prop) + sizeof(freq);
+	prop = kzalloc(size, GFP_KERNEL);
+	if (!prop)
+		return -ENOMEM;
+
+	dbg_prop = (struct hfi_cmd_prop *)prop;
+	dbg_prop->size = size;
+	dbg_prop->pkt_type = HFI_CMD_SYS_SET_PROPERTY;
+	dbg_prop->num_prop = 1;
+	dbg_prop->prop_data[0] = HFI_PROPERTY_SYS_ICP_HW_FREQUENCY;
+	dbg_prop->prop_data[1] = freq;
+
+	CAM_DBG(CAM_HFI, "prop->size = %d\n"
+			 "prop->pkt_type = %d\n"
+			 "prop->num_prop = %d\n"
+			 "prop->prop_data[0] = %d\n"
+			 "prop->prop_data[1] = %d\n"
+			 "dbg_lvl = 0x%x\n",
+			 dbg_prop->size,
+			 dbg_prop->pkt_type,
+			 dbg_prop->num_prop,
+			 dbg_prop->prop_data[0],
+			 dbg_prop->prop_data[1],
+			 g_hfi->dbg_lvl);
 
 	hfi_write_cmd(prop);
 	kfree(prop);

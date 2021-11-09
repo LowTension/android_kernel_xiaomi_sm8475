@@ -420,10 +420,12 @@ static struct cam_ife_csid_ver2_path_reg_info
 		/* configurations */
 		.resume_frame_boundary            = 1,
 		.binning_supported                = 0x7,
+		.capabilities                     = CAM_IFE_CSID_CAP_SOF_RETIME_DIS,
 		.start_mode_internal              = 0x0,
 		.start_mode_global                = 0x1,
 		.start_mode_master                = 0x2,
 		.start_mode_slave                 = 0x3,
+		.sof_retiming_dis_shift           = 5,
 		.start_mode_shift                 = 2,
 		.start_master_sel_val             = 0,
 		.start_master_sel_shift           = 4,
@@ -525,6 +527,7 @@ static struct cam_ife_csid_ver2_path_reg_info
 		.epoch0_cfg_batch_id5_addr        = 0xBF4,
 		.epoch1_cfg_batch_id5_addr        = 0xBF8,
 		/* configurations */
+		.capabilities                     = CAM_IFE_CSID_CAP_SOF_RETIME_DIS,
 		.resume_frame_boundary            = 1,
 		.start_mode_shift                 = 2,
 		.start_mode_internal              = 0x0,
@@ -554,6 +557,7 @@ static struct cam_ife_csid_ver2_path_reg_info
 		.top_irq_mask                     = 0x10,
 		.epoch0_shift_val                 = 16,
 		.epoch1_shift_val                 = 0,
+		.sof_retiming_dis_shift           = 5,
 };
 
 static struct cam_ife_csid_ver2_path_reg_info
@@ -625,6 +629,12 @@ static struct cam_ife_csid_ver2_path_reg_info
 		/* configurations */
 		.resume_frame_boundary            = 1,
 		.overflow_ctrl_en                 = 1,
+		.capabilities                     = CAM_IFE_CSID_CAP_INPUT_LCR |
+							CAM_IFE_CSID_CAP_MIPI10_UNPACK |
+							CAM_IFE_CSID_CAP_MIPI12_UNPACK |
+							CAM_IFE_CSID_CAP_MIPI14_UNPACK |
+							CAM_IFE_CSID_CAP_LINE_SMOOTHING_IN_RDI |
+							CAM_IFE_CSID_CAP_SOF_RETIME_DIS,
 		.overflow_ctrl_mode_val           = 0x8,
 		.offline_mode_supported           = 1,
 		.mipi_pack_supported              = 1,
@@ -648,6 +658,8 @@ static struct cam_ife_csid_ver2_path_reg_info
 		.top_irq_mask                     = 0x100,
 		.epoch0_shift_val                 = 16,
 		.epoch1_shift_val                 = 0,
+		.pix_store_en_shift_val           = 10,
+		.sof_retiming_dis_shift           = 5,
 };
 
 static struct cam_ife_csid_ver2_path_reg_info
@@ -719,6 +731,12 @@ static struct cam_ife_csid_ver2_path_reg_info
 		/* configurations */
 		.resume_frame_boundary            = 1,
 		.overflow_ctrl_en                 = 1,
+		.capabilities                     = CAM_IFE_CSID_CAP_INPUT_LCR |
+							CAM_IFE_CSID_CAP_MIPI10_UNPACK |
+							CAM_IFE_CSID_CAP_MIPI12_UNPACK |
+							CAM_IFE_CSID_CAP_MIPI14_UNPACK |
+							CAM_IFE_CSID_CAP_LINE_SMOOTHING_IN_RDI |
+							CAM_IFE_CSID_CAP_SOF_RETIME_DIS,
 		.overflow_ctrl_mode_val           = 0x8,
 		.mipi_pack_supported              = 1,
 		.offline_mode_supported           = 1,
@@ -742,6 +760,8 @@ static struct cam_ife_csid_ver2_path_reg_info
 		.top_irq_mask                     = 0x200,
 		.epoch0_shift_val                 = 16,
 		.epoch1_shift_val                 = 0,
+		.pix_store_en_shift_val           = 10,
+		.sof_retiming_dis_shift           = 5,
 };
 
 static struct cam_ife_csid_ver2_path_reg_info
@@ -813,6 +833,12 @@ static struct cam_ife_csid_ver2_path_reg_info
 		/* configurations */
 		.resume_frame_boundary            = 1,
 		.overflow_ctrl_en                 = 1,
+		.capabilities                     = CAM_IFE_CSID_CAP_INPUT_LCR |
+							CAM_IFE_CSID_CAP_MIPI10_UNPACK |
+							CAM_IFE_CSID_CAP_MIPI12_UNPACK |
+							CAM_IFE_CSID_CAP_MIPI14_UNPACK |
+							CAM_IFE_CSID_CAP_LINE_SMOOTHING_IN_RDI |
+							CAM_IFE_CSID_CAP_SOF_RETIME_DIS,
 		.overflow_ctrl_mode_val           = 0x8,
 		.mipi_pack_supported              = 1,
 		.offline_mode_supported           = 1,
@@ -836,6 +862,8 @@ static struct cam_ife_csid_ver2_path_reg_info
 		.top_irq_mask                     = 0x400,
 		.epoch0_shift_val                 = 16,
 		.epoch1_shift_val                 = 0,
+		.pix_store_en_shift_val           = 10,
+		.sof_retiming_dis_shift           = 5,
 };
 
 static struct cam_ife_csid_ver2_path_reg_info
@@ -905,8 +933,10 @@ static struct cam_ife_csid_ver2_path_reg_info
 		.epoch0_cfg_batch_id5_addr        = 0x8EC,
 		.epoch1_cfg_batch_id5_addr        = 0x8F0,
 		/* configurations */
+		.capabilities                     = CAM_IFE_CSID_CAP_SOF_RETIME_DIS,
 		.resume_frame_boundary            = 1,
 		.overflow_ctrl_en                 = 1,
+		.capabilities                     = 0,
 		.overflow_ctrl_mode_val           = 0x8,
 		.offline_mode_supported           = 1,
 		.mipi_pack_supported              = 1,
@@ -930,6 +960,7 @@ static struct cam_ife_csid_ver2_path_reg_info
 		.top_irq_mask                     = 0x800,
 		.epoch0_shift_val                 = 16,
 		.epoch1_shift_val                 = 0,
+		.sof_retiming_dis_shift           = 5,
 };
 
 static struct cam_ife_csid_ver2_path_reg_info
@@ -999,8 +1030,10 @@ static struct cam_ife_csid_ver2_path_reg_info
 		.epoch0_cfg_batch_id5_addr       = 0x9EC,
 		.epoch1_cfg_batch_id5_addr       = 0x9F0,
 		/* configurations */
+		.capabilities                    = CAM_IFE_CSID_CAP_SOF_RETIME_DIS,
 		.resume_frame_boundary           = 1,
 		.overflow_ctrl_en                = 1,
+		.capabilities                    = 0,
 		.overflow_ctrl_mode_val          = 0x8,
 		.offline_mode_supported          = 1,
 		.mipi_pack_supported             = 1,
@@ -1022,8 +1055,9 @@ static struct cam_ife_csid_ver2_path_reg_info
 		.camif_irq_mask                  = 0x800000,
 		.rup_aup_mask                    = 0x1000100,
 		.top_irq_mask                    = 0x1000,
-		.epoch0_shift_val                 = 16,
-		.epoch1_shift_val                 = 0,
+		.epoch0_shift_val                = 16,
+		.epoch1_shift_val                = 0,
+		.sof_retiming_dis_shift          = 5,
 };
 
 static struct cam_ife_csid_csi2_rx_reg_info
@@ -1142,6 +1176,7 @@ static struct cam_ife_csid_ver2_common_reg_info
 	.timestamp_stb_sel_shift_val             = 8,
 	.vfr_en_shift_val                        = 0,
 	.mup_shift_val                           = 28,
+	.shdr_slave_ppp_shift                    = 20,
 	.shdr_slave_rdi2_shift                   = 22,
 	.shdr_slave_rdi1_shift                   = 21,
 	.shdr_master_rdi0_shift                  = 5,
@@ -1203,6 +1238,7 @@ static struct cam_ife_csid_ver2_top_reg_info
 	.dual_sync_sel_shift_val        = 8,
 	.dual_en_shift_val              = 0,
 	.master_slave_sel_shift_val     = 1,
+	.rdi_lcr_shift_val              = 16,
 	.master_sel_val                 = 0,
 	.slave_sel_val                  = 1,
 	.io_path_cfg_rst_val            = 1,

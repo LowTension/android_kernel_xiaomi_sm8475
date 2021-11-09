@@ -113,8 +113,6 @@ struct cam_sfe_bus_wr_wm_resource_data {
 	struct cam_sfe_bus_reg_offset_bus_client  *hw_regs;
 	struct cam_sfe_wr_scratch_buf_info scratch_buf_info;
 
-	bool                 init_cfg_done;
-	bool                 hfr_cfg_done;
 
 	uint32_t             offset;
 	uint32_t             width;
@@ -137,9 +135,12 @@ struct cam_sfe_bus_wr_wm_resource_data {
 	uint32_t             acquired_width;
 	uint32_t             acquired_height;
 
-	bool                 enable_caching;
 	uint32_t             cache_cfg;
 	int32_t              current_scid;
+	bool                 enable_caching;
+	bool                 init_cfg_done;
+	bool                 hfr_cfg_done;
+	bool                 use_wm_pack;
 };
 
 struct cam_sfe_bus_wr_comp_grp_data {
@@ -501,7 +502,8 @@ static inline void cam_sfe_bus_config_rdi_wm_frame_based_mode(
 static int cam_sfe_bus_config_rdi_wm(
 	struct cam_sfe_bus_wr_wm_resource_data  *rsrc_data)
 {
-	rsrc_data->pack_fmt = 0x0;
+
+	rsrc_data->pack_fmt = PACKER_FMT_PLAIN_128;
 	switch (rsrc_data->format) {
 	case CAM_FORMAT_MIPI_RAW_10:
 		if (rsrc_data->wm_mode == CAM_SFE_WM_LINE_BASED_MODE) {
@@ -513,6 +515,12 @@ static int cam_sfe_bus_config_rdi_wm(
 		} else {
 			CAM_WARN(CAM_SFE, "No index mode support for SFE WM: %u",
 				rsrc_data->index);
+		}
+
+		if (rsrc_data->use_wm_pack) {
+			rsrc_data->pack_fmt = PACKER_FMT_MIPI10;
+			if (rsrc_data->wm_mode == CAM_SFE_WM_LINE_BASED_MODE)
+				rsrc_data->width = ALIGNUP((rsrc_data->acquired_width), 16);
 		}
 		break;
 	case CAM_FORMAT_MIPI_RAW_6:
@@ -550,6 +558,12 @@ static int cam_sfe_bus_config_rdi_wm(
 			CAM_WARN(CAM_SFE, "No index mode support for SFE WM: %u",
 				rsrc_data->index);
 		}
+
+		if (rsrc_data->use_wm_pack) {
+			rsrc_data->pack_fmt = PACKER_FMT_MIPI12;
+			if (rsrc_data->wm_mode == CAM_SFE_WM_LINE_BASED_MODE)
+				rsrc_data->width = ALIGNUP((rsrc_data->acquired_width), 16);
+		}
 		break;
 	case CAM_FORMAT_MIPI_RAW_14:
 		if (rsrc_data->wm_mode == CAM_SFE_WM_LINE_BASED_MODE) {
@@ -561,6 +575,11 @@ static int cam_sfe_bus_config_rdi_wm(
 		} else {
 			CAM_WARN(CAM_SFE, "No index mode support for SFE WM: %u",
 				rsrc_data->index);
+		}
+		if (rsrc_data->use_wm_pack) {
+			rsrc_data->pack_fmt = PACKER_FMT_MIPI14;
+			if (rsrc_data->wm_mode == CAM_SFE_WM_LINE_BASED_MODE)
+				rsrc_data->width = ALIGNUP((rsrc_data->acquired_width), 16);
 		}
 		break;
 	case CAM_FORMAT_MIPI_RAW_16:
@@ -659,15 +678,14 @@ static int cam_sfe_bus_config_rdi_wm(
 }
 
 static int cam_sfe_bus_acquire_wm(
-	struct cam_sfe_bus_wr_priv            *bus_priv,
-	struct cam_isp_out_port_generic_info  *out_port_info,
-	void                                  *tasklet,
-	enum cam_sfe_bus_sfe_out_type          sfe_out_res_id,
-	enum cam_sfe_bus_plane_type            plane,
-	struct cam_isp_resource_node          *wm_res,
-	uint32_t                              *comp_done_mask,
-	uint32_t                               is_dual,
-	enum cam_sfe_bus_wr_comp_grp_type     *comp_grp_id)
+	struct cam_sfe_bus_wr_priv             *bus_priv,
+	struct cam_sfe_hw_sfe_out_acquire_args *out_acq_args,
+	void                                   *tasklet,
+	enum cam_sfe_bus_sfe_out_type           sfe_out_res_id,
+	enum cam_sfe_bus_plane_type             plane,
+	struct cam_isp_resource_node           *wm_res,
+	uint32_t                               *comp_done_mask,
+	enum cam_sfe_bus_wr_comp_grp_type      *comp_grp_id)
 {
 	int32_t wm_idx = 0, rc;
 	struct cam_sfe_bus_wr_wm_resource_data  *rsrc_data = NULL;
@@ -681,15 +699,16 @@ static int cam_sfe_bus_acquire_wm(
 
 	rsrc_data = wm_res->res_priv;
 	wm_idx = rsrc_data->index;
-	rsrc_data->format = out_port_info->format;
+	rsrc_data->format = out_acq_args->out_port_info->format;
+	rsrc_data->use_wm_pack = out_acq_args->use_wm_pack;
 	rsrc_data->pack_fmt = cam_sfe_bus_get_packer_fmt(bus_priv,
 		rsrc_data->format, wm_idx);
 
-	rsrc_data->width = out_port_info->width;
-	rsrc_data->height = out_port_info->height;
-	rsrc_data->acquired_width = out_port_info->width;
-	rsrc_data->acquired_height = out_port_info->height;
-	rsrc_data->is_dual = is_dual;
+	rsrc_data->width = out_acq_args->out_port_info->width;
+	rsrc_data->height = out_acq_args->out_port_info->height;
+	rsrc_data->acquired_width = out_acq_args->out_port_info->width;
+	rsrc_data->acquired_height = out_acq_args->out_port_info->height;
+	rsrc_data->is_dual = out_acq_args->is_dual;
 	rsrc_data->enable_caching =  false;
 	rsrc_data->offset = 0;
 
@@ -1350,13 +1369,12 @@ static int cam_sfe_bus_acquire_sfe_out(void *priv, void *acquire_args,
 	/* Acquire WM and retrieve COMP GRP ID */
 	for (i = 0; i < rsrc_data->num_wm; i++) {
 		rc = cam_sfe_bus_acquire_wm(bus_priv,
-			out_acquire_args->out_port_info,
+			out_acquire_args,
 			acq_args->tasklet,
 			sfe_out_res_id,
 			i,
 			&rsrc_data->wm_res[i],
 			&client_done_mask,
-			out_acquire_args->is_dual,
 			&comp_grp_id);
 		if (rc) {
 			CAM_ERR(CAM_SFE,

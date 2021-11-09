@@ -278,6 +278,7 @@ struct hfi_qtbl {
  * @mutex msg_q_lock: Lock for message queue
  * @msg_q_state: State of message queue
  * @priv: device private data
+ * @dbg_lvl: debug level set to FW
  */
 struct hfi_info {
 	struct hfi_mem_info map;
@@ -291,6 +292,7 @@ struct hfi_info {
 	struct mutex msg_q_lock;
 	bool msg_q_state;
 	void *priv;
+	u64 dbg_lvl;
 };
 
 #endif /* _CAM_HFI_REG_H_ */

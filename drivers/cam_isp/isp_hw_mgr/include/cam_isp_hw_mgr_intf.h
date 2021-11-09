@@ -107,14 +107,14 @@ enum cam_isp_hw_stop_cmd {
  * struct cam_isp_stop_args - hardware stop arguments
  *
  * @hw_stop_cmd:               Hardware stop command type information
- * @internal_trigger:          Stop triggered internally for reset & recovery
+ * @is_internal_stop:          Stop triggered internally for reset & recovery
  * @stop_only:                 Send stop only to hw drivers. No Deinit to be
  *                             done.
  *
  */
 struct cam_isp_stop_args {
 	enum cam_isp_hw_stop_cmd      hw_stop_cmd;
-	bool                          internal_trigger;
+	bool                          is_internal_stop;
 	bool                          stop_only;
 };
 
@@ -361,13 +361,27 @@ struct cam_isp_hw_cmd_args {
  * struct cam_isp_start_args - isp hardware start arguments
  *
  * @config_args:               Hardware configuration commands.
+ * @is_internal_start:         Start triggered internally for reset & recovery
  * @start_only                 Send start only to hw drivers. No init to
  *                             be done.
  *
  */
 struct cam_isp_start_args {
 	struct cam_hw_config_args hw_config;
+	bool                      is_internal_start;
 	bool                      start_only;
+};
+
+/**
+ * struct cam_isp_lcr_rdi_cfg_args - isp hardware start arguments
+ *
+ * @rdi_lcr_cfg:            RDI LCR cfg received from User space.
+ * @is_init:                Flag to indicate if init packet.
+ *
+ */
+struct cam_isp_lcr_rdi_cfg_args {
+	struct cam_isp_lcr_rdi_config *rdi_lcr_cfg;
+	bool                           is_init;
 };
 
 /**

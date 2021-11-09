@@ -2172,7 +2172,7 @@ static int cam_ife_csid_ver1_init_config_rdi_path(
 	mem_base = soc_info->reg_map[0].mem_base;
 	is_rpp = path_cfg->crop_enable || path_cfg->drop_enable;
 	rc = cam_ife_csid_get_format_rdi(path_cfg->in_format,
-		path_cfg->out_format, &path_format, is_rpp);
+		path_cfg->out_format, &path_format, is_rpp, false);
 	if (rc)
 		return rc;
 
@@ -2330,7 +2330,7 @@ static int cam_ife_csid_ver1_init_config_udi_path(
 	mem_base = soc_info->reg_map[0].mem_base;
 	is_rpp = path_cfg->crop_enable || path_cfg->drop_enable;
 	rc = cam_ife_csid_get_format_rdi(path_cfg->in_format,
-		path_cfg->out_format, &path_format, is_rpp);
+		path_cfg->out_format, &path_format, is_rpp, false);
 	if (rc)
 		return rc;
 
@@ -3017,6 +3017,8 @@ int cam_ife_csid_ver1_start(void *hw_priv, void *args,
 		CAM_ERR(CAM_ISP, "CSID:%d start fail res type:%d res id:%d",
 			csid_hw->hw_intf->hw_idx, res->res_type,
 			res->res_id);
+	if (!rc)
+		csid_hw->flags.reset_awaited = false;
 end:
 	return rc;
 }
@@ -4069,15 +4071,20 @@ static int cam_ife_csid_ver1_rx_bottom_half_handler(
 		CAM_ERR_RATE_LIMIT(CAM_ISP, "CSID[%u] %s",
 			csid_hw->hw_intf->hw_idx, log_buf);
 
-	if (csid_hw->flags.fatal_err_detected) {
-		event_type |= CAM_ISP_HW_ERROR_CSID_FATAL;
-		cam_subdev_notify_message(CAM_CSIPHY_DEVICE_TYPE,
-				CAM_SUBDEV_MESSAGE_IRQ_ERR,
-				(void *)&data_idx);
+	if (!csid_hw->flags.reset_awaited) {
+		if (csid_hw->flags.fatal_err_detected) {
+			event_type |= CAM_ISP_HW_ERROR_CSID_FATAL;
+			cam_subdev_notify_message(CAM_CSIPHY_DEVICE_TYPE,
+					CAM_SUBDEV_MESSAGE_IRQ_ERR,
+					(void *)&data_idx);
+		}
+
+		if (event_type) {
+			cam_ife_csid_ver1_handle_event_err(csid_hw,
+				evt_payload, event_type);
+			csid_hw->flags.reset_awaited = true;
+		}
 	}
-	if (event_type)
-		cam_ife_csid_ver1_handle_event_err(csid_hw,
-			evt_payload, event_type);
 
 	return IRQ_HANDLED;
 }

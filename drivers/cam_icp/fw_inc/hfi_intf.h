@@ -142,6 +142,12 @@ int hfi_set_debug_level(u64 icp_dbg_type, uint32_t lvl);
 int hfi_set_fw_dump_level(uint32_t lvl);
 
 /**
+ * hfi_send_freq_info() - set firmware dump level
+ * @freq: icp freq
+ */
+int hfi_send_freq_info(int32_t freq);
+
+/**
  * hfi_enable_ipe_bps_pc() - Enable interframe pc
  * Host sends a command to firmware to enable interframe
  * power collapse for IPE and BPS hardware.

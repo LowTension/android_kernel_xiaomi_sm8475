@@ -920,7 +920,7 @@ int cam_hw_cdm_submit_bl(struct cam_hw_info *cdm_hw,
 	struct cam_cdm_client *client)
 {
 	unsigned int i;
-	int rc;
+	int rc = 0;
 	struct cam_cdm_bl_request *cdm_cmd = req->data;
 	struct cam_cdm *core = (struct cam_cdm *)cdm_hw->core_info;
 	struct cam_cdm_bl_fifo *bl_fifo = NULL;
@@ -961,7 +961,7 @@ int cam_hw_cdm_submit_bl(struct cam_hw_info *cdm_hw,
 		dma_addr_t hw_vaddr_ptr = 0;
 		size_t len = 0;
 
-		if ((!cdm_cmd->cmd[i].len) && (cdm_cmd->cmd[i].len > CAM_CDM_MAX_BL_LENGTH)) {
+		if ((!cdm_cmd->cmd[i].len) || (cdm_cmd->cmd[i].len > CAM_CDM_MAX_BL_LENGTH)) {
 			CAM_ERR(CAM_CDM,
 				"cmd len=: %d is invalid_ent: %d, num_cmd_ent: %d",
 				cdm_cmd->cmd[i].len, i,
@@ -1234,6 +1234,7 @@ static void cam_hw_cdm_work(struct work_struct *work)
 			return;
 		}
 
+		mutex_lock(&cdm_hw->hw_mutex);
 		mutex_lock(&core->bl_fifo[fifo_idx].fifo_lock);
 
 		if (atomic_read(&core->bl_fifo[fifo_idx].work_record))
@@ -1247,6 +1248,7 @@ static void cam_hw_cdm_work(struct work_struct *work)
 				core->arbitration);
 			mutex_unlock(&core->bl_fifo[fifo_idx]
 					.fifo_lock);
+			mutex_unlock(&cdm_hw->hw_mutex);
 			return;
 		}
 
@@ -1285,6 +1287,7 @@ static void cam_hw_cdm_work(struct work_struct *work)
 		}
 		mutex_unlock(&core->bl_fifo[payload->fifo_idx]
 			.fifo_lock);
+		mutex_unlock(&cdm_hw->hw_mutex);
 	}
 
 	if (payload->irq_status &
@@ -1309,11 +1312,7 @@ static void cam_hw_cdm_work(struct work_struct *work)
 		mutex_lock(&cdm_hw->hw_mutex);
 		for (i = 0; i < core->offsets->reg_data->num_bl_fifo; i++)
 			mutex_lock(&core->bl_fifo[i].fifo_lock);
-		/*
-		 * First pause CDM, If it fails still proceed
-		 * to dump debug info
-		 */
-		cam_hw_cdm_pause_core(cdm_hw, true);
+
 		cam_hw_cdm_dump_core_debug_registers(cdm_hw, true);
 
 		if (payload->irq_status &
@@ -1338,8 +1337,7 @@ static void cam_hw_cdm_work(struct work_struct *work)
 				kfree(node);
 			}
 		}
-		/* Resume CDM back */
-		cam_hw_cdm_pause_core(cdm_hw, false);
+
 		for (i = 0; i < core->offsets->reg_data->num_bl_fifo; i++)
 			mutex_unlock(&core->bl_fifo[i].fifo_lock);
 
@@ -1398,9 +1396,9 @@ handle_cdm_pf:
 				cdm_hw->soc_info.index);
 		for (i = 0; i < core->offsets->reg_data->num_bl_fifo; i++)
 			mutex_unlock(&core->bl_fifo[i].fifo_lock);
-		mutex_unlock(&cdm_hw->hw_mutex);
 		cam_cdm_notify_clients(cdm_hw, CAM_CDM_CB_STATUS_PAGEFAULT,
 			(void *)pf_info->iova);
+		mutex_unlock(&cdm_hw->hw_mutex);
 		clear_bit(CAM_CDM_ERROR_HW_STATUS, &core->cdm_status);
 	} else {
 		CAM_ERR(CAM_CDM, "Invalid token");
@@ -1805,9 +1803,11 @@ int cam_hw_cdm_handle_error_info(
 
 	if (node != NULL) {
 		if (node->request_type == CAM_HW_CDM_BL_CB_CLIENT) {
+			mutex_lock(&cdm_hw->hw_mutex);
 			cam_cdm_notify_clients(cdm_hw,
 					CAM_CDM_CB_STATUS_HW_ERROR,
 					(void *)node);
+			mutex_unlock(&cdm_hw->hw_mutex);
 		} else if (node->request_type == CAM_HW_CDM_BL_CB_INTERNAL) {
 			CAM_ERR(CAM_CDM, "Invalid node=%pK %d", node,
 					node->request_type);

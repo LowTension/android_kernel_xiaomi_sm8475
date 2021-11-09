@@ -108,6 +108,7 @@ struct cam_ife_csid_ver2_top_cfg {
 	bool          dual_en;
 	bool          offline_sfe_en;
 	bool          out_ife_en;
+	bool          rdi_lcr;
 };
 
 struct cam_ife_csid_ver2_evt_payload {
@@ -166,7 +167,8 @@ struct cam_ife_csid_ver2_camif_data {
  *                          If we know the number of paths to avoid configuring discard
  *                          for before processing discard config we can skip it for
  *                          the corresponding paths
- * @sfe_inline_shdr:        flag to indicate if sfe is inline shdr
+ * @sfe_shdr:               flag to indicate if sfe is inline shdr
+ * @lcr_en:                 Flag to indicate if path is part can be input to LCR
  *
  */
 struct cam_ife_csid_ver2_path_cfg {
@@ -204,7 +206,8 @@ struct cam_ife_csid_ver2_path_cfg {
 	bool                                 handle_camif_irq;
 	bool                                 discard_init_frames;
 	bool                                 skip_discard_frame_cfg;
-	bool                                 sfe_inline_shdr;
+	bool                                 sfe_shdr;
+	bool                                 lcr_en;
 };
 
 struct cam_ife_csid_ver2_top_reg_info {
@@ -216,6 +219,7 @@ struct cam_ife_csid_ver2_top_reg_info {
 	uint32_t dual_sync_sel_shift_val;
 	uint32_t dual_en_shift_val;
 	uint32_t master_slave_sel_shift_val;
+	uint32_t rdi_lcr_shift_val;
 	uint32_t master_sel_val;
 	uint32_t slave_sel_val;
 	uint32_t io_path_cfg_rst_val;
@@ -349,6 +353,8 @@ struct cam_ife_csid_ver2_path_reg_info {
 	uint32_t epoch1_cfg_val;
 	uint32_t epoch0_shift_val;
 	uint32_t epoch1_shift_val;
+	uint32_t sof_retiming_dis_shift;
+	uint32_t capabilities;
 };
 
 struct cam_ife_csid_ver2_common_reg_info {
@@ -422,6 +428,7 @@ struct cam_ife_csid_ver2_common_reg_info {
 	uint32_t multi_vcdt_ts_combo_en_shift_val;
 	uint32_t multi_vcdt_en_shift_val;
 	uint32_t mup_shift_val;
+	uint32_t shdr_slave_ppp_shift;
 	uint32_t shdr_slave_rdi2_shift;
 	uint32_t shdr_slave_rdi1_shift;
 	uint32_t shdr_master_rdi0_shift;
