@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CAM_IFE_CSID_LITE_480_H_
@@ -323,9 +323,9 @@ static struct cam_ife_csid_csi2_rx_reg_info
 	.capture_cphy_pkt_dt_shift            = 20,
 	.capture_cphy_pkt_vc_shift            = 26,
 	.phy_num_mask                         = 0x7,
-	.fatal_err_mask                       = 0x78000,
-	.part_fatal_err_mask                  = 0x1801800,
-	.non_fatal_err_mask                   = 0x380000,
+	.fatal_err_mask                       = 0x59FA800,
+	.part_fatal_err_mask                  = 0x0001000,
+	.non_fatal_err_mask                   = 0x0200000,
 	.lane_num_shift                       = 0,
 	.lane_cfg_shift                       = 4,
 	.phy_type_shift                       = 24,
