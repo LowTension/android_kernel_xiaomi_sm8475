@@ -444,19 +444,21 @@ struct cam_mem_cache_ops_cmd {
 
 /**
  * Request Manager : Error codes
- * @CAM_REQ_MGR_ISP_UNREPORTED_ERROR         : No Error Code reported
- * @CAM_REQ_MGR_LINK_STALLED_ERROR           : Unable to apply requests on link
- * @CAM_REQ_MGR_CSID_FATAL_ERROR             : CSID FATAL Error
- * @CAM_REQ_MGR_CSID_FIFO_OVERFLOW_ERROR     : CSID OutputFIFO Overflow
- * @CAM_REQ_MGR_CSID_RECOVERY_OVERFLOW_ERROR : CSID Recovery Overflow
- * @CAM_REQ_MGR_CSID_LANE_FIFO_OVERFLOW_ERROR: CSID Lane fifo overflow
- * @CAM_REQ_MGR_CSID_PIXEL_COUNT_MISMATCH    : CSID Pixel Count Mismatch
- * @CAM_REQ_MGR_CSID_RX_PKT_HDR_CORRUPTION   : Packet header received by the csid rx is corrupted
- * @CAM_REQ_MGR_CSID_MISSING_PKT_HDR_DATA    : Lesser data received in packet header than expected
- * @CAM_REQ_MGR_CSID_ERR_ON_SENSOR_SWITCHING : Fatal Error encountered while switching the sensors
- * @CAM_REQ_MGR_CSID_UNBOUNDED_FRAME         : No EOF in the frame or the frame started with eof
- * @CAM_REQ_MGR_ICP_NO_MEMORY                : ICP No Memory
- * @CAM_REQ_MGR_ICP_ERROR_SYSTEM_FAILURE     : ICP system failure
+ * @CAM_REQ_MGR_ISP_UNREPORTED_ERROR           : No Error Code reported
+ * @CAM_REQ_MGR_LINK_STALLED_ERROR             : Unable to apply requests on link
+ * @CAM_REQ_MGR_CSID_FATAL_ERROR               : CSID FATAL Error
+ * @CAM_REQ_MGR_CSID_FIFO_OVERFLOW_ERROR       : CSID OutputFIFO Overflow
+ * @CAM_REQ_MGR_CSID_RECOVERY_OVERFLOW_ERROR   : CSID Recovery Overflow
+ * @CAM_REQ_MGR_CSID_LANE_FIFO_OVERFLOW_ERROR  : CSID Lane fifo overflow
+ * @CAM_REQ_MGR_CSID_PIXEL_COUNT_MISMATCH      : CSID Pixel Count Mismatch
+ * @CAM_REQ_MGR_CSID_RX_PKT_HDR_CORRUPTION     : Packet header received by the csid rx is corrupted
+ * @CAM_REQ_MGR_CSID_MISSING_PKT_HDR_DATA      : Lesser data received in packet header than expected
+ * @CAM_REQ_MGR_CSID_ERR_ON_SENSOR_SWITCHING   : Fatal Error encountered while switching the sensors
+ * @CAM_REQ_MGR_CSID_UNBOUNDED_FRAME           : No EOF in the frame or the frame started with eof
+ * @CAM_REQ_MGR_ICP_NO_MEMORY                  : ICP No Memory
+ * @CAM_REQ_MGR_ICP_ERROR_SYSTEM_FAILURE       : ICP system failure
+ * @CAM_REQ_MGR_CSID_MISSING_EOT               : CSID is missing EOT on one or more lanes
+ * @CAM_REQ_MGR_CSID_RX_PKT_PAYLOAD_CORRUPTION : CSID long packet payload CRC mismatch
  */
 #define CAM_REQ_MGR_ISP_UNREPORTED_ERROR                 0
 #define CAM_REQ_MGR_LINK_STALLED_ERROR                   BIT(0)
@@ -471,6 +473,8 @@ struct cam_mem_cache_ops_cmd {
 #define CAM_REQ_MGR_CSID_UNBOUNDED_FRAME                 BIT(9)
 #define CAM_REQ_MGR_ICP_NO_MEMORY                        BIT(10)
 #define CAM_REQ_MGR_ICP_SYSTEM_FAILURE                   BIT(11)
+#define CAM_REQ_MGR_CSID_MISSING_EOT                     BIT(12)
+#define CAM_REQ_MGR_CSID_RX_PKT_PAYLOAD_CORRUPTION       BIT(13)
 
 /**
  * struct cam_req_mgr_error_msg
