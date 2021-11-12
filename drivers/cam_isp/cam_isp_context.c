@@ -530,6 +530,15 @@ static int __cam_isp_ctx_notify_trigger_util(
 		return 0;
 	}
 
+	/* Skip CRM notify when recovery is in progress */
+	if (atomic_read(&ctx_isp->internal_recovery_set)) {
+		CAM_DBG(CAM_ISP,
+			"Internal recovery in progress skip notifying %s trigger point in ctx: %u on link: 0x%x",
+			__cam_isp_ctx_crm_trigger_point_to_string(trigger_type),
+			ctx->ctx_id, ctx->link_hdl);
+		return 0;
+	}
+
 	notify.link_hdl = ctx->link_hdl;
 	notify.dev_hdl = ctx->dev_hdl;
 	notify.frame_id = ctx_isp->frame_id;
@@ -1189,6 +1198,7 @@ static void __cam_isp_context_reset_internal_recovery_params(
 	atomic_set(&ctx_isp->internal_recovery_set, 0);
 	atomic_set(&ctx_isp->process_bubble, 0);
 	ctx_isp->recovery_req_id = 0;
+	ctx_isp->aeb_error_cnt = 0;
 }
 
 static int __cam_isp_context_try_internal_recovery(
@@ -3224,9 +3234,16 @@ static void __cam_isp_ctx_notify_aeb_error_for_sec_event(
 {
 	struct cam_context *ctx = ctx_isp->base;
 
+	if ((++ctx_isp->aeb_error_cnt) <= CAM_ISP_CONTEXT_AEB_ERROR_CNT_MAX) {
+		CAM_WARN(CAM_ISP,
+			"AEB slave RDI's current request's SOF seen after next req is applied for ctx: %u on link: 0x%x last_applied_req: %llu err_cnt: %u",
+			ctx->ctx_id, ctx->link_hdl, ctx_isp->last_applied_req_id, ctx_isp->aeb_error_cnt);
+		return;
+	}
+
 	CAM_ERR(CAM_ISP,
-		"AEB slave RDI's current request's SOF seen after next req is applied, EPOCH height need to be re-configured for ctx: %u on link: 0x%x",
-		ctx->ctx_id, ctx->link_hdl);
+		"Fatal - AEB slave RDI's current request's SOF seen after next req is applied, EPOCH height need to be re-configured for ctx: %u on link: 0x%x err_cnt: %u",
+		ctx->ctx_id, ctx->link_hdl, ctx_isp->aeb_error_cnt);
 
 	/* Pause CRM timer */
 	if (!ctx_isp->offline_context)
@@ -3369,6 +3386,9 @@ static int __cam_isp_ctx_handle_secondary_events(
 			(ctx_isp->substate_activated ==
 			CAM_ISP_CTX_ACTIVATED_BUBBLE_APPLIED))
 			__cam_isp_ctx_notify_aeb_error_for_sec_event(ctx_isp);
+		else
+			/* Reset error count */
+			ctx_isp->aeb_error_cnt = 0;
 		break;
 	case CAM_ISP_HW_SEC_EVENT_EPOCH:
 		__cam_isp_ctx_update_state_monitor_array(ctx_isp,
@@ -6115,6 +6135,7 @@ static inline void __cam_isp_context_reset_ctx_params(
 	ctx_isp->reported_req_id = 0;
 	ctx_isp->bubble_frame_cnt = 0;
 	ctx_isp->recovery_req_id = 0;
+	ctx_isp->aeb_error_cnt = 0;
 }
 
 static int __cam_isp_ctx_start_dev_in_ready(struct cam_context *ctx,
@@ -6520,6 +6541,9 @@ static int __cam_isp_ctx_reset_and_recover(
 		rc = -EFAULT;
 		goto end;
 	}
+
+	/* Block all events till HW is resumed */
+	ctx_isp->substate_activated = CAM_ISP_CTX_ACTIVATED_HALT;
 
 	req = list_first_entry(&ctx->pending_req_list,
 		struct cam_ctx_request, list);
