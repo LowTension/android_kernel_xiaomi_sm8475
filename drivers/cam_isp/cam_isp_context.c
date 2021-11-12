@@ -650,6 +650,9 @@ static int __cam_isp_ctx_pause_crm_timer(
 	int rc = -EINVAL;
 	struct cam_req_mgr_timer_notify  timer;
 
+	if (!ctx || !ctx->ctx_crm_intf)
+		goto end;
+
 	timer.link_hdl = ctx->link_hdl;
 	timer.dev_hdl = ctx->dev_hdl;
 	timer.state = false;
@@ -2820,7 +2823,8 @@ static int __cam_isp_ctx_handle_error(struct cam_isp_context *ctx_isp,
 
 	CAM_DBG(CAM_ISP, "Enter error_type = %d", error_type);
 
-	__cam_isp_ctx_pause_crm_timer(ctx);
+	if (!ctx_isp->offline_context)
+		__cam_isp_ctx_pause_crm_timer(ctx);
 
 	if ((error_type == CAM_ISP_HW_ERROR_OVERFLOW) ||
 		(error_type == CAM_ISP_HW_ERROR_BUSIF_OVERFLOW) ||
@@ -3225,7 +3229,8 @@ static void __cam_isp_ctx_notify_aeb_error_for_sec_event(
 		ctx->ctx_id, ctx->link_hdl);
 
 	/* Pause CRM timer */
-	__cam_isp_ctx_pause_crm_timer(ctx);
+	if (!ctx_isp->offline_context)
+		__cam_isp_ctx_pause_crm_timer(ctx);
 
 	/* Trigger reg dump */
 	__cam_isp_ctx_trigger_reg_dump(CAM_HW_MGR_CMD_REG_DUMP_ON_ERROR, ctx);
