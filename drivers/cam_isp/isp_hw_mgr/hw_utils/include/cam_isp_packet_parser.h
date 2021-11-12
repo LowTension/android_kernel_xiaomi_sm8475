@@ -50,17 +50,44 @@ struct cam_isp_frame_header_info {
 };
 
 /*
- * struct cam_isp_check_sfe_fe_io_cfg
+ * struct cam_isp_sfe_scratch_buf_res_info
  *
- * @sfe_fe_enabled     : True if SFE fetch engine is enabled
- * @num_active_fe_rdis : To indicate active RMs/RDIs
- * @sfe_rdi_cfg_mask   : To indicate IO buf cfg for RDIs
- *
+ * @num_active_fe_rdis    : To indicate active RMs/RDIs
+ * @sfe_rdi_cfg_mask      : Output mask to mark if the given RDI res has been
+ *                          provided with IO cfg buffer
  */
-struct cam_isp_check_sfe_fe_io_cfg {
-	bool                     sfe_fe_enabled;
+struct cam_isp_sfe_scratch_buf_res_info {
 	uint32_t                 num_active_fe_rdis;
 	uint32_t                 sfe_rdi_cfg_mask;
+};
+
+/*
+ * struct cam_isp_ife_scratch_buf_res_info
+ *
+ * @num_ports             : Number of ports for which scratch buffer is provided
+ * @ife_scratch_resources : IFE resources that have been provided a scratch buffer
+ * @ife_scratch_cfg_mask  : Output mask to mark if the given client has been
+ *                          provided with IO cfg buffer
+ */
+struct cam_isp_ife_scratch_buf_res_info {
+	uint32_t                 num_ports;
+	uint32_t                 ife_scratch_resources[CAM_IFE_SCRATCH_NUM_MAX];
+	uint32_t                 ife_scratch_cfg_mask;
+};
+
+/*
+ * struct cam_isp_check_io_cfg_for_scratch
+ *
+ * @sfe_scratch_res_info  : SFE scratch buffer validation info
+ * @ife_scratch_res_info  : IFE scratch buffer validation info
+ * @validate_for_sfe      : Validate for SFE clients, check if scratch is needed
+ * @validate_for_ife      : Validate for IFE clients, check if scratch is needed
+ */
+struct cam_isp_check_io_cfg_for_scratch {
+	struct cam_isp_sfe_scratch_buf_res_info sfe_scratch_res_info;
+	struct cam_isp_ife_scratch_buf_res_info ife_scratch_res_info;
+	bool                                    validate_for_sfe;
+	bool                                    validate_for_ife;
 };
 
 /*
@@ -209,24 +236,24 @@ int cam_isp_add_command_buffers(
  * @fill_fence:            If true, Fence map table will be filled
  * @hw_type:               HW type for this ctx base (IFE/SFE)
  * @frame_header_info:     Frame header related params
- * @check_sfe_fe_cfg:      Validate if sfe fetch received IO cfg
+ * @scratch_check_cfg:     Validate info for IFE/SFE scratch buffers
  * @return:                0 for success
  *                         -EINVAL for Fail
  */
 int cam_isp_add_io_buffers(
-	int                                   iommu_hdl,
-	int                                   sec_iommu_hdl,
-	struct cam_hw_prepare_update_args    *prepare,
-	uint32_t                              base_idx,
-	struct cam_kmd_buf_info              *kmd_buf_info,
-	struct cam_isp_hw_mgr_res            *res_list_isp_out,
-	struct list_head                     *res_list_ife_in_rd,
-	uint32_t                              out_base,
-	uint32_t                              out_max,
-	bool                                  fill_fence,
-	enum cam_isp_hw_type                  hw_type,
-	struct cam_isp_frame_header_info     *frame_header_info,
-	struct cam_isp_check_sfe_fe_io_cfg   *check_sfe_fe_cfg);
+	int                                      iommu_hdl,
+	int                                      sec_iommu_hdl,
+	struct cam_hw_prepare_update_args       *prepare,
+	uint32_t                                 base_idx,
+	struct cam_kmd_buf_info                 *kmd_buf_info,
+	struct cam_isp_hw_mgr_res               *res_list_isp_out,
+	struct list_head                        *res_list_ife_in_rd,
+	uint32_t                                 out_base,
+	uint32_t                                 out_max,
+	bool                                     fill_fence,
+	enum cam_isp_hw_type                     hw_type,
+	struct cam_isp_frame_header_info        *frame_header_info,
+	struct cam_isp_check_io_cfg_for_scratch *scratch_check_cfg);
 
 /*
  * cam_isp_add_reg_update()
