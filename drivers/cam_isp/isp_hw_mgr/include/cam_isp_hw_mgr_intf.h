@@ -328,6 +328,7 @@ enum cam_isp_hw_mgr_command {
 	CAM_ISP_HW_MGR_GET_PACKET_OPCODE,
 	CAM_ISP_HW_MGR_GET_LAST_CDM_DONE,
 	CAM_ISP_HW_MGR_CMD_PROG_DEFAULT_CFG,
+	CAM_ISP_HW_MGR_GET_SOF_TS,
 	CAM_ISP_HW_MGR_CMD_MAX,
 };
 
@@ -347,6 +348,7 @@ enum cam_isp_ctx_type {
  * @ctx_type:              RDI_ONLY, PIX and RDI, or FS2
  * @packet_op_code:        Packet opcode
  * @last_cdm_done:         Last cdm done request
+ * @sof_ts:                SOF timestamps (current, boot and previous)
  */
 struct cam_isp_hw_cmd_args {
 	uint32_t                          cmd_type;
@@ -356,6 +358,11 @@ struct cam_isp_hw_cmd_args {
 		uint32_t                      ctx_type;
 		uint32_t                      packet_op_code;
 		uint64_t                      last_cdm_done;
+		struct {
+			uint64_t                      curr;
+			uint64_t                      prev;
+			uint64_t                      boot;
+		} sof_ts;
 	} u;
 };
 

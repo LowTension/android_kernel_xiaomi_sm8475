@@ -679,6 +679,19 @@ end:
 	return rc;
 }
 
+static inline void __cam_isp_ctx_update_sof_ts_util(
+	struct cam_isp_hw_sof_event_data *sof_event_data,
+	struct cam_isp_context *ctx_isp)
+{
+	/* Delayed update, skip if ts is already updated */
+	if (ctx_isp->sof_timestamp_val == sof_event_data->timestamp)
+		return;
+
+	ctx_isp->frame_id++;
+	ctx_isp->sof_timestamp_val = sof_event_data->timestamp;
+	ctx_isp->boot_timestamp = sof_event_data->boot_time;
+}
+
 static int cam_isp_ctx_dump_req(
 	struct cam_isp_ctx_req  *req_isp,
 	uintptr_t                cpu_addr,
@@ -1026,6 +1039,89 @@ static uint64_t __cam_isp_ctx_get_event_ts(uint32_t evt_id, void *evt_data)
 	return ts;
 }
 
+static int __cam_isp_ctx_get_hw_timestamp(struct cam_context *ctx, uint64_t *prev_ts,
+	uint64_t *curr_ts, uint64_t *boot_ts)
+{
+	struct cam_hw_cmd_args hw_cmd_args;
+	struct cam_isp_hw_cmd_args isp_hw_cmd_args;
+	int rc;
+
+	hw_cmd_args.ctxt_to_hw_map = ctx->ctxt_to_hw_map;
+	hw_cmd_args.cmd_type = CAM_HW_MGR_CMD_INTERNAL;
+	hw_cmd_args.u.internal_args = &isp_hw_cmd_args;
+
+	isp_hw_cmd_args.cmd_type = CAM_ISP_HW_MGR_GET_SOF_TS;
+	rc = ctx->hw_mgr_intf->hw_cmd(ctx->ctxt_to_hw_map, &hw_cmd_args);
+	if (rc)
+		return rc;
+
+	if (isp_hw_cmd_args.u.sof_ts.prev >= isp_hw_cmd_args.u.sof_ts.curr) {
+		CAM_ERR(CAM_ISP, "ctx:%u previous timestamp is greater than current timestamp",
+			ctx->ctx_id);
+		return -EINVAL;
+	}
+
+	*prev_ts = isp_hw_cmd_args.u.sof_ts.prev;
+	*curr_ts = isp_hw_cmd_args.u.sof_ts.curr;
+	*boot_ts = isp_hw_cmd_args.u.sof_ts.boot;
+
+	return 0;
+}
+
+static int __cam_isp_ctx_recover_sof_timestamp(struct cam_context *ctx)
+{
+	struct cam_isp_context *ctx_isp = ctx->ctx_priv;
+	uint64_t prev_ts, curr_ts, boot_ts;
+	uint64_t a, b, c;
+	int rc;
+
+	if (ctx_isp->frame_id < 1) {
+		CAM_ERR(CAM_ISP, "ctx:%u Timestamp recovery is not possible for the first frame",
+			ctx->ctx_id);
+		return -EPERM;
+	}
+
+	rc = __cam_isp_ctx_get_hw_timestamp(ctx, &prev_ts, &curr_ts, &boot_ts);
+	if (rc) {
+		CAM_ERR(CAM_ISP, "ctx:%u Failed to get timestamp from HW", ctx->ctx_id);
+		return rc;
+	}
+
+	/**
+	 * If the last received SOF was for frame A and we have missed the SOF for frame B,
+	 * then we need to find out if the hardware is at frame B or C.
+	 *   +-----+-----+-----+
+	 *   |  A  |  B  |  C  |
+	 *   +-----+-----+-----+
+	 */
+	a = ctx_isp->sof_timestamp_val;
+	if (a == prev_ts) {
+		/* Hardware is at frame B */
+		b = curr_ts;
+		CAM_DBG(CAM_ISP, "ctx:%u recovered timestamp (last:0x%llx, curr:0x%llx)",
+			ctx->ctx_id, a, b);
+	} else if (a < prev_ts) {
+		/* Hardware is at frame C */
+		b = prev_ts;
+		c = curr_ts;
+
+		CAM_DBG(CAM_ISP,
+			"ctx:%u recovered timestamp (last:0x%llx, prev:0x%llx, curr:0x%llx)",
+			ctx->ctx_id, a, b, c);
+	} else {
+		/* Hardware is at frame A (which we supposedly missed) */
+		CAM_ERR(CAM_ISP,
+			"ctx:%u erroneous call to SOF recovery (last:0x%llx, prev:0x%llx, curr:0x%llx)",
+			ctx->ctx_id, a, prev_ts, curr_ts);
+		return 0;
+	}
+
+	ctx_isp->boot_timestamp += (b - a);
+	ctx_isp->sof_timestamp_val = b;
+	ctx_isp->frame_id++;
+	return 0;
+}
+
 static void __cam_isp_ctx_send_sof_boot_timestamp(
 	struct cam_isp_context *ctx_isp, uint64_t request_id,
 	uint32_t sof_event_status)
@@ -1121,6 +1217,12 @@ static void __cam_isp_ctx_send_sof_timestamp(
 	uint32_t sof_event_status)
 {
 	struct cam_req_mgr_message   req_msg;
+
+	if (ctx_isp->reported_frame_id == ctx_isp->frame_id) {
+		if (__cam_isp_ctx_recover_sof_timestamp(ctx_isp->base))
+			CAM_WARN(CAM_ISP, "Missed SOF. Unable to recover SOF timestamp.");
+	}
+	ctx_isp->reported_frame_id = ctx_isp->frame_id;
 
 	if ((ctx_isp->v4l2_event_sub_ids & (1 << V4L_EVENT_CAM_REQ_MGR_SOF_UNIFIED_TS))
 		&& !ctx_isp->use_frame_header_ts) {
@@ -2414,9 +2516,7 @@ static int __cam_isp_ctx_sof_in_activated_state(
 		return -EINVAL;
 	}
 
-	ctx_isp->frame_id++;
-	ctx_isp->sof_timestamp_val = sof_event_data->timestamp;
-	ctx_isp->boot_timestamp = sof_event_data->boot_time;
+	__cam_isp_ctx_update_sof_ts_util(sof_event_data, ctx_isp);
 
 	__cam_isp_ctx_update_state_monitor_array(ctx_isp,
 		CAM_ISP_STATE_CHANGE_TRIGGER_SOF, request_id);
@@ -2616,9 +2716,7 @@ static int __cam_isp_ctx_sof_in_epoch(struct cam_isp_context *ctx_isp,
 	if (atomic_read(&ctx_isp->apply_in_progress))
 		CAM_INFO(CAM_ISP, "Apply is in progress at the time of SOF");
 
-	ctx_isp->frame_id++;
-	ctx_isp->sof_timestamp_val = sof_event_data->timestamp;
-	ctx_isp->boot_timestamp = sof_event_data->boot_time;
+	__cam_isp_ctx_update_sof_ts_util(sof_event_data, ctx_isp);
 
 	if (list_empty(&ctx->active_req_list))
 		ctx_isp->substate_activated = CAM_ISP_CTX_ACTIVATED_SOF;
@@ -3042,9 +3140,7 @@ static int __cam_isp_ctx_fs2_sof_in_sof_state(
 		return -EINVAL;
 	}
 
-	ctx_isp->frame_id++;
-	ctx_isp->sof_timestamp_val = sof_event_data->timestamp;
-	ctx_isp->boot_timestamp = sof_event_data->boot_time;
+	__cam_isp_ctx_update_sof_ts_util(sof_event_data, ctx_isp);
 
 	CAM_DBG(CAM_ISP, "frame id: %lld time stamp:0x%llx",
 		ctx_isp->frame_id, ctx_isp->sof_timestamp_val);
@@ -4421,9 +4517,7 @@ static int __cam_isp_ctx_rdi_only_sof_in_top_state(
 		return -EINVAL;
 	}
 
-	ctx_isp->frame_id++;
-	ctx_isp->sof_timestamp_val = sof_event_data->timestamp;
-	ctx_isp->boot_timestamp = sof_event_data->boot_time;
+	__cam_isp_ctx_update_sof_ts_util(sof_event_data, ctx_isp);
 
 	CAM_DBG(CAM_ISP, "frame id: %lld time stamp:0x%llx",
 		ctx_isp->frame_id, ctx_isp->sof_timestamp_val);
@@ -4479,9 +4573,8 @@ static int __cam_isp_ctx_rdi_only_sof_in_applied_state(
 		return -EINVAL;
 	}
 
-	ctx_isp->frame_id++;
-	ctx_isp->sof_timestamp_val = sof_event_data->timestamp;
-	ctx_isp->boot_timestamp = sof_event_data->boot_time;
+	__cam_isp_ctx_update_sof_ts_util(sof_event_data, ctx_isp);
+
 	CAM_DBG(CAM_ISP, "frame id: %lld time stamp:0x%llx",
 		ctx_isp->frame_id, ctx_isp->sof_timestamp_val);
 
@@ -4513,9 +4606,8 @@ static int __cam_isp_ctx_rdi_only_sof_in_bubble_applied(
 	__cam_isp_ctx_send_sof_timestamp(ctx_isp, request_id,
 		CAM_REQ_MGR_SOF_EVENT_SUCCESS);
 
-	ctx_isp->frame_id++;
-	ctx_isp->sof_timestamp_val = sof_event_data->timestamp;
-	ctx_isp->boot_timestamp = sof_event_data->boot_time;
+	__cam_isp_ctx_update_sof_ts_util(sof_event_data, ctx_isp);
+
 	CAM_DBG(CAM_ISP, "frame id: %lld time stamp:0x%llx",
 		ctx_isp->frame_id, ctx_isp->sof_timestamp_val);
 
@@ -4602,9 +4694,7 @@ static int __cam_isp_ctx_rdi_only_sof_in_bubble_state(
 		return -EINVAL;
 	}
 
-	ctx_isp->frame_id++;
-	ctx_isp->sof_timestamp_val = sof_event_data->timestamp;
-	ctx_isp->boot_timestamp = sof_event_data->boot_time;
+	__cam_isp_ctx_update_sof_ts_util(sof_event_data, ctx_isp);
 	CAM_DBG(CAM_ISP, "frame id: %lld time stamp:0x%llx",
 		ctx_isp->frame_id, ctx_isp->sof_timestamp_val);
 
@@ -5041,6 +5131,7 @@ static int __cam_isp_ctx_release_hw_in_top_state(struct cam_context *ctx,
 	ctx_isp->frame_id = 0;
 	ctx_isp->active_req_cnt = 0;
 	ctx_isp->reported_req_id = 0;
+	ctx_isp->reported_frame_id = 0;
 	ctx_isp->hw_acquired = false;
 	ctx_isp->init_received = false;
 	ctx_isp->support_consumed_addr = false;
@@ -5110,6 +5201,7 @@ static int __cam_isp_ctx_release_dev_in_top_state(struct cam_context *ctx,
 	ctx_isp->frame_id = 0;
 	ctx_isp->active_req_cnt = 0;
 	ctx_isp->reported_req_id = 0;
+	ctx_isp->reported_frame_id = 0;
 	ctx_isp->hw_acquired = false;
 	ctx_isp->init_received = false;
 	ctx_isp->offline_context = false;
@@ -6133,6 +6225,7 @@ static inline void __cam_isp_context_reset_ctx_params(
 	ctx_isp->boot_timestamp = 0;
 	ctx_isp->active_req_cnt = 0;
 	ctx_isp->reported_req_id = 0;
+	ctx_isp->reported_frame_id = 0;
 	ctx_isp->bubble_frame_cnt = 0;
 	ctx_isp->recovery_req_id = 0;
 	ctx_isp->aeb_error_cnt = 0;
@@ -6370,6 +6463,7 @@ static int __cam_isp_ctx_stop_dev_in_activated_unlock(
 	ctx_isp->frame_id = 0;
 	ctx_isp->active_req_cnt = 0;
 	ctx_isp->reported_req_id = 0;
+	ctx_isp->reported_frame_id = 0;
 	ctx_isp->last_applied_req_id = 0;
 	ctx_isp->req_info.last_bufdone_req_id = 0;
 	ctx_isp->bubble_frame_cnt = 0;

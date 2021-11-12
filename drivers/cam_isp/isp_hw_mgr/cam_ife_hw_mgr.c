@@ -77,6 +77,9 @@ static int cam_ife_hw_mgr_event_handler(
 static int cam_ife_mgr_prog_default_settings(
 	bool need_rup_aup, struct cam_ife_hw_mgr_ctx *ctx);
 
+static int cam_ife_mgr_cmd_get_sof_timestamp(struct cam_ife_hw_mgr_ctx *ife_ctx,
+	uint64_t *time_stamp, uint64_t *boot_time_stamp, uint64_t *prev_time_stamp);
+
 static int cam_ife_mgr_finish_clk_bw_update(
 	struct cam_ife_hw_mgr_ctx *ctx,
 	uint64_t request_id, bool skip_clk_data_rst)
@@ -11455,6 +11458,12 @@ static int cam_ife_mgr_cmd(void *hw_mgr_priv, void *cmd_args)
 		case CAM_ISP_HW_MGR_CMD_PROG_DEFAULT_CFG:
 			rc = cam_ife_mgr_prog_default_settings(true, ctx);
 			break;
+		case CAM_ISP_HW_MGR_GET_SOF_TS:
+			rc = cam_ife_mgr_cmd_get_sof_timestamp(ctx,
+				&isp_hw_cmd_args->u.sof_ts.curr,
+				&isp_hw_cmd_args->u.sof_ts.boot,
+				&isp_hw_cmd_args->u.sof_ts.prev);
+			break;
 		default:
 			CAM_ERR(CAM_ISP, "Invalid HW mgr command:0x%x",
 				hw_cmd_args->cmd_type);
@@ -11676,7 +11685,8 @@ static inline void cam_ife_hw_mgr_get_offline_sof_timestamp(
 static int cam_ife_mgr_cmd_get_sof_timestamp(
 	struct cam_ife_hw_mgr_ctx            *ife_ctx,
 	uint64_t                             *time_stamp,
-	uint64_t                             *boot_time_stamp)
+	uint64_t                             *boot_time_stamp,
+	uint64_t                             *prev_time_stamp)
 {
 	int                                   rc = -EINVAL;
 	uint32_t                              i;
@@ -11709,6 +11719,7 @@ static int cam_ife_mgr_cmd_get_sof_timestamp(
 
 			csid_get_time.node_res =
 				hw_mgr_res->hw_res[i];
+			csid_get_time.get_prev_timestamp = (prev_time_stamp != NULL);
 			rc = hw_intf->hw_ops.process_cmd(
 				hw_intf->hw_priv,
 				CAM_IFE_CSID_CMD_GET_TIME_STAMP,
@@ -11720,6 +11731,9 @@ static int cam_ife_mgr_cmd_get_sof_timestamp(
 					csid_get_time.time_stamp_val;
 				*boot_time_stamp =
 					csid_get_time.boot_timestamp;
+				if (prev_time_stamp)
+					*prev_time_stamp =
+						csid_get_time.prev_time_stamp_val;
 			}
 		}
 	}
@@ -12464,7 +12478,7 @@ static int cam_ife_hw_mgr_handle_hw_sof(
 				cam_ife_mgr_cmd_get_sof_timestamp(
 				ife_hw_mgr_ctx,
 				&sof_done_event_data.timestamp,
-				&sof_done_event_data.boot_time);
+				&sof_done_event_data.boot_time, NULL);
 		}
 
 		if (atomic_read(&ife_hw_mgr_ctx->overflow_pending))
@@ -12483,7 +12497,7 @@ static int cam_ife_hw_mgr_handle_hw_sof(
 			break;
 		cam_ife_mgr_cmd_get_sof_timestamp(ife_hw_mgr_ctx,
 			&sof_done_event_data.timestamp,
-			&sof_done_event_data.boot_time);
+			&sof_done_event_data.boot_time, NULL);
 		if (atomic_read(&ife_hw_mgr_ctx->overflow_pending))
 			break;
 		ife_hw_irq_sof_cb(ife_hw_mgr_ctx->common.cb_priv,

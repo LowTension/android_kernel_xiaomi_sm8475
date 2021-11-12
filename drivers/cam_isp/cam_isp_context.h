@@ -307,6 +307,7 @@ struct cam_isp_context {
 	uint64_t                         boot_timestamp;
 	int32_t                          active_req_cnt;
 	int64_t                          reported_req_id;
+	uint64_t                         reported_frame_id;
 	uint32_t                         subscribe_event;
 	int64_t                          last_applied_req_id;
 	uint64_t                         recovery_req_id;

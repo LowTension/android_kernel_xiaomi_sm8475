@@ -4696,18 +4696,30 @@ static int cam_ife_csid_ver2_program_offline_go_cmd(
 	return 0;
 }
 
+static uint64_t __cam_ife_csid_ver2_get_time_stamp(void __iomem *mem_base, uint32_t timestamp0_addr,
+	uint32_t timestamp1_addr)
+{
+	uint64_t timestamp_val, time_hi, time_lo;
+
+	time_hi = cam_io_r_mb(mem_base + timestamp1_addr);
+	time_lo = cam_io_r_mb(mem_base + timestamp0_addr);
+	timestamp_val = (time_hi << 32) | time_lo;
+
+	return mul_u64_u32_div(timestamp_val,
+		CAM_IFE_CSID_QTIMER_MUL_FACTOR,
+		CAM_IFE_CSID_QTIMER_DIV_FACTOR);
+}
+
 static int cam_ife_csid_ver2_get_time_stamp(
 	struct cam_ife_csid_ver2_hw  *csid_hw, void *cmd_args)
 {
 	const struct cam_ife_csid_ver2_path_reg_info *path_reg;
 	struct cam_isp_resource_node         *res = NULL;
-	uint64_t time_lo, time_hi;
 	struct cam_hw_soc_info              *soc_info;
 	struct cam_csid_get_time_stamp_args *timestamp_args;
 	struct cam_ife_csid_ver2_reg_info *csid_reg;
 	uint64_t  time_delta;
 	struct timespec64 ts;
-	uint32_t curr_0_sof_addr, curr_1_sof_addr;
 
 	timestamp_args = (struct cam_csid_get_time_stamp_args *)cmd_args;
 	res = timestamp_args->node_res;
@@ -4738,19 +4750,17 @@ static int cam_ife_csid_ver2_get_time_stamp(
 		return -EINVAL;
 	}
 
-	curr_0_sof_addr = path_reg->timestamp_curr0_sof_addr;
-	curr_1_sof_addr = path_reg->timestamp_curr1_sof_addr;
+	if (timestamp_args->get_prev_timestamp) {
+		timestamp_args->prev_time_stamp_val = __cam_ife_csid_ver2_get_time_stamp(
+			soc_info->reg_map[0].mem_base,
+			path_reg->timestamp_perv0_sof_addr,
+			path_reg->timestamp_perv1_sof_addr);
+	}
 
-	time_hi = cam_io_r_mb(soc_info->reg_map[0].mem_base +
-			curr_1_sof_addr);
-	time_lo = cam_io_r_mb(soc_info->reg_map[0].mem_base +
-			curr_0_sof_addr);
-	timestamp_args->time_stamp_val = (time_hi << 32) | time_lo;
-
-	timestamp_args->time_stamp_val = mul_u64_u32_div(
-		timestamp_args->time_stamp_val,
-		CAM_IFE_CSID_QTIMER_MUL_FACTOR,
-		CAM_IFE_CSID_QTIMER_DIV_FACTOR);
+	timestamp_args->time_stamp_val = __cam_ife_csid_ver2_get_time_stamp(
+		soc_info->reg_map[0].mem_base,
+		path_reg->timestamp_curr0_sof_addr,
+		path_reg->timestamp_curr1_sof_addr);
 
 	time_delta = timestamp_args->time_stamp_val -
 		csid_hw->timestamp.prev_sof_ts;
