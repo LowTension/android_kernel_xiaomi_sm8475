@@ -164,27 +164,6 @@ static inline int __cam_ife_mgr_get_hw_soc_info(
 	return rc;
 }
 
-static const char *__cam_ife_hw_mgr_evt_type_to_string(
-	enum cam_isp_hw_event_type evt_type)
-{
-	switch (evt_type) {
-	case CAM_ISP_HW_EVENT_ERROR:
-		return "ERROR";
-	case CAM_ISP_HW_EVENT_SOF:
-		return "SOF";
-	case CAM_ISP_HW_EVENT_REG_UPDATE:
-		return "REG_UPDATE";
-	case CAM_ISP_HW_EVENT_EPOCH:
-		return "EPOCH";
-	case CAM_ISP_HW_EVENT_EOF:
-		return "EOF";
-	case CAM_ISP_HW_EVENT_DONE:
-		return "BUF_DONE";
-	default:
-		return "INVALID_EVT";
-	}
-}
-
 static int cam_ife_mgr_regspace_data_cb(uint32_t reg_base_type,
 	void *hw_mgr_ctx, struct cam_hw_soc_info **soc_info_ptr,
 	uint32_t *reg_base_idx)
@@ -12719,7 +12698,7 @@ static int cam_ife_hw_mgr_handle_ife_event(
 
 	CAM_DBG(CAM_ISP, "Handle IFE[%u] %s event in ctx: %u",
 		event_info->hw_idx,
-		__cam_ife_hw_mgr_evt_type_to_string(evt_id),
+		cam_isp_hw_evt_type_to_string(evt_id),
 		ctx->ctx_index);
 
 	switch (evt_id) {
@@ -12765,7 +12744,7 @@ static int cam_ife_hw_mgr_handle_csid_event(
 
 	CAM_DBG(CAM_ISP, "Handle CSID[%u] %s event in ctx: %u",
 		event_info->hw_idx,
-		__cam_ife_hw_mgr_evt_type_to_string(evt_id),
+		cam_isp_hw_evt_type_to_string(evt_id),
 		ctx->ctx_index);
 
 	switch (evt_id) {
@@ -12803,7 +12782,7 @@ static int cam_ife_hw_mgr_handle_sfe_event(
 
 	CAM_DBG(CAM_ISP, "Handle SFE[%u] %s event in ctx: %u",
 		event_info->hw_idx,
-		__cam_ife_hw_mgr_evt_type_to_string(evt_id),
+		cam_isp_hw_evt_type_to_string(evt_id),
 		ctx->ctx_index);
 
 	switch (evt_id) {
@@ -12862,7 +12841,7 @@ static int cam_ife_hw_mgr_event_handler(
 
 	if (rc)
 		CAM_ERR(CAM_ISP, "Failed to handle %s [%u] event from hw %u in ctx %u rc %d",
-			__cam_ife_hw_mgr_evt_type_to_string(evt_id),
+			cam_isp_hw_evt_type_to_string(evt_id),
 			evt_id, event_info->hw_type, ctx->ctx_index, rc);
 
 	return rc;
