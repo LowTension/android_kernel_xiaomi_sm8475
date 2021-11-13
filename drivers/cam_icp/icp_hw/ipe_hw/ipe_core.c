@@ -308,15 +308,15 @@ static int cam_ipe_cmd_reset(struct cam_hw_soc_info *soc_info,
 			break;
 		retry_cnt++;
 	}
-	status = cam_io_r_mb(soc_info->reg_map[0].mem_base +
-		hw_info->cdm_irq_status);
-	if ((status & IPE_RST_DONE_IRQ_STATUS_BIT) != 0x1) {
+
+	if (retry_cnt == HFI_MAX_POLL_TRY) {
 		CAM_ERR(CAM_ICP, "IPE CDM rst failed status 0x%x", status);
 		reset_ipe_cdm_fail = true;
 	}
 
 	/* IPE reset*/
 	status = 0;
+	retry_cnt = 0;
 	cam_io_w_mb((uint32_t)0x3,
 		soc_info->reg_map[0].mem_base + hw_info->top_rst_cmd);
 	while (retry_cnt < HFI_MAX_POLL_TRY) {
@@ -332,9 +332,8 @@ static int cam_ipe_cmd_reset(struct cam_hw_soc_info *soc_info,
 			break;
 		retry_cnt++;
 	}
-	status = cam_io_r_mb(soc_info->reg_map[0].mem_base +
-		hw_info->top_irq_status);
-	if ((status & IPE_RST_DONE_IRQ_STATUS_BIT) != 0x1) {
+
+	if (retry_cnt == HFI_MAX_POLL_TRY) {
 		CAM_ERR(CAM_ICP, "IPE top rst failed status 0x%x", status);
 		reset_ipe_top_fail = true;
 	}
@@ -350,6 +349,8 @@ static int cam_ipe_cmd_reset(struct cam_hw_soc_info *soc_info,
 
 	if (reset_ipe_cdm_fail || reset_ipe_top_fail)
 		rc = -EAGAIN;
+	else
+		CAM_DBG(CAM_ICP, "IPE cdm and IPE top reset success");
 
 	return rc;
 }
