@@ -21,6 +21,7 @@
 #include "cam_tasklet_util.h"
 #include "cam_common_util.h"
 #include "cam_tfe_csid_hw_intf.h"
+#include <dt-bindings/msm-camera.h>
 
 /* Timeout value in msec */
 #define TFE_CSID_TIMEOUT                               1000
@@ -892,6 +893,15 @@ static int cam_tfe_csid_path_reserve(struct cam_tfe_csid_hw *csid_hw,
 
 	csid_hw->event_cb = reserve->event_cb;
 	csid_hw->event_cb_priv = reserve->event_cb_prv;
+
+	if (path_data->qcfa_bin) {
+		if (!cam_cpas_is_feature_supported(CAM_CPAS_QCFA_BINNING_ENABLE,
+			CAM_CPAS_HW_IDX_ANY, NULL)) {
+			CAM_ERR(CAM_ISP, "QCFA bin not supported!");
+			rc = -EINVAL;
+			goto end;
+		}
+	}
 
 	/* Enable crop only for ipp */
 	if (reserve->res_id == CAM_TFE_CSID_PATH_RES_IPP)
