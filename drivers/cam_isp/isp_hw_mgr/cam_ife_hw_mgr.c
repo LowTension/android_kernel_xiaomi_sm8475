@@ -5959,8 +5959,10 @@ static int cam_ife_mgr_config_hw(void *hw_mgr_priv,
 					"config done Success for req_id=%llu ctx_index %d",
 					cfg->request_id, ctx->ctx_index);
 				/* Update last applied MUP */
-				if (hw_update_data->mup_en)
+				if (hw_update_data->mup_en) {
 					ctx->current_mup = hw_update_data->mup_val;
+					ctx->curr_num_exp = hw_update_data->num_exp;
+				}
 				hw_update_data->mup_en = false;
 			}
 		}
@@ -7657,7 +7659,7 @@ static int cam_isp_blob_sfe_update_fetch_core_cfg(
 		if ((ctx->ctx_config &
 			CAM_IFE_CTX_CFG_DYNAMIC_SWITCH_ON) &&
 			((res_id - CAM_ISP_SFE_IN_RD_0) >=
-			ctx->sfe_info.scratch_config->curr_num_exp))
+			ctx->sfe_info.scratch_config->updated_num_exp))
 			enable = false;
 		else
 			enable = true;
@@ -7670,7 +7672,7 @@ static int cam_isp_blob_sfe_update_fetch_core_cfg(
 			"SFE:%u RM: %u res_id: 0x%x enable: %u num_exp: %u",
 			blob_info->base_info->idx,
 			(res_id - CAM_ISP_SFE_IN_RD_0), res_id, enable,
-			ctx->sfe_info.scratch_config->curr_num_exp);
+			ctx->sfe_info.scratch_config->updated_num_exp);
 
 		rc = cam_isp_add_cmd_buf_update(
 			hw_mgr_res, blob_type,
@@ -9896,7 +9898,8 @@ static int cam_sfe_packet_generic_blob_handler(void *user_data,
 	}
 		break;
 	case CAM_ISP_GENERIC_BLOB_TYPE_DYNAMIC_MODE_SWITCH: {
-		struct cam_isp_mode_switch_info    *mup_config;
+		struct cam_isp_mode_switch_info       *mup_config;
+		struct cam_isp_prepare_hw_update_data *prepare_hw_data;
 
 		if (blob_size < sizeof(struct cam_isp_mode_switch_info)) {
 			CAM_ERR(CAM_ISP, "Invalid blob size %u expected %lu",
@@ -9905,10 +9908,13 @@ static int cam_sfe_packet_generic_blob_handler(void *user_data,
 			return -EINVAL;
 		}
 
+		prepare_hw_data = (struct cam_isp_prepare_hw_update_data  *)
+			prepare->priv;
 		mup_config = (struct cam_isp_mode_switch_info *)blob_data;
 		if (ife_mgr_ctx->flags.is_sfe_shdr) {
-			ife_mgr_ctx->sfe_info.scratch_config->curr_num_exp =
+			ife_mgr_ctx->sfe_info.scratch_config->updated_num_exp =
 				mup_config->num_expoures;
+			prepare_hw_data->num_exp = mup_config->num_expoures;
 
 			rc = cam_isp_blob_sfe_update_fetch_core_cfg(
 				blob_type, blob_info, prepare);
@@ -10033,16 +10039,24 @@ static int cam_sfe_packet_generic_blob_handler(void *user_data,
 }
 
 static inline bool cam_isp_sfe_validate_for_scratch_buf_config(
-	uint32_t res_idx, struct cam_ife_hw_mgr_ctx  *ctx)
+	uint32_t res_idx, struct cam_ife_hw_mgr_ctx  *ctx,
+	bool default_settings)
 {
+	uint32_t curr_num_exp;
+
 	/* check for num exposures for static mode but using RDI1-2 without RD1-2 */
 	if (res_idx >= ctx->sfe_info.num_fetches)
 		return true;
 
+	if (default_settings)
+		curr_num_exp = ctx->curr_num_exp;
+	else
+		curr_num_exp = ctx->sfe_info.scratch_config->updated_num_exp;
+
 	/* check for num exposures for dynamic mode */
 	if ((ctx->ctx_config &
 		CAM_IFE_CTX_CFG_DYNAMIC_SWITCH_ON) &&
-		(res_idx >= ctx->sfe_info.scratch_config->curr_num_exp))
+		(res_idx >= curr_num_exp))
 		return true;
 
 	return false;
@@ -10161,7 +10175,7 @@ static int cam_isp_sfe_add_scratch_buffer_cfg(
 			res_id = hw_mgr_res->hw_res[j]->res_id;
 
 			if (cam_isp_sfe_validate_for_scratch_buf_config(
-				(res_id - CAM_ISP_SFE_OUT_RES_RDI_0), ctx))
+				(res_id - CAM_ISP_SFE_OUT_RES_RDI_0), ctx, false))
 				continue;
 
 			/* check if buffer provided for this RDI is from userspace */
@@ -10223,7 +10237,7 @@ static int cam_isp_sfe_add_scratch_buffer_cfg(
 			res_id = hw_mgr_res->hw_res[j]->res_id;
 
 			if (cam_isp_sfe_validate_for_scratch_buf_config(
-				(res_id - CAM_ISP_HW_SFE_IN_RD0), ctx))
+				(res_id - CAM_ISP_HW_SFE_IN_RD0), ctx, false))
 				continue;
 
 			/* check if buffer provided for this RM is from userspace */
@@ -11290,7 +11304,7 @@ static int cam_ife_mgr_prog_default_settings(
 			res_id = hw_mgr_res->hw_res[j]->res_id;
 
 			if (cam_isp_sfe_validate_for_scratch_buf_config(
-				(res_id - CAM_ISP_SFE_OUT_RES_RDI_0), ctx))
+				(res_id - CAM_ISP_SFE_OUT_RES_RDI_0), ctx, true))
 				continue;
 
 			buf_info = &ctx->sfe_info.scratch_config->buf_info[
@@ -11328,7 +11342,7 @@ static int cam_ife_mgr_prog_default_settings(
 			res_id = hw_mgr_res->hw_res[j]->res_id;
 
 			if (cam_isp_sfe_validate_for_scratch_buf_config(
-				(res_id - CAM_ISP_HW_SFE_IN_RD0), ctx))
+				(res_id - CAM_ISP_HW_SFE_IN_RD0), ctx, true))
 				continue;
 
 			buf_info = &ctx->sfe_info.scratch_config->buf_info

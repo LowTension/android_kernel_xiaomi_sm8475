@@ -108,14 +108,14 @@ struct cam_ife_sfe_scratch_buf_info {
 /**
  * struct cam_sfe_scratch_buf_cfg - Scratch buf info
  *
- * @num_configs : Total Number of scratch buffers provided
- * @curr_num_exp: Current num of exposures
- * @buf_info    : Info on each of the buffers
+ * @num_configs     : Total Number of scratch buffers provided
+ * @updated_num_exp : Current num of exposures
+ * @buf_info        : Info on each of the buffers
  *
  */
 struct cam_sfe_scratch_buf_cfg {
 	uint32_t                            num_config;
-	uint32_t                            curr_num_exp;
+	uint32_t                            updated_num_exp;
 	struct cam_ife_sfe_scratch_buf_info buf_info[
 		CAM_SFE_FE_RDI_NUM_MAX];
 };
@@ -259,6 +259,7 @@ struct cam_ife_cdm_user_data {
  * @recovery_id:            Unique ID of the current valid scheduled recovery
  * @current_mup:            Current MUP val, scratch will then apply the same as previously
  *                          applied request
+ * @curr_num_exp:           Current num of exposures
  *
  */
 struct cam_ife_hw_mgr_ctx {
@@ -315,6 +316,7 @@ struct cam_ife_hw_mgr_ctx {
 	uint32_t                          bw_config_version;
 	atomic_t                          recovery_id;
 	uint32_t                          current_mup;
+	uint32_t                          curr_num_exp;
 };
 
 /**
