@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2022, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/debugfs.h>
@@ -5253,7 +5253,7 @@ static struct cam_isp_ctx_irq_ops
 			__cam_isp_ctx_rdi_only_sof_in_top_state,
 			__cam_isp_ctx_reg_upd_in_sof,
 			NULL,
-			NULL,
+			__cam_isp_ctx_notify_eof_in_activated_state,
 			NULL,
 		},
 	},
@@ -5264,7 +5264,7 @@ static struct cam_isp_ctx_irq_ops
 			__cam_isp_ctx_rdi_only_sof_in_applied_state,
 			__cam_isp_ctx_reg_upd_in_applied_state,
 			NULL,
-			NULL,
+			__cam_isp_ctx_notify_eof_in_activated_state,
 			__cam_isp_ctx_buf_done_in_applied,
 		},
 	},
@@ -5275,7 +5275,7 @@ static struct cam_isp_ctx_irq_ops
 			__cam_isp_ctx_rdi_only_sof_in_top_state,
 			NULL,
 			NULL,
-			NULL,
+			__cam_isp_ctx_notify_eof_in_activated_state,
 			__cam_isp_ctx_buf_done_in_epoch,
 		},
 	},
@@ -5286,7 +5286,7 @@ static struct cam_isp_ctx_irq_ops
 			__cam_isp_ctx_rdi_only_sof_in_bubble_state,
 			__cam_isp_ctx_rdi_only_reg_upd_in_bubble_state,
 			NULL,
-			NULL,
+			__cam_isp_ctx_notify_eof_in_activated_state,
 			__cam_isp_ctx_buf_done_in_bubble,
 		},
 	},
@@ -5297,7 +5297,7 @@ static struct cam_isp_ctx_irq_ops
 			__cam_isp_ctx_rdi_only_sof_in_bubble_applied,
 			__cam_isp_ctx_rdi_only_reg_upd_in_bubble_applied_state,
 			NULL,
-			NULL,
+			__cam_isp_ctx_notify_eof_in_activated_state,
 			__cam_isp_ctx_buf_done_in_bubble_applied,
 		},
 	},
