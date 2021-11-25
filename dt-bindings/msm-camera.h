@@ -91,7 +91,8 @@
 #define CAM_CPAS_ISP_FUSE      4
 #define CAM_CPAS_ISP_PIX_FUSE  5
 #define CAM_CPAS_ISP_LITE_FUSE 6
-#define CAM_CPAS_FUSE_FEATURE_MAX 7
+#define CAM_CPAS_CSIPHY_FUSE   7
+#define CAM_CPAS_FUSE_FEATURE_MAX 8
 
 #define CCI_MASTER_0         0
 #define CCI_MASTER_1         1
