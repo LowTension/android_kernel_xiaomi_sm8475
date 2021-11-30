@@ -33,6 +33,7 @@
 #define MAX_PHY_MSK_PER_REG 4
 
 static DEFINE_MUTEX(active_csiphy_cnt_mutex);
+static DEFINE_MUTEX(main_aon_selection);
 
 static int csiphy_onthego_reg_count;
 static unsigned int csiphy_onthego_regs[150];
@@ -43,6 +44,7 @@ struct g_csiphy_data {
 	void __iomem *base_address;
 	uint8_t is_3phase;
 	uint32_t cpas_handle;
+	bool is_configured_for_main;
 	bool enable_aon_support;
 	struct cam_csiphy_aon_sel_params_t *aon_sel_param;
 };
@@ -1341,36 +1343,43 @@ static int cam_csiphy_update_lane(
 }
 
 static int __csiphy_cpas_configure_for_main_or_aon(
-	bool get_access, uint32_t cpas_handle,
+	bool get_access, uint32_t phy_idx,
 	struct cam_csiphy_aon_sel_params_t *aon_sel_params)
 {
+	int rc = 0;
 	uint32_t aon_config = 0;
+	uint32_t cpas_handle = g_phy_data[phy_idx].cpas_handle;
 
 	cam_cpas_reg_read(cpas_handle, CAM_CPAS_REG_CPASTOP,
 		aon_sel_params->aon_cam_sel_offset,
 		true, &aon_config);
 
-	if (get_access) {
+	if (get_access && !g_phy_data[phy_idx].is_configured_for_main) {
 		aon_config &= ~(aon_sel_params->cam_sel_mask |
 			aon_sel_params->mclk_sel_mask);
-		CAM_DBG(CAM_CSIPHY,
+		CAM_INFO(CAM_CSIPHY,
 			"Selecting MainCamera over AON Camera");
-	} else if (!get_access) {
+		g_phy_data[phy_idx].is_configured_for_main = true;
+	} else if (!get_access && g_phy_data[phy_idx].is_configured_for_main) {
 		aon_config |= (aon_sel_params->cam_sel_mask |
 			aon_sel_params->mclk_sel_mask);
-		CAM_DBG(CAM_CSIPHY,
+		CAM_INFO(CAM_CSIPHY,
 			"Releasing MainCamera to AON Camera");
+		g_phy_data[phy_idx].is_configured_for_main = false;
+	} else {
+		CAM_DBG(CAM_CSIPHY, "Already configured for %s",
+			get_access ? "Main" : "AON");
+		return 0;
 	}
 
 	CAM_DBG(CAM_CSIPHY, "value of aon_config = %u", aon_config);
-	if (cam_cpas_reg_write(cpas_handle, CAM_CPAS_REG_CPASTOP,
+	rc = cam_cpas_reg_write(cpas_handle, CAM_CPAS_REG_CPASTOP,
 		aon_sel_params->aon_cam_sel_offset,
-		true, aon_config)) {
-		CAM_ERR(CAM_CSIPHY,
-				"CPAS AON sel register write failed");
-	}
+		true, aon_config);
+	if (rc)
+		CAM_ERR(CAM_CSIPHY, "CPAS AON sel register write failed");
 
-	return 0;
+	return rc;
 }
 
 static int cam_csiphy_cpas_ops(
@@ -1459,31 +1468,26 @@ int cam_csiphy_util_update_aon_ops(
 	cpas_hdl = g_phy_data[phy_idx].cpas_handle;
 	aon_sel_params = g_phy_data[phy_idx].aon_sel_param;
 
+	mutex_lock(&main_aon_selection);
 	rc = cam_csiphy_cpas_ops(cpas_hdl, true);
 	if (rc) {
-		if (rc == -EPERM) {
-			CAM_WARN(CAM_CSIPHY,
-				"CPHY: %d is already in start state");
-		} else {
-			CAM_ERR(CAM_CSIPHY, "voting CPAS: %d failed", rc);
-			return rc;
-		}
+		CAM_ERR(CAM_CSIPHY, "voting CPAS: %d failed", rc);
+		goto exit;
 	}
 
 	CAM_DBG(CAM_CSIPHY, "PHY idx: %d, AON_support is %s", phy_idx,
 		(get_access) ? "enable" : "disable");
+
 	rc = __csiphy_cpas_configure_for_main_or_aon(
-			get_access, cpas_hdl, aon_sel_params);
-	if (rc) {
+			get_access, phy_idx, aon_sel_params);
+	if (rc)
 		CAM_ERR(CAM_CSIPHY, "Configuration for AON ops failed: rc: %d",
 			rc);
-		cam_csiphy_cpas_ops(cpas_hdl, false);
-		return rc;
-	}
 
-	if (rc != -EPERM)
-		cam_csiphy_cpas_ops(cpas_hdl, false);
+	cam_csiphy_cpas_ops(cpas_hdl, false);
 
+exit:
+	mutex_unlock(&main_aon_selection);
 	return rc;
 }
 
@@ -2429,6 +2433,7 @@ int cam_csiphy_register_baseaddress(struct csiphy_device *csiphy_dev)
 	g_phy_data[phy_idx].aon_sel_param =
 		csiphy_dev->ctrl_reg->csiphy_reg.aon_sel_params;
 	g_phy_data[phy_idx].enable_aon_support = false;
+	g_phy_data[phy_idx].is_configured_for_main = false;
 
 	return 0;
 }
