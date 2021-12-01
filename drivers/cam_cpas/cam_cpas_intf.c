@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2022, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/of.h>
@@ -85,6 +85,8 @@ const char *cam_cpas_axi_util_path_type_to_string(
 		return "IPE_WR_DISP";
 	case CAM_AXI_PATH_DATA_IPE_WR_REF:
 		return "IPE_WR_REF";
+	case CAM_AXI_PATH_DATA_IPE_WR_APP:
+		return "IPE_WR_APP";
 
 	/* OPE Paths */
 	case CAM_AXI_PATH_DATA_OPE_RD_IN:

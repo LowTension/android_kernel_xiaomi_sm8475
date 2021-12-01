@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only WITH Linux-syscall-note */
 /*
- * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2022, The Linux Foundation. All rights reserved.
  */
 
 #ifndef __UAPI_CAM_CPAS_H__
@@ -40,6 +40,7 @@
 #define CAM_AXI_PATH_DATA_IPE_WR_VID    (CAM_AXI_PATH_DATA_IPE_START_OFFSET + 2)
 #define CAM_AXI_PATH_DATA_IPE_WR_DISP   (CAM_AXI_PATH_DATA_IPE_START_OFFSET + 3)
 #define CAM_AXI_PATH_DATA_IPE_WR_REF    (CAM_AXI_PATH_DATA_IPE_START_OFFSET + 4)
+#define CAM_AXI_PATH_DATA_IPE_WR_APP    (CAM_AXI_PATH_DATA_IPE_START_OFFSET + 5)
 #define CAM_AXI_PATH_DATA_IPE_MAX_OFFSET \
 	(CAM_AXI_PATH_DATA_IPE_START_OFFSET + 31)
 
