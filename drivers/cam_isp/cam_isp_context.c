@@ -1683,10 +1683,47 @@ static int __cam_isp_handle_deferred_buf_done(
 		}
 	}
 
+	CAM_DBG(CAM_ISP,
+		"ctx[%d] : Req %llu : Handled %d deferred buf_dones num_acked=%d, num_fence_map_out=%d",
+		ctx->ctx_id, req->request_id, req_isp->num_deferred_acks,
+		req_isp->num_acked, req_isp->num_fence_map_out);
+
 	req_isp->num_deferred_acks = 0;
 
 	return rc;
 }
+
+static int __cam_isp_ctx_handle_deferred_buf_done_in_bubble(
+	struct cam_isp_context *ctx_isp,
+	struct cam_ctx_request  *req)
+{
+	int                     rc = 0;
+	struct cam_context     *ctx = ctx_isp->base;
+	struct cam_isp_ctx_req *req_isp;
+
+	req_isp = (struct cam_isp_ctx_req *)req->req_priv;
+
+	if (req_isp->num_deferred_acks)
+		rc = __cam_isp_handle_deferred_buf_done(ctx_isp, req,
+			req_isp->bubble_report,
+			CAM_SYNC_STATE_SIGNALED_ERROR,
+			CAM_SYNC_ISP_EVENT_BUBBLE);
+
+	if (req_isp->num_acked > req_isp->num_fence_map_out) {
+		/* Should not happen */
+		CAM_ERR(CAM_ISP,
+			"WARNING: req_id %lld num_acked %d > map_out %d, ctx %u",
+			req->request_id, req_isp->num_acked,
+			req_isp->num_fence_map_out, ctx->ctx_id);
+		WARN_ON(req_isp->num_acked > req_isp->num_fence_map_out);
+	}
+
+	if (req_isp->num_acked == req_isp->num_fence_map_out)
+		rc = __cam_isp_ctx_handle_buf_done_for_req_list(ctx_isp, req);
+
+	return rc;
+}
+
 static int __cam_isp_ctx_handle_buf_done_for_request_verify_addr(
 	struct cam_isp_context *ctx_isp,
 	struct cam_ctx_request  *req,
@@ -2638,23 +2675,26 @@ static int __cam_isp_ctx_epoch_in_applied(struct cam_isp_context *ctx_isp,
 	req_isp->bubble_detected = true;
 	req_isp->reapply_type = CAM_CONFIG_REAPPLY_IO;
 	req_isp->cdm_reset_before_apply = false;
+	atomic_set(&ctx_isp->process_bubble, 1);
 
 	CAM_INFO_RATE_LIMIT(CAM_ISP, "ctx:%d Report Bubble flag %d req id:%lld",
 		ctx->ctx_id, req_isp->bubble_report, req->request_id);
+
+	__cam_isp_ctx_handle_deferred_buf_done_in_bubble(
+		ctx_isp, req);
+
 	if (req_isp->bubble_report) {
 		__cam_isp_ctx_notify_error_util(CAM_TRIGGER_POINT_SOF, CRM_KMD_ERR_BUBBLE,
 			req->request_id, ctx_isp);
 		trace_cam_log_event("Bubble", "Rcvd epoch in applied state",
 			req->request_id, ctx->ctx_id);
-		atomic_set(&ctx_isp->process_bubble, 1);
 	} else {
 		req_isp->bubble_report = 0;
 		CAM_DBG(CAM_ISP, "Skip bubble recovery for req %lld ctx %u",
 			req->request_id, ctx->ctx_id);
+
 		if (ctx_isp->active_req_cnt <= 1)
 			__cam_isp_ctx_notify_trigger_util(CAM_TRIGGER_POINT_SOF, ctx_isp);
-
-		atomic_set(&ctx_isp->process_bubble, 1);
 	}
 
 	/*
