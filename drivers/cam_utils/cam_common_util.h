@@ -17,6 +17,8 @@
 #define CAM_COMMON_MINI_DUMP_DEV_NAME_LEN 16
 #define CAM_COMMON_MINI_DUMP_SIZE         10 * 1024 * 1024
 
+#define CAM_COMMON_HW_DUMP_TAG_MAX_LEN 64
+
 #define PTR_TO_U64(ptr) ((uint64_t)(uintptr_t)ptr)
 #define U64_TO_PTR(ptr) ((void *)(uintptr_t)ptr)
 
@@ -74,6 +76,38 @@ struct cam_common_mini_dump_data {
 	void          *waddr[CAM_COMMON_MINI_DUMP_DEV_NUM];
 	uint8_t        name[CAM_COMMON_MINI_DUMP_DEV_NUM][CAM_COMMON_MINI_DUMP_DEV_NAME_LEN];
 	unsigned long  size[CAM_COMMON_MINI_DUMP_DEV_NUM];
+};
+
+/**
+ * struct cam_common_hw_dump_args
+ * @req_id         : request id
+ * @cpu_addr       : address where dumping will start from
+ * @buf_len        : length of buffer where data is being dumped to
+ * @offset         : buffer offset from cpu_addr after each item dump
+ * @ctxt_to_hw_map : context to hw map
+ * @is_dump_all    : flag to indicate if all information or just bw/clk rate
+ * @
+ */
+struct cam_common_hw_dump_args {
+	uint64_t                req_id;
+	uintptr_t               cpu_addr;
+	size_t                  buf_len;
+	size_t                  offset;
+	void                   *ctxt_to_hw_map;
+	bool                    is_dump_all;
+};
+
+/**
+ * struct cam_common_hw_dump_header
+ * @tag        : string used by the parser to call parse functions
+ * @size       : size of the header in the buffer
+ * @word_size  : word size of the header
+ * @
+ */
+struct cam_common_hw_dump_header {
+	uint8_t   tag[CAM_COMMON_HW_DUMP_TAG_MAX_LEN];
+	uint64_t  size;
+	uint32_t  word_size;
 };
 
 /**
@@ -191,4 +225,37 @@ static inline int cam_common_register_mini_dump_cb(
 	return 0;
 }
 #endif
+
+/**
+ * cam_common_user_dump_clock()
+ *
+ * @brief                  Handles clock rate dump
+ *
+ * @dump_struct:           Struct holding dump info
+ * @addr_ptr:              Pointer to buffer address pointer
+ */
+void *cam_common_user_dump_clock(
+	void     *dump_struct,
+	uint8_t  *addr_ptr);
+
+/**
+ * cam_common_user_dump_helper()
+ *
+ * @brief                  Handles buffer addressing and dumping for user dump
+ *
+ * @cmd_args:              Holds cam_common_hw_dump_args pointer
+ * @func:                  Function pointer for dump function
+ * @dump_struct:           Struct holding dump info
+ * @size:                  Size_t value used for header word size
+ * @tag:                   Tag for header, used by parser
+ * @...:                   Variadic arguments, appended to tag if given
+ */
+int cam_common_user_dump_helper(
+	void        *cmd_args,
+	void        *(*func)(void *, uint8_t *),
+	void        *dump_struct,
+	size_t       size,
+	const char  *tag,
+	...);
+
 #endif /* _CAM_COMMON_UTIL_H_ */
