@@ -35,9 +35,6 @@ static int32_t cam_flash_driver_cmd(struct cam_flash_ctrl *fctrl,
 		struct cam_sensor_acquire_dev flash_acq_dev;
 		struct cam_create_dev_hdl bridge_params;
 
-		CAM_INFO(CAM_FLASH, "CAM_ACQUIRE_DEV for dev_hdl: 0x%x",
-			fctrl->bridge_intf.device_hdl);
-
 		if (fctrl->flash_state != CAM_FLASH_STATE_INIT) {
 			CAM_ERR(CAM_FLASH,
 				"Cannot apply Acquire dev: Prev state: %d",
@@ -84,6 +81,9 @@ static int32_t cam_flash_driver_cmd(struct cam_flash_ctrl *fctrl,
 			goto release_mutex;
 		}
 		fctrl->flash_state = CAM_FLASH_STATE_ACQUIRE;
+
+		CAM_INFO(CAM_FLASH, "CAM_ACQUIRE_DEV for dev_hdl: 0x%x",
+			fctrl->bridge_intf.device_hdl);
 		break;
 	}
 	case CAM_RELEASE_DEV: {
