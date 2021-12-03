@@ -2306,18 +2306,31 @@ static int __cam_isp_ctx_offline_epoch_in_activated_state(
 	CAM_DBG(CAM_ISP, "SOF frame %lld ctx %u", ctx_isp->frame_id,
 		ctx->ctx_id);
 
-	list_for_each_entry_safe(req, req_temp, &ctx->active_req_list, list) {
-		if (req->request_id > ctx_isp->reported_req_id) {
-			request_id = req->request_id;
-			ctx_isp->reported_req_id = request_id;
-			break;
+	/*
+	 * For offline it is not possible for epoch to be generated without
+	 * RUP done. IRQ scheduling delays can possibly cause this.
+	 */
+	if (list_empty(&ctx->active_req_list)) {
+		CAM_WARN(CAM_ISP, "Active list empty on ctx: %u - EPOCH serviced before RUP",
+			ctx->ctx_id);
+	} else {
+		list_for_each_entry_safe(req, req_temp, &ctx->active_req_list, list) {
+			if (req->request_id > ctx_isp->reported_req_id) {
+				request_id = req->request_id;
+				ctx_isp->reported_req_id = request_id;
+				break;
+			}
 		}
 	}
 
 	__cam_isp_ctx_schedule_apply_req_offline(ctx_isp);
 
-	__cam_isp_ctx_send_sof_timestamp(ctx_isp, request_id,
-		CAM_REQ_MGR_SOF_EVENT_SUCCESS);
+	/*
+	 * If no valid request, wait for RUP shutter posted after buf done
+	 */
+	if (request_id)
+		__cam_isp_ctx_send_sof_timestamp(ctx_isp, request_id,
+			CAM_REQ_MGR_SOF_EVENT_SUCCESS);
 
 	__cam_isp_ctx_update_state_monitor_array(ctx_isp,
 		CAM_ISP_STATE_CHANGE_TRIGGER_EPOCH,
@@ -3790,7 +3803,7 @@ static struct cam_isp_ctx_irq_ops
 			__cam_isp_ctx_handle_error,
 			__cam_isp_ctx_sof_in_activated_state,
 			__cam_isp_ctx_reg_upd_in_applied_state,
-			NULL,
+			__cam_isp_ctx_offline_epoch_in_activated_state,
 			NULL,
 			__cam_isp_ctx_buf_done_in_applied,
 		},
@@ -3799,7 +3812,7 @@ static struct cam_isp_ctx_irq_ops
 	{
 		.irq_ops = {
 			__cam_isp_ctx_handle_error,
-			NULL,
+			__cam_isp_ctx_sof_in_activated_state,
 			NULL,
 			__cam_isp_ctx_offline_epoch_in_activated_state,
 			NULL,
