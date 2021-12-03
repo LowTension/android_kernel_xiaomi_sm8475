@@ -934,13 +934,13 @@ static int cam_ife_csid_ver2_handle_event_err(
 			cam_ife_csid_ver2_print_debug_reg_status(csid_hw, res);
 			path_cfg = (struct cam_ife_csid_ver2_path_cfg *)res->res_priv;
 			evt.res_id   = res->res_id;
-			CAM_ERR_RATE_LIMIT(CAM_ISP,
+			CAM_ERR(CAM_ISP,
 				"csid[%u] Res:%s Err 0x%x status 0x%x time_stamp: %lld:%lld",
 				csid_hw->hw_intf->hw_idx, res->res_name, err_type,
 				irq_status, path_cfg->error_ts.tv_sec,
 				path_cfg->error_ts.tv_nsec);
 		} else {
-			CAM_ERR_RATE_LIMIT(CAM_ISP,
+			CAM_ERR(CAM_ISP,
 				"csid[%u] Rx Err: 0x%x status 0x%x",
 				csid_hw->hw_intf->hw_idx, err_type, irq_status);
 		}
@@ -1376,7 +1376,7 @@ static int cam_ife_csid_ver2_parse_path_irq_status(
 	}
 
 	if (len)
-		CAM_ERR_RATE_LIMIT(CAM_ISP, "CSID[%d] %s status: 0x%x Errors:%s",
+		CAM_ERR(CAM_ISP, "CSID[%d] %s status: 0x%x Errors:%s",
 			csid_hw->hw_intf->hw_idx, irq_reg_tag[index],
 			irq_status, log_buf);
 
@@ -1385,7 +1385,7 @@ static int cam_ife_csid_ver2_parse_path_irq_status(
 	while (status) {
 
 		if (status & 0x1)
-			CAM_INFO_RATE_LIMIT(CAM_ISP, "CSID[%d] IRQ %s %s ",
+			CAM_INFO(CAM_ISP, "CSID[%d] IRQ %s %s ",
 				csid_hw->hw_intf->hw_idx, irq_reg_tag[index],
 				csid_reg->path_irq_desc[bit_pos].desc);
 
@@ -1481,7 +1481,7 @@ void cam_ife_csid_ver2_print_format_measure_info(
 	CAM_INFO(CAM_ISP, "CSID[%u] res [id :%d name : %s]",
 		csid_hw->hw_intf->hw_idx,
 		res->res_id, res->res_name);
-	CAM_ERR_RATE_LIMIT(CAM_ISP, "Frame Size Error Expected[h: %u w: %u] Actual[h: %u w: %u]",
+	CAM_ERR(CAM_ISP, "Frame Size Error Expected[h: %u w: %u] Actual[h: %u w: %u]",
 		((expected_frame >>
 		csid_reg->cmn_reg->format_measure_height_shift_val) &
 		csid_reg->cmn_reg->format_measure_height_mask_val),
