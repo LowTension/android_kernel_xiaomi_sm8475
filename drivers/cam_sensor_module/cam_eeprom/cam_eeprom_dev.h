@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2017-2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2019, 2021, The Linux Foundation. All rights reserved.
  */
 #ifndef _CAM_EEPROM_DEV_H_
 #define _CAM_EEPROM_DEV_H_
@@ -32,6 +32,8 @@
 #define MSM_EEPROM_MEMORY_MAP_MAX_SIZE         80
 #define MSM_EEPROM_MAX_MEM_MAP_CNT             100
 #define MSM_EEPROM_MEM_MAP_PROPERTIES_CNT      8
+
+#define EEPROM_DRIVER_I2C "cam-i2c-eeprom"
 
 enum cam_eeprom_state {
 	CAM_EEPROM_INIT,

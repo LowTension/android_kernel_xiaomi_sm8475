@@ -7,6 +7,7 @@
 #define CAMERA_MAIN_H
 
 #include <linux/platform_device.h>
+#include <linux/i2c.h>
 #include <linux/component.h>
 
 extern struct platform_driver cam_sync_driver;
@@ -35,6 +36,11 @@ extern struct platform_driver cam_sensor_platform_driver;
 extern struct platform_driver cam_eeprom_platform_driver;
 extern struct platform_driver cam_ois_platform_driver;
 extern struct platform_driver cam_tpg_driver;
+extern struct i2c_driver cam_actuator_i2c_driver;
+extern struct i2c_driver cam_flash_i2c_driver;
+extern struct i2c_driver cam_ois_i2c_driver;
+extern struct i2c_driver cam_eeprom_i2c_driver;
+extern struct i2c_driver cam_sensor_i2c_driver;
 #if IS_REACHABLE(CONFIG_LEDS_QPNP_FLASH_V2) || \
 	IS_REACHABLE(CONFIG_LEDS_QTI_FLASH)
 extern struct platform_driver cam_flash_platform_driver;
@@ -78,7 +84,7 @@ extern struct platform_driver custom_driver;
  * Drivers to be bound by component framework in this order with
  * CRM as master
  */
-static struct platform_driver *const cam_component_drivers[] = {
+static struct platform_driver *const cam_component_platform_drivers[] = {
 /* BASE */
 	&cam_sync_driver,
 	&cam_smmu_driver,
@@ -143,6 +149,17 @@ static struct platform_driver *const cam_component_drivers[] = {
 	&cam_custom_hw_sub_mod_driver,
 	&cam_custom_csid_driver,
 	&custom_driver,
+#endif
+};
+
+
+static struct i2c_driver *const cam_component_i2c_drivers[] = {
+#ifdef CONFIG_SPECTRA_SENSOR
+	&cam_actuator_i2c_driver,
+	&cam_flash_i2c_driver,
+	&cam_ois_i2c_driver,
+	&cam_eeprom_i2c_driver,
+	&cam_sensor_i2c_driver,
 #endif
 };
 

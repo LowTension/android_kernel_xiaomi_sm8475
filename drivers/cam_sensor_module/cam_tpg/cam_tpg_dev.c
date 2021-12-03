@@ -314,6 +314,8 @@ static int cam_tpg_component_bind(struct device *dev,
 		goto release_subdev;
 	}
 
+	platform_set_drvdata(pdev, tpg_dev);
+
 	return rc;
 
 release_subdev:
@@ -327,9 +329,7 @@ static void cam_tpg_component_unbind(struct device *dev,
 	struct device *master_dev, void *data)
 {
 	struct platform_device *pdev = to_platform_device(dev);
-
-	struct v4l2_subdev *subdev = platform_get_drvdata(pdev);
-	struct cam_tpg_device *tpg_dev = v4l2_get_subdevdata(subdev);
+	struct cam_tpg_device  *tpg_dev = platform_get_drvdata(pdev);
 
 	CAM_INFO(CAM_TPG, "Unbind TPG component");
 	cam_cpas_unregister_client(tpg_dev->cpas_handle);
