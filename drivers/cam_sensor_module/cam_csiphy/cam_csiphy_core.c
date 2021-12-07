@@ -401,6 +401,8 @@ static int32_t cam_csiphy_update_secure_info(
 	case CSIPHY_VERSION_V123:
 	case CSIPHY_VERSION_V124:
 	case CSIPHY_VERSION_V210:
+	case CSIPHY_VERSION_V211:
+	case CSIPHY_VERSION_V213:
 		phy_mask_len =
 		(csiphy_dev->soc_info.index < MAX_PHY_MSK_PER_REG) ?
 		(CAM_CSIPHY_MAX_DPHY_LANES + CAM_CSIPHY_MAX_CPHY_LANES) :

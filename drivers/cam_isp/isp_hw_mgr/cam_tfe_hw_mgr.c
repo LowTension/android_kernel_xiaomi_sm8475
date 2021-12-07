@@ -374,6 +374,7 @@ static void cam_tfe_hw_mgr_stop_hw_res(
 				CAM_ISP_HW_CMD_STOP_BUS_ERR_IRQ,
 				&dummy_args, sizeof(dummy_args));
 		}
+		isp_hw_res->hw_res[i]->rdi_only_ctx = false;
 	}
 }
 
@@ -601,6 +602,9 @@ static int cam_tfe_mgr_csid_stop_hw(
 		stop.node_res = stop_res;
 		stop.stop_cmd = stop_cmd;
 		hw_intf->hw_ops.stop(hw_intf->hw_priv, &stop, sizeof(stop));
+
+		for (i = 0; i < cnt; i++)
+			stop_res[i]->rdi_only_ctx = false;
 	}
 
 	return 0;
@@ -4351,7 +4355,7 @@ static int cam_tfe_mgr_prepare_hw_update(void *hw_mgr_priv,
 	struct cam_isp_prepare_hw_update_data   *prepare_hw_data;
 	struct cam_isp_frame_header_info         frame_header_info;
 	struct cam_isp_change_base_args          change_base_info = {0};
-	struct cam_isp_check_sfe_fe_io_cfg       sfe_fe_chk_cfg = {0};
+	struct cam_isp_check_io_cfg_for_scratch  check_for_scratch = {0};
 
 	if (!hw_mgr_priv || !prepare_hw_update_args) {
 		CAM_ERR(CAM_ISP, "Invalid args");
@@ -4437,7 +4441,7 @@ static int cam_tfe_mgr_prepare_hw_update(void *hw_mgr_priv,
 			NULL, CAM_ISP_TFE_OUT_RES_BASE,
 			CAM_TFE_HW_OUT_RES_MAX, fill_fence,
 			CAM_ISP_HW_TYPE_TFE,
-			&frame_header_info, &sfe_fe_chk_cfg);
+			&frame_header_info, &check_for_scratch);
 
 		if (rc) {
 			CAM_ERR(CAM_ISP,

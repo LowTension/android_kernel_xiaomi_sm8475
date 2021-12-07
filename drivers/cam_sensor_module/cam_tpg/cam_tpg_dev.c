@@ -7,6 +7,7 @@
 #include "cam_tpg_core.h"
 #include "camera_main.h"
 #include "tpg_hw/tpg_hw_v_1_0/tpg_hw_v_1_0_data.h"
+#include "tpg_hw/tpg_hw_v_1_2/tpg_hw_v_1_2_data.h"
 #include "tpg_hw/tpg_hw_v_1_3/tpg_hw_v_1_3_data.h"
 
 static int cam_tpg_subdev_close(struct v4l2_subdev *sd,
@@ -368,6 +369,10 @@ static const struct of_device_id cam_tpg_dt_match[] = {
 	{
 		.compatible = "qcom,cam-tpg101",
 		.data = &tpg_v_1_0_hw_info,
+	},
+	{
+		.compatible = "qcom,cam-tpg102",
+		.data = &tpg_v_1_2_hw_info,
 	},
 	{
 		.compatible = "qcom,cam-tpg103",

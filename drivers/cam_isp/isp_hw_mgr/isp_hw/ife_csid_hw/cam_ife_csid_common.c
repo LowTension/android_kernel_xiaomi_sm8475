@@ -96,10 +96,8 @@ int cam_ife_csid_is_pix_res_format_supported(
 	return rc;
 }
 
-int cam_ife_csid_get_format_rdi(
-	uint32_t in_format, uint32_t out_format,
-	struct cam_ife_csid_path_format *path_format, bool rpp,
-	bool mipi_unpacked)
+static int cam_ife_csid_validate_rdi_format(uint32_t in_format,
+	uint32_t out_format)
 {
 	int rc = 0;
 
@@ -107,229 +105,95 @@ int cam_ife_csid_get_format_rdi(
 	case CAM_FORMAT_MIPI_RAW_6:
 		switch (out_format) {
 		case CAM_FORMAT_MIPI_RAW_6:
-			path_format->decode_fmt = 0xf;
-			if (rpp) {
-				path_format->decode_fmt = 0x0;
-				path_format->packing_fmt = 0x1;
-			}
-
-			if (mipi_unpacked) {
-				path_format->decode_fmt = 0x0;
-				path_format->packing_fmt = 0x0;
-				path_format->plain_fmt = 0x0;
-			}
-			break;
 		case CAM_FORMAT_PLAIN8:
-			path_format->decode_fmt = 0x0;
-			path_format->plain_fmt = 0x0;
-			path_format->packing_fmt = 0;
 			break;
 		default:
 			rc = -EINVAL;
 			break;
 		}
-		path_format->bits_per_pxl = 6;
 		break;
 	case CAM_FORMAT_MIPI_RAW_8:
 		switch (out_format) {
 		case CAM_FORMAT_MIPI_RAW_8:
 		case CAM_FORMAT_PLAIN128:
-			path_format->decode_fmt = 0xf;
-			if (rpp) {
-				path_format->decode_fmt = 0x1;
-				path_format->packing_fmt = 0x1;
-			}
-
-			if (mipi_unpacked) {
-				path_format->decode_fmt = 0x1;
-				path_format->packing_fmt = 0x0;
-				path_format->plain_fmt = 0x0;
-			}
-			break;
 		case CAM_FORMAT_PLAIN8:
-			path_format->decode_fmt = 0x1;
-			path_format->packing_fmt = 0;
-			path_format->plain_fmt = 0x0;
 			break;
 		default:
 			rc = -EINVAL;
 			break;
 		}
-		path_format->bits_per_pxl = 8;
 		break;
 	case CAM_FORMAT_MIPI_RAW_10:
 		switch (out_format) {
 		case CAM_FORMAT_MIPI_RAW_10:
 		case CAM_FORMAT_PLAIN128:
-			path_format->decode_fmt = 0xf;
-			if (rpp) {
-				path_format->decode_fmt = 0x2;
-				path_format->packing_fmt = 0x1;
-			}
-
-			if (mipi_unpacked) {
-				path_format->decode_fmt = 0x2;
-				path_format->packing_fmt = 0x0;
-				path_format->plain_fmt = 0x1;
-			}
-			break;
 		case CAM_FORMAT_PLAIN16_10:
-			path_format->decode_fmt = 0x2;
-			path_format->plain_fmt = 0x1;
-			path_format->packing_fmt = 0;
+		case CAM_FORMAT_PLAIN16_16:
 			break;
 		default:
 			rc = -EINVAL;
 			break;
 		}
-		path_format->bits_per_pxl = 10;
 		break;
 	case CAM_FORMAT_MIPI_RAW_12:
 		switch (out_format) {
 		case CAM_FORMAT_MIPI_RAW_12:
-			path_format->decode_fmt = 0xf;
-			if (rpp) {
-				path_format->decode_fmt = 0x3;
-				path_format->packing_fmt = 0x1;
-			}
-
-			if (mipi_unpacked) {
-				path_format->decode_fmt = 0x3;
-				path_format->packing_fmt = 0x0;
-				path_format->plain_fmt = 0x1;
-			}
-			break;
 		case CAM_FORMAT_PLAIN16_12:
-			path_format->decode_fmt = 0x3;
-			path_format->plain_fmt = 0x1;
-			path_format->packing_fmt = 0;
+		case CAM_FORMAT_PLAIN16_16:
 			break;
 		default:
 			rc = -EINVAL;
 			break;
 		}
-		path_format->bits_per_pxl = 12;
 		break;
 	case CAM_FORMAT_MIPI_RAW_14:
 		switch (out_format) {
 		case CAM_FORMAT_MIPI_RAW_14:
-			path_format->decode_fmt = 0xf;
-			if (rpp) {
-				path_format->decode_fmt = 0x4;
-				path_format->packing_fmt = 0x1;
-			}
-
-			if (mipi_unpacked) {
-				path_format->decode_fmt = 0x4;
-				path_format->packing_fmt = 0x0;
-				path_format->plain_fmt = 0x1;
-			}
-			break;
 		case CAM_FORMAT_PLAIN16_14:
-			path_format->decode_fmt = 0x4;
-			path_format->plain_fmt = 0x1;
-			path_format->packing_fmt = 0;
+		case CAM_FORMAT_PLAIN16_16:
 			break;
 		default:
 			rc = -EINVAL;
 			break;
 		}
-		path_format->bits_per_pxl = 14;
 		break;
 	case CAM_FORMAT_MIPI_RAW_16:
 		switch (out_format) {
 		case CAM_FORMAT_MIPI_RAW_16:
-			path_format->decode_fmt = 0xf;
-			if (rpp) {
-				path_format->decode_fmt = 0x5;
-				path_format->packing_fmt = 0x1;
-			}
-
-			if (mipi_unpacked) {
-				path_format->decode_fmt = 0x5;
-				path_format->packing_fmt = 0x0;
-				path_format->plain_fmt = 0x1;
-			}
-			break;
 		case CAM_FORMAT_PLAIN16_16:
-			path_format->decode_fmt = 0x5;
-			path_format->plain_fmt = 0x1;
-			path_format->packing_fmt = 0;
 			break;
 		default:
 			rc = -EINVAL;
 			break;
 		}
-		path_format->bits_per_pxl = 16;
 		break;
 	case CAM_FORMAT_MIPI_RAW_20:
 		switch (out_format) {
 		case CAM_FORMAT_MIPI_RAW_20:
-			path_format->decode_fmt = 0xf;
-			if (rpp) {
-				path_format->decode_fmt = 0x6;
-				path_format->packing_fmt = 0x1;
-			}
-
-			if (mipi_unpacked) {
-				path_format->decode_fmt = 0x6;
-				path_format->packing_fmt = 0x0;
-				path_format->plain_fmt = 0x2;
-			}
-			break;
 		case CAM_FORMAT_PLAIN32_20:
-			path_format->decode_fmt = 0x6;
-			path_format->plain_fmt = 0x2;
-			path_format->packing_fmt = 0;
 			break;
 		default:
 			rc = -EINVAL;
 			break;
 		}
-		path_format->bits_per_pxl = 20;
-		break;
-	case CAM_FORMAT_DPCM_10_6_10:
-		path_format->decode_fmt  = 0x7;
-		path_format->plain_fmt = 0x1;
-		path_format->packing_fmt = 0;
-		break;
-	case CAM_FORMAT_DPCM_10_8_10:
-		path_format->decode_fmt  = 0x8;
-		path_format->plain_fmt = 0x1;
-		path_format->packing_fmt = 0;
-		break;
-	case CAM_FORMAT_DPCM_12_6_12:
-		path_format->decode_fmt  = 0x9;
-		path_format->plain_fmt = 0x1;
-		path_format->packing_fmt = 0;
-		break;
-	case CAM_FORMAT_DPCM_12_8_12:
-		path_format->decode_fmt  = 0xA;
-		path_format->plain_fmt = 0x1;
-		path_format->packing_fmt = 0;
-		break;
-	case CAM_FORMAT_DPCM_14_8_14:
-		path_format->decode_fmt  = 0xB;
-		path_format->plain_fmt = 0x1;
-		path_format->packing_fmt = 0;
-		break;
-	case CAM_FORMAT_DPCM_14_10_14:
-		path_format->decode_fmt  = 0xC;
-		path_format->plain_fmt = 0x1;
-		path_format->packing_fmt = 0;
-		break;
-	case CAM_FORMAT_DPCM_12_10_12:
-		path_format->decode_fmt  = 0xD;
-		path_format->plain_fmt = 0x1;
-		path_format->packing_fmt = 0;
 		break;
 	case CAM_FORMAT_YUV422:
-		path_format->decode_fmt  = 0x1;
-		path_format->plain_fmt = 0x01;
+		switch (out_format) {
+		case CAM_FORMAT_YUV422:
+			break;
+		default:
+			rc = -EINVAL;
+			break;
+		}
 		break;
 	case CAM_FORMAT_YUV422_10:
-		path_format->decode_fmt  = 0x2;
-		path_format->plain_fmt = 0x01;
+		switch (out_format) {
+		case CAM_FORMAT_YUV422_10:
+			break;
+		default:
+			rc = -EINVAL;
+			break;
+		}
 		break;
 	default:
 		rc = -EINVAL;
@@ -339,7 +203,119 @@ int cam_ife_csid_get_format_rdi(
 	if (rc)
 		CAM_ERR(CAM_ISP, "Unsupported format pair in %d out %d",
 			in_format, out_format);
+	return rc;
+}
 
+int cam_ife_csid_get_format_rdi(
+	uint32_t in_format, uint32_t out_format,
+	struct cam_ife_csid_path_format *path_format, bool mipi_pack_supported,
+	bool mipi_unpacked)
+{
+	int rc = 0;
+
+	rc = cam_ife_csid_validate_rdi_format(in_format, out_format);
+	if (rc)
+		goto err;
+
+	memset(path_format, 0, sizeof(*path_format));
+	/* if no packing supported and input is same as output dump the raw payload */
+	if (!mipi_pack_supported && (in_format == out_format)) {
+		path_format->decode_fmt = 0xf;
+		goto end;
+	}
+
+	/* Configure the incoming stream format types */
+	switch (in_format) {
+	case CAM_FORMAT_MIPI_RAW_6:
+		path_format->decode_fmt = 0x0;
+		path_format->bits_per_pxl = 6;
+		break;
+	case CAM_FORMAT_MIPI_RAW_8:
+	case CAM_FORMAT_YUV422:
+		path_format->decode_fmt = 0x1;
+		path_format->bits_per_pxl = 8;
+		break;
+	case CAM_FORMAT_MIPI_RAW_10:
+	case CAM_FORMAT_YUV422_10:
+		path_format->decode_fmt = 0x2;
+		path_format->bits_per_pxl = 10;
+		break;
+	case CAM_FORMAT_MIPI_RAW_12:
+		path_format->decode_fmt = 0x3;
+		path_format->bits_per_pxl = 12;
+		break;
+	case CAM_FORMAT_MIPI_RAW_14:
+		path_format->decode_fmt = 0x4;
+		path_format->bits_per_pxl = 14;
+		break;
+	case CAM_FORMAT_MIPI_RAW_16:
+		path_format->decode_fmt = 0x5;
+		path_format->bits_per_pxl = 16;
+		break;
+	case CAM_FORMAT_MIPI_RAW_20:
+		path_format->decode_fmt = 0x6;
+		path_format->bits_per_pxl = 20;
+		break;
+	default:
+		rc = -EINVAL;
+		goto err;
+	}
+
+	/* Configure the out stream format types */
+	switch (out_format) {
+	case CAM_FORMAT_MIPI_RAW_6:
+	case CAM_FORMAT_MIPI_RAW_8:
+	case CAM_FORMAT_YUV422:
+		if (mipi_unpacked)
+			path_format->plain_fmt = 0x0;
+		else
+			path_format->packing_fmt = 0x1;
+		break;
+	case CAM_FORMAT_PLAIN128:
+	case CAM_FORMAT_PLAIN8:
+		path_format->plain_fmt = 0x0;
+		break;
+	case CAM_FORMAT_MIPI_RAW_10:
+	case CAM_FORMAT_MIPI_RAW_12:
+	case CAM_FORMAT_MIPI_RAW_14:
+	case CAM_FORMAT_MIPI_RAW_16:
+	case CAM_FORMAT_YUV422_10:
+		if (mipi_unpacked)
+			path_format->plain_fmt = 0x1;
+		else
+			path_format->packing_fmt = 0x1;
+		break;
+	case CAM_FORMAT_PLAIN16_10:
+	case CAM_FORMAT_PLAIN16_12:
+	case CAM_FORMAT_PLAIN16_14:
+	case CAM_FORMAT_PLAIN16_16:
+		path_format->plain_fmt = 0x1;
+		break;
+	case CAM_FORMAT_MIPI_RAW_20:
+		if (mipi_unpacked)
+			path_format->plain_fmt = 0x2;
+		else
+			path_format->packing_fmt = 0x1;
+		break;
+	case CAM_FORMAT_PLAIN32_20:
+		path_format->plain_fmt = 0x2;
+		break;
+	default:
+		rc = -EINVAL;
+		goto err;
+	}
+
+end:
+	CAM_DBG(CAM_ISP,
+		"in %u out %u plain_fmt %u packing %u decode %u bpp %u unpack %u pack supported %u",
+		in_format, out_format, path_format->plain_fmt, path_format->packing_fmt,
+		path_format->decode_fmt, path_format->bits_per_pxl, mipi_unpacked,
+		mipi_pack_supported);
+	return rc;
+
+err:
+	CAM_ERR(CAM_ISP, "Unsupported format pair in %d out %d",
+		in_format, out_format);
 	return rc;
 }
 

@@ -12,6 +12,7 @@
 #include <linux/delay.h>
 #include <linux/timer.h>
 #include <media/cam_icp.h>
+
 #include "cam_io_util.h"
 #include "cam_a5_hw_intf.h"
 #include "cam_hw.h"
@@ -28,6 +29,7 @@
 #include "cam_debug_util.h"
 #include "cam_icp_utils.h"
 #include "cam_common_util.h"
+#include "cam_compat.h"
 
 #define PC_POLL_DELAY_US 100
 #define PC_POLL_TIMEOUT_US 10000
@@ -678,7 +680,7 @@ int cam_a5_process_cmd(void *device_priv, uint32_t cmd_type,
 
 		if (a5_soc->ubwc_config_ext) {
 			/* Invoke kernel API to determine DDR type */
-			ddr_type = of_fdt_get_ddrtype();
+			ddr_type = cam_get_ddr_type();
 			if ((ddr_type == DDR_TYPE_LPDDR5) ||
 				(ddr_type == DDR_TYPE_LPDDR5X))
 				index = 1;

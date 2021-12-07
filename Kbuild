@@ -6,6 +6,10 @@ $(info "KERNEL_ROOT is: $(KERNEL_ROOT)")
 endif
 
 # Include Architecture configurations
+ifeq ($(CONFIG_ARCH_KALAMA), y)
+include $(CAMERA_KERNEL_ROOT)/config/kalama.mk
+endif
+
 ifeq ($(CONFIG_ARCH_WAIPIO), y)
 include $(CAMERA_KERNEL_ROOT)/config/waipio.mk
 endif
@@ -36,6 +40,10 @@ endif
 
 ifeq ($(CONFIG_ARCH_DIWALI), y)
 include $(CAMERA_KERNEL_ROOT)/config/diwali.mk
+endif
+
+ifeq ($(CONFIG_ARCH_CAPE), y)
+include $(CAMERA_KERNEL_ROOT)/config/cape.mk
 endif
 
 # List of all camera-kernel headers
@@ -202,6 +210,7 @@ camera-$(CONFIG_SPECTRA_SENSOR) += \
 	drivers/cam_sensor_module/cam_tpg/cam_tpg_core.o \
 	drivers/cam_sensor_module/cam_tpg/tpg_hw/tpg_hw.o \
 	drivers/cam_sensor_module/cam_tpg/tpg_hw/tpg_hw_v_1_0/tpg_hw_v_1_0.o \
+	drivers/cam_sensor_module/cam_tpg/tpg_hw/tpg_hw_v_1_2/tpg_hw_v_1_2.o \
 	drivers/cam_sensor_module/cam_tpg/tpg_hw/tpg_hw_v_1_3/tpg_hw_v_1_3.o \
 	drivers/cam_sensor_module/cam_csiphy/cam_csiphy_soc.o \
 	drivers/cam_sensor_module/cam_csiphy/cam_csiphy_dev.o \

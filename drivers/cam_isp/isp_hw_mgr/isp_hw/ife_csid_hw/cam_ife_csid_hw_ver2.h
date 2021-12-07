@@ -623,5 +623,9 @@ int cam_ife_csid_hw_ver2_init(struct cam_hw_intf  *csid_hw_intf,
 	bool is_custom);
 
 int cam_ife_csid_hw_ver2_deinit(struct cam_hw_info *hw_priv);
+void cam_ife_csid_ver2_print_illegal_programming_irq_status(void *csid_hw, void *res);
+void cam_ife_csid_ver2_print_format_measure_info(void *csid_hw, void *res);
+void cam_ife_csid_hw_ver2_mup_mismatch_handler(void *csid_hw, void *res);
+void cam_ife_csid_hw_ver2_rdi_line_buffer_conflict_handler(void *csid_hw);
 
 #endif

@@ -104,26 +104,33 @@ enum cam_ife_csid_irq_reg {
 /*
  * struct cam_ife_csid_irq_desc: Structure to hold IRQ description
  *
- * @bitmask  :       Bitmask of the IRQ
- * @irq_desc:        String to describe the IRQ bit
+ * @bitmask    :     Bitmask of the IRQ
+ * @err_type   :     Error type for ISP hardware event
+ * @irq_desc   :     String to describe the IRQ bit
+ * @err_handler:     Error handler which gets invoked if error IRQ bit set
  */
 struct cam_ife_csid_irq_desc {
 	uint32_t    bitmask;
+	uint32_t    err_type;
 	uint8_t    *desc;
+	void       (*err_handler)(void *csid_hw, void *res);
 };
 
 /*
  * struct cam_ife_csid_top_irq_desc: Structure to hold IRQ bitmask and description
  *
- * @bitmask  :        Bitmask of the IRQ
- * @err_name :        IRQ name
- * @desc     :        String to describe about the IRQ
+ * @bitmask    :        Bitmask of the IRQ
+ * @err_type   :        Error type for ISP hardware event
+ * @err_name   :        IRQ name
+ * @desc       :        String to describe about the IRQ
+ * @err_handler:        Error handler which gets invoked if error IRQ bit set
  */
 struct cam_ife_csid_top_irq_desc {
 	uint32_t    bitmask;
 	uint32_t    err_type;
 	char       *err_name;
 	char       *desc;
+	void       (*err_handler)(void *csid_hw);
 };
 
 /*
@@ -358,7 +365,7 @@ int cam_ife_csid_is_pix_res_format_supported(
 
 int cam_ife_csid_get_format_rdi(
 	uint32_t in_format, uint32_t out_format,
-	struct cam_ife_csid_path_format *path_format, bool rpp,
+	struct cam_ife_csid_path_format *path_format, bool mipi_pack_supported,
 	bool mipi_unpacked);
 
 int cam_ife_csid_get_format_ipp_ppp(

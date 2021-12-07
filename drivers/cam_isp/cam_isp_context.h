@@ -55,6 +55,9 @@
 /* Maximum length of tag while dumping */
 #define CAM_ISP_CONTEXT_DUMP_TAG_MAX_LEN 32
 
+/* AEB error count threshold */
+#define CAM_ISP_CONTEXT_AEB_ERROR_CNT_MAX 3
+
 /* forward declaration */
 struct cam_isp_context;
 
@@ -256,6 +259,8 @@ struct cam_isp_context_event_record {
  * @recovery_req_id:           Req ID flagged for internal recovery
  * @last_sof_timestamp:        SOF timestamp of the last frame
  * @bubble_frame_cnt:          Count of the frame after bubble
+ * @aeb_error_cnt:             Count number of times a specific AEB error scenario is
+ *                             enountered
  * @state_monitor_head:        Write index to the state monitoring array
  * @req_info                   Request id information about last buf done
  * @cam_isp_ctx_state_monitor: State monitoring array
@@ -302,11 +307,13 @@ struct cam_isp_context {
 	uint64_t                         boot_timestamp;
 	int32_t                          active_req_cnt;
 	int64_t                          reported_req_id;
+	uint64_t                         reported_frame_id;
 	uint32_t                         subscribe_event;
 	int64_t                          last_applied_req_id;
 	uint64_t                         recovery_req_id;
 	uint64_t                         last_sof_timestamp;
 	uint32_t                         bubble_frame_cnt;
+	uint32_t                         aeb_error_cnt;
 	atomic64_t                       state_monitor_head;
 	struct cam_isp_context_state_monitor cam_isp_ctx_state_monitor[
 		CAM_ISP_CTX_STATE_MONITOR_MAX_ENTRIES];

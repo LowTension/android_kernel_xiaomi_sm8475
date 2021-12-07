@@ -1,18 +1,19 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2021 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
-#ifndef _CPASTOP_V780_100_H_
-#define _CPASTOP_V780_100_H_
+#ifndef _CPASTOP_V680_110_H_
+#define _CPASTOP_V680_110_H_
 
 #define TEST_IRQ_ENABLE 0
 
-static struct cam_camnoc_irq_sbm cam_cpas_v780_100_irq_sbm = {
+static struct cam_camnoc_irq_sbm cam_cpas_v680_110_irq_sbm = {
 	.sbm_enable = {
 		.access_type = CAM_REG_TYPE_READ_WRITE,
 		.enable = true,
-		.offset = 0x240, /* CAM_NOC_SBM_FAULTINEN0_LOW */
+		.offset = 0x2240, /* CAM_NOC_SBM_FAULTINEN0_LOW */
 		.value = 0x2 |    /* SBM_FAULTINEN0_LOW_PORT1_MASK */
 			0x04 |     /* SBM_FAULTINEN0_LOW_PORT2_MASK */
 			0x08 |     /* SBM_FAULTINEN0_LOW_PORT3_MASK */
@@ -25,18 +26,18 @@ static struct cam_camnoc_irq_sbm cam_cpas_v780_100_irq_sbm = {
 	.sbm_status = {
 		.access_type = CAM_REG_TYPE_READ,
 		.enable = true,
-		.offset = 0x248, /* CAM_NOC_SBM_FAULTINSTATUS0_LOW */
+		.offset = 0x2248, /* CAM_NOC_SBM_FAULTINSTATUS0_LOW */
 	},
 	.sbm_clear = {
 		.access_type = CAM_REG_TYPE_WRITE,
 		.enable = true,
-		.offset = 0x280, /* CAM_NOC_SBM_FLAGOUTCLR0_LOW */
+		.offset = 0x2280, /* CAM_NOC_SBM_FLAGOUTCLR0_LOW */
 		.value = TEST_IRQ_ENABLE ? 0x5 : 0x1,
 	}
 };
 
 static struct cam_camnoc_irq_err
-	cam_cpas_v780_100_irq_err[] = {
+	cam_cpas_v680_110_irq_err[] = {
 	{
 		.irq_type = CAM_CAMNOC_HW_IRQ_SLAVE_ERROR,
 		.enable = false,
@@ -44,18 +45,18 @@ static struct cam_camnoc_irq_err
 		.err_enable = {
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.enable = true,
-			.offset = 0x8, /* CAM_NOC_ERL_MAINCTL_LOW */
+			.offset = 0x2008, /* CAM_NOC_ERL_MAINCTL_LOW */
 			.value = 1,
 		},
 		.err_status = {
 			.access_type = CAM_REG_TYPE_READ,
 			.enable = true,
-			.offset = 0x10, /* CAM_NOC_ERL_ERRVLD_LOW */
+			.offset = 0x2010, /* CAM_NOC_ERL_ERRVLD_LOW */
 		},
 		.err_clear = {
 			.access_type = CAM_REG_TYPE_WRITE,
 			.enable = true,
-			.offset = 0x18, /* CAM_NOC_ERL_ERRCLR_LOW */
+			.offset = 0x2018, /* CAM_NOC_ERL_ERRCLR_LOW */
 			.value = 1,
 		},
 	},
@@ -66,18 +67,18 @@ static struct cam_camnoc_irq_err
 		.err_enable = {
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.enable = true,
-			.offset = 0x77A0, /* IFE_UBWC : RT_1_NIU_ENCERREN_LOW */
+			.offset = 0x59A0, /* IFE_UBWC_NIU_ENCERREN_LOW */
 			.value = 0xF,
 		},
 		.err_status = {
 			.access_type = CAM_REG_TYPE_READ,
 			.enable = true,
-			.offset = 0x7790, /* IFE_UBWC : RT_1_NIU_ENCERRSTATUS_LOW */
+			.offset = 0x5990, /* IFE_UBWC_NIU_ENCERRSTATUS_LOW */
 		},
 		.err_clear = {
 			.access_type = CAM_REG_TYPE_WRITE,
 			.enable = true,
-			.offset = 0x7798, /* IFE_UBWC : RT_1_NIU_ENCERRCLR_LOW */
+			.offset = 0x5998, /* IFE_UBWC_NIU_ENCERRCLR_LOW */
 			.value = 0X1,
 		},
 	},
@@ -88,18 +89,18 @@ static struct cam_camnoc_irq_err
 		.err_enable = {
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.enable = true,
-			.offset = 0x6BA0, /* BPS_WR : NRT_2_NIU_ENCERREN_LOW */
+			.offset = 0x7A0, /* CAM_NOC_BPS_WR_NIU_ENCERREN_LOW */
 			.value = 0XF,
 		},
 		.err_status = {
 			.access_type = CAM_REG_TYPE_READ,
 			.enable = true,
-			.offset = 0x6B90, /* BPS_WR : NRT_2_NIU_ENCERRSTATUS_LOW */
+			.offset = 0x790, /* CAM_NOC_BPS_WR_NIU_ENCERRSTATUS_LOW */
 		},
 		.err_clear = {
 			.access_type = CAM_REG_TYPE_WRITE,
 			.enable = true,
-			.offset = 0x6B98, /* BPS_WR : NRT_2_NIU_ENCERRCLR_LOW */
+			.offset = 0x798, /* CAM_NOC_BPS_WR_NIU_ENCERRCLR_LOW */
 			.value = 0X1,
 		},
 	},
@@ -110,18 +111,18 @@ static struct cam_camnoc_irq_err
 		.err_enable = {
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.enable = true,
-			.offset = 0x6F20, /* IPE_0_RD : NRT_4_NIU_DECERREN_LOW */
+			.offset = 0x5F20, /* CAM_NOC_IPE_0_RD_NIU_DECERREN_LOW */
 			.value = 0xFF,
 		},
 		.err_status = {
 			.access_type = CAM_REG_TYPE_READ,
 			.enable = true,
-			.offset = 0x6F10, /* IPE_0_RD : NRT_4_NIU_DECERRSTATUS_LOW */
+			.offset = 0x5F10, /* CAM_NOC_IPE_0_RD_NIU_DECERRSTATUS_LOW */
 		},
 		.err_clear = {
 			.access_type = CAM_REG_TYPE_WRITE,
 			.enable = true,
-			.offset = 0x6F18, /* IPE_0_RD : NRT_4_NIU_DECERRCLR_LOW */
+			.offset = 0x5F18, /* CAM_NOC_IPE_0_RD_NIU_DECERRCLR_LOW */
 			.value = 0X1,
 		},
 	},
@@ -132,18 +133,18 @@ static struct cam_camnoc_irq_err
 		.err_enable = {
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.enable = true,
-			.offset = 0x7120, /* IPE_1_RD : NRT_5_NIU_DECERREN_LOW */
+			.offset = 0x6520, /* CAM_NOC_IPE_1_RD_NIU_DECERREN_LOW */
 			.value = 0XFF,
 		},
 		.err_status = {
 			.access_type = CAM_REG_TYPE_READ,
 			.enable = true,
-			.offset = 0x7110, /* IPE_1_RD : NRT_5_NIU_DECERRSTATUS_LOW */
+			.offset = 0x6510, /* CAM_NOC_IPE_1_RD_NIU_DECERRSTATUS_LOW */
 		},
 		.err_clear = {
 			.access_type = CAM_REG_TYPE_WRITE,
 			.enable = true,
-			.offset = 0x7118, /* IPE_1_RD : NRT_5_NIU_DECERRCLR_LOW */
+			.offset = 0x6518, /* CAM_NOC_IPE_1_RD_NIU_DECERRCLR_LOW */
 			.value = 0X1,
 		},
 	},
@@ -154,18 +155,18 @@ static struct cam_camnoc_irq_err
 		.err_enable = {
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.enable = true,
-			.offset = 0x73A0, /* IPE_WR : NRT_6_NIU_ENCERREN_LOW */
+			.offset = 0x6BA0, /* CAM_NOC_IPE_WR_NIU_ENCERREN_LOW */
 			.value = 0XF,
 		},
 		.err_status = {
 			.access_type = CAM_REG_TYPE_READ,
 			.enable = true,
-			.offset = 0x7390, /* IPE_WR : NRT_6_NIU_ENCERRSTATUS_LOW */
+			.offset = 0x6B90, /* CAM_NOC_IPE_WR_NIU_ENCERRSTATUS_LOW */
 		},
 		.err_clear = {
 			.access_type = CAM_REG_TYPE_WRITE,
 			.enable = true,
-			.offset = 0x7398, /* IPE_WR : NRT_6_NIU_ENCERRCLR_LOW */
+			.offset = 0x6B98, /* CAM_NOC_IPE_WR_NIU_ENCERRCLR_LOW */
 			.value = 0x1,
 		},
 	},
@@ -176,13 +177,13 @@ static struct cam_camnoc_irq_err
 		.err_enable = {
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.enable = true,
-			.offset = 0x288, /* CAM_NOC_SBM_FLAGOUTSET0_LOW */
+			.offset = 0x2288, /* CAM_NOC_SBM_FLAGOUTSET0_LOW */
 			.value = 0x1,
 		},
 		.err_status = {
 			.access_type = CAM_REG_TYPE_READ,
 			.enable = true,
-			.offset = 0x290, /* CAM_NOC_SBM_FLAGOUTSTATUS0_LOW */
+			.offset = 0x2290, /* CAM_NOC_SBM_FLAGOUTSTATUS0_LOW */
 		},
 		.err_clear = {
 			.enable = false, /* CAM_NOC_SBM_FLAGOUTCLR0_LOW */
@@ -203,13 +204,13 @@ static struct cam_camnoc_irq_err
 		.err_enable = {
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.enable = true,
-			.offset = 0x288, /* CAM_NOC_SBM_FLAGOUTSET0_LOW */
+			.offset = 0x2288, /* CAM_NOC_SBM_FLAGOUTSET0_LOW */
 			.value = 0x5,
 		},
 		.err_status = {
 			.access_type = CAM_REG_TYPE_READ,
 			.enable = true,
-			.offset = 0x290, /* CAM_NOC_SBM_FLAGOUTSTATUS0_LOW */
+			.offset = 0x2290, /* CAM_NOC_SBM_FLAGOUTSTATUS0_LOW */
 		},
 		.err_clear = {
 			.enable = false, /* CAM_NOC_SBM_FLAGOUTCLR0_LOW */
@@ -218,119 +219,44 @@ static struct cam_camnoc_irq_err
 };
 
 static struct cam_camnoc_specific
-	cam_cpas_v780_100_camnoc_specific[] = {
-	/* RT ports */
+	cam_cpas_v680_110_camnoc_specific[] = {
 	{
-		.port_name = "RT0-SFE_RD",
-		.enable = true,
-		.priority_lut_low = {
-			.enable = false,
-			.access_type = CAM_REG_TYPE_READ_WRITE,
-			.masked_value = 0,
-			.offset = 0x7430, /* SFE_RD : NOC_RT_0_NIU_PRIORITYLUT_LOW */
-			.value = 0x0,
-		},
-		.priority_lut_high = {
-			.enable = false,
-			.access_type = CAM_REG_TYPE_READ_WRITE,
-			.masked_value = 0,
-			.offset = 0x7434, /* SFE_RD : NOC_RT_0_NIU_PRIORITYLUT_HIGH */
-			.value = 0x0,
-		},
-		.urgency = {
-			.enable = true,
-			.access_type = CAM_REG_TYPE_READ_WRITE,
-			.masked_value = 0,
-			.offset = 0x7438, /* SFE_RD : NOC_RT_0_NIU_URGENCY_LOW */
-			.value = 0x3,
-		},
-		.danger_lut = {
-			.enable = false,
-			.access_type = CAM_REG_TYPE_READ_WRITE,
-			.masked_value = 0,
-			.offset = 0x7440, /* SFE_RD : NOC_RT_0_NIU_DANGERLUT_LOW */
-			.value = 0x0,
-		},
-		.safe_lut = {
-			.enable = false,
-			.access_type = CAM_REG_TYPE_READ_WRITE,
-			.masked_value = 0,
-			.offset = 0x7448, /* SFE_RD : NOC_RT_0_NIU_SAFELUT_LOW */
-			.value = 0x0,
-		},
-		.ubwc_ctl = {
-			/*
-			 * Do not explicitly set ubwc config register.
-			 * Power on default values are taking care of required
-			 * register settings.
-			 */
-			.enable = false,
-		},
-		.dynattr_mainctl = {
-			.enable = false,
-			.access_type = CAM_REG_TYPE_READ_WRITE,
-			.masked_value = 0,
-			.offset = 0x8188, /* SFE_RD : NOC_RT_0_DYNATTR_MAINCTL */
-			.value = 0x0,
-		},
-		.qosgen_mainctl = {
-			.enable = false,
-			.access_type = CAM_REG_TYPE_READ_WRITE,
-			.masked_value = 0,
-			.offset = 0x5388, /* SFE_RD : NOC_RT_0_QOSGEN_MAINCTL */
-			.value = 0x0,
-		},
-		.qosgen_shaping_low = {
-			.enable = false,
-			.access_type = CAM_REG_TYPE_READ_WRITE,
-			.masked_value = 0,
-			.offset = 0x53A0, /* SFE_RD : NOC_RT_0_QOSGEN_SHAPING_LOW */
-			.value = 0x0,
-		},
-		.qosgen_shaping_high = {
-			.enable = false,
-			.access_type = CAM_REG_TYPE_READ_WRITE,
-			.masked_value = 0,
-			.offset = 0x53A4, /* SFE_RD : NOC_RT_0_QOSGEN_SHAPING_HIGH */
-			.value = 0x0,
-		},
-	},
-	{
-		.port_name = "RT1-IFE_UBWC_LINEAR",
+		.port_type = CAM_CAMNOC_IFE_UBWC,
+		.port_name = "IFE_UBWC",
 		.enable = true,
 		.priority_lut_low = {
 			.enable = true,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
-			.offset = 0x7630, /* IFE_UBWC_LINEAR : NOC_RT_1_NIU_PRIORITYLUT_LOW */
+			.offset = 0x5830, /* IFE_UBWC_PRIORITYLUT_LOW */
 			.value = 0x66665433,
 		},
 		.priority_lut_high = {
 			.enable = true,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
-			.offset = 0x7634, /* IFE_UBWC_LINEAR : NOC_RT_1_NIU_PRIORITYLUT_HIGH */
+			.offset = 0x5834, /* IFE_UBWC_PRIORITYLUT_HIGH */
 			.value = 0x66666666,
 		},
 		.urgency = {
 			.enable = true,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
-			.offset = 0x7638, /* IFE_UBWC_LINEAR : NOC_RT_1_NIU_URGENCY_LOW */
-			.value = 0x1B30,
+			.offset = 0x5838, /* IFE_UBWC_URGENCY_LOW */
+			.value = 0x1E30,
 		},
 		.danger_lut = {
 			.enable = true,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
-			.offset = 0x7640, /* IFE_UBWC_LINEAR : NOC_RT_1_NIU_DANGERLUT_LOW */
+			.offset = 0x5840, /* IFE_UBWC_DANGERLUT_LOW */
 			.value = 0xffffff00,
 		},
 		.safe_lut = {
 			.enable = true,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
-			.offset = 0x7648, /* IFE_UBWC_LINEAR : NOC_RT_1_NIU_SAFELUT_LOW */
+			.offset = 0x5848, /* IFE_UBWC_SAFELUT_LOW */
 			.value = 0x000f,
 		},
 		.ubwc_ctl = {
@@ -341,78 +267,72 @@ static struct cam_camnoc_specific
 			 */
 			.enable = false,
 		},
-		.dynattr_mainctl = {
-			.enable = false,
-			.access_type = CAM_REG_TYPE_READ_WRITE,
-			.masked_value = 0,
-			.offset = 0x8208, /* IFE_UBWC_LINEAR : NOC_RT_1_DYNATTR_MAINCTL */
-			.value = 0x0,
-		},
 		.qosgen_mainctl = {
 			.enable = false,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
-			.offset = 0x5408, /* IFE_UBWC_LINEAR : NOC_RT_1_QOSGEN_MAINCTL */
+			.offset = 0x5A08, /* IFE_UBWC_QOSGEN_MAINCTL */
 			.value = 0x0,
 		},
 		.qosgen_shaping_low = {
 			.enable = false,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
-			.offset = 0x5420, /* IFE_UBWC_LINEAR : NOC_RT_1_QOSGEN_SHAPING_LOW */
+			.offset = 0x5A20, /* IFE_UBWC_QOSGEN_SHAPING_LOW */
 			.value = 0x0,
 		},
 		.qosgen_shaping_high = {
 			.enable = false,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
-			.offset = 0x5424, /* IFE_UBWC_LINEAR : NOC_RT_1_QOSGEN_SHAPING_HIGH */
+			.offset = 0x5A24, /* IFE_UBWC_QOSGEN_SHAPING_HIGH */
 			.value = 0x0,
 		},
 		.maxwr_low = {
 			.enable = true,
 			.access_type = CAM_REG_TYPE_READ,
 			.masked_value = 0,
-			.offset = 0x7620, /* IFE_UBWC_LINEAR : NOC_RT_1_NIU_MAXWR_LOW */
+			.offset = 0x5820, /* IFE_UBWC_MAXWR_LOW */
 			.value = 0x0,
 		},
 	},
 	{
-		.port_name = "RT2-IFE_STATS",
+		.port_type = CAM_CAMNOC_IFE_RDI_WR,
+		.port_name = "IFE_RDI_WR",
 		.enable = true,
 		.priority_lut_low = {
 			.enable = true,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
-			.offset = 0x7830, /* IFE_STATS : NOC_RT_2_NIU_PRIORITYLUT_LOW */
+			.offset = 0x5230, /* IFE_RDI_WR_PRIORITYLUT_LOW */
 			.value = 0x66665433,
 		},
 		.priority_lut_high = {
 			.enable = true,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
-			.offset = 0x7834, /* IFE_STATS : NOC_RT_2_NIU_PRIORITYLUT_HIGH */
+			.offset = 0x5234, /* IFE_RDI_WR_PRIORITYLUT_HIGH */
 			.value = 0x66666666,
 		},
 		.urgency = {
 			.enable = true,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
-			.offset = 0x7838, /* IFE_STATS : NOC_RT_2_NIU_URGENCY_LOW */
-			.value = 0x1B30,
+			.offset = 0x5238, /* IFE_RDI_WR_URGENCY_LOW */
+			.value = 0x1E30,
 		},
 		.danger_lut = {
 			.enable = true,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
-			.offset = 0x7840, /* IFE_STATS : NOC_RT_2_NIU_DANGERLUT_LOW */
+			.offset = 0x5240, /* IFE_RDI_WR_DANGERLUT_LOW */
 			.value = 0xffffff00,
 		},
 		.safe_lut = {
 			.enable = true,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
-			.offset = 0x7848, /* IFE_STATS : NOC_RT_2_NIU_SAFELUT_LOW */
+			.offset = 0x5248, /* IFE_RDI_WR_SAFELUT_LOW */
 			.value = 0x000f,
 		},
 		.ubwc_ctl = {
@@ -423,78 +343,72 @@ static struct cam_camnoc_specific
 			 */
 			.enable = false,
 		},
-		.dynattr_mainctl = {
-			.enable = false,
-			.access_type = CAM_REG_TYPE_READ_WRITE,
-			.masked_value = 0,
-			.offset = 0x8288, /* IFE_STATS : NOC_RT_2_DYNATTR_MAINCTL */
-			.value = 0x0,
-		},
 		.qosgen_mainctl = {
 			.enable = false,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
-			.offset = 0x5488, /* IFE_STATS : NOC_RT_2_QOSGEN_MAINCTL */
+			.offset = 0x5408, /* IFE_RDI_WR_QOSGEN_MAINCTL */
 			.value = 0x0,
 		},
 		.qosgen_shaping_low = {
 			.enable = false,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
-			.offset = 0x54A0, /* IFE_STATS : NOC_RT_2_QOSGEN_SHAPING_LOW */
+			.offset = 0x5420, /* IFE_RDI_WR_QOSGEN_SHAPING_LOW */
 			.value = 0x0,
 		},
 		.qosgen_shaping_high = {
 			.enable = false,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
-			.offset = 0x54A4, /* IFE_STATS : NOC_RT_2_QOSGEN_SHAPING_HIGH */
+			.offset = 0x5424, /* IFE_RDI_WR_QOSGEN_SHAPING_HIGH */
 			.value = 0x0,
 		},
 		.maxwr_low = {
 			.enable = true,
 			.access_type = CAM_REG_TYPE_READ,
 			.masked_value = 0,
-			.offset = 0x7820, /* IFE_STATS : NOC_RT_2_NIU_MAXWR_LOW */
+			.offset = 0x5220, /* IFE_RDI_WR_MAXWR_LOW */
 			.value = 0x0,
 		},
 	},
 	{
-		.port_name = "RT3-IFE_PDAF_IFELITE",
+		.port_type = CAM_CAMNOC_IFE_PDAF,
+		.port_name = "IFE_PDAF",
 		.enable = true,
 		.priority_lut_low = {
 			.enable = true,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
-			.offset = 0x7A30, /* IFE_PDAF_IFELITE : NOC_RT_3_NIU_PRIORITYLUT_LOW */
+			.offset = 0x4c30, /* IFE_PDAF_PRIORITYLUT_LOW */
 			.value = 0x66665433,
 		},
 		.priority_lut_high = {
 			.enable = true,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
-			.offset = 0x7A34, /* IFE_PDAF_IFELITE : NOC_RT_3_NIU_PRIORITYLUT_HIGH */
+			.offset = 0x4c34, /* IFE_PDAF_PRIORITYLUT_HIGH */
 			.value = 0x66666666,
 		},
 		.urgency = {
 			.enable = true,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
-			.offset = 0x7A38, /* IFE_PDAF_IFELITE : NOC_RT_3_NIU_URGENCY_LOW */
+			.offset = 0x4c38, /* IFE_PDAF_URGENCY_LOW */
 			.value = 0x1B30,
 		},
 		.danger_lut = {
 			.enable = true,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
-			.offset = 0x7A40, /* IFE_PDAF_IFELITE : NOC_RT_3_NIU_DANGERLUT_LOW */
+			.offset = 0x4c40, /* IFE_PDAF_DANGERLUT_LOW */
 			.value = 0xffffff00,
 		},
 		.safe_lut = {
 			.enable = true,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
-			.offset = 0x7A48, /* IFE_PDAF_IFELITE : NOC_RT_3_NIU_SAFELUT_LOW */
+			.offset = 0x4c48, /* IFE_PDAF_SAFELUT_LOW */
 			.value = 0x000f,
 		},
 		.ubwc_ctl = {
@@ -505,78 +419,72 @@ static struct cam_camnoc_specific
 			 */
 			.enable = false,
 		},
-		.dynattr_mainctl = {
-			.enable = false,
-			.access_type = CAM_REG_TYPE_READ_WRITE,
-			.masked_value = 0,
-			.offset = 0x8308, /* IFE_PDAF_IFELITE : NOC_RT_3_DYNATTR_MAINCTL */
-			.value = 0x0,
-		},
 		.qosgen_mainctl = {
 			.enable = false,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
-			.offset = 0x5508, /* IFE_PDAF_IFELITE : NOC_RT_3_QOSGEN_MAINCTL */
+			.offset = 0x4e08, /* IFE_PDAF_QOSGEN_MAINCTL */
 			.value = 0x0,
 		},
 		.qosgen_shaping_low = {
 			.enable = false,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
-			.offset = 0x5520, /* IFE_PDAF_IFELITE : NOC_RT_3_QOSGEN_SHAPING_LOW */
+			.offset = 0x4e20, /* IFE_PDAF_QOSGEN_SHAPING_LOW */
 			.value = 0x0,
 		},
 		.qosgen_shaping_high = {
 			.enable = false,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
-			.offset = 0x5524, /* IFE_PDAF_IFELITE : NOC_RT_3_QOSGEN_SHAPING_HIGH */
+			.offset = 0x4e24, /* IFE_PDAF_QOSGEN_SHAPING_HIGH */
 			.value = 0x0,
 		},
 		.maxwr_low = {
 			.enable = true,
 			.access_type = CAM_REG_TYPE_READ,
 			.masked_value = 0,
-			.offset = 0x7A20, /* IFE_PDAF_IFELITE : NOC_RT_3_NIU_MAXWR_LOW */
+			.offset = 0x4C20, /* IFE_PDAF_MAXWR_LOW */
 			.value = 0x0,
 		},
 	},
 	{
-		.port_name = "RT4-IFE_RDI_SFE",
+		.port_type = CAM_CAMNOC_IFE_LINEAR_STATS,
+		.port_name = "IFE_LINEAR_STATS",
 		.enable = true,
 		.priority_lut_low = {
 			.enable = true,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
-			.offset = 0x7C30, /* IFE_RDI_SFE : NOC_RT_4_NIU_PRIORITYLUT_LOW */
+			.offset = 0x4030, /* IFE_LINEAR_PRIORITYLUT_LOW */
 			.value = 0x66665433,
 		},
 		.priority_lut_high = {
 			.enable = true,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
-			.offset = 0x7C34, /* IFE_RDI_SFE : NOC_RT_4_NIU_PRIORITYLUT_HIGH */
+			.offset = 0x4034, /* IFE_LINEAR_PRIORITYLUT_HIGH */
 			.value = 0x66666666,
 		},
 		.urgency = {
 			.enable = true,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
-			.offset = 0x7C38, /* IFE_RDI_SFE : NOC_RT_4_NIU_URGENCY_LOW */
+			.offset = 0x4038, /* IFE_LINEAR_URGENCY_LOW */
 			.value = 0x1B30,
 		},
 		.danger_lut = {
 			.enable = true,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
-			.offset = 0x7C40, /* IFE_RDI_SFE : NOC_RT_4_NIU_DANGERLUT_LOW */
+			.offset = 0x4040, /* IFE_LINEAR_DANGERLUT_LOW */
 			.value = 0xffffff00,
 		},
 		.safe_lut = {
 			.enable = true,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
-			.offset = 0x7C48, /* IFE_RDI_SFE : NOC_RT_4_NIU_SAFELUT_LOW */
+			.offset = 0x4048, /* IFE_LINEAR_SAFELUT_LOW */
 			.value = 0x000f,
 		},
 		.ubwc_ctl = {
@@ -587,629 +495,802 @@ static struct cam_camnoc_specific
 			 */
 			.enable = false,
 		},
-		.dynattr_mainctl = {
-			.enable = false,
-			.access_type = CAM_REG_TYPE_READ_WRITE,
-			.masked_value = 0,
-			.offset = 0x8388, /* IFE_RDI_SFE : NOC_RT_4_DYNATTR_MAINCTL */
-			.value = 0x0,
-		},
 		.qosgen_mainctl = {
 			.enable = false,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
-			.offset = 0x5588, /* IFE_RDI_SFE : NOC_RT_4_QOSGEN_MAINCTL */
+			.offset = 0x4208, /* IFE_LINEAR_QOSGEN_MAINCTL */
 			.value = 0x0,
 		},
 		.qosgen_shaping_low = {
 			.enable = false,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
-			.offset = 0x55A0, /* IFE_RDI_SFE : NOC_RT_4_QOSGEN_SHAPING_LOW */
+			.offset = 0x4220, /* IFE_LINEAR_QOSGEN_SHAPING_LOW */
 			.value = 0x0,
 		},
 		.qosgen_shaping_high = {
 			.enable = false,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
-			.offset = 0x55A4, /* IFE_RDI_SFE : NOC_RT_4_QOSGEN_SHAPING_HIGH */
+			.offset = 0x4224, /* IFE_LINEAR_QOSGEN_SHAPING_HIGH */
 			.value = 0x0,
 		},
 		.maxwr_low = {
 			.enable = true,
 			.access_type = CAM_REG_TYPE_READ,
 			.masked_value = 0,
-			.offset = 0x7C20, /* IFE_RDI_SFE : NOC_RT_4_NIU_MAXWR_LOW */
+			.offset = 0x4020, /* IFE_LINEAR_STATS_MAXWR_LOW */
 			.value = 0x0,
 		},
 	},
-	/* NRT ports */
 	{
-		.port_name = "NRT0-CDM",
+		.port_type = CAM_CAMNOC_IFE_LINEAR_STATS_1,
+		.port_name = "IFE_LINEAR_STATS_1",
+		.enable = true,
+		.priority_lut_low = {
+			.enable = true,
+			.access_type = CAM_REG_TYPE_READ_WRITE,
+			.masked_value = 0,
+			.offset = 0x8230, /* IFE_LINEAR_1_PRIORITYLUT_LOW */
+			.value = 0x66665433,
+		},
+		.priority_lut_high = {
+			.enable = true,
+			.access_type = CAM_REG_TYPE_READ_WRITE,
+			.masked_value = 0,
+			.offset = 0x8234, /* IFE_LINEAR_1_PRIORITYLUT_HIGH */
+			.value = 0x66666666,
+		},
+		.urgency = {
+			.enable = true,
+			.access_type = CAM_REG_TYPE_READ_WRITE,
+			.masked_value = 0,
+			.offset = 0x8238, /* IFE_LINEAR_1_URGENCY_LOW */
+			.value = 0x1B30,
+		},
+		.danger_lut = {
+			.enable = true,
+			.access_type = CAM_REG_TYPE_READ_WRITE,
+			.masked_value = 0,
+			.offset = 0x8240, /* IFE_LINEAR_1_DANGERLUT_LOW */
+			.value = 0xffffff00,
+		},
+		.safe_lut = {
+			.enable = true,
+			.access_type = CAM_REG_TYPE_READ_WRITE,
+			.masked_value = 0,
+			.offset = 0x8248, /* IFE_LINEAR_1_SAFELUT_LOW */
+			.value = 0x000f,
+		},
+		.ubwc_ctl = {
+			/*
+			 * Do not explicitly set ubwc config register.
+			 * Power on default values are taking care of required
+			 * register settings.
+			 */
+			.enable = false,
+		},
+		.qosgen_mainctl = {
+			.enable = false,
+			.access_type = CAM_REG_TYPE_READ_WRITE,
+			.masked_value = 0,
+			.offset = 0x8408, /* IFE_LINEAR_1_QOSGEN_MAINCTL */
+			.value = 0x0,
+		},
+		.qosgen_shaping_low = {
+			.enable = false,
+			.access_type = CAM_REG_TYPE_READ_WRITE,
+			.masked_value = 0,
+			.offset = 0x8420, /* IFE_LINEAR_1_QOSGEN_SHAPING_LOW */
+			.value = 0x0,
+		},
+		.qosgen_shaping_high = {
+			.enable = false,
+			.access_type = CAM_REG_TYPE_READ_WRITE,
+			.masked_value = 0,
+			.offset = 0x8424, /* IFE_LINEAR_1_QOSGEN_SHAPING_HIGH */
+			.value = 0x0,
+		},
+		.maxwr_low = {
+			.enable = true,
+			.access_type = CAM_REG_TYPE_READ,
+			.masked_value = 0,
+			.offset = 0x8220, /* IFE_LINEAR_STATS_1_MAXWR_LOW */
+			.value = 0x0,
+		},
+	},
+	{
+		.port_type = CAM_CAMNOC_IFE_LITE,
+		.port_name = "IFE_LITE",
+		.enable = true,
+		.priority_lut_low = {
+			.enable = true,
+			.access_type = CAM_REG_TYPE_READ_WRITE,
+			.masked_value = 0,
+			.offset = 0x4630, /* IFE_LITE_PRIORITYLUT_LOW */
+			.value = 0x66665433,
+		},
+		.priority_lut_high = {
+			.enable = true,
+			.access_type = CAM_REG_TYPE_READ_WRITE,
+			.masked_value = 0,
+			.offset = 0x4634, /* IFE_LITE_PRIORITYLUT_HIGH */
+			.value = 0x66666666,
+		},
+		.urgency = {
+			.enable = true,
+			.access_type = CAM_REG_TYPE_READ_WRITE,
+			.masked_value = 0,
+			.offset = 0x4638, /* IFE_LITE_URGENCY_LOW */
+			.value = 0x1B30,
+		},
+		.danger_lut = {
+			.enable = true,
+			.access_type = CAM_REG_TYPE_READ_WRITE,
+			.masked_value = 0,
+			.offset = 0x4640, /* IFE_LITE_DANGERLUT_LOW */
+			.value = 0xffffff00,
+		},
+		.safe_lut = {
+			.enable = true,
+			.access_type = CAM_REG_TYPE_READ_WRITE,
+			.masked_value = 0,
+			.offset = 0x4648, /* IFE_LITE_SAFELUT_LOW */
+			.value = 0x000f,
+		},
+		.ubwc_ctl = {
+			/*
+			 * Do not explicitly set ubwc config register.
+			 * Power on default values are taking care of required
+			 * register settings.
+			 */
+			.enable = false,
+		},
+		.qosgen_mainctl = {
+			.enable = false,
+			.access_type = CAM_REG_TYPE_READ_WRITE,
+			.masked_value = 0,
+			.offset = 0x4808, /* IFE_LITE_QOSGEN_MAINCTL */
+			.value = 0x0,
+		},
+		.qosgen_shaping_low = {
+			.enable = false,
+			.access_type = CAM_REG_TYPE_READ_WRITE,
+			.masked_value = 0,
+			.offset = 0x4820, /* IFE_LITE_QOSGEN_SHAPING_LOW */
+			.value = 0x0,
+		},
+		.qosgen_shaping_high = {
+			.enable = false,
+			.access_type = CAM_REG_TYPE_READ_WRITE,
+			.masked_value = 0,
+			.offset = 0x4824, /* IFE_LITE_QOSGEN_SHAPING_HIGH */
+			.value = 0x0,
+		},
+		.maxwr_low = {
+			.enable = true,
+			.access_type = CAM_REG_TYPE_READ,
+			.masked_value = 0,
+			.offset = 0x4620, /* IFE_LITE_MAXWR_LOW */
+			.value = 0x0,
+		},
+	},
+	{
+		.port_type = CAM_CAMNOC_SFE_RD,
+		.port_name = "SFE_RD",
 		.enable = true,
 		.priority_lut_low = {
 			.enable = false,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
-			.offset = 0x6630, /* CDM : NOC_NRT_0_NIU_PRIORITYLUT_LOW */
+			.offset = 0x7030, /* SFE_RD_PRIORITYLUT_LOW */
 			.value = 0x0,
 		},
 		.priority_lut_high = {
 			.enable = false,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
-			.offset = 0x6634, /* CDM : NOC_NRT_0_NIU_PRIORITYLUT_HIGH */
+			.offset = 0x7034, /* SFE_RD_PRIORITYLUT_HIGH */
 			.value = 0x0,
 		},
 		.urgency = {
 			.enable = true,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
-			.offset = 0x6638, /* CDM : NOC_NRT_0_NIU_URGENCY_LOW */
-			.value = 0x3,
+			.offset = 0x7038, /* SFE_RD_URGENCY_LOW */
+			.value = 0x4,
 		},
 		.danger_lut = {
 			.enable = false,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
-			.offset = 0x6640, /* CDM : NOC_NRT_0_NIU_DANGERLUT_LOW */
+			.offset = 0x7040, /* SFE_RD_DANGERLUT_LOW */
 			.value = 0x0,
 		},
 		.safe_lut = {
 			.enable = false,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
-			.offset = 0x6648, /* CDM : NOC_NRT_0_NIU_SAFELUT_LOW */
+			.offset = 0x7048, /* SFE_RD_SAFELUT_LOW */
+			.value = 0x0,
+		},
+		.ubwc_ctl = {
+			/*
+			 * Do not explicitly set ubwc config register.
+			 * Power on default values are taking care of required
+			 * register settings.
+			 */
+			.enable = false,
+		},
+		.qosgen_mainctl = {
+			.enable = false,
+			.access_type = CAM_REG_TYPE_READ_WRITE,
+			.masked_value = 0,
+			.offset = 0x7208, /* SFE_RD_QOSGEN_MAINCTL */
+			.value = 0x0,
+		},
+		.qosgen_shaping_low = {
+			.enable = false,
+			.access_type = CAM_REG_TYPE_READ_WRITE,
+			.masked_value = 0,
+			.offset = 0x7220, /* SFE_RD_QOSGEN_SHAPING_LOW */
+			.value = 0x0,
+		},
+		.qosgen_shaping_high = {
+			.enable = false,
+			.access_type = CAM_REG_TYPE_READ_WRITE,
+			.masked_value = 0,
+			.offset = 0x7224, /* SFE_RD_QOSGEN_SHAPING_HIGH */
+			.value = 0x0,
+		},
+	},
+	{
+		.port_type = CAM_CAMNOC_IPE_WR,
+		.port_name = "IPE_WR",
+		.enable = true,
+		.priority_lut_low = {
+			.enable = true,
+			.access_type = CAM_REG_TYPE_READ_WRITE,
+			.masked_value = 0,
+			.offset = 0x6a30, /* IPE_WR_PRIORITYLUT_LOW */
+			.value = 0x33333333,
+		},
+		.priority_lut_high = {
+			.enable = true,
+			.access_type = CAM_REG_TYPE_READ_WRITE,
+			.masked_value = 0,
+			.offset = 0x6a34, /* IPE_WR_PRIORITYLUT_HIGH */
+			.value = 0x33333333,
+		},
+		.urgency = {
+			.enable = true,
+			.access_type = CAM_REG_TYPE_READ_WRITE,
+			.masked_value = 0,
+			.offset = 0x6a38, /* IPE_WR_URGENCY_LOW */
+			.value = 0x30,
+		},
+		.danger_lut = {
+			.enable = false,
+			.access_type = CAM_REG_TYPE_READ_WRITE,
+			.masked_value = 0,
+			.offset = 0x6a40, /* IPE_WR_DANGERLUT_LOW */
+			.value = 0x0,
+		},
+		.safe_lut = {
+			.enable = false,
+			.access_type = CAM_REG_TYPE_READ_WRITE,
+			.masked_value = 0,
+			.offset = 0x6a48, /* IPE_WR_SAFELUT_LOW */
 			.value = 0xffff,
 		},
 		.ubwc_ctl = {
 			.enable = false,
 		},
-		.dynattr_mainctl = {
-			.enable = false,
-			.access_type = CAM_REG_TYPE_READ_WRITE,
-			.masked_value = 0,
-			.offset = 0x7E08, /* CDM : NOC_NRT_0_DYNATTR_MAINCTL */
-			.value = 0x0,
-		},
 		.qosgen_mainctl = {
 			.enable = false,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
-			.offset = 0x5008, /* CDM : NOC_NRT_0_QOSGEN_MAINCTL */
+			.offset = 0x6c08, /* IPE_WR_QOSGEN_MAINCTL */
 			.value = 0x0,
 		},
 		.qosgen_shaping_low = {
 			.enable = false,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
-			.offset = 0x5020, /* CDM : NOC_NRT_0_QOSGEN_SHAPING_LOW */
+			.offset = 0x6c20, /* IPE_WR_QOSGEN_SHAPING_LOW */
 			.value = 0x0,
 		},
 		.qosgen_shaping_high = {
 			.enable = false,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
-			.offset = 0x5024, /* CDM : NOC_NRT_0_QOSGEN_SHAPING_HIGH */
+			.offset = 0x6c24, /* IPE_WR_QOSGEN_SHAPING_HIGH */
+			.value = 0x0,
+		},
+		.maxwr_low = {
+			.enable = false,
+			.access_type = CAM_REG_TYPE_READ,
+			.masked_value = 0,
+			.offset = 0x6A20, /* IPE_WR_MAXWR_LOW */
 			.value = 0x0,
 		},
 	},
 	{
-		.port_name = "NRT1-JPEG_RD_WR",
+		.port_type = CAM_CAMNOC_BPS_WR,
+		.port_name = "BPS_WR",
 		.enable = true,
 		.priority_lut_low = {
 			.enable = true,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
-			.offset = 0x6830, /* JPEG : NOC_NRT_1_NIU_PRIORITYLUT_LOW */
+			.offset = 0x630, /* BPS_WR_PRIORITYLUT_LOW */
+			.value = 0x33333333,
+		},
+		.priority_lut_high = {
+			.enable = true,
+			.access_type = CAM_REG_TYPE_READ_WRITE,
+			.masked_value = 0,
+			.offset = 0x634, /* BPS_WR_PRIORITYLUT_HIGH */
+			.value = 0x33333333,
+		},
+		.urgency = {
+			.enable = true,
+			.access_type = CAM_REG_TYPE_READ_WRITE,
+			.masked_value = 0,
+			.offset = 0x638, /* BPS_WR_URGENCY_LOW */
+			.value = 0x30,
+		},
+		.danger_lut = {
+			.enable = false,
+			.access_type = CAM_REG_TYPE_READ_WRITE,
+			.masked_value = 0,
+			.offset = 0x640, /* BPS_WR_DANGERLUT_LOW */
+			.value = 0x0,
+		},
+		.safe_lut = {
+			.enable = false,
+			.access_type = CAM_REG_TYPE_READ_WRITE,
+			.masked_value = 0,
+			.offset = 0x648, /* BPS_WR_SAFELUT_LOW */
+			.value = 0xffff,
+		},
+		.ubwc_ctl = {
+			.enable = false,
+		},
+		.qosgen_mainctl = {
+			.enable = false,
+			.access_type = CAM_REG_TYPE_READ_WRITE,
+			.masked_value = 0,
+			.offset = 0x808, /* BPS_WR_QOSGEN_MAINCTL */
+			.value = 0x0,
+		},
+		.qosgen_shaping_low = {
+			.enable = false,
+			.access_type = CAM_REG_TYPE_READ_WRITE,
+			.masked_value = 0,
+			.offset = 0x820, /* BPS_WR_QOSGEN_SHAPING_LOW */
+			.value = 0x0,
+		},
+		.qosgen_shaping_high = {
+			.enable = false,
+			.access_type = CAM_REG_TYPE_READ_WRITE,
+			.masked_value = 0,
+			.offset = 0x824, /* BPS_WR_QOSGEN_SHAPING_HIGH */
+			.value = 0x0,
+		},
+		.maxwr_low = {
+			.enable = false,
+			.access_type = CAM_REG_TYPE_READ,
+			.masked_value = 0,
+			.offset = 0x620, /* BPS_WR_MAXWR_LOW */
+			.value = 0x0,
+		},
+	},
+	{
+		.port_type = CAM_CAMNOC_BPS_RD,
+		.port_name = "BPS_RD",
+		.enable = true,
+		.priority_lut_low = {
+			.enable = false,
+			.access_type = CAM_REG_TYPE_READ_WRITE,
+			.masked_value = 0,
+			.offset = 0x30, /* BPS_RD_PRIORITYLUT_LOW */
+			.value = 0x0,
+		},
+		.priority_lut_high = {
+			.enable = false,
+			.access_type = CAM_REG_TYPE_READ_WRITE,
+			.masked_value = 0,
+			.offset = 0x34, /* BPS_RD_PRIORITYLUT_HIGH */
+			.value = 0x0,
+		},
+		.urgency = {
+			.enable = true,
+			.access_type = CAM_REG_TYPE_READ_WRITE,
+			.masked_value = 0,
+			.offset = 0x38, /* BPS_RD_URGENCY_LOW */
+			.value = 0x3,
+		},
+		.danger_lut = {
+			.enable = false,
+			.access_type = CAM_REG_TYPE_READ_WRITE,
+			.masked_value = 0,
+			.offset = 0x40, /* BPS_RD_DANGERLUT_LOW */
+			.value = 0x0,
+		},
+		.safe_lut = {
+			.enable = false,
+			.access_type = CAM_REG_TYPE_READ_WRITE,
+			.masked_value = 0,
+			.offset = 0x48, /* BPS_RD_SAFELUT_LOW */
+			.value = 0xffff,
+		},
+		.ubwc_ctl = {
+			.enable = false,
+		},
+		.qosgen_mainctl = {
+			.enable = true,
+			.access_type = CAM_REG_TYPE_READ_WRITE,
+			.masked_value = 0,
+			.offset = 0x208, /* BPS_RD_QOSGEN_MAINCTL */
+			.value = 0x2,
+		},
+		.qosgen_shaping_low = {
+			.enable = true,
+			.access_type = CAM_REG_TYPE_READ_WRITE,
+			.masked_value = 0,
+			.offset = 0x220, /* BPS_RD_QOSGEN_SHAPING_LOW */
+			.value = 0x14141414,
+		},
+		.qosgen_shaping_high = {
+			.enable = true,
+			.access_type = CAM_REG_TYPE_READ_WRITE,
+			.masked_value = 0,
+			.offset = 0x224, /* BPS_RD_QOSGEN_SHAPING_HIGH */
+			.value = 0x14141414,
+		},
+	},
+	{
+		.port_type = CAM_CAMNOC_JPEG,
+		.port_name = "JPEG",
+		.enable = true,
+		.priority_lut_low = {
+			.enable = true,
+			.access_type = CAM_REG_TYPE_READ_WRITE,
+			.masked_value = 0,
+			.offset = 0x7c30, /* JPEG_PRIORITYLUT_LOW */
 			.value = 0x22222222,
 		},
 		.priority_lut_high = {
 			.enable = true,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
-			.offset = 0x6834, /* JPEG : NOC_NRT_1_NIU_PRIORITYLUT_HIGH */
+			.offset = 0x7c34, /* JPEG_PRIORITYLUT_HIGH */
 			.value = 0x22222222,
 		},
 		.urgency = {
 			.enable = true,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
-			.offset = 0x6838, /* JPEG : NOC_NRT_1_NIU_URGENCY_LOW */
+			.offset = 0x7c38, /* JPEG_URGENCY_LOW */
 			.value = 0x22,
 		},
 		.danger_lut = {
 			.enable = false,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
-			.offset = 0x6840, /* JPEG : NOC_NRT_1_NIU_DANGERLUT_LOW */
+			.offset = 0x7c40, /* JPEG_DANGERLUT_LOW */
 			.value = 0x0,
 		},
 		.safe_lut = {
 			.enable = false,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
-			.offset = 0x6848, /* JPEG : NOC_NRT_1_NIU_SAFELUT_LOW */
+			.offset = 0x7c48, /* JPEG_SAFELUT_LOW */
 			.value = 0xffff,
 		},
 		.ubwc_ctl = {
 			.enable = false,
 		},
-		.dynattr_mainctl = {
-			.enable = false,
-			.access_type = CAM_REG_TYPE_READ_WRITE,
-			.masked_value = 0,
-			.offset = 0x7E88, /* JPEG : NOC_NRT_1_DYNATTR_MAINCTL */
-			.value = 0x0,
-		},
 		.qosgen_mainctl = {
 			.enable = true,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
-			.offset = 0x5088, /* JPEG : NOC_NRT_1_QOSGEN_MAINCTL */
+			.offset = 0x7e08, /* JPEG_QOSGEN_MAINCTL */
 			.value = 0x2,
 		},
 		.qosgen_shaping_low = {
 			.enable = true,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
-			.offset = 0x50A0, /* JPEG : NOC_NRT_1_QOSGEN_SHAPING_LOW */
+			.offset = 0x7e20, /* JPEG_QOSGEN_SHAPING_LOW */
 			.value = 0x10101010,
 		},
 		.qosgen_shaping_high = {
 			.enable = true,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
-			.offset = 0x50A4, /* JPEG : NOC_NRT_1_QOSGEN_SHAPING_HIGH */
+			.offset = 0x7e24, /* JPEG_QOSGEN_SHAPING_HIGH */
 			.value = 0x10101010,
 		},
 		.maxwr_low = {
 			.enable = false,
 			.access_type = CAM_REG_TYPE_READ,
 			.masked_value = 0,
-			.offset = 0x6820, /* JPEG : NOC_NRT_1_NIU_MAXWR_LOW */
+			.offset = 0x7C20, /* JPEG_MAXWR_LOW */
 			.value = 0x0,
 		},
 	},
 	{
-		.port_name = "NRT2-BPS_CRE_WR",
-		.enable = true,
-		.priority_lut_low = {
-			.enable = true,
-			.access_type = CAM_REG_TYPE_READ_WRITE,
-			.masked_value = 0,
-			.offset = 0x6A30, /* BPS_CRE_WR : NOC_NRT_2_NIU_PRIORITYLUT_LOW */
-			.value = 0x33333333,
-		},
-		.priority_lut_high = {
-			.enable = true,
-			.access_type = CAM_REG_TYPE_READ_WRITE,
-			.masked_value = 0,
-			.offset = 0x6A34, /* BPS_CRE_WR : NOC_NRT_2_NIU_PRIORITYLUT_HIGH */
-			.value = 0x33333333,
-		},
-		.urgency = {
-			.enable = true,
-			.access_type = CAM_REG_TYPE_READ_WRITE,
-			.masked_value = 0,
-			.offset = 0x6A38, /* BPS_CRE_WR : NOC_NRT_2_NIU_URGENCY_LOW */
-			.value = 0x30,
-		},
-		.danger_lut = {
-			.enable = false,
-			.access_type = CAM_REG_TYPE_READ_WRITE,
-			.masked_value = 0,
-			.offset = 0x6A40, /* BPS_CRE_WR : NOC_NRT_2_NIU_DANGERLUT_LOW */
-			.value = 0x0,
-		},
-		.safe_lut = {
-			.enable = false,
-			.access_type = CAM_REG_TYPE_READ_WRITE,
-			.masked_value = 0,
-			.offset = 0x6A48, /* BPS_CRE_WR : NOC_NRT_2_NIU_SAFELUT_LOW */
-			.value = 0xffff,
-		},
-		.ubwc_ctl = {
-			.enable = false,
-		},
-		.dynattr_mainctl = {
-			.enable = false,
-			.access_type = CAM_REG_TYPE_READ_WRITE,
-			.masked_value = 0,
-			.offset = 0x7F08, /* BPS_CRE_WR : NOC_NRT_2_DYNATTR_MAINCTL */
-			.value = 0x0,
-		},
-		.qosgen_mainctl = {
-			.enable = false,
-			.access_type = CAM_REG_TYPE_READ_WRITE,
-			.masked_value = 0,
-			.offset = 0x5108, /* BPS_CRE_WR : NOC_NRT_2_QOSGEN_MAINCTL */
-			.value = 0x0,
-		},
-		.qosgen_shaping_low = {
-			.enable = false,
-			.access_type = CAM_REG_TYPE_READ_WRITE,
-			.masked_value = 0,
-			.offset = 0x5120, /* BPS_CRE_WR : NOC_NRT_2_QOSGEN_SHAPING_LOW */
-			.value = 0x0,
-		},
-		.qosgen_shaping_high = {
-			.enable = false,
-			.access_type = CAM_REG_TYPE_READ_WRITE,
-			.masked_value = 0,
-			.offset = 0x5124, /* BPS_CRE_WR : NOC_NRT_2_BPS_WR_QOSGEN_SHAPING_HIGH */
-			.value = 0x0,
-		},
-		.maxwr_low = {
-			.enable = false,
-			.access_type = CAM_REG_TYPE_READ,
-			.masked_value = 0,
-			.offset = 0x6A20, /* BPS_CRE_WR : NOC_NRT_2_NIU_MAXWR_LOW */
-			.value = 0x0,
-		},
-	},
-	{
-		.port_name = "NRT3-BPS_CRE_RD",
+		.port_type = CAM_CAMNOC_IPE0_RD,
+		.port_name = "IPE0_RD",
 		.enable = true,
 		.priority_lut_low = {
 			.enable = false,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
-			.offset = 0x6C30, /* BPS_CRE_RD : NOC_NRT_3_NIU_PRIORITYLUT_LOW */
+			.offset = 0x5E30, /* IPE0_RD_PRIORITYLUT_LOW */
 			.value = 0x0,
 		},
 		.priority_lut_high = {
 			.enable = false,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
-			.offset = 0x6C34, /* BPS_CRE_RD : NOC_NRT_3_NIU_PRIORITYLUT_HIGH */
+			.offset = 0x5E34, /* IPE0_RD_PRIORITYLUT_HIGH */
 			.value = 0x0,
 		},
 		.urgency = {
 			.enable = true,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
-			.offset = 0x6C38, /* BPS_CRE_RD : NOC_NRT_3_NIU_URGENCY_LOW */
+			.offset = 0x5E38, /* IPE0_RD_URGENCY_LOW */
 			.value = 0x3,
 		},
 		.danger_lut = {
 			.enable = false,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
-			.offset = 0x6C40, /* BPS_CRE_RD : NOC_NRT_3_NIU_DANGERLUT_LOW */
+			.offset = 0x5E40, /* IPE0_RD_DANGERLUT_LOW */
 			.value = 0x0,
 		},
 		.safe_lut = {
 			.enable = false,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
-			.offset = 0x6C48, /* BPS_CRE_RD : NOC_NRT_3_NIU_SAFELUT_LOW */
-			.value = 0xffff,
-		},
-		.ubwc_ctl = {
-			.enable = false,
-		},
-		.dynattr_mainctl = {
-			.enable = false,
-			.access_type = CAM_REG_TYPE_READ_WRITE,
-			.masked_value = 0,
-			.offset = 0x7F88, /* BPS_CRE_RD : NOC_NRT_3_DYNATTR_MAINCTL */
-			.value = 0x0,
-		},
-		.qosgen_mainctl = {
-			.enable = true,
-			.access_type = CAM_REG_TYPE_READ_WRITE,
-			.masked_value = 0,
-			.offset = 0x5188, /* BPS_CRE_RD : NOC_NRT_3_QOSGEN_MAINCTL */
-			.value = 0x2,
-		},
-		.qosgen_shaping_low = {
-			.enable = true,
-			.access_type = CAM_REG_TYPE_READ_WRITE,
-			.masked_value = 0,
-			.offset = 0x51A0, /* BPS_CRE_RD : NOC_NRT_3_QOSGEN_SHAPING_LOW */
-			.value = 0x14141414,
-		},
-		.qosgen_shaping_high = {
-			.enable = true,
-			.access_type = CAM_REG_TYPE_READ_WRITE,
-			.masked_value = 0,
-			.offset = 0x51A4, /* BPS_CRE_RD : NOC_NRT_3_QOSGEN_SHAPING_HIGH */
-			.value = 0x14141414,
-		},
-	},
-	{
-		.port_name = "NRT4-IPE_0_RD",
-		.enable = true,
-		.priority_lut_low = {
-			.enable = false,
-			.access_type = CAM_REG_TYPE_READ_WRITE,
-			.masked_value = 0,
-			.offset = 0x6E30, /* IPE_0_RD : NOC_NRT_4_NIU_PRIORITYLUT_LOW */
-			.value = 0x0,
-		},
-		.priority_lut_high = {
-			.enable = false,
-			.access_type = CAM_REG_TYPE_READ_WRITE,
-			.masked_value = 0,
-			.offset = 0x6E34, /* IPE_0_RD : NOC_NRT_4_NIU_PRIORITYLUT_HIGH */
-			.value = 0x0,
-		},
-		.urgency = {
-			.enable = true,
-			.access_type = CAM_REG_TYPE_READ_WRITE,
-			.masked_value = 0,
-			.offset = 0x6E38, /* IPE_0_RD : NOC_NRT_4_NIU_URGENCY_LOW */
-			.value = 0x3,
-		},
-		.danger_lut = {
-			.enable = false,
-			.access_type = CAM_REG_TYPE_READ_WRITE,
-			.masked_value = 0,
-			.offset = 0x6E40, /* IPE_0_RD : NOC_NRT_4_NIU_DANGERLUT_LOW */
-			.value = 0x0,
-		},
-		.safe_lut = {
-			.enable = false,
-			.access_type = CAM_REG_TYPE_READ_WRITE,
-			.masked_value = 0,
-			.offset = 0x6E48, /* IPE_0_RD : NOC_NRT_4_NIU_SAFELUT_LOW */
+			.offset = 0x5E48, /* IPE0_RD_SAFELUT_LOW */
 			.value = 0xffff,
 		},
 		.ubwc_ctl = {
 			.enable = false,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
-			.offset = 0x6F08, /* IPE_0_RD : NOC_NRT_4_NIU_DECCTL_LOW */
+			.offset = 0x5F08, /* IPE0_RD_DECCTL_LOW */
 			.value = 1,
 		},
-		.dynattr_mainctl = {
-			.enable = false,
-			.access_type = CAM_REG_TYPE_READ_WRITE,
-			.masked_value = 0,
-			.offset = 0x8008, /* IPE_0_RD : NOC_NRT_4_DYNATTR_MAINCTL */
-			.value = 0x0,
-		},
 		.qosgen_mainctl = {
 			.enable = false,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
-			.offset = 0x5208, /* IPE_0_RD : NOC_NRT_4_QOSGEN_MAINCTL */
+			.offset = 0x6008, /* IPE0_RD_QOSGEN_MAINCTL */
 			.value = 0x2,
 		},
 		.qosgen_shaping_low = {
 			.enable = false,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
-			.offset = 0x5220, /* IPE_0_RD : NOC_NRT_4_QOSGEN_SHAPING_LOW */
+			.offset = 0x6020, /* IPE0_RD_QOSGEN_SHAPING_LOW */
 			.value = 0x29292929,
 		},
 		.qosgen_shaping_high = {
 			.enable = false,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
-			.offset = 0x5224, /* IPE_0_RD : NOC_NRT_4_QOSGEN_SHAPING_HIGH */
+			.offset = 0x6024, /* IPE0_RD_QOSGEN_SHAPING_HIGH */
 			.value = 0x29292929,
 		},
 	},
 	{
-		.port_name = "NRT5-IPE_1_RD",
+		.port_type = CAM_CAMNOC_IPE1_RD,
+		.port_name = "IPE1_RD",
 		.enable = true,
 		.priority_lut_low = {
 			.enable = false,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
-			.offset = 0x7030, /* IPE_1_RD : NOC_NRT_5_NIU_PRIORITYLUT_LOW */
+			.offset = 0x6430, /* IPE1_RD_PRIORITYLUT_LOW */
 			.value = 0x0,
 		},
 		.priority_lut_high = {
 			.enable = false,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
-			.offset = 0x7034, /* IPE_1_RD : NOC_NRT_5_NIU_PRIORITYLUT_HIGH */
+			.offset = 0x6434, /* IPE1_RD_PRIORITYLUT_HIGH */
 			.value = 0x0,
 		},
 		.urgency = {
 			.enable = true,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
-			.offset = 0x7038, /* IPE_1_RD : NOC_NRT_5_NIU_URGENCY_LOW */
+			.offset = 0x6438, /* IPE1_RD_URGENCY_LOW */
 			.value = 0x3,
 		},
 		.danger_lut = {
 			.enable = false,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
-			.offset = 0x7040, /* IPE_1_RD : NOC_NRT_5_NIU_DANGERLUT_LOW */
+			.offset = 0x6440, /* IPE1_RD_DANGERLUT_LOW */
 			.value = 0x0,
 		},
 		.safe_lut = {
 			.enable = false,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
-			.offset = 0x7048, /* IPE_1_RD : NOC_NRT_5_NIU_SAFELUT_LOW */
+			.offset = 0x6448, /* IPE1_RD_SAFELUT_LOW */
 			.value = 0xffff,
 		},
 		.ubwc_ctl = {
 			.enable = false,
 		},
-		.dynattr_mainctl = {
-			.enable = false,
-			.access_type = CAM_REG_TYPE_READ_WRITE,
-			.masked_value = 0,
-			.offset = 0x8088, /* IPE_1_RD : NOC_NRT_5_DYNATTR_MAINCTL */
-			.value = 0x0,
-		},
 		.qosgen_mainctl = {
 			.enable = false,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
-			.offset = 0x5288, /* IPE_1_RD : NOC_NRT_5_QOSGEN_MAINCTL */
+			.offset = 0x6608, /* IPE1_RD_QOSGEN_MAINCTL */
 			.value = 0x2,
 		},
 		.qosgen_shaping_low = {
 			.enable = false,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
-			.offset = 0x52A0, /* IPE_1_RD : NOC_NRT_5_QOSGEN_SHAPING_LOW */
+			.offset = 0x6620, /* IPE1_RD_QOSGEN_SHAPING_LOW */
 			.value = 0x29292929,
 		},
 		.qosgen_shaping_high = {
 			.enable = false,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
-			.offset = 0x52A4, /* IPE_1_RD : NOC_NRT_5_QOSGEN_SHAPING_HIGH */
+			.offset = 0x6624, /* IPE1_RD_QOSGEN_SHAPING_HIGH */
 			.value = 0x29292929,
 		},
 	},
 	{
-		.port_name = "NRT6-IPE_WR",
+		.port_type = CAM_CAMNOC_CDM,
+		.port_name = "CDM",
 		.enable = true,
 		.priority_lut_low = {
-			.enable = true,
+			.enable = false,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
-			.offset = 0x7230, /* IPE_WR : NOC_NRT_6_NIU_PRIORITYLUT_LOW */
-			.value = 0x33333333,
+			.offset = 0x3830, /* CDM_PRIORITYLUT_LOW */
+			.value = 0x0,
 		},
 		.priority_lut_high = {
-			.enable = true,
+			.enable = false,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
-			.offset = 0x7234, /* IPE_WR : NOC_NRT_6_NIU_PRIORITYLUT_HIGH */
-			.value = 0x33333333,
+			.offset = 0x3834, /* CDM_PRIORITYLUT_HIGH */
+			.value = 0x0,
 		},
 		.urgency = {
 			.enable = true,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
-			.offset = 0x7238, /* IPE_WR : NOC_NRT_6_NIU_URGENCY_LOW */
-			.value = 0x30,
+			.offset = 0x3838, /* CDM_URGENCY_LOW */
+			.value = 0x3,
 		},
 		.danger_lut = {
 			.enable = false,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
-			.offset = 0x7240, /* IPE_WR : NOC_NRT_6_NIU_DANGERLUT_LOW */
+			.offset = 0x3840, /* CDM_DANGERLUT_LOW */
 			.value = 0x0,
 		},
 		.safe_lut = {
 			.enable = false,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
-			.offset = 0x7248, /* IPE_WR : NOC_NRT_6_NIU_SAFELUT_LOW */
+			.offset = 0x3848, /* CDM_SAFELUT_LOW */
 			.value = 0xffff,
 		},
 		.ubwc_ctl = {
 			.enable = false,
 		},
-		.dynattr_mainctl = {
-			.enable = false,
-			.access_type = CAM_REG_TYPE_READ_WRITE,
-			.masked_value = 0,
-			.offset = 0x8108, /* IPE_WR : NOC_NRT_6_DYNATTR_MAINCTL */
-			.value = 0x0,
-		},
 		.qosgen_mainctl = {
 			.enable = false,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
-			.offset = 0x5308, /* IPE_WR : NOC_NRT_6_QOSGEN_MAINCTL */
+			.offset = 0x3a08, /* CDM_QOSGEN_MAINCTL */
 			.value = 0x0,
 		},
 		.qosgen_shaping_low = {
 			.enable = false,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
-			.offset = 0x5320, /* IPE_WR : NOC_NRT_6_QOSGEN_SHAPING_LOW */
+			.offset = 0x3a20, /* CDM_QOSGEN_SHAPING_LOW */
 			.value = 0x0,
 		},
 		.qosgen_shaping_high = {
 			.enable = false,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
-			.offset = 0x5324, /* IPE_WR : NOC_NRT_6_QOSGEN_SHAPING_HIGH */
-			.value = 0x0,
-		},
-		.maxwr_low = {
-			.enable = false,
-			.access_type = CAM_REG_TYPE_READ,
-			.masked_value = 0,
-			.offset = 0x7220, /* IPE_WR : NOC_NRT_6_NIU_MAXWR_LOW */
+			.offset = 0x3a24, /* CDM_QOSGEN_SHAPING_HIGH */
 			.value = 0x0,
 		},
 	},
 	{
-		.port_name = "ICP_RD_WR",
-		.enable = false,
-		.dynattr_mainctl = {
-			.enable = true,
-			.access_type = CAM_REG_TYPE_READ_WRITE,
+		.port_type = CAM_CAMNOC_ICP,
+		.port_name = "ICP",
+		.enable = true,
+		.flag_out_set0_low = {
+			.enable = false,
+			.access_type = CAM_REG_TYPE_WRITE,
 			.masked_value = 0,
-			.offset = 0x8408, /* ICP_RD_WR : NOC_XM_ICP_DYNATTR_MAINCTL */
-			.value = 0x10,
+			.offset = 0x2288,
+			.value = 0x100000,
 		},
 		.qosgen_mainctl = {
 			.enable = false,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
-			.offset = 0x5608, /* ICP_RD_WR : NOC_XM_ICP_QOSGEN_MAINCTL */
-			.value = 0x40,
+			.offset = 0x7688, /* ICP_QOSGEN_MAINCTL */
+			.value = 0x0,
 		},
 		.qosgen_shaping_low = {
 			.enable = false,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
-			.offset = 0x5620, /* ICP_RD_WR : NOC_XM_ICP_QOSGEN_SHAPING_LOW */
+			.offset = 0x76A0, /* ICP_QOSGEN_SHAPING_LOW */
 			.value = 0x0,
 		},
 		.qosgen_shaping_high = {
 			.enable = false,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
-			.offset = 0x5624, /* ICP_RD_WR : NOC_XM_ICP_QOSGEN_SHAPING_HIGH */
+			.offset = 0x76A4, /* ICP_QOSGEN_SHAPING_HIGH */
 			.value = 0x0,
 		},
 	},
 };
 
-static struct cam_camnoc_err_logger_info cam780_cpas100_err_logger_offsets = {
-	.mainctrl     =  0x08, /* NOC_ERL_MAINCTL_LOW */
-	.errvld       =  0x10, /* NOC_ERL_ERRVLD_LOW */
-	.errlog0_low  =  0x20, /* NOC_ERL_ERRLOG0_LOW */
-	.errlog0_high =  0x24, /* NOC_ERL_ERRLOG0_HIGH */
-	.errlog1_low  =  0x28, /* NOC_ERL_ERRLOG1_LOW */
-	.errlog1_high =  0x2C, /* NOC_ERL_ERRLOG1_HIGH */
-	.errlog2_low  =  0x30, /* NOC_ERL_ERRLOG2_LOW */
-	.errlog2_high =  0x34, /* NOC_ERL_ERRLOG2_HIGH */
-	.errlog3_low  =  0x38, /* NOC_ERL_ERRLOG3_LOW */
-	.errlog3_high =  0x3C, /* NOC_ERL_ERRLOG3_HIGH */
+static struct cam_camnoc_err_logger_info cam680_cpas110_err_logger_offsets = {
+	.mainctrl     =  0x2008, /* ERRLOGGER_MAINCTL_LOW */
+	.errvld       =  0x2010, /* ERRLOGGER_ERRVLD_LOW */
+	.errlog0_low  =  0x2020, /* ERRLOGGER_ERRLOG0_LOW */
+	.errlog0_high =  0x2024, /* ERRLOGGER_ERRLOG0_HIGH */
+	.errlog1_low  =  0x2028, /* ERRLOGGER_ERRLOG1_LOW */
+	.errlog1_high =  0x202c, /* ERRLOGGER_ERRLOG1_HIGH */
+	.errlog2_low  =  0x2030, /* ERRLOGGER_ERRLOG2_LOW */
+	.errlog2_high =  0x2034, /* ERRLOGGER_ERRLOG2_HIGH */
+	.errlog3_low  =  0x2038, /* ERRLOGGER_ERRLOG3_LOW */
+	.errlog3_high =  0x203c, /* ERRLOGGER_ERRLOG3_HIGH */
 };
 
-static struct cam_cpas_hw_errata_wa_list cam780_cpas100_errata_wa_list = {
+static struct cam_cpas_hw_errata_wa_list cam680_cpas110_errata_wa_list = {
 	.camnoc_flush_slave_pending_trans = {
 		.enable = false,
 		.data.reg_info = {
 			.access_type = CAM_REG_TYPE_READ,
-			.offset = 0x300, /* sbm_SenseIn0_Low */
+			.offset = 0x2300, /* sbm_SenseIn0_Low */
 			.mask = 0xE0000, /* Bits 17, 18, 19 */
 			.value = 0, /* expected to be 0 */
 		},
 	},
 };
 
-static struct cam_camnoc_info cam780_cpas100_camnoc_info = {
-	.specific = &cam_cpas_v780_100_camnoc_specific[0],
-	.specific_size = ARRAY_SIZE(cam_cpas_v780_100_camnoc_specific),
-	.irq_sbm = &cam_cpas_v780_100_irq_sbm,
-	.irq_err = &cam_cpas_v780_100_irq_err[0],
-	.irq_err_size = ARRAY_SIZE(cam_cpas_v780_100_irq_err),
-	.err_logger = &cam780_cpas100_err_logger_offsets,
-	.errata_wa_list = &cam780_cpas100_errata_wa_list,
+static struct cam_camnoc_info cam680_cpas110_camnoc_info = {
+	.specific = &cam_cpas_v680_110_camnoc_specific[0],
+	.specific_size = ARRAY_SIZE(cam_cpas_v680_110_camnoc_specific),
+	.irq_sbm = &cam_cpas_v680_110_irq_sbm,
+	.irq_err = &cam_cpas_v680_110_irq_err[0],
+	.irq_err_size = ARRAY_SIZE(cam_cpas_v680_110_irq_err),
+	.err_logger = &cam680_cpas110_err_logger_offsets,
+	.errata_wa_list = &cam680_cpas110_errata_wa_list,
 };
 
-static struct cam_cpas_camnoc_qchannel cam780_cpas100_qchannel_info = {
+static struct cam_cpas_camnoc_qchannel cam680_cpas110_qchannel_info = {
 	.qchannel_ctrl   = 0x5C,
 	.qchannel_status = 0x60,
 };
-#endif /* _CPASTOP_V780_100_H_ */
+#endif /* _CPASTOP_V680_110_H_ */
+

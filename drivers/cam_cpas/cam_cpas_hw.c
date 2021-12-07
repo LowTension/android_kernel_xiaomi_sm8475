@@ -130,8 +130,8 @@ int cam_cpas_util_reg_update(struct cam_hw_info *cpas_hw,
 		value = reg_info->value;
 	}
 
-	CAM_DBG(CAM_CPAS, "Base[%d] Offset[0x%08x] Value[0x%08x]",
-		reg_base, reg_info->offset, value);
+	CAM_DBG(CAM_CPAS, "Base[%d]:[0x%08x] Offset[0x%08x] Value[0x%08x]",
+		reg_base, soc_info->reg_map[reg_base_index].mem_base, reg_info->offset, value);
 
 	cam_io_w_mb(value, soc_info->reg_map[reg_base_index].mem_base +
 		reg_info->offset);
@@ -2925,21 +2925,14 @@ static int cam_cpas_util_create_debugfs(struct cam_cpas *cpas_core)
 	/* Store parent inode for cleanup in caller */
 	cpas_core->dentry = dbgfileptr;
 
-	dbgfileptr = debugfs_create_bool("ahb_bus_scaling_disable", 0644,
+	debugfs_create_bool("ahb_bus_scaling_disable", 0644,
 		cpas_core->dentry, &cpas_core->ahb_bus_scaling_disable);
 
-	dbgfileptr = debugfs_create_bool("full_state_dump", 0644,
+	debugfs_create_bool("full_state_dump", 0644,
 		cpas_core->dentry, &cpas_core->full_state_dump);
 
-	dbgfileptr = debugfs_create_bool("smart_qos_dump", 0644,
+	debugfs_create_bool("smart_qos_dump", 0644,
 		cpas_core->dentry, &cpas_core->smart_qos_dump);
-
-	if (IS_ERR(dbgfileptr)) {
-		if (PTR_ERR(dbgfileptr) == -ENODEV)
-			CAM_WARN(CAM_CPAS, "DebugFS not enabled in kernel!");
-		else
-			rc = PTR_ERR(dbgfileptr);
-	}
 end:
 	return rc;
 }

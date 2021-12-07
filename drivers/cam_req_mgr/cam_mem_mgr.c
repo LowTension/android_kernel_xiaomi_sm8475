@@ -23,6 +23,7 @@
 #include "cam_trace.h"
 #include "cam_common_util.h"
 #include "cam_presil_hw_access.h"
+#include "cam_compat.h"
 
 #define CAM_MEM_SHARED_BUFFER_PAD_4K (4 * 1024)
 
@@ -37,13 +38,13 @@ static int cam_mem_mgr_get_dma_heaps(void);
 #ifdef CONFIG_CAM_PRESIL
 static inline void cam_mem_mgr_reset_presil_params(int idx)
 {
-        tbl.bufq[idx].presil_params.fd_for_umd_daemon = -1;
-        tbl.bufq[idx].presil_params.refcount = 0;
+	tbl.bufq[idx].presil_params.fd_for_umd_daemon = -1;
+	tbl.bufq[idx].presil_params.refcount = 0;
 }
 #else
 static inline void cam_mem_mgr_reset_presil_params(int idx)
 {
-        return;
+	return;
 }
 #endif
 
@@ -109,12 +110,9 @@ static int cam_mem_util_get_dma_dir(uint32_t flags)
 	return rc;
 }
 
-static int cam_mem_util_map_cpu_va(struct dma_buf *dmabuf,
-	uintptr_t *vaddr,
-	size_t *len)
+static int cam_mem_util_map_cpu_va(struct dma_buf *dmabuf, uintptr_t *vaddr, size_t *len)
 {
 	int rc = 0;
-	void *addr;
 
 	/*
 	 * dma_buf_begin_cpu_access() and dma_buf_end_cpu_access()
@@ -126,24 +124,20 @@ static int cam_mem_util_map_cpu_va(struct dma_buf *dmabuf,
 		return rc;
 	}
 
-	addr = dma_buf_vmap(dmabuf);
-	if (!addr) {
-		CAM_ERR(CAM_MEM, "kernel map fail");
-		*vaddr = 0;
+	rc = cam_compat_util_get_dmabuf_va(dmabuf, vaddr);
+	if (rc) {
+		CAM_ERR(CAM_MEM, "kernel vmap failed: rc = %d", rc);
 		*len = 0;
-		rc = -ENOSPC;
-		goto fail;
+		dma_buf_end_cpu_access(dmabuf, DMA_BIDIRECTIONAL);
+	}
+	else {
+		*len = dmabuf->size;
+		CAM_DBG(CAM_MEM, "vaddr = %llu, len = %zu", *vaddr, *len);
 	}
 
-	*vaddr = (uint64_t)addr;
-	*len = dmabuf->size;
-
-	return 0;
-
-fail:
-	dma_buf_end_cpu_access(dmabuf, DMA_BIDIRECTIONAL);
 	return rc;
 }
+
 static int cam_mem_util_unmap_cpu_va(struct dma_buf *dmabuf,
 	uint64_t vaddr)
 {
@@ -185,14 +179,8 @@ static int cam_mem_mgr_create_debug_fs(void)
 	/* Store parent inode for cleanup in caller */
 	tbl.dentry = dbgfileptr;
 
-	dbgfileptr = debugfs_create_bool("alloc_profile_enable", 0644,
+	debugfs_create_bool("alloc_profile_enable", 0644,
 		tbl.dentry, &tbl.alloc_profile_enable);
-	if (IS_ERR(dbgfileptr)) {
-		if (PTR_ERR(dbgfileptr) == -ENODEV)
-			CAM_WARN(CAM_MEM, "DebugFS not enabled in kernel!");
-		else
-			rc = PTR_ERR(dbgfileptr);
-	}
 end:
 	return rc;
 }

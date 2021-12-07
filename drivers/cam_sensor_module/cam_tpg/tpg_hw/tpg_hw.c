@@ -379,6 +379,7 @@ int tpg_hw_start(struct tpg_hw *hw)
 		if (hw->hw_info->ops->start)
 			hw->hw_info->ops->start(hw, NULL);
 		break;
+	case TPG_HW_VERSION_1_2:
 	case TPG_HW_VERSION_1_3:
 		if (hw->hw_info->ops->start)
 			hw->hw_info->ops->start(hw, NULL);
@@ -405,6 +406,7 @@ int tpg_hw_stop(struct tpg_hw *hw)
 	switch (hw->hw_info->version) {
 	case TPG_HW_VERSION_1_0:
 	case TPG_HW_VERSION_1_1:
+	case TPG_HW_VERSION_1_2:
 	case TPG_HW_VERSION_1_3:
 		if (hw->hw_info->ops->stop)
 			rc = hw->hw_info->ops->stop(hw, NULL);
@@ -433,6 +435,7 @@ int tpg_hw_acquire(struct tpg_hw *hw,
 	switch (hw->hw_info->version) {
 	case TPG_HW_VERSION_1_0:
 	case TPG_HW_VERSION_1_1:
+	case TPG_HW_VERSION_1_2:
 	case TPG_HW_VERSION_1_3:
 		// Start Cpas and enable required clocks
 		break;
@@ -456,6 +459,7 @@ int tpg_hw_release(struct tpg_hw *hw)
 	switch (hw->hw_info->version) {
 	case TPG_HW_VERSION_1_0:
 	case TPG_HW_VERSION_1_1:
+	case TPG_HW_VERSION_1_2:
 	case TPG_HW_VERSION_1_3:
 		break;
 	default:
@@ -480,6 +484,7 @@ static int tpg_hw_configure_init_settings(
 	switch (hw->hw_info->version) {
 	case TPG_HW_VERSION_1_0:
 	case TPG_HW_VERSION_1_1:
+	case TPG_HW_VERSION_1_2:
 	case TPG_HW_VERSION_1_3:
 		rc = tpg_hw_soc_enable(hw, CAM_SVS_VOTE);
 		if (hw->hw_info->ops->init)

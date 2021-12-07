@@ -2151,7 +2151,6 @@ static int cam_ife_csid_ver1_init_config_rdi_path(
 	uint32_t  val;
 	struct cam_ife_csid_ver1_path_cfg *path_cfg;
 	struct cam_ife_csid_cid_data *cid_data;
-	bool is_rpp = false;
 	void __iomem *mem_base;
 	struct cam_ife_csid_path_format path_format = {0};
 
@@ -2170,9 +2169,8 @@ static int cam_ife_csid_ver1_init_config_rdi_path(
 	path_cfg = (struct cam_ife_csid_ver1_path_cfg *)res->res_priv;
 	cid_data = &csid_hw->cid_data[path_cfg->cid];
 	mem_base = soc_info->reg_map[0].mem_base;
-	is_rpp = path_cfg->crop_enable || path_cfg->drop_enable;
 	rc = cam_ife_csid_get_format_rdi(path_cfg->in_format,
-		path_cfg->out_format, &path_format, is_rpp, false);
+		path_cfg->out_format, &path_format, path_reg->mipi_pack_supported, false);
 	if (rc)
 		return rc;
 
@@ -2306,7 +2304,6 @@ static int cam_ife_csid_ver1_init_config_udi_path(
 	uint32_t  val;
 	struct cam_ife_csid_ver1_path_cfg *path_cfg;
 	struct cam_ife_csid_cid_data *cid_data;
-	bool is_rpp = false;
 	void __iomem *mem_base;
 	struct cam_ife_csid_path_format path_format = {0};
 	uint32_t id;
@@ -2328,9 +2325,8 @@ static int cam_ife_csid_ver1_init_config_udi_path(
 	path_cfg = (struct cam_ife_csid_ver1_path_cfg *)res->res_priv;
 	cid_data = &csid_hw->cid_data[path_cfg->cid];
 	mem_base = soc_info->reg_map[0].mem_base;
-	is_rpp = path_cfg->crop_enable || path_cfg->drop_enable;
 	rc = cam_ife_csid_get_format_rdi(path_cfg->in_format,
-		path_cfg->out_format, &path_format, is_rpp, false);
+		path_cfg->out_format, &path_format, path_reg->mipi_pack_supported, false);
 	if (rc)
 		return rc;
 
@@ -3801,8 +3797,8 @@ static int cam_ife_csid_ver1_handle_rx_debug_event(
 		CAM_INFO_RATE_LIMIT(CAM_ISP,
 			"Csid :%d Long pkt VC: %d DT: %d WC: %d",
 			csid_hw->hw_intf->hw_idx,
-			val & csi2_reg->vc_mask,
-			val & csi2_reg->dt_mask,
+			(val & csi2_reg->vc_mask) >> 22,
+			(val & csi2_reg->dt_mask) >> 16,
 			val & csi2_reg->wc_mask);
 
 		val = cam_io_r_mb(soc_info->reg_map[0].mem_base +
@@ -3825,16 +3821,16 @@ static int cam_ife_csid_ver1_handle_rx_debug_event(
 		val = cam_io_r_mb(soc_info->reg_map[0].mem_base +
 			csi2_reg->captured_short_pkt_0_addr);
 		CAM_INFO_RATE_LIMIT(CAM_ISP,
-			"Csid :%d Long pkt VC: %d DT: %d LC: %d",
+			"Csid :%d Short pkt VC: %d DT: %d LC: %d",
 			csid_hw->hw_intf->hw_idx,
-			val & csi2_reg->vc_mask,
-			val & csi2_reg->dt_mask,
+			(val & csi2_reg->vc_mask) >> 22,
+			(val & csi2_reg->dt_mask) >> 16,
 			val & csi2_reg->wc_mask);
 
 		val = cam_io_r_mb(soc_info->reg_map[0].mem_base +
 			csi2_reg->captured_short_pkt_1_addr);
 		CAM_INFO_RATE_LIMIT(CAM_ISP,
-			"Csid :%d Long pkt ECC: %d",
+			"Csid :%d Short pkt ECC: %d",
 			csid_hw->hw_intf->hw_idx, val);
 		break;
 	case IFE_CSID_VER1_RX_CPHY_PKT_HDR_CAPTURED:
@@ -3844,8 +3840,8 @@ static int cam_ife_csid_ver1_handle_rx_debug_event(
 		CAM_INFO_RATE_LIMIT(CAM_ISP,
 			"Csid :%d CPHY pkt VC: %d DT: %d LC: %d",
 			csid_hw->hw_intf->hw_idx,
-			val & csi2_reg->vc_mask,
-			val & csi2_reg->dt_mask,
+			(val & csi2_reg->vc_mask) >> 22,
+			(val & csi2_reg->dt_mask) >> 16,
 			val & csi2_reg->wc_mask);
 		break;
 	case IFE_CSID_VER1_RX_UNMAPPED_VC_DT:

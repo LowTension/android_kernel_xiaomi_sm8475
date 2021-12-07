@@ -13,15 +13,17 @@
 #include "cam_hw_mgr_intf.h"
 
 /* MAX IFE instance */
-#define CAM_IFE_HW_NUM_MAX      8
-#define CAM_SFE_HW_NUM_MAX      2
-#define CAM_IFE_RDI_NUM_MAX     4
-#define CAM_SFE_RDI_NUM_MAX     5
-#define CAM_SFE_FE_RDI_NUM_MAX  3
-#define CAM_ISP_BW_CONFIG_V1    1
-#define CAM_ISP_BW_CONFIG_V2    2
-#define CAM_TFE_HW_NUM_MAX      3
-#define CAM_TFE_RDI_NUM_MAX     3
+#define CAM_IFE_HW_NUM_MAX       8
+#define CAM_SFE_HW_NUM_MAX       2
+#define CAM_IFE_RDI_NUM_MAX      4
+#define CAM_SFE_RDI_NUM_MAX      5
+#define CAM_SFE_FE_RDI_NUM_MAX   3
+#define CAM_ISP_BW_CONFIG_V1     1
+#define CAM_ISP_BW_CONFIG_V2     2
+#define CAM_TFE_HW_NUM_MAX       3
+#define CAM_TFE_RDI_NUM_MAX      3
+#define CAM_IFE_SCRATCH_NUM_MAX  2
+
 
 /* maximum context numbers for TFE */
 #define CAM_TFE_CTX_MAX      4
@@ -66,6 +68,30 @@ enum cam_isp_hw_event_type {
 	CAM_ISP_HW_SECONDARY_EVENT,
 	CAM_ISP_HW_EVENT_MAX
 };
+
+/**
+ * cam_isp_hw_evt_type_to_string() - convert cam_isp_hw_event_type to string for printing logs
+ */
+static inline const char *cam_isp_hw_evt_type_to_string(
+	enum cam_isp_hw_event_type evt_type)
+{
+	switch (evt_type) {
+	case CAM_ISP_HW_EVENT_ERROR:
+		return "ERROR";
+	case CAM_ISP_HW_EVENT_SOF:
+		return "SOF";
+	case CAM_ISP_HW_EVENT_REG_UPDATE:
+		return "REG_UPDATE";
+	case CAM_ISP_HW_EVENT_EPOCH:
+		return "EPOCH";
+	case CAM_ISP_HW_EVENT_EOF:
+		return "EOF";
+	case CAM_ISP_HW_EVENT_DONE:
+		return "BUF_DONE";
+	default:
+		return "INVALID_EVT";
+	}
+}
 
 /**
  *  enum cam_isp_hw_secondary-event_type - Collection of the ISP hardware secondary events
@@ -326,6 +352,7 @@ enum cam_isp_hw_mgr_command {
 	CAM_ISP_HW_MGR_GET_PACKET_OPCODE,
 	CAM_ISP_HW_MGR_GET_LAST_CDM_DONE,
 	CAM_ISP_HW_MGR_CMD_PROG_DEFAULT_CFG,
+	CAM_ISP_HW_MGR_GET_SOF_TS,
 	CAM_ISP_HW_MGR_CMD_MAX,
 };
 
@@ -345,6 +372,7 @@ enum cam_isp_ctx_type {
  * @ctx_type:              RDI_ONLY, PIX and RDI, or FS2
  * @packet_op_code:        Packet opcode
  * @last_cdm_done:         Last cdm done request
+ * @sof_ts:                SOF timestamps (current, boot and previous)
  */
 struct cam_isp_hw_cmd_args {
 	uint32_t                          cmd_type;
@@ -354,6 +382,11 @@ struct cam_isp_hw_cmd_args {
 		uint32_t                      ctx_type;
 		uint32_t                      packet_op_code;
 		uint64_t                      last_cdm_done;
+		struct {
+			uint64_t                      curr;
+			uint64_t                      prev;
+			uint64_t                      boot;
+		} sof_ts;
 	} u;
 };
 

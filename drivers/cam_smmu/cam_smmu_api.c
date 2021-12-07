@@ -3863,11 +3863,9 @@ static int cam_smmu_setup_cb(struct cam_context_bank_info *cb,
 			goto end;
 		}
 
-		iommu_dma_enable_best_fit_algo(dev);
-
-		if (cb->discard_iova_start)
-			iommu_dma_reserve_iova(dev, cb->discard_iova_start,
-				cb->discard_iova_len);
+		/* Enable custom iommu features, if applicable */
+		cam_smmu_util_iommu_custom(dev, cb->discard_iova_start,
+			cb->discard_iova_len);
 
 		cb->state = CAM_SMMU_ATTACH;
 	} else {
@@ -3987,6 +3985,10 @@ static int cam_smmu_get_memory_regions_info(struct device_node *of_node,
 	int rc = 0;
 	struct device_node *mem_map_node = NULL;
 	struct device_node *child_node = NULL;
+	dma_addr_t region_start = 0;
+	size_t region_len = 0;
+	uint32_t region_id;
+	uint32_t qdss_region_phy_addr;
 	const char *region_name;
 	int num_regions = 0;
 
@@ -4010,12 +4012,10 @@ static int cam_smmu_get_memory_regions_info(struct device_node *of_node,
 	}
 
 	for_each_available_child_of_node(mem_map_node, child_node) {
-		uint32_t region_start;
-		uint32_t region_len;
-		uint32_t region_id;
-		uint32_t qdss_region_phy_addr = 0;
+		qdss_region_phy_addr = 0;
 
 		num_regions++;
+
 		rc = of_property_read_string(child_node,
 			"iova-region-name", &region_name);
 		if (rc < 0) {
@@ -4024,24 +4024,40 @@ static int cam_smmu_get_memory_regions_info(struct device_node *of_node,
 			return -EINVAL;
 		}
 
-		rc = of_property_read_u32(child_node,
-			"iova-region-start", &region_start);
-		if (rc < 0) {
-			of_node_put(mem_map_node);
-			CAM_ERR(CAM_SMMU, "Failed to read iova-region-start");
-			return -EINVAL;
+		if (iommu_cb_set.is_expanded_memory) {
+			rc = of_property_read_u64(child_node, "iova-region-start", &region_start);
+			if (rc < 0) {
+				of_node_put(mem_map_node);
+				CAM_ERR(CAM_SMMU, "Failed to read iova-region-start");
+				return -EINVAL;
+			}
+
+			rc = of_property_read_u64(child_node, "iova-region-len",
+				(uint64_t *)&region_len);
+			if (rc < 0) {
+				of_node_put(mem_map_node);
+				CAM_ERR(CAM_SMMU, "Failed to read iova-region-len");
+				return -EINVAL;
+			}
+		} else {
+			rc = of_property_read_u32(child_node, "iova-region-start",
+				(uint32_t *)&region_start);
+			if (rc < 0) {
+				of_node_put(mem_map_node);
+				CAM_ERR(CAM_SMMU, "Failed to read iova-region-start");
+				return -EINVAL;
+			}
+
+			rc = of_property_read_u32(child_node, "iova-region-len",
+				(uint32_t *)&region_len);
+			if (rc < 0) {
+				of_node_put(mem_map_node);
+				CAM_ERR(CAM_SMMU, "Failed to read iova-region-len");
+				return -EINVAL;
+			}
 		}
 
-		rc = of_property_read_u32(child_node,
-			"iova-region-len", &region_len);
-		if (rc < 0) {
-			of_node_put(mem_map_node);
-			CAM_ERR(CAM_SMMU, "Failed to read iova-region-len");
-			return -EINVAL;
-		}
-
-		rc = of_property_read_u32(child_node,
-			"iova-region-id", &region_id);
+		rc = of_property_read_u32(child_node, "iova-region-id", &region_id);
 		if (rc < 0) {
 			of_node_put(mem_map_node);
 			CAM_ERR(CAM_SMMU, "Failed to read iova-region-id");
@@ -4443,16 +4459,10 @@ static int cam_smmu_create_debug_fs(void)
 	/* Store parent inode for cleanup in caller */
 	iommu_cb_set.dentry = dbgfileptr;
 
-	dbgfileptr = debugfs_create_bool("cb_dump_enable", 0644,
+	debugfs_create_bool("cb_dump_enable", 0644,
 		iommu_cb_set.dentry, &iommu_cb_set.cb_dump_enable);
-	dbgfileptr = debugfs_create_bool("map_profile_enable", 0644,
+	debugfs_create_bool("map_profile_enable", 0644,
 		iommu_cb_set.dentry, &iommu_cb_set.map_profile_enable);
-	if (IS_ERR(dbgfileptr)) {
-		if (PTR_ERR(dbgfileptr) == -ENODEV)
-			CAM_WARN(CAM_SMMU, "DebugFS not enabled in kernel!");
-		else
-			rc = PTR_ERR(dbgfileptr);
-	}
 end:
 	return rc;
 }

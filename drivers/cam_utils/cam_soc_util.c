@@ -14,7 +14,6 @@
 #include "cam_mem_mgr.h"
 #include "cam_presil_hw_access.h"
 
-
 #define CAM_TO_MASK(bitn)          (1 << (int)(bitn))
 #define CAM_IS_BIT_SET(mask, bit)  ((mask) & CAM_TO_MASK(bit))
 #define CAM_SET_BIT(mask, bit)     ((mask) |= CAM_TO_MASK(bit))
@@ -86,11 +85,14 @@ static LIST_HEAD(wrapper_clk_list);
 #if IS_REACHABLE(CONFIG_MSM_MMRM)
 bool cam_is_mmrm_supported_on_current_chip(void)
 {
-	/*
-	 * Enable on chipsets where mmrm does the resource management.
-	 * Either based on query API from mmrm or based on camera dt flag.
-	 */
-	return true;
+	bool is_supported;
+
+	is_supported = mmrm_client_check_scaling_supported(MMRM_CLIENT_CLOCK,
+			MMRM_CLIENT_DOMAIN_CAMERA);
+	CAM_DBG(CAM_UTIL, "is mmrm supported: %s",
+			CAM_BOOL_TO_YESNO(is_supported));;
+
+	return is_supported;
 }
 
 int cam_mmrm_notifier_callback(
@@ -1289,7 +1291,8 @@ int cam_soc_util_clk_disable(struct cam_hw_soc_info *soc_info,
 			"Dev %s clk %s Disabling Shared clk, set 0 rate",
 			soc_info->dev_name, clk_name);
 		cam_soc_util_clk_wrapper_set_clk_rate(clk_id, soc_info, clk, 0);
-	} else if ((!skip_mmrm_set_rate) && (soc_info->src_clk_idx == clk_idx)) {
+	} else if (soc_info->mmrm_handle && (!skip_mmrm_set_rate) &&
+			(soc_info->src_clk_idx == clk_idx)) {
 		CAM_DBG(CAM_UTIL,
 			"Dev %s Disabling %s clk, set 0 rate", soc_info->dev_name, clk_name);
 		cam_soc_util_set_rate_through_mmrm(
