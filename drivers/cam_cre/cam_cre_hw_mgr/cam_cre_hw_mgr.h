@@ -125,6 +125,8 @@ struct cre_cmd_generic_blob {
  * @hw_type: IPE/BPS device type
  * @watch_dog: watchdog timer handle
  * @watch_dog_reset_counter: Counter for watch dog reset
+ * @uncompressed_bw: uncompressed BW
+ * @compressed_bw: compressed BW
  */
 struct cam_cre_clk_info {
 	uint32_t base_clk;
@@ -136,6 +138,8 @@ struct cam_cre_clk_info {
 	uint32_t hw_type;
 	struct cam_req_mgr_timer *watch_dog;
 	uint32_t watch_dog_reset_counter;
+	uint64_t uncompressed_bw;
+	uint64_t compressed_bw;
 };
 
 /**

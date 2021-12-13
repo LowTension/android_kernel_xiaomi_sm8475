@@ -35,12 +35,12 @@ static struct cam_cre_hw_mgr *cre_hw_mgr;
 
 static bool cam_cre_debug_clk_update(struct cam_cre_clk_info *hw_mgr_clk_info)
 {
-	if (cre_hw_mgr.cre_debug_clk &&
-		cre_hw_mgr.cre_debug_clk != hw_mgr_clk_info->curr_clk) {
-		hw_mgr_clk_info->base_clk = cre_hw_mgr.cre_debug_clk;
-		hw_mgr_clk_info->curr_clk = cre_hw_mgr.cre_debug_clk;
-		hw_mgr_clk_info->uncompressed_bw = cre_hw_mgr.cre_debug_clk;
-		hw_mgr_clk_info->compressed_bw = cre_hw_mgr.cre_debug_clk;
+	if (cre_hw_mgr->cre_debug_clk &&
+		cre_hw_mgr->cre_debug_clk != hw_mgr_clk_info->curr_clk) {
+		hw_mgr_clk_info->base_clk = cre_hw_mgr->cre_debug_clk;
+		hw_mgr_clk_info->curr_clk = cre_hw_mgr->cre_debug_clk;
+		hw_mgr_clk_info->uncompressed_bw = cre_hw_mgr->cre_debug_clk;
+		hw_mgr_clk_info->compressed_bw = cre_hw_mgr->cre_debug_clk;
 		CAM_DBG(CAM_PERF, "bc = %d cc = %d ub %d cb %d",
 			hw_mgr_clk_info->base_clk, hw_mgr_clk_info->curr_clk,
 			hw_mgr_clk_info->uncompressed_bw,
@@ -745,7 +745,7 @@ static void cam_cre_device_timer_stop(struct cam_cre_hw_mgr *hw_mgr)
 
 static int cam_cre_mgr_process_cmd(void *priv, void *data)
 {
-	int rc = 0;
+	int rc = 0, i = 0;
 	struct cre_cmd_work_data *task_data = NULL;
 	struct cam_cre_ctx *ctx_data;
 	struct cam_cre_request *cre_req;
@@ -1218,7 +1218,7 @@ static bool cam_cre_check_clk_update(struct cam_cre_hw_mgr *hw_mgr,
 		clk_info->frame_cycles, clk_info->budget_ns);
 	ctx_data->clk_info.rt_flag = clk_info->rt_flag;
 
-	if (cre_hw_mgr.cre_debug_clk)
+	if (cre_hw_mgr->cre_debug_clk)
 		return cam_cre_debug_clk_update(hw_mgr_clk_info);
 
 	if (busy)
@@ -2871,8 +2871,25 @@ cmd_work_failed:
 	return rc;
 }
 
+static int cam_cre_set_dbg_default_clk(void *data, u64 val)
+{
+	cre_hw_mgr->cre_debug_clk = val;
+	return 0;
+}
+
+static int cam_cre_get_dbg_default_clk(void *data, u64 *val)
+{
+	*val = cre_hw_mgr->cre_debug_clk;
+	return 0;
+}
+DEFINE_DEBUGFS_ATTRIBUTE(cam_cre_debug_default_clk,
+	cam_cre_get_dbg_default_clk,
+	cam_cre_set_dbg_default_clk, "%16llu");
+
 static int cam_cre_create_debug_fs(void)
 {
+	struct dentry *dbgfileptr = NULL;
+	int rc = 0;
 	cre_hw_mgr->dentry = debugfs_create_dir("camera_cre",
 		NULL);
 
@@ -2891,7 +2908,7 @@ static int cam_cre_create_debug_fs(void)
 	}
 
 	dbgfileptr = debugfs_create_file("cre_debug_clk", 0644,
-		cre_hw_mgr.dentry, NULL, &cam_cre_debug_default_clk);
+		cre_hw_mgr->dentry, NULL, &cam_cre_debug_default_clk);
 
 	if (IS_ERR(dbgfileptr)) {
 		if (PTR_ERR(dbgfileptr) == -ENODEV)
@@ -3030,18 +3047,3 @@ cre_ctx_bitmap_failed:
 	return rc;
 }
 
-static int cam_cre_set_dbg_default_clk(void *data, u64 val)
-{
-	cre_hw_mgr.cre_debug_clk = val;
-	return 0;
-}
-
-static int cam_cre_get_dbg_default_clk(void *data, u64 *val)
-{
-	*val = cre_hw_mgr.cre_debug_clk;
-	return 0;
-}
-
-DEFINE_SIMPLE_ATTRIBUTE(cam_cre_debug_default_clk,
-	cam_cre_get_dbg_default_clk,
-	cam_cre_set_dbg_default_clk, "%16llu");
