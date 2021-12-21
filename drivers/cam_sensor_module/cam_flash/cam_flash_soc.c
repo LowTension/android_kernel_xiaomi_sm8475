@@ -59,6 +59,8 @@ void cam_flash_put_source_node_data(struct cam_flash_ctrl *fctrl)
 	}
 }
 
+#if __or(IS_REACHABLE(CONFIG_LEDS_QPNP_FLASH_V2), \
+			IS_REACHABLE(CONFIG_LEDS_QTI_FLASH))
 static int32_t cam_get_source_node_info(
 	struct device_node *of_node,
 	struct cam_flash_ctrl *fctrl,
@@ -267,6 +269,7 @@ static int32_t cam_get_source_node_info(
 
 	return rc;
 }
+#endif
 
 int cam_flash_get_dt_data(struct cam_flash_ctrl *fctrl,
 	struct cam_hw_soc_info *soc_info)
@@ -300,12 +303,15 @@ int cam_flash_get_dt_data(struct cam_flash_ctrl *fctrl,
 		goto free_soc_private;
 	}
 
+#if __or(IS_ENABLED(CONFIG_LEDS_QPNP_FLASH_V2), \
+			IS_ENABLED(CONFIG_LEDS_QTI_FLASH))
 	rc = cam_get_source_node_info(of_node, fctrl, soc_info->soc_private);
 	if (rc) {
 		CAM_ERR(CAM_FLASH,
 			"cam_flash_get_pmic_source_info failed rc %d", rc);
 		goto free_soc_private;
 	}
+#endif
 	return rc;
 
 free_soc_private:

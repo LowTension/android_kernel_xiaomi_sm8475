@@ -1645,13 +1645,18 @@ int cam_flash_pmic_pkt_parser(struct cam_flash_ctrl *fctrl, void *arg)
 			}
 			flash_query_info =
 				(struct cam_flash_query_curr *)cmd_buf;
-
+#if __or(IS_REACHABLE(CONFIG_LEDS_QPNP_FLASH_V2), \
+			IS_REACHABLE(CONFIG_LEDS_QTI_FLASH))
 			rc = cam_flash_led_prepare(fctrl->switch_trigger,
 				QUERY_MAX_AVAIL_CURRENT, &query_curr_ma,
 				soc_private->is_wled_flash);
 
 			CAM_DBG(CAM_FLASH, "query_curr_ma = %d",
 				query_curr_ma);
+#else
+			rc = -EOPNOTSUPP;
+#endif
+
 			if (rc) {
 				CAM_ERR(CAM_FLASH,
 				"Query current failed with rc=%d", rc);

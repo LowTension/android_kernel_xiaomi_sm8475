@@ -233,14 +233,7 @@ camera-$(CONFIG_SPECTRA_SENSOR) += \
 	drivers/cam_sensor_module/cam_sensor_io/cam_sensor_qup_i2c.o \
 	drivers/cam_sensor_module/cam_sensor_io/cam_sensor_spi.o \
 	drivers/cam_sensor_module/cam_sensor_utils/cam_sensor_util.o \
-	drivers/cam_sensor_module/cam_res_mgr/cam_res_mgr.o
-
-camera-$(CONFIG_LEDS_QPNP_FLASH_V2) += \
-	drivers/cam_sensor_module/cam_flash/cam_flash_dev.o \
-	drivers/cam_sensor_module/cam_flash/cam_flash_core.o \
-	drivers/cam_sensor_module/cam_flash/cam_flash_soc.o
-
-camera-$(CONFIG_LEDS_QTI_FLASH) += \
+	drivers/cam_sensor_module/cam_res_mgr/cam_res_mgr.o \
 	drivers/cam_sensor_module/cam_flash/cam_flash_dev.o \
 	drivers/cam_sensor_module/cam_flash/cam_flash_core.o \
 	drivers/cam_sensor_module/cam_flash/cam_flash_soc.o
