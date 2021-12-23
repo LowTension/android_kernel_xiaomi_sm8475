@@ -226,11 +226,13 @@ static void cam_v4l2_event_queue_notify_error(const struct v4l2_event *old,
 	switch (old->id) {
 	case V4L_EVENT_CAM_REQ_MGR_SOF:
 	case V4L_EVENT_CAM_REQ_MGR_SOF_BOOT_TS:
+	case V4L_EVENT_CAM_REQ_MGR_SOF_UNIFIED_TS:
 		if (ev_header->u.frame_msg.request_id)
 			CAM_ERR(CAM_CRM,
 				"Failed to notify %s Sess %X FrameId %lld FrameMeta %d ReqId %lld link %X",
 				((old->id == V4L_EVENT_CAM_REQ_MGR_SOF) ?
-				"SOF_TS" : "BOOT_TS"),
+				"SOF_TS" : ((old->id == V4L_EVENT_CAM_REQ_MGR_SOF_BOOT_TS) ?
+				"BOOT_TS" : "UNIFIED_TS")),
 				ev_header->session_hdl,
 				ev_header->u.frame_msg.frame_id,
 				ev_header->u.frame_msg.frame_id_meta,
@@ -240,7 +242,8 @@ static void cam_v4l2_event_queue_notify_error(const struct v4l2_event *old,
 			CAM_WARN_RATE_LIMIT_CUSTOM(CAM_CRM, 5, 1,
 				"Failed to notify %s Sess %X FrameId %lld FrameMeta %d ReqId %lld link %X",
 				((old->id == V4L_EVENT_CAM_REQ_MGR_SOF) ?
-				"SOF_TS" : "BOOT_TS"),
+				"SOF_TS" : ((old->id == V4L_EVENT_CAM_REQ_MGR_SOF_BOOT_TS) ?
+				"BOOT_TS" : "UNIFIED_TS")),
 				ev_header->session_hdl,
 				ev_header->u.frame_msg.frame_id,
 				ev_header->u.frame_msg.frame_id_meta,
