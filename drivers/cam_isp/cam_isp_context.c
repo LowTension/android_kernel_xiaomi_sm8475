@@ -644,7 +644,7 @@ static int __cam_isp_ctx_notify_trigger_util(
 
 	rc = ctx->ctx_crm_intf->notify_trigger(&notify);
 	if (rc)
-		CAM_ERR(CAM_ISP,
+		CAM_ERR_RATE_LIMIT(CAM_ISP,
 			"Failed to notify CRM %s on frame: %llu ctx: %u link: 0x%x last_buf_done_req: %lld rc: %d",
 			__cam_isp_ctx_crm_trigger_point_to_string(trigger_type),
 			ctx_isp->frame_id, ctx->ctx_id, ctx->link_hdl,
