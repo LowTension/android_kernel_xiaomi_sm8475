@@ -34,7 +34,7 @@
 
 #define MAX_LANES                   5
 #define MAX_SETTINGS_PER_LANE       50
-#define MAX_DATA_RATES              12
+#define MAX_DATA_RATES              25
 #define MAX_DATA_RATE_REGS          30
 
 #define CAMX_CSIPHY_DEV_NAME "cam-csiphy-driver"

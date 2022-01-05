@@ -148,7 +148,7 @@ static int cam_mem_util_unmap_cpu_va(struct dma_buf *dmabuf,
 		return -EINVAL;
 	}
 
-	dma_buf_vunmap(dmabuf, (void *)vaddr);
+	cam_compat_util_put_dmabuf_va(dmabuf, (void *)vaddr);
 
 	/*
 	 * dma_buf_begin_cpu_access() and

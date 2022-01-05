@@ -525,6 +525,8 @@ static struct cam_ife_csid_ver2_path_reg_info
 		.drop_h_en_shift_val              = 10,
 		.format_measure_en_shift_val      = 8,
 		.timestamp_en_shift_val           = 9,
+		.overflow_ctrl_en                 = 1,
+		.overflow_ctrl_mode_val           = 0x8,
 		.min_hbi_shift_val                = 4,
 		.start_master_sel_shift_val       = 4,
 		.lut_bank_0_sel_val               = 0,

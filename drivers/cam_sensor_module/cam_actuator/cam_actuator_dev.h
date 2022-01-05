@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2017-2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2019, 2021, The Linux Foundation. All rights reserved.
  */
 
 
@@ -30,7 +30,7 @@
 #define NUM_MASTERS 2
 #define NUM_QUEUES 2
 
-#define ACTUATOR_DRIVER_I2C "i2c_actuator"
+#define ACTUATOR_DRIVER_I2C "cam-i2c-actuator"
 #define CAMX_ACTUATOR_DEV_NAME "cam-actuator-driver"
 
 #define MSM_ACTUATOR_MAX_VREGS (10)

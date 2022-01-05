@@ -50,10 +50,10 @@
 #define CAM_ISP_CTX_DUMP_REQUEST_NUM_WORDS  2
 
 /* Maximum entries in event record */
-#define CAM_ISP_CTX_EVENT_RECORD_MAX_ENTRIES   20
+#define CAM_ISP_CTX_EVENT_RECORD_MAX_ENTRIES   8
 
 /* Maximum length of tag while dumping */
-#define CAM_ISP_CONTEXT_DUMP_TAG_MAX_LEN 32
+#define CAM_ISP_CONTEXT_DUMP_TAG_MAX_LEN 64
 
 /* AEB error count threshold */
 #define CAM_ISP_CONTEXT_AEB_ERROR_CNT_MAX 3

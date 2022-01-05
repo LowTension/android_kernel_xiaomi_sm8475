@@ -35,9 +35,6 @@ static int32_t cam_flash_driver_cmd(struct cam_flash_ctrl *fctrl,
 		struct cam_sensor_acquire_dev flash_acq_dev;
 		struct cam_create_dev_hdl bridge_params;
 
-		CAM_INFO(CAM_FLASH, "CAM_ACQUIRE_DEV for dev_hdl: 0x%x",
-			fctrl->bridge_intf.device_hdl);
-
 		if (fctrl->flash_state != CAM_FLASH_STATE_INIT) {
 			CAM_ERR(CAM_FLASH,
 				"Cannot apply Acquire dev: Prev state: %d",
@@ -69,6 +66,11 @@ static int32_t cam_flash_driver_cmd(struct cam_flash_ctrl *fctrl,
 
 		flash_acq_dev.device_handle =
 			cam_create_device_hdl(&bridge_params);
+		if (flash_acq_dev.device_handle <= 0) {
+			rc = -EFAULT;
+			CAM_ERR(CAM_FLASH, "Can not create device handle");
+			goto release_mutex;
+		}
 		fctrl->bridge_intf.device_hdl =
 			flash_acq_dev.device_handle;
 		fctrl->bridge_intf.session_hdl =
@@ -84,6 +86,9 @@ static int32_t cam_flash_driver_cmd(struct cam_flash_ctrl *fctrl,
 			goto release_mutex;
 		}
 		fctrl->flash_state = CAM_FLASH_STATE_ACQUIRE;
+
+		CAM_INFO(CAM_FLASH, "CAM_ACQUIRE_DEV for dev_hdl: 0x%x",
+			fctrl->bridge_intf.device_hdl);
 		break;
 	}
 	case CAM_RELEASE_DEV: {
@@ -353,24 +358,6 @@ static long cam_flash_subdev_do_ioctl(struct v4l2_subdev *sd,
 }
 #endif
 
-static int32_t cam_flash_i2c_driver_remove(struct i2c_client *client)
-{
-	int32_t rc = 0;
-	struct cam_flash_ctrl *fctrl = i2c_get_clientdata(client);
-	/* Handle I2C Devices */
-	if (!fctrl) {
-		CAM_ERR(CAM_FLASH, "Flash device is NULL");
-		return -EINVAL;
-	}
-
-	CAM_INFO(CAM_FLASH, "i2c driver remove invoked");
-	/*Free Allocated Mem */
-	kfree(fctrl->i2c_data.per_frame);
-	fctrl->i2c_data.per_frame = NULL;
-	kfree(fctrl);
-	return rc;
-}
-
 static struct v4l2_subdev_core_ops cam_flash_subdev_core_ops = {
 	.ioctl = cam_flash_subdev_ioctl,
 #ifdef CONFIG_COMPAT
@@ -581,27 +568,19 @@ static int32_t cam_flash_platform_probe(struct platform_device *pdev)
 	return rc;
 }
 
-static int32_t cam_flash_i2c_driver_probe(struct i2c_client *client,
-	const struct i2c_device_id *id)
+static int cam_flash_i2c_component_bind(struct device *dev,
+	struct device *master_dev, void *data)
 {
 	int32_t rc = 0, i = 0;
-	struct cam_flash_ctrl *fctrl;
+	struct i2c_client      *client = NULL;
+	struct cam_flash_ctrl  *fctrl = NULL;
 	struct cam_hw_soc_info *soc_info = NULL;
 
+	client = container_of(dev, struct i2c_client, dev);
 	if (client == NULL) {
 		CAM_ERR(CAM_FLASH, "Invalid Args client: %pK",
 			client);
 		return -EINVAL;
-	}
-
-	if (id == NULL) {
-		CAM_DBG(CAM_FLASH, "device id is Null");
-	}
-
-	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
-		CAM_ERR(CAM_FLASH, "%s :: i2c_check_functionality failed",
-			 client->name);
-		return -EFAULT;
 	}
 
 	/* Create sensor control structure */
@@ -708,6 +687,70 @@ free_ctrl:
 	return rc;
 }
 
+static void cam_flash_i2c_component_unbind(struct device *dev,
+	struct device *master_dev, void *data)
+{
+	struct i2c_client     *client = NULL;
+	struct cam_flash_ctrl *fctrl = NULL;
+
+	client = container_of(dev, struct i2c_client, dev);
+	if (!client) {
+		CAM_ERR(CAM_FLASH,
+			"Failed to get i2c client");
+		return;
+	}
+
+	fctrl = i2c_get_clientdata(client);
+	/* Handle I2C Devices */
+	if (!fctrl) {
+		CAM_ERR(CAM_FLASH, "Flash device is NULL");
+		return;
+	}
+
+	CAM_INFO(CAM_FLASH, "i2c driver remove invoked");
+	/*Free Allocated Mem */
+	kfree(fctrl->i2c_data.per_frame);
+	fctrl->i2c_data.per_frame = NULL;
+	kfree(fctrl);
+}
+
+const static struct component_ops cam_flash_i2c_component_ops = {
+	.bind = cam_flash_i2c_component_bind,
+	.unbind = cam_flash_i2c_component_unbind,
+};
+
+static int32_t cam_flash_i2c_driver_probe(struct i2c_client *client,
+	const struct i2c_device_id *id)
+{
+	int rc = 0;
+
+	if (client == NULL || id == NULL) {
+		CAM_ERR(CAM_FLASH, "Invalid Args client: %pK id: %pK",
+			client, id);
+		return -EINVAL;
+	}
+
+	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
+		CAM_ERR(CAM_FLASH, "%s :: i2c_check_functionality failed",
+			client->name);
+		return -EFAULT;
+	}
+
+	CAM_DBG(CAM_FLASH, "Adding sensor flash component");
+	rc = component_add(&client->dev, &cam_flash_i2c_component_ops);
+	if (rc)
+		CAM_ERR(CAM_FLASH, "failed to add component rc: %d", rc);
+
+	return rc;
+}
+
+static int32_t cam_flash_i2c_driver_remove(struct i2c_client *client)
+{
+	component_del(&client->dev, &cam_flash_i2c_component_ops);
+
+	return 0;
+}
+
 MODULE_DEVICE_TABLE(of, cam_flash_dt_match);
 
 struct platform_driver cam_flash_platform_driver = {
@@ -721,18 +764,26 @@ struct platform_driver cam_flash_platform_driver = {
 	},
 };
 
+static const struct of_device_id cam_flash_i2c_dt_match[] = {
+	{.compatible = "qcom,cam-i2c-flash", .data = NULL},
+	{}
+};
+MODULE_DEVICE_TABLE(of, cam_flash_i2c_dt_match);
+
 static const struct i2c_device_id i2c_id[] = {
 	{FLASH_DRIVER_I2C, (kernel_ulong_t)NULL},
 	{ }
 };
 
-static struct i2c_driver cam_flash_i2c_driver = {
+struct i2c_driver cam_flash_i2c_driver = {
 	.id_table = i2c_id,
 	.probe  = cam_flash_i2c_driver_probe,
 	.remove = cam_flash_i2c_driver_remove,
 	.driver = {
+		.owner = THIS_MODULE,
 		.name = FLASH_DRIVER_I2C,
-		.of_match_table = cam_flash_dt_match,
+		.of_match_table = cam_flash_i2c_dt_match,
+		.suppress_bind_attrs = true,
 	},
 };
 

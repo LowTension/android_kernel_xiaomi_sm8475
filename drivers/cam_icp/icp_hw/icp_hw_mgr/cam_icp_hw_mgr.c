@@ -5735,10 +5735,10 @@ static int cam_icp_mgr_release_hw(void *hw_mgr_priv, void *release_hw_args)
 		cam_icp_hw_mgr_reset_clk_info(hw_mgr);
 		rc = cam_ipe_bps_deint(hw_mgr);
 	}
-	mutex_unlock(&hw_mgr->hw_mgr_mutex);
 
 	if ((!hw_mgr->bps_ctxt_cnt || !hw_mgr->ipe_ctxt_cnt))
 		cam_icp_device_timer_stop(hw_mgr);
+	mutex_unlock(&hw_mgr->hw_mgr_mutex);
 
 	CAM_DBG(CAM_ICP, "Release done for ctx_id %d", ctx_id);
 	return rc;
@@ -6547,7 +6547,8 @@ int cam_icp_hw_mgr_init(struct device_node *of_node, uint64_t *hw_mgr_hdl,
 		(camera_hw_version == CAM_CPAS_TITAN_570_V200) ||
 		(camera_hw_version == CAM_CPAS_TITAN_680_V100) ||
 		(camera_hw_version == CAM_CPAS_TITAN_680_V110) ||
-		(camera_hw_version == CAM_CPAS_TITAN_780_V100)) {
+		(camera_hw_version == CAM_CPAS_TITAN_780_V100) ||
+		(camera_hw_version == CAM_CPAS_TITAN_640_V200)) {
 		if (cam_caps & CPAS_TITAN_IPE0_CAP_BIT)
 			icp_hw_mgr.ipe0_enable = true;
 		if (cam_caps & CPAS_BPS_BIT)
