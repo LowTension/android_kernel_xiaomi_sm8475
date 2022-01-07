@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/iopoll.h>
@@ -1618,6 +1619,9 @@ bool cam_ife_csid_ver1_is_width_valid(
 	else if (reserve->sync_mode == CAM_ISP_HW_SYNC_SLAVE)
 		width = reserve->in_port->right_stop -
 			reserve->in_port->right_start + 1;
+
+	if (reserve->in_port->horizontal_bin || reserve->in_port->qcfa_bin)
+		width /= 2;
 
 	if (!cam_ife_csid_ver1_is_width_valid_by_fuse(csid_hw, width)) {
 		CAM_ERR(CAM_ISP, "CSID[%u] width limited by fuse",
