@@ -972,8 +972,14 @@ static int __cam_isp_ctx_enqueue_init_request(
 				req_isp_new->hw_update_data.frame_header_res_id;
 			req_isp_old->hw_update_data.frame_header_cpu_addr =
 				hw_update_data->frame_header_cpu_addr;
-			req_isp_old->hw_update_data.mup_en = req_isp_new->hw_update_data.mup_en;
-			req_isp_old->hw_update_data.mup_val = req_isp_new->hw_update_data.mup_val;
+			if (req_isp_new->hw_update_data.mup_en) {
+				req_isp_old->hw_update_data.mup_en =
+					req_isp_new->hw_update_data.mup_en;
+				req_isp_old->hw_update_data.mup_val =
+					req_isp_new->hw_update_data.mup_val;
+				req_isp_old->hw_update_data.num_exp =
+					req_isp_new->hw_update_data.num_exp;
+			}
 			req_old->request_id = req->request_id;
 
 			list_add_tail(&req->list, &ctx->free_req_list);
