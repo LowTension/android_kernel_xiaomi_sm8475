@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/iopoll.h>
@@ -3200,6 +3201,9 @@ int cam_ife_csid_ver1_stop(void *hw_priv,
 		csid_hw->hw_intf->hw_idx,
 		csid_stop->num_res);
 	cam_ife_csid_ver1_tpg_stop(csid_hw);
+
+	csid_hw->flags.device_enabled = false;
+
 	/* Stop the resource first */
 	for (i = 0; i < csid_stop->num_res; i++) {
 
@@ -4153,6 +4157,14 @@ static int cam_ife_csid_ver1_bottom_half_handler(
 
 	csid_hw = (struct cam_ife_csid_ver1_hw *)handler_priv;
 	evt_payload = (struct cam_ife_csid_ver1_evt_payload *)evt_payload_priv;
+
+	if (!csid_hw->flags.device_enabled) {
+		CAM_DBG(CAM_ISP, "CSID[%d] bottom-half after csid stop",
+			csid_hw->hw_intf->hw_idx);
+		cam_ife_csid_ver1_put_evt_payload(csid_hw, &evt_payload,
+			&csid_hw->free_payload_list);
+		return 0;
+	}
 
 	if (evt_payload->irq_status[CAM_IFE_CSID_IRQ_REG_RX])
 		cam_ife_csid_ver1_rx_bottom_half_handler(
