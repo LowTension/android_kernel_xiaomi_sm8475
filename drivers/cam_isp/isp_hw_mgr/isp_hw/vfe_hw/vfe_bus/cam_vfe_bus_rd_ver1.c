@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2018-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2018-2022, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/ratelimit.h>
@@ -534,6 +534,31 @@ static int cam_vfe_bus_deinit_rm_resource(
 static int cam_vfe_bus_rd_get_secure_mode(void *priv, void *cmd_args,
 	uint32_t arg_size)
 {
+	struct cam_isp_hw_get_cmd_update            *secure_cmd;
+	struct cam_vfe_bus_rd_ver1_priv             *bus_priv;
+	struct cam_vfe_bus_rd_ver1_vfe_bus_rd_data  *vfe_bus_rd_data = NULL;
+	uint32_t                                    *mode;
+
+	bus_priv = (struct cam_vfe_bus_rd_ver1_priv  *) priv;
+	secure_cmd  = (struct cam_isp_hw_get_cmd_update  *)cmd_args;
+
+	if (!bus_priv || !secure_cmd) {
+		CAM_ERR(CAM_ISP, "Failed Invalid data");
+		return -EINVAL;
+	}
+
+	vfe_bus_rd_data = (struct cam_vfe_bus_rd_ver1_vfe_bus_rd_data *)
+		secure_cmd->res->res_priv;
+
+	if (!vfe_bus_rd_data) {
+		CAM_ERR(CAM_ISP, "Failed Invalid data");
+		return -EINVAL;
+	}
+
+	mode = (uint32_t *)secure_cmd->data;
+	*mode = (vfe_bus_rd_data->secure_mode == CAM_SECURE_MODE_SECURE) ?
+		true : false;
+
 	return 0;
 }
 
