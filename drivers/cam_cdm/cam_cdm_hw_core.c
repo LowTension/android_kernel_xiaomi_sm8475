@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/delay.h>
@@ -280,17 +281,18 @@ static void cam_hw_cdm_dump_bl_fifo_data(struct cam_hw_info *cdm_hw)
 	uint32_t num_pending_req = 0, dump_reg[2];
 
 	for (i = 0; i < core->offsets->reg_data->num_bl_fifo; i++) {
-		cam_hw_cdm_bl_fifo_pending_bl_rb_in_fifo(cdm_hw,
-			i, &num_pending_req);
-		CAM_INFO(CAM_CDM, "Fifo:%d content dump", i);
-		for (j = 0; j < num_pending_req ; j++) {
-			cam_cdm_write_hw_reg(cdm_hw,
-				core->offsets->cmn_reg->bl_fifo_rb, j);
-			cam_cdm_read_hw_reg(cdm_hw,
-				core->offsets->cmn_reg->bl_fifo_base_rb,
+		cam_hw_cdm_bl_fifo_pending_bl_rb_in_fifo(cdm_hw, i, &num_pending_req);
+
+		CAM_INFO(CAM_CDM, "Fifo:%d content dump. num_pending_BLs: %d", i, num_pending_req);
+
+		if (!num_pending_req)
+			continue;
+
+		for (j = 0; j < core->bl_fifo[i].bl_depth; j++) {
+			cam_cdm_write_hw_reg(cdm_hw, core->offsets->cmn_reg->bl_fifo_rb, j);
+			cam_cdm_read_hw_reg(cdm_hw, core->offsets->cmn_reg->bl_fifo_base_rb,
 				&dump_reg[0]);
-			cam_cdm_read_hw_reg(cdm_hw,
-				core->offsets->cmn_reg->bl_fifo_len_rb,
+			cam_cdm_read_hw_reg(cdm_hw, core->offsets->cmn_reg->bl_fifo_len_rb,
 				&dump_reg[1]);
 			CAM_INFO(CAM_CDM,
 				"BL_entry:%d base_addr:0x%x, len:%d, ARB:%d, tag:%d",
@@ -318,8 +320,6 @@ void cam_hw_cdm_dump_core_debug_registers(struct cam_hw_info *cdm_hw,
 	CAM_INFO(CAM_CDM, "Dumping debug data for %s%u",
 		cdm_hw->soc_info.label_name, cdm_hw->soc_info.index);
 
-	cam_cdm_read_hw_reg(cdm_hw, core->offsets->cmn_reg->core_en,
-		&dump_reg[0]);
 
 	if (pause_core) {
 		cam_hw_cdm_pause_core(cdm_hw, true);
@@ -328,18 +328,38 @@ void cam_hw_cdm_dump_core_debug_registers(struct cam_hw_info *cdm_hw,
 
 	cam_cdm_read_hw_reg(cdm_hw, core->offsets->cmn_reg->cdm_hw_version,
 		&cdm_version);
-	cam_hw_cdm_enable_core_dbg(cdm_hw, core_dbg);
 
-	cam_cdm_read_hw_reg(cdm_hw, core->offsets->cmn_reg->usr_data,
-		&dump_reg[1]);
-	cam_cdm_read_hw_reg(cdm_hw,
-		core->offsets->cmn_reg->debug_status,
-		&dump_reg[2]);
+	if (core_dbg & CAM_CDM_CORE_DBG_TEST_BUS_EN_MASK) {
+		for (i = 0; i < CAM_CDM_NUM_TEST_BUS; i++) {
+			core_dbg &= ~CAM_CDM_CORE_DBG_TEST_BUS_SEL_MASK;
+			core_dbg |= ((i << CAM_CDM_CORE_DBG_TEST_BUS_SEL_SHIFT) &
+				(CAM_CDM_CORE_DBG_TEST_BUS_SEL_MASK));
+			cam_hw_cdm_enable_core_dbg(cdm_hw, core_dbg);
+			cam_cdm_read_hw_reg(cdm_hw, core->offsets->cmn_reg->debug_status,
+				&dump_reg[0]);
 
-	CAM_INFO(CAM_CDM, "Core_en: %u, Core_pause: %u User_data: 0x%x, Debug_status: 0x%x",
+			CAM_INFO(CAM_CDM, "Core_dbg: 0x%x, Debug_status[%d]: 0x%x",
+				core_dbg, i, dump_reg[0]);
+		}
+
+		core_dbg &= ~(CAM_CDM_CORE_DBG_TEST_BUS_EN_MASK |
+			CAM_CDM_CORE_DBG_TEST_BUS_SEL_MASK);
+		cam_hw_cdm_enable_core_dbg(cdm_hw, core_dbg);
+	} else {
+		cam_hw_cdm_enable_core_dbg(cdm_hw, core_dbg);
+
+		cam_cdm_read_hw_reg(cdm_hw, core->offsets->cmn_reg->debug_status,
+			&dump_reg[0]);
+
+		CAM_INFO(CAM_CDM, "Debug_status: 0x%x", dump_reg[0]);
+	}
+
+	cam_cdm_read_hw_reg(cdm_hw, core->offsets->cmn_reg->core_en, &dump_reg[0]);
+	cam_cdm_read_hw_reg(cdm_hw, core->offsets->cmn_reg->usr_data, &dump_reg[1]);
+	CAM_INFO(CAM_CDM, "Core_en: %u, Core_pause: %u User_data: 0x%x",
 		(dump_reg[0] & CAM_CDM_CORE_EN_MASK),
 		(bool)(dump_reg[0] & CAM_CDM_CORE_PAUSE_MASK),
-		dump_reg[1], dump_reg[2]);
+		dump_reg[1]);
 
 	cam_cdm_read_hw_reg(cdm_hw,
 		core->offsets->cmn_reg->current_used_ahb_base, &dump_reg[0]);
@@ -355,7 +375,7 @@ void cam_hw_cdm_dump_core_debug_registers(struct cam_hw_info *cdm_hw,
 			"Current AHB base address: 0x%x set by change base cmd",
 			dump_reg[0] & CAM_CDM_AHB_ADDR_MASK);
 
-	if (core_dbg & 0x100) {
+	if (core_dbg & CAM_CDM_CORE_DBG_LOG_AHB_MASK) {
 		cam_cdm_read_hw_reg(cdm_hw,
 			core->offsets->cmn_reg->last_ahb_addr,
 			&dump_reg[0]);
@@ -437,7 +457,7 @@ void cam_hw_cdm_dump_core_debug_registers(struct cam_hw_info *cdm_hw,
 		}
 	}
 
-	if (core_dbg & 0x10000) {
+	if (core_dbg & CAM_CDM_CORE_DBG_FIFO_RB_EN_MASK) {
 		cam_cdm_read_hw_reg(cdm_hw,
 			core->offsets->cmn_reg->core_en, &dump_reg[0]);
 		is_core_paused_already = (bool)(dump_reg[0] & 0x20);
@@ -532,7 +552,7 @@ void cam_hw_cdm_dump_core_debug_registers(struct cam_hw_info *cdm_hw,
 	cam_cdm_read_hw_reg(cdm_hw,
 		core->offsets->cmn_reg->comp_wait[1]->comp_wait_status,
 		&dump_reg[2]);
-	CAM_INFO(CAM_CDM, "wait status 0x%x comp wait status 0x%x: 0x%x",
+	CAM_INFO(CAM_CDM, "Wait status: 0x%x, Comp_wait_status0: 0x%x:, Comp_wait_status1: 0x%x",
 		dump_reg[0], dump_reg[1], dump_reg[2]);
 
 	cam_hw_cdm_disable_core_dbg(cdm_hw);
