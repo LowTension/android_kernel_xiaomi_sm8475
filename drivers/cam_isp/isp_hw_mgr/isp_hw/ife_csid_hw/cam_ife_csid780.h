@@ -253,7 +253,7 @@ static const struct cam_ife_csid_irq_desc cam_ife_csid_780_path_irq_desc[] = {
 static const struct cam_ife_csid_top_irq_desc cam_ife_csid_780_top_irq_desc[] = {
 	{
 		.bitmask  = BIT(1),
-		.err_type = CAM_ISP_HW_ERROR_CSID_FATAL,
+		.err_type = CAM_ISP_HW_ERROR_CSID_SENSOR_SWITCH_ERROR,
 		.err_name = "FATAL_SENSOR_SWITCHING_IRQ",
 		.desc = "Fatal Error duirng dynamically switching between 2 sensors",
 	},
@@ -271,7 +271,7 @@ static const struct cam_ife_csid_top_irq_desc cam_ife_csid_780_top_irq_desc[] = 
 	},
 	{
 		.bitmask  = BIT(20),
-		.err_type = CAM_ISP_HW_ERROR_CSID_FIFO_OVERFLOW,
+		.err_type = CAM_ISP_HW_ERROR_CSID_OUTPUT_FIFO_OVERFLOW,
 		.err_name = "ERROR_RDI_LINE_BUFFER_CONFLICT",
 		.desc = "Two or more RDIs programmed to access the shared line buffer",
 		.err_handler = cam_ife_csid_hw_ver2_rdi_line_buffer_conflict_handler,
@@ -1135,8 +1135,8 @@ static struct cam_ife_csid_csi2_rx_reg_info
 		.epd_mode_shift_en               = 8,
 		.eotp_shift_en                   = 9,
 		.dyn_sensor_switch_shift_en      = 10,
-		.fatal_err_mask                  = 0x097A000,
-		.part_fatal_err_mask             = 0x1081800,
+		.fatal_err_mask                  = 0x19FA800,
+		.part_fatal_err_mask             = 0x0001000,
 		.non_fatal_err_mask              = 0x0200000,
 		.top_irq_mask                    = 0x4,
 };

@@ -412,8 +412,8 @@ static struct cam_ife_csid_csi2_rx_reg_info
 	.lane_cfg_shift                  = 4,
 	.phy_type_shift                  = 24,
 	.phy_num_shift                   = 20,
-	.fatal_err_mask                  = 0x497A000,
-	.part_fatal_err_mask             = 0x1081800,
+	.fatal_err_mask                  = 0x59FA800,
+	.part_fatal_err_mask             = 0x0001000,
 	.non_fatal_err_mask              = 0x0200000,
 };
 
