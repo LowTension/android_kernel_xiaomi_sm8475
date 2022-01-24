@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2022, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/debugfs.h>
@@ -972,8 +972,14 @@ static int __cam_isp_ctx_enqueue_init_request(
 				req_isp_new->hw_update_data.frame_header_res_id;
 			req_isp_old->hw_update_data.frame_header_cpu_addr =
 				hw_update_data->frame_header_cpu_addr;
-			req_isp_old->hw_update_data.mup_en = req_isp_new->hw_update_data.mup_en;
-			req_isp_old->hw_update_data.mup_val = req_isp_new->hw_update_data.mup_val;
+			if (req_isp_new->hw_update_data.mup_en) {
+				req_isp_old->hw_update_data.mup_en =
+					req_isp_new->hw_update_data.mup_en;
+				req_isp_old->hw_update_data.mup_val =
+					req_isp_new->hw_update_data.mup_val;
+				req_isp_old->hw_update_data.num_exp =
+					req_isp_new->hw_update_data.num_exp;
+			}
 			req_old->request_id = req->request_id;
 
 			list_add_tail(&req->list, &ctx->free_req_list);
@@ -5253,7 +5259,7 @@ static struct cam_isp_ctx_irq_ops
 			__cam_isp_ctx_rdi_only_sof_in_top_state,
 			__cam_isp_ctx_reg_upd_in_sof,
 			NULL,
-			NULL,
+			__cam_isp_ctx_notify_eof_in_activated_state,
 			NULL,
 		},
 	},
@@ -5264,7 +5270,7 @@ static struct cam_isp_ctx_irq_ops
 			__cam_isp_ctx_rdi_only_sof_in_applied_state,
 			__cam_isp_ctx_reg_upd_in_applied_state,
 			NULL,
-			NULL,
+			__cam_isp_ctx_notify_eof_in_activated_state,
 			__cam_isp_ctx_buf_done_in_applied,
 		},
 	},
@@ -5275,7 +5281,7 @@ static struct cam_isp_ctx_irq_ops
 			__cam_isp_ctx_rdi_only_sof_in_top_state,
 			NULL,
 			NULL,
-			NULL,
+			__cam_isp_ctx_notify_eof_in_activated_state,
 			__cam_isp_ctx_buf_done_in_epoch,
 		},
 	},
@@ -5286,7 +5292,7 @@ static struct cam_isp_ctx_irq_ops
 			__cam_isp_ctx_rdi_only_sof_in_bubble_state,
 			__cam_isp_ctx_rdi_only_reg_upd_in_bubble_state,
 			NULL,
-			NULL,
+			__cam_isp_ctx_notify_eof_in_activated_state,
 			__cam_isp_ctx_buf_done_in_bubble,
 		},
 	},
@@ -5297,7 +5303,7 @@ static struct cam_isp_ctx_irq_ops
 			__cam_isp_ctx_rdi_only_sof_in_bubble_applied,
 			__cam_isp_ctx_rdi_only_reg_upd_in_bubble_applied_state,
 			NULL,
-			NULL,
+			__cam_isp_ctx_notify_eof_in_activated_state,
 			__cam_isp_ctx_buf_done_in_bubble_applied,
 		},
 	},
