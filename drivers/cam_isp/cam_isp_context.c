@@ -5157,7 +5157,13 @@ end:
 	__cam_isp_ctx_send_sof_timestamp(ctx_isp, request_id,
 		CAM_REQ_MGR_SOF_EVENT_SUCCESS);
 
-	ctx_isp->substate_activated = CAM_ISP_CTX_ACTIVATED_SOF;
+	/*
+	 * Can't move the substate to SOF if we are processing bubble,
+	 * since the SOF substate can't receive REG_UPD and buf done,
+	 * then the processing of bubble req can't be finished
+	 */
+	if (!atomic_read(&ctx_isp->process_bubble))
+		ctx_isp->substate_activated = CAM_ISP_CTX_ACTIVATED_SOF;
 
 	CAM_DBG(CAM_ISP, "next Substate[%s]",
 		__cam_isp_ctx_substate_val_to_type(
