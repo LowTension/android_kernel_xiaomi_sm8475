@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2022, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/delay.h>
@@ -546,6 +546,7 @@ int cam_vfe_process_cmd(void *hw_priv, uint32_t cmd_type,
 	case CAM_ISP_HW_CMD_GET_HFR_UPDATE_RM:
 	case CAM_ISP_HW_CMD_GET_BUF_UPDATE_RM:
 	case CAM_ISP_HW_CMD_FE_UPDATE_BUS_RD:
+	case CAM_ISP_HW_CMD_GET_RM_SECURE_MODE:
 		if (core_info->vfe_rd_bus)
 			rc = core_info->vfe_rd_bus->hw_ops.process_cmd(
 				core_info->vfe_rd_bus->bus_priv, cmd_type,
