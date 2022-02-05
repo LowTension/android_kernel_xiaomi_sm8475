@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef _CAM_CDM_H_
@@ -55,6 +56,7 @@
 
 /* Number of FIFO supported on CDM */
 #define CAM_CDM_NUM_BL_FIFO 0x4
+#define CAM_CDM_NUM_TEST_BUS 16
 
 /* Max number of register set for different CDM */
 #define CAM_CDM_BL_FIFO_REG_NUM 0x4
@@ -107,6 +109,16 @@
 /* Core enable register masks and shifts */
 #define CAM_CDM_CORE_EN_MASK     0x1
 #define CAM_CDM_CORE_PAUSE_MASK  0X2
+
+/* Core Debug register masks and shifts */
+#define CAM_CDM_CORE_DBG_TEST_BUS_EN_MASK          0X01
+#define CAM_CDM_CORE_DBG_TEST_BUS_SEL_MASK         0XF0
+#define CAM_CDM_CORE_DBG_TEST_BUS_SEL_SHIFT        4
+#define CAM_CDM_CORE_DBG_LOG_AHB_MASK              0X100
+#define CAM_CDM_CORE_DBG_LOG_SHIFT                 8
+#define CAM_CDM_CORE_DBG_FIFO_RB_EN_MASK           0x10000
+#define CAM_CDM_CORE_DBG_FIFO_RB_EN_SHIFT          16
+
 
 /* Curent BL command masks and shifts */
 #define CAM_CDM_CURRENT_BL_LEN   0xFFFFF

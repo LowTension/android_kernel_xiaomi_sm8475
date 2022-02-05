@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/types.h>
@@ -836,14 +837,17 @@ static long cam_cdm_util_dump_change_base_cmd(uint32_t *cmd_buf_addr,
 	struct cdm_changebase_cmd *p_cbase_cmd;
 	uint32_t *temp_ptr = cmd_buf_addr;
 
-	p_cbase_cmd = (struct cdm_changebase_cmd *)temp_ptr;
-	temp_ptr += CDMCmdHeaderSizes[CAM_CDM_CMD_CHANGE_BASE];
-	ret += CDMCmdHeaderSizes[CAM_CDM_CMD_CHANGE_BASE];
-
-	if (temp_ptr > cmd_buf_addr_end)
+	if (temp_ptr > cmd_buf_addr_end) {
 		CAM_ERR(CAM_CDM,
 			"Invalid cmd start addr:%pK end addr:%pK",
 			temp_ptr, cmd_buf_addr_end);
+
+		return 0;
+	}
+
+	p_cbase_cmd = (struct cdm_changebase_cmd *)temp_ptr;
+	temp_ptr += CDMCmdHeaderSizes[CAM_CDM_CMD_CHANGE_BASE];
+	ret += CDMCmdHeaderSizes[CAM_CDM_CMD_CHANGE_BASE];
 
 	CAM_INFO(CAM_CDM, "CHANGE_BASE: 0x%X",
 		p_cbase_cmd->base);
