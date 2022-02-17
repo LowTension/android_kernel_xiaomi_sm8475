@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/iopoll.h>
@@ -22,6 +23,7 @@
 #include "cam_common_util.h"
 #include "cam_tfe_csid_hw_intf.h"
 #include <dt-bindings/msm-camera.h>
+#include "cam_cpas_hw_intf.h"
 
 /* Timeout value in msec */
 #define TFE_CSID_TIMEOUT                               1000
@@ -985,6 +987,13 @@ static int cam_tfe_csid_enable_csi2(
 		csid_reg->csi2_reg->csi2_rx_phy_num_mask) << 20;
 	cam_io_w_mb(val, soc_info->reg_map[0].mem_base +
 		csid_reg->csi2_reg->csid_csi2_rx_cfg0_addr);
+
+	if (csid_hw->in_res_id >= CAM_ISP_TFE_IN_RES_CPHY_TPG_0 &&
+		csid_hw->in_res_id <= CAM_ISP_TFE_IN_RES_CPHY_TPG_2 &&
+		csid_reg->csi2_reg->need_to_sel_tpg_mux) {
+		cam_cpas_enable_tpg_mux_sel(csid_hw->in_res_id -
+			CAM_ISP_TFE_IN_RES_CPHY_TPG_0);
+	}
 
 	/* rx cfg1 */
 	val = (1 << csid_reg->csi2_reg->csi2_misr_enable_shift_val);
