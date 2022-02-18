@@ -1552,7 +1552,8 @@ struct data_rate_settings_t data_rate_delta_table_2_1_3 = {
 		},
 		{
 			/* ((4 GSpS) * (10^9) * (2.28 bits/symbol)) rounded value */
-			.bandwidth = 9120000000,
+			/* Temporarily disable 4Gsps mode, by using 4.5Gsps datarate setting */
+			.bandwidth = 7980000000,
 			.data_rate_reg_array_size = 9,
 			.per_lane_info = {
 				{
