@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/module.h>
@@ -1311,12 +1312,6 @@ int cam_sensor_power_up(struct cam_sensor_ctrl_t *s_ctrl)
 		}
 	}
 
-	rc = cam_sensor_core_power_up(power_info, soc_info);
-	if (rc < 0) {
-		CAM_ERR(CAM_SENSOR, "core power up failed:%d", rc);
-		return rc;
-	}
-
 	if (s_ctrl->is_aon_user) {
 		CAM_INFO(CAM_SENSOR,
 			"Setup for Main Camera with csiphy index: %d",
@@ -1329,6 +1324,12 @@ int cam_sensor_power_up(struct cam_sensor_ctrl_t *s_ctrl)
 				rc);
 			return rc;
 		}
+	}
+
+	rc = cam_sensor_core_power_up(power_info, soc_info);
+	if (rc < 0) {
+		CAM_ERR(CAM_SENSOR, "core power up failed:%d", rc);
+		return rc;
 	}
 
 	rc = camera_io_init(&(s_ctrl->io_master_info));
