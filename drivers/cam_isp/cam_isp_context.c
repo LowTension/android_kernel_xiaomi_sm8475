@@ -1206,7 +1206,7 @@ static int __cam_isp_ctx_recover_sof_timestamp(struct cam_context *ctx)
 			ctx->ctx_id, a, b, c);
 	} else {
 		/* Hardware is at frame A (which we supposedly missed) */
-		CAM_ERR(CAM_ISP,
+		CAM_ERR_RATE_LIMIT(CAM_ISP,
 			"ctx:%u erroneous call to SOF recovery (last:0x%llx, prev:0x%llx, curr:0x%llx)",
 			ctx->ctx_id, a, prev_ts, curr_ts);
 		return 0;

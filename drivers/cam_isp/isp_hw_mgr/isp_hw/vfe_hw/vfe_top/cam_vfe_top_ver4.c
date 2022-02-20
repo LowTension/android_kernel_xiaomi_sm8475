@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/slab.h>
@@ -1201,7 +1202,7 @@ static int __cam_vfe_handle_frame_timing_irqs(struct cam_isp_resource_node *vfe_
 	struct cam_vfe_mux_ver4_data *vfe_priv = vfe_res->res_priv;
 
 	if (!event) {
-		CAM_WARN(CAM_ISP, "VFE:%u missed %s", vfe_priv->hw_intf->hw_idx,
+		CAM_WARN_RATE_LIMIT(CAM_ISP, "VFE:%u missed %s", vfe_priv->hw_intf->hw_idx,
 			cam_isp_hw_evt_type_to_string(event_type));
 	} else {
 		handle_irq_fn(vfe_priv, payload, evt_info);
