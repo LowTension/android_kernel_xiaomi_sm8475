@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef _CAM_SUBDEV_H_
@@ -17,7 +18,8 @@
 #define CAM_SUBDEVICE_EVENT_MAX 30
 
 enum cam_subdev_message_type_t {
-	CAM_SUBDEV_MESSAGE_IRQ_ERR = 0x1
+	CAM_SUBDEV_MESSAGE_REG_DUMP = 0x1,
+	CAM_SUBDEV_MESSAGE_APPLY_CSIPHY_AUX,
 };
 
 /* Enum for close sequence priority */

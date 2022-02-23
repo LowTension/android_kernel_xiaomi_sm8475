@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2017-2018, 2020-2021 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef _CAM_CSIPHY_CORE_H_
@@ -65,6 +66,15 @@ int cam_csiphy_register_baseaddress(struct csiphy_device *csiphy_dev);
  *
  */
 int cam_csiphy_util_update_aon_ops(bool get_access, uint32_t phy_idx);
+
+
+/**
+ * @csiphy_dev : CSIPhy device structure
+ *
+ * This API updates the auxiliary settings mask for the current data rate
+ *
+ */
+void cam_csiphy_update_auxiliary_mask(struct csiphy_device *csiphy_dev);
 
 /**
  * @csiphy_dev: CSIPhy device structure

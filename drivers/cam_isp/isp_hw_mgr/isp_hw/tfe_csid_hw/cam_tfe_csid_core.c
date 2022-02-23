@@ -3426,7 +3426,7 @@ handle_fatal_error:
 		/* phy_sel starts from 1 and should never be zero*/
 		if (csid_hw->csi2_rx_cfg.phy_sel > 0) {
 			cam_subdev_notify_message(CAM_CSIPHY_DEVICE_TYPE,
-				CAM_SUBDEV_MESSAGE_IRQ_ERR, (void *)&data_idx);
+				CAM_SUBDEV_MESSAGE_REG_DUMP, (void *)&data_idx);
 		}
 		cam_tfe_csid_handle_hw_err_irq(csid_hw,
 			CAM_ISP_HW_ERROR_CSID_FATAL, irq_status);
