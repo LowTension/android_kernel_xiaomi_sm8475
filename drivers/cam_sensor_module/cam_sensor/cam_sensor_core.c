@@ -815,20 +815,6 @@ int32_t cam_sensor_driver_cmd(struct cam_sensor_ctrl_t *s_ctrl,
 			goto free_power_settings;
 		}
 
-		if (s_ctrl->is_aon_user) {
-			CAM_DBG(CAM_SENSOR,
-				"Setup for Main Camera with csiphy index: %d",
-				s_ctrl->sensordata->subdev_id[SUB_MODULE_CSIPHY]);
-			rc = cam_sensor_util_aon_ops(true,
-				s_ctrl->sensordata->subdev_id[SUB_MODULE_CSIPHY]);
-			if (rc) {
-				CAM_WARN(CAM_SENSOR,
-					"Main camera access operation is not successful rc: %d",
-					rc);
-				goto free_power_settings;
-			}
-		}
-
 		/* Power up and probe sensor */
 		rc = cam_sensor_power_up(s_ctrl);
 		if (rc < 0) {
@@ -860,20 +846,6 @@ int32_t cam_sensor_driver_cmd(struct cam_sensor_ctrl_t *s_ctrl,
 			CAM_ERR(CAM_SENSOR, "Fail in %s sensor Power Down",
 				s_ctrl->sensor_name);
 			goto free_power_settings;
-		}
-
-		if (s_ctrl->is_aon_user) {
-			CAM_DBG(CAM_SENSOR,
-				"Setup for AON FW with csiphy index: %d",
-				s_ctrl->sensordata->subdev_id[SUB_MODULE_CSIPHY]);
-			rc = cam_sensor_util_aon_ops(false,
-				s_ctrl->sensordata->subdev_id[SUB_MODULE_CSIPHY]);
-			if (rc) {
-				CAM_WARN(CAM_SENSOR,
-					"AON FW access operation is not successful rc: %d",
-					rc);
-				goto free_power_settings;
-			}
 		}
 
 		/*
@@ -1345,6 +1317,20 @@ int cam_sensor_power_up(struct cam_sensor_ctrl_t *s_ctrl)
 		return rc;
 	}
 
+	if (s_ctrl->is_aon_user) {
+		CAM_INFO(CAM_SENSOR,
+			"Setup for Main Camera with csiphy index: %d",
+			s_ctrl->sensordata->subdev_id[SUB_MODULE_CSIPHY]);
+		rc = cam_sensor_util_aon_ops(true,
+			s_ctrl->sensordata->subdev_id[SUB_MODULE_CSIPHY]);
+		if (rc) {
+			CAM_ERR(CAM_SENSOR,
+				"Main camera access operation is not successful rc: %d",
+				rc);
+			return rc;
+		}
+	}
+
 	rc = camera_io_init(&(s_ctrl->io_master_info));
 	if (rc < 0) {
 		CAM_ERR(CAM_SENSOR, "cci_init failed: rc: %d", rc);
@@ -1352,6 +1338,7 @@ int cam_sensor_power_up(struct cam_sensor_ctrl_t *s_ctrl)
 	}
 
 	return rc;
+
 cci_failure:
 	if (cam_sensor_util_power_down(power_info, soc_info))
 		CAM_ERR(CAM_SENSOR, "power down failure");
@@ -1385,6 +1372,20 @@ int cam_sensor_power_down(struct cam_sensor_ctrl_t *s_ctrl)
 		CAM_ERR(CAM_SENSOR, "%s core power down failed:%d",
 			s_ctrl->sensor_name, rc);
 		return rc;
+	}
+
+	if (s_ctrl->is_aon_user) {
+		CAM_INFO(CAM_SENSOR,
+			"Setup for AON FW with csiphy index: %d",
+			s_ctrl->sensordata->subdev_id[SUB_MODULE_CSIPHY]);
+		rc = cam_sensor_util_aon_ops(false,
+			s_ctrl->sensordata->subdev_id[SUB_MODULE_CSIPHY]);
+		if (rc) {
+			CAM_ERR(CAM_SENSOR,
+				"AON FW access operation is not successful rc: %d",
+				rc);
+			return rc;
+		}
 	}
 
 	if (s_ctrl->bob_pwm_switch) {
