@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/module.h>
@@ -75,6 +76,47 @@ int32_t cam_csiphy_get_instance_offset(
 	}
 
 	return i;
+}
+
+static int cam_csiphy_cpas_ops(
+	uint32_t cpas_handle, bool start)
+{
+	int rc = 0;
+	struct cam_ahb_vote ahb_vote;
+	struct cam_axi_vote axi_vote = {0};
+
+	if (start) {
+		ahb_vote.type = CAM_VOTE_ABSOLUTE;
+		ahb_vote.vote.level = CAM_LOWSVS_VOTE;
+		axi_vote.num_paths = 1;
+		axi_vote.axi_path[0].path_data_type =
+			CAM_AXI_PATH_DATA_ALL;
+		axi_vote.axi_path[0].transac_type =
+			CAM_AXI_TRANSACTION_WRITE;
+		axi_vote.axi_path[0].camnoc_bw =
+			CAM_CPAS_DEFAULT_AXI_BW;
+		axi_vote.axi_path[0].mnoc_ab_bw =
+			CAM_CPAS_DEFAULT_AXI_BW;
+		axi_vote.axi_path[0].mnoc_ib_bw =
+			CAM_CPAS_DEFAULT_AXI_BW;
+
+		rc = cam_cpas_start(cpas_handle,
+			&ahb_vote, &axi_vote);
+		if (rc < 0) {
+			CAM_ERR(CAM_CSIPHY, "voting CPAS: %d", rc);
+			return rc;
+		}
+		CAM_DBG(CAM_CSIPHY, "CPAS START");
+	} else {
+		rc = cam_cpas_stop(cpas_handle);
+		if (rc < 0) {
+			CAM_ERR(CAM_CSIPHY, "de-voting CPAS: %d", rc);
+			return rc;
+		}
+		CAM_DBG(CAM_CSIPHY, "CPAS STOPPED");
+	}
+
+	return rc;
 }
 
 static void cam_csiphy_reset_phyconfig_param(struct csiphy_device *csiphy_dev,
@@ -1350,6 +1392,18 @@ static int __csiphy_cpas_configure_for_main_or_aon(
 	uint32_t aon_config = 0;
 	uint32_t cpas_handle = g_phy_data[phy_idx].cpas_handle;
 
+	if (get_access == g_phy_data[phy_idx].is_configured_for_main) {
+		CAM_DBG(CAM_CSIPHY, "Already Configured/Released for %s",
+			get_access ? "Main" : "AON");
+		return 0;
+	}
+
+	rc = cam_csiphy_cpas_ops(cpas_handle, true);
+	if (rc) {
+		CAM_ERR(CAM_CSIPHY, "voting CPAS: %d failed", rc);
+		return rc;
+	}
+
 	cam_cpas_reg_read(cpas_handle, CAM_CPAS_REG_CPASTOP,
 		aon_sel_params->aon_cam_sel_offset,
 		true, &aon_config);
@@ -1366,10 +1420,6 @@ static int __csiphy_cpas_configure_for_main_or_aon(
 		CAM_INFO(CAM_CSIPHY,
 			"Releasing MainCamera to AON Camera");
 		g_phy_data[phy_idx].is_configured_for_main = false;
-	} else {
-		CAM_DBG(CAM_CSIPHY, "Already configured for %s",
-			get_access ? "Main" : "AON");
-		return 0;
 	}
 
 	CAM_DBG(CAM_CSIPHY, "value of aon_config = %u", aon_config);
@@ -1379,46 +1429,7 @@ static int __csiphy_cpas_configure_for_main_or_aon(
 	if (rc)
 		CAM_ERR(CAM_CSIPHY, "CPAS AON sel register write failed");
 
-	return rc;
-}
-
-static int cam_csiphy_cpas_ops(
-	uint32_t cpas_handle, bool start)
-{
-	int rc = 0;
-	struct cam_ahb_vote ahb_vote;
-	struct cam_axi_vote axi_vote = {0};
-
-	if (start) {
-		ahb_vote.type = CAM_VOTE_ABSOLUTE;
-		ahb_vote.vote.level = CAM_LOWSVS_VOTE;
-		axi_vote.num_paths = 1;
-		axi_vote.axi_path[0].path_data_type =
-			CAM_AXI_PATH_DATA_ALL;
-		axi_vote.axi_path[0].transac_type =
-			CAM_AXI_TRANSACTION_WRITE;
-		axi_vote.axi_path[0].camnoc_bw =
-			CAM_CPAS_DEFAULT_AXI_BW;
-		axi_vote.axi_path[0].mnoc_ab_bw =
-			CAM_CPAS_DEFAULT_AXI_BW;
-		axi_vote.axi_path[0].mnoc_ib_bw =
-			CAM_CPAS_DEFAULT_AXI_BW;
-
-		rc = cam_cpas_start(cpas_handle,
-			&ahb_vote, &axi_vote);
-		if (rc < 0) {
-			CAM_ERR(CAM_CSIPHY, "voting CPAS: %d", rc);
-			return rc;
-		}
-		CAM_DBG(CAM_CSIPHY, "CPAS START");
-	} else {
-		rc = cam_cpas_stop(cpas_handle);
-		if (rc < 0) {
-			CAM_ERR(CAM_CSIPHY, "de-voting CPAS: %d", rc);
-			return rc;
-		}
-		CAM_DBG(CAM_CSIPHY, "CPAS STOPPED");
-	}
+	cam_csiphy_cpas_ops(cpas_handle, false);
 
 	return rc;
 }
@@ -1469,11 +1480,6 @@ int cam_csiphy_util_update_aon_ops(
 	aon_sel_params = g_phy_data[phy_idx].aon_sel_param;
 
 	mutex_lock(&main_aon_selection);
-	rc = cam_csiphy_cpas_ops(cpas_hdl, true);
-	if (rc) {
-		CAM_ERR(CAM_CSIPHY, "voting CPAS: %d failed", rc);
-		goto exit;
-	}
 
 	CAM_DBG(CAM_CSIPHY, "PHY idx: %d, AON_support is %s", phy_idx,
 		(get_access) ? "enable" : "disable");
@@ -1481,12 +1487,8 @@ int cam_csiphy_util_update_aon_ops(
 	rc = __csiphy_cpas_configure_for_main_or_aon(
 			get_access, phy_idx, aon_sel_params);
 	if (rc)
-		CAM_ERR(CAM_CSIPHY, "Configuration for AON ops failed: rc: %d",
-			rc);
+		CAM_ERR(CAM_CSIPHY, "Configuration for AON ops failed: rc: %d", rc);
 
-	cam_csiphy_cpas_ops(cpas_hdl, false);
-
-exit:
 	mutex_unlock(&main_aon_selection);
 	return rc;
 }
