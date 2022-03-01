@@ -1171,12 +1171,6 @@ static int __cam_isp_ctx_recover_sof_timestamp(struct cam_context *ctx)
 	uint64_t a, b, c;
 	int rc;
 
-	if (ctx_isp->frame_id < 1) {
-		CAM_ERR(CAM_ISP, "ctx:%u Timestamp recovery is not possible for the first frame",
-			ctx->ctx_id);
-		return -EPERM;
-	}
-
 	rc = __cam_isp_ctx_get_hw_timestamp(ctx, &prev_ts, &curr_ts, &boot_ts);
 	if (rc) {
 		CAM_ERR(CAM_ISP, "ctx:%u Failed to get timestamp from HW", ctx->ctx_id);
@@ -1212,7 +1206,7 @@ static int __cam_isp_ctx_recover_sof_timestamp(struct cam_context *ctx)
 		return 0;
 	}
 
-	ctx_isp->boot_timestamp += (b - a);
+	ctx_isp->boot_timestamp = boot_ts + (b - curr_ts);
 	ctx_isp->sof_timestamp_val = b;
 	ctx_isp->frame_id++;
 	return 0;
