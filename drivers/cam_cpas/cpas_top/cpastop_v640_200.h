@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef _CPASTOP_V640_200_H_
@@ -562,5 +563,12 @@ static struct cam_cpas_camnoc_qchannel cam640_cpas200_qchannel_info = {
 	.qchannel_ctrl   = 0x5C,
 	.qchannel_status = 0x60,
 };
+
+static struct cam_cpas_top_regs cam640_cpas200_cpas_top_info = {
+	.tpg_mux_sel_enabled = true,
+	.tpg_mux_sel_shift   = 0x0,
+	.tpg_mux_sel         = 0x1C,
+};
+
 #endif /* _CPASTOP_V640_200_H_ */
 

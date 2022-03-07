@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2022, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/of.h>
@@ -532,6 +533,31 @@ int cam_cpas_select_qos_settings(uint32_t selection_mask)
 	return rc;
 }
 EXPORT_SYMBOL(cam_cpas_select_qos_settings);
+
+int cam_cpas_enable_tpg_mux_sel(uint32_t tpg_mux_sel)
+{
+	int rc = 0;
+
+	if (!CAM_CPAS_INTF_INITIALIZED()) {
+		CAM_ERR(CAM_CPAS, "cpas intf not initialized");
+		return -EBADR;
+	}
+
+	if (g_cpas_intf->hw_intf->hw_ops.process_cmd) {
+		rc = g_cpas_intf->hw_intf->hw_ops.process_cmd(
+			g_cpas_intf->hw_intf->hw_priv,
+			CAM_CPAS_HW_CMD_TPG_MUX_SEL, &tpg_mux_sel,
+			sizeof(tpg_mux_sel));
+		if (rc)
+			CAM_ERR(CAM_CPAS, "Failed in process_cmd, rc=%d", rc);
+	} else {
+		CAM_ERR(CAM_CPAS, "Invalid process_cmd ops");
+		rc = -EBADR;
+	}
+
+	return rc;
+}
+EXPORT_SYMBOL(cam_cpas_enable_tpg_mux_sel);
 
 int cam_cpas_notify_event(const char *identifier_string,
 	int32_t identifier_value)

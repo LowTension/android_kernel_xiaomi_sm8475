@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef _CAM_CPAS_HW_INTF_H_
@@ -47,6 +48,7 @@ enum cam_cpas_hw_cmd_process {
 	CAM_CPAS_HW_CMD_ACTIVATE_LLC,
 	CAM_CPAS_HW_CMD_DEACTIVATE_LLC,
 	CAM_CPAS_HW_CMD_DUMP_BUFF_FILL_INFO,
+	CAM_CPAS_HW_CMD_TPG_MUX_SEL,
 	CAM_CPAS_HW_CMD_INVALID,
 };
 
@@ -158,4 +160,10 @@ int cam_cpas_dev_init_module(void);
  * @brief : API to remove CPAS interface from platform framework.
  */
 void cam_cpas_dev_exit_module(void);
+
+/**
+ * @brief : API to select TPG mux select.
+ */
+int cam_cpas_enable_tpg_mux_sel(uint32_t tpg_mux_sel);
+
 #endif /* _CAM_CPAS_HW_INTF_H_ */
