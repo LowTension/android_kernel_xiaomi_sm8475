@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include "cam_req_mgr_workq.h"
@@ -289,14 +290,15 @@ void cam_req_mgr_workq_destroy(struct cam_req_mgr_core_workq **crm_workq)
 		}
 		/* Destroy workq payload data */
 		kfree(workq->task.pool[0].payload);
+		workq->task.pool[0].payload = NULL;
 		kfree(workq->task.pool);
 
 		/* Leave lists in stable state after freeing pool */
 		INIT_LIST_HEAD(&workq->task.empty_head);
 		for (i = 0; i < CRM_TASK_PRIORITY_MAX; i++)
 			INIT_LIST_HEAD(&workq->task.process_head[i]);
-		*crm_workq = NULL;
 		WORKQ_RELEASE_LOCK(workq, flags);
 		kfree(workq);
+		*crm_workq = NULL;
 	}
 }
