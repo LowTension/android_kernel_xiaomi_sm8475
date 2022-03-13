@@ -485,7 +485,7 @@ int32_t cam_handle_cmd_buffers_for_probe(void *cmd_buf,
 	struct cam_sensor_ctrl_t *s_ctrl,
 	int32_t cmd_buf_num, uint32_t cmd,
 	uint32_t cmd_buf_length, size_t remain_len,
-	uint32_t probe_ver)
+	uint32_t probe_ver, struct cam_cmd_buf_desc *cmd_desc)
 {
 	int32_t rc = 0;
 	size_t required_size = 0;
@@ -534,6 +534,44 @@ int32_t cam_handle_cmd_buffers_for_probe(void *cmd_buf,
 		}
 	}
 		break;
+
+	case 2: {
+		struct i2c_settings_array *i2c_reg_settings = NULL;
+		struct i2c_data_settings *i2c_data = NULL;
+		struct cam_buf_io_cfg *io_cfg = NULL;
+
+		CAM_DBG(CAM_SENSOR, "reg_bank unlock settings");
+		i2c_data = &(s_ctrl->i2c_data);
+		i2c_reg_settings = &i2c_data->reg_bank_unlock_settings;
+		i2c_reg_settings->request_id = 0;
+		rc = cam_sensor_i2c_command_parser(&s_ctrl->io_master_info,
+				i2c_reg_settings, cmd_desc, 1, io_cfg);
+		if (rc < 0) {
+			CAM_ERR(CAM_SENSOR,
+				"Failed in updating reg_bank unlock settings");
+			return rc;
+		}
+	}
+		break;
+	case 3: {
+		struct i2c_settings_array *i2c_reg_settings = NULL;
+		struct i2c_data_settings *i2c_data = NULL;
+		struct cam_buf_io_cfg *io_cfg = NULL;
+
+		CAM_DBG(CAM_SENSOR, "reg_bank lock settings");
+		i2c_data = &(s_ctrl->i2c_data);
+		i2c_reg_settings = &i2c_data->reg_bank_lock_settings;
+		i2c_reg_settings->request_id = 0;
+		rc = cam_sensor_i2c_command_parser(&s_ctrl->io_master_info,
+				i2c_reg_settings, cmd_desc, 1, io_cfg);
+		if (rc < 0) {
+			CAM_ERR(CAM_SENSOR,
+				"Failed in updating reg_bank lock settings");
+			return rc;
+		}
+	}
+		break;
+
 	default:
 		CAM_ERR(CAM_SENSOR, "Invalid command buffer");
 		break;
@@ -583,12 +621,6 @@ int32_t cam_handle_mem_ptr(uint64_t handle, uint32_t cmd,
 		rc = -EINVAL;
 		goto end;
 	}
-	if (pkt->num_cmd_buf != 2) {
-		CAM_ERR(CAM_SENSOR, "Expected More Command Buffers : %d",
-			 pkt->num_cmd_buf);
-		rc = -EINVAL;
-		goto end;
-	}
 
 	probe_ver = pkt->header.op_code & 0xFFFFFF;
 	CAM_DBG(CAM_SENSOR, "Received Header opcode: %u", probe_ver);
@@ -621,7 +653,8 @@ int32_t cam_handle_mem_ptr(uint64_t handle, uint32_t cmd,
 		ptr = (void *) cmd_buf;
 
 		rc = cam_handle_cmd_buffers_for_probe(ptr, s_ctrl,
-			i, cmd, cmd_desc[i].length, remain_len, probe_ver);
+			i, cmd, cmd_desc[i].length, remain_len, probe_ver, &cmd_desc[i]);
+
 		if (rc < 0) {
 			CAM_ERR(CAM_SENSOR,
 				"Failed to parse the command Buffer Header");
@@ -827,7 +860,20 @@ int32_t cam_sensor_driver_cmd(struct cam_sensor_ctrl_t *s_ctrl,
 				);
 			goto free_power_settings;
 		}
-
+		if (s_ctrl->i2c_data.reg_bank_unlock_settings.is_settings_valid) {
+			rc = cam_sensor_apply_settings(s_ctrl, 0,
+				CAM_SENSOR_PACKET_OPCODE_SENSOR_REG_BANK_UNLOCK);
+			if (rc < 0) {
+				CAM_ERR(CAM_SENSOR, "REG_bank unlock failed");
+				goto free_power_settings;
+			}
+			rc = delete_request(&(s_ctrl->i2c_data.reg_bank_unlock_settings));
+			if (rc < 0) {
+				CAM_ERR(CAM_SENSOR,
+					"failed while deleting REG_bank unlock settings");
+				goto free_power_settings;
+			}
+		}
 		/* Match sensor ID */
 		rc = cam_sensor_match_id(s_ctrl);
 		if (rc < 0) {
@@ -840,6 +886,21 @@ int32_t cam_sensor_driver_cmd(struct cam_sensor_ctrl_t *s_ctrl,
 			cam_sensor_power_down(s_ctrl);
 			msleep(20);
 			goto free_power_settings;
+		}
+
+		if (s_ctrl->i2c_data.reg_bank_lock_settings.is_settings_valid) {
+			rc = cam_sensor_apply_settings(s_ctrl, 0,
+				CAM_SENSOR_PACKET_OPCODE_SENSOR_REG_BANK_LOCK);
+			if (rc < 0) {
+				CAM_ERR(CAM_SENSOR, "REG_bank lock failed");
+				goto free_power_settings;
+			}
+			rc = delete_request(&(s_ctrl->i2c_data.reg_bank_lock_settings));
+			if (rc < 0) {
+				CAM_ERR(CAM_SENSOR,
+					"failed while deleting REG_bank lock settings");
+				goto free_power_settings;
+			}
 		}
 
 		rc = cam_sensor_power_down(s_ctrl);
@@ -1429,6 +1490,14 @@ int cam_sensor_apply_settings(struct cam_sensor_ctrl_t *s_ctrl,
 		}
 		case CAM_SENSOR_PACKET_OPCODE_SENSOR_STREAMOFF: {
 			i2c_set = &s_ctrl->i2c_data.streamoff_settings;
+			break;
+		}
+		case CAM_SENSOR_PACKET_OPCODE_SENSOR_REG_BANK_UNLOCK: {
+			i2c_set = &s_ctrl->i2c_data.reg_bank_unlock_settings;
+			break;
+		}
+		case CAM_SENSOR_PACKET_OPCODE_SENSOR_REG_BANK_LOCK: {
+			i2c_set = &s_ctrl->i2c_data.reg_bank_lock_settings;
 			break;
 		}
 		case CAM_SENSOR_PACKET_OPCODE_SENSOR_UPDATE:
