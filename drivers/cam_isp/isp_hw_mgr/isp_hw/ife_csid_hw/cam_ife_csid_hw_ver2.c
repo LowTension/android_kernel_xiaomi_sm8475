@@ -49,9 +49,6 @@
 /* Max number of sof irq's triggered in case of SOF freeze */
 #define CAM_CSID_IRQ_SOF_DEBUG_CNT_MAX 12
 
-/* Max CSI Rx irq error count threshold value */
-#define CAM_IFE_CSID_MAX_IRQ_ERROR_COUNT               100
-
 static void cam_ife_csid_ver2_print_debug_reg_status(
 	struct cam_ife_csid_ver2_hw *csid_hw,
 	struct cam_isp_resource_node    *res);
@@ -210,7 +207,7 @@ static int cam_ife_csid_ver2_sof_irq_debug(
 			csid_hw->rx_cfg.phy_sel - 1);
 
 	cam_subdev_notify_message(CAM_CSIPHY_DEVICE_TYPE,
-			CAM_SUBDEV_MESSAGE_IRQ_ERR, (void *)&data_idx);
+		CAM_SUBDEV_MESSAGE_REG_DUMP, (void *)&data_idx);
 
 	return 0;
 }
@@ -742,8 +739,7 @@ static int cam_ife_csid_ver2_rx_err_top_half(
 			csid_hw->hw_intf->hw_idx,
 			csid_hw->counters.error_irq_count);
 
-		if (csid_hw->counters.error_irq_count >
-			CAM_IFE_CSID_MAX_ERR_COUNT) {
+		if (csid_hw->counters.error_irq_count > CAM_IFE_CSID_MAX_ERR_COUNT) {
 			csid_hw->flags.fatal_err_detected = true;
 			cam_ife_csid_ver2_stop_csi2_in_err(csid_hw);
 		}
@@ -1071,30 +1067,26 @@ static int cam_ife_csid_ver2_rx_err_bottom_half(
 
 		if (irq_status & IFE_CSID_VER2_RX_ERROR_CRC) {
 			event_type |= CAM_ISP_HW_ERROR_CSID_PKT_PAYLOAD_CORRUPTED;
-			long_pkt_ftr_val = cam_io_r_mb(
-				soc_info->reg_map[0].mem_base +
+			long_pkt_ftr_val = cam_io_r_mb(soc_info->reg_map[0].mem_base +
 				csi2_reg->captured_long_pkt_ftr_addr);
-			total_crc = cam_io_r_mb(
-				soc_info->reg_map[0].mem_base +
+			total_crc = cam_io_r_mb(soc_info->reg_map[0].mem_base +
 				csi2_reg->total_crc_err_addr);
 
 			if (csid_hw->rx_cfg.lane_type == CAM_ISP_LANE_TYPE_CPHY) {
-				val = cam_io_r_mb(
-					soc_info->reg_map[0].mem_base +
+				val = cam_io_r_mb(soc_info->reg_map[0].mem_base +
 					csi2_reg->captured_cphy_pkt_hdr_addr);
 
-				CAM_ERR_BUF(CAM_ISP, log_buf,
-					CAM_IFE_CSID_LOG_BUF_LEN, &len,
+				CAM_ERR_BUF(CAM_ISP, log_buf, CAM_IFE_CSID_LOG_BUF_LEN, &len,
 					"PHY_CRC_ERROR: Long pkt payload CRC mismatch. Totl CRC Errs: %u, Rcvd CRC: 0x%x Caltd CRC: 0x%x, VC:%d DT:%d WC:%d",
-					total_crc,
-					long_pkt_ftr_val & 0xffff, long_pkt_ftr_val >> 16,
-					val >> 22, (val >> 16) & 0x3F, val & 0xFFFF);
+					total_crc, long_pkt_ftr_val & 0xffff,
+					long_pkt_ftr_val >> 16, val >> 22,
+					(val >> 16) & 0x3F, val & 0xFFFF);
 			} else {
 				CAM_ERR_BUF(CAM_ISP, log_buf,
 					CAM_IFE_CSID_LOG_BUF_LEN, &len,
 					"PHY_CRC_ERROR: Long pkt payload CRC mismatch. Totl CRC Errs: %u, Rcvd CRC: 0x%x Caltd CRC: 0x%x",
-					total_crc,
-					long_pkt_ftr_val & 0xffff, long_pkt_ftr_val >> 16);
+					total_crc, long_pkt_ftr_val & 0xffff,
+					long_pkt_ftr_val >> 16);
 			}
 		}
 
@@ -1114,7 +1106,7 @@ static int cam_ife_csid_ver2_rx_err_bottom_half(
 				"CPHY_SOT_RECEPTION: Less SOTs on lane/s");
 		}
 
-		CAM_ERR(CAM_ISP, "Recoverable-errors: %s", log_buf);
+		CAM_ERR(CAM_ISP, "Partly fatal errors: %s", log_buf);
 		rx_irq_status |= irq_status;
 	}
 
@@ -1144,7 +1136,8 @@ static int cam_ife_csid_ver2_rx_err_bottom_half(
 			event_type |= CAM_ISP_HW_ERROR_CSID_FATAL;
 
 		cam_subdev_notify_message(CAM_CSIPHY_DEVICE_TYPE,
-			CAM_SUBDEV_MESSAGE_IRQ_ERR, (void *)&data_idx);
+			CAM_SUBDEV_MESSAGE_APPLY_CSIPHY_AUX, (void *)&data_idx);
+
 		cam_ife_csid_ver2_handle_event_err(csid_hw,
 			rx_irq_status, event_type, false, NULL);
 		csid_hw->flags.reset_awaited = true;
@@ -1479,8 +1472,9 @@ void cam_ife_csid_ver2_print_format_measure_info(
 		csid_reg->path_reg[res->res_id];
 	struct cam_hw_soc_info *soc_info = &csid_hw->hw_info->soc_info;
 	void __iomem *base = soc_info->reg_map[CAM_IFE_CSID_CLC_MEM_BASE_ID].mem_base;
-	uint32_t expected_frame = 0, actual_frame = 0;
+	uint32_t expected_frame = 0, actual_frame = 0, data_idx;
 
+	data_idx = csid_hw->rx_cfg.phy_sel - 1;
 	actual_frame = cam_io_r_mb(base + path_reg->format_measure0_addr);
 	expected_frame = cam_io_r_mb(base + path_reg->format_measure_cfg1_addr);
 
@@ -1498,6 +1492,10 @@ void cam_ife_csid_ver2_print_format_measure_info(
 		csid_reg->cmn_reg->format_measure_height_mask_val),
 		actual_frame &
 		csid_reg->cmn_reg->format_measure_width_mask_val);
+
+	/* AUX settings update to phy for pix and line count errors */
+	cam_subdev_notify_message(CAM_CSIPHY_DEVICE_TYPE,
+		CAM_SUBDEV_MESSAGE_APPLY_CSIPHY_AUX, (void *)&data_idx);
 }
 
 static int cam_ife_csid_ver2_ipp_bottom_half(

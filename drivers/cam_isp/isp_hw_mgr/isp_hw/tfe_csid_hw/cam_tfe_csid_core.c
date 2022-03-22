@@ -2798,6 +2798,19 @@ static int cam_tfe_csid_set_csid_clock(
 	return 0;
 }
 
+static int cam_tfe_csid_dump_csid_clock(
+	struct cam_tfe_csid_hw *csid_hw, void *cmd_args)
+{
+	if (!csid_hw)
+		return -EINVAL;
+
+	CAM_INFO(CAM_ISP, "CSID:%d clock rate %llu",
+		csid_hw->hw_intf->hw_idx,
+		csid_hw->clk_rate);
+
+	return 0;
+}
+
 static int cam_tfe_csid_get_regdump(struct cam_tfe_csid_hw *csid_hw,
 	void *cmd_args)
 {
@@ -3061,6 +3074,9 @@ static int cam_tfe_csid_process_cmd(void *hw_priv,
 		break;
 	case CAM_ISP_HW_CMD_CSID_CLOCK_UPDATE:
 		rc = cam_tfe_csid_set_csid_clock(csid_hw, cmd_args);
+		break;
+	case CAM_ISP_HW_CMD_CSID_CLOCK_DUMP:
+		rc = cam_tfe_csid_dump_csid_clock(csid_hw, cmd_args);
 		break;
 	case CAM_TFE_CSID_CMD_GET_REG_DUMP:
 		rc = cam_tfe_csid_get_regdump(csid_hw, cmd_args);
@@ -3426,7 +3442,7 @@ handle_fatal_error:
 		/* phy_sel starts from 1 and should never be zero*/
 		if (csid_hw->csi2_rx_cfg.phy_sel > 0) {
 			cam_subdev_notify_message(CAM_CSIPHY_DEVICE_TYPE,
-				CAM_SUBDEV_MESSAGE_IRQ_ERR, (void *)&data_idx);
+				CAM_SUBDEV_MESSAGE_REG_DUMP, (void *)&data_idx);
 		}
 		cam_tfe_csid_handle_hw_err_irq(csid_hw,
 			CAM_ISP_HW_ERROR_CSID_FATAL, irq_status);
@@ -3715,9 +3731,23 @@ handle_fatal_error:
 		}
 	}
 
-	if (is_error_irq || log_en)
+	if (is_error_irq || log_en) {
+		CAM_ERR(CAM_ISP,
+			"CSID %d irq status TOP: 0x%x RX: 0x%x IPP: 0x%x",
+			csid_hw->hw_intf->hw_idx,
+			irq_status[TFE_CSID_IRQ_REG_TOP],
+			irq_status[TFE_CSID_IRQ_REG_RX],
+			irq_status[TFE_CSID_IRQ_REG_IPP]);
+		CAM_ERR(CAM_ISP,
+			"RDI0: 0x%x RDI1: 0x%x RDI2: 0x%x CSID clk:%d",
+			irq_status[TFE_CSID_IRQ_REG_RDI0],
+			irq_status[TFE_CSID_IRQ_REG_RDI1],
+			irq_status[TFE_CSID_IRQ_REG_RDI2],
+			csid_hw->clk_rate);
+
 		cam_tfe_csid_handle_hw_err_irq(csid_hw,
 			CAM_ISP_HW_ERROR_NONE, irq_status);
+	}
 
 	if (csid_hw->irq_debug_cnt >= CAM_TFE_CSID_IRQ_SOF_DEBUG_CNT_MAX) {
 		cam_tfe_csid_sof_irq_debug(csid_hw, &sof_irq_debug_en);

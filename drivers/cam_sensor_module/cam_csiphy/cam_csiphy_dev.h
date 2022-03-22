@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef _CAM_CSIPHY_DEV_H_
@@ -51,6 +52,7 @@
 #define CSIPHY_2PH_COMBO_REGS            8
 #define CSIPHY_3PH_COMBO_REGS            9
 #define CSIPHY_2PH_3PH_COMBO_REGS        10
+#define CSIPHY_AUXILIARY_SETTING         11
 
 #define CSIPHY_MAX_INSTANCES_PER_PHY     3
 
@@ -314,6 +316,7 @@ struct csiphy_work_queue {
  * @cphy_dphy_combo_mode       : Info regarding 2ph/3ph combo modes
  * @rx_clk_src_idx             : Phy src clk index
  * @is_divisor_32_comp         : 32 bit hw compatibility
+ * @curr_data_rate_idx         : Index of the datarate array which is being used currently by phy
  * @csiphy_state               : CSIPhy state
  * @ctrl_reg                   : CSIPhy control registers
  * @csiphy_3p_clk_info         : 3Phase clock information
@@ -330,6 +333,7 @@ struct csiphy_work_queue {
  * @en_common_status_reg_dump  : Debugfs flag to enable common status register dump
  * @en_lane_status_reg_dump    : Debugfs flag to enable cphy/dphy lane status dump
  * @en_full_phy_reg_dump       : Debugfs flag to enable the dump for all the Phy registers
+ * @skip_aux_settings          : Debugfs flag to ignore calls to update aux settings
  * @preamble_enable            : To enable preamble pattern
  */
 struct csiphy_device {
@@ -346,6 +350,7 @@ struct csiphy_device {
 	uint8_t                        cphy_dphy_combo_mode;
 	uint8_t                        rx_clk_src_idx;
 	uint8_t                        is_divisor_32_comp;
+	uint8_t                        curr_data_rate_idx;
 	enum cam_csiphy_state          csiphy_state;
 	struct csiphy_ctrl_t          *ctrl_reg;
 	struct msm_cam_clk_info        csiphy_3p_clk_info[2];
@@ -364,6 +369,7 @@ struct csiphy_device {
 	bool                           en_common_status_reg_dump;
 	bool                           en_lane_status_reg_dump;
 	bool                           en_full_phy_reg_dump;
+	bool                           skip_aux_settings;
 	uint16_t                       preamble_enable;
 };
 

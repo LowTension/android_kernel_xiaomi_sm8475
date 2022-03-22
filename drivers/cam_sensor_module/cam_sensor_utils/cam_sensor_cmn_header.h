@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef _CAM_SENSOR_CMN_HEADER_
@@ -241,6 +242,8 @@ struct i2c_data_settings {
 	struct i2c_settings_array read_settings;
 	struct i2c_settings_array *per_frame;
 	struct i2c_settings_array *frame_skip;
+	struct i2c_settings_array reg_bank_unlock_settings;
+	struct i2c_settings_array reg_bank_lock_settings;
 };
 
 struct cam_sensor_power_ctrl_t {

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include "cam_csiphy_dev.h"
@@ -14,32 +15,55 @@
 #define CSIPHY_DEBUGFS_NAME_MAX_SIZE 10
 static struct dentry *root_dentry;
 
-static void cam_csiphy_subdev_handle_message(
-		struct v4l2_subdev *sd,
-		enum cam_subdev_message_type_t message_type,
-		void *data)
+static inline void cam_csiphy_trigger_reg_dump(struct csiphy_device *csiphy_dev)
+{
+	cam_csiphy_common_status_reg_dump(csiphy_dev);
+
+	if (csiphy_dev->en_full_phy_reg_dump)
+		cam_csiphy_reg_dump(&csiphy_dev->soc_info);
+
+	if (csiphy_dev->en_lane_status_reg_dump) {
+		CAM_INFO(CAM_CSIPHY, "Status Reg Dump on failure");
+		cam_csiphy_dump_status_reg(csiphy_dev);
+	}
+}
+
+static void cam_csiphy_subdev_handle_message(struct v4l2_subdev *sd,
+	enum cam_subdev_message_type_t message_type, void *data)
 {
 	struct csiphy_device *csiphy_dev = v4l2_get_subdevdata(sd);
-	uint32_t data_idx;
+	uint32_t phy_idx;
+
+	if (!data) {
+		CAM_ERR(CAM_CSIPHY, "Empty Payload");
+		return;
+	}
+
+	phy_idx = *(uint32_t *)data;
+	if (phy_idx != csiphy_dev->soc_info.index) {
+		CAM_DBG(CAM_CSIPHY, "Current HW IDX: %u, Expected IDX: %u",
+			csiphy_dev->soc_info.index, phy_idx);
+		return;
+	}
 
 	switch (message_type) {
-	case CAM_SUBDEV_MESSAGE_IRQ_ERR:
-		data_idx = *(uint32_t *)data;
-		CAM_INFO(CAM_CSIPHY, "subdev index : %d CSIPHY index: %d",
-				csiphy_dev->soc_info.index, data_idx);
-		if (data_idx == csiphy_dev->soc_info.index) {
-			cam_csiphy_common_status_reg_dump(csiphy_dev);
+	case CAM_SUBDEV_MESSAGE_REG_DUMP: {
+		cam_csiphy_trigger_reg_dump(csiphy_dev);
 
-			if (csiphy_dev->en_full_phy_reg_dump)
-				cam_csiphy_reg_dump(&csiphy_dev->soc_info);
+		break;
+	}
+	case CAM_SUBDEV_MESSAGE_APPLY_CSIPHY_AUX: {
+		cam_csiphy_trigger_reg_dump(csiphy_dev);
 
-			if (csiphy_dev->en_lane_status_reg_dump) {
-				CAM_INFO(CAM_CSIPHY,
-					"Status Reg Dump on failure");
-				cam_csiphy_dump_status_reg(csiphy_dev);
-			}
+		if (!csiphy_dev->skip_aux_settings) {
+			cam_csiphy_update_auxiliary_mask(csiphy_dev);
+
+			CAM_INFO(CAM_CSIPHY,
+				"CSIPHY[%u] updating aux settings for data rate idx: %u",
+				csiphy_dev->soc_info.index, csiphy_dev->curr_data_rate_idx);
 		}
 		break;
+	}
 	default:
 		break;
 	}
@@ -82,6 +106,9 @@ static int cam_csiphy_debug_register(struct csiphy_device *csiphy_dev)
 
 	debugfs_create_bool("en_full_phy_reg_dump", 0644,
 		dbgfileptr, &csiphy_dev->en_full_phy_reg_dump);
+
+	debugfs_create_bool("skip_aux_settings", 0644,
+		dbgfileptr, &csiphy_dev->skip_aux_settings);
 
 	return 0;
 }
@@ -242,6 +269,7 @@ static int cam_csiphy_component_bind(struct device *dev,
 	new_csiphy_dev->soc_info.dev = &pdev->dev;
 	new_csiphy_dev->soc_info.dev_name = pdev->name;
 	new_csiphy_dev->ref_count = 0;
+	new_csiphy_dev->current_data_rate = 0;
 
 	rc = cam_csiphy_parse_dt_info(pdev, new_csiphy_dev);
 	if (rc < 0) {

@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only WITH Linux-syscall-note */
 /*
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2021-2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef __UAPI_CAM_SENSOR_H__
@@ -95,7 +96,9 @@ enum cam_sensor_packet_opcodes {
 	CAM_SENSOR_PACKET_OPCODE_SENSOR_READ,
 	CAM_SENSOR_PACKET_OPCODE_SENSOR_FRAME_SKIP_UPDATE,
 	CAM_SENSOR_PACKET_OPCODE_SENSOR_PROBE_V2,
-	CAM_SENSOR_PACKET_OPCODE_SENSOR_NOP = 127
+	CAM_SENSOR_PACKET_OPCODE_SENSOR_REG_BANK_UNLOCK,
+	CAM_SENSOR_PACKET_OPCODE_SENSOR_REG_BANK_LOCK,
+	CAM_SENSOR_PACKET_OPCODE_SENSOR_NOP = 127,
 };
 
 enum tpg_command_type_t {
