@@ -1415,7 +1415,7 @@ static int32_t cam_cci_read(struct v4l2_subdev *sd,
 		val = cam_io_r_mb(base +
 			CCI_I2C_M0_READ_BUF_LEVEL_ADDR + master * 0x100);
 		CAM_ERR(CAM_CCI,
-			"CCI%d_I2C_M%d_Q%d wait timeout rd_done for cci: %d, master: %d, queue: %d, FIFO buf_lvl: 0x%x, rc: %d",
+			"CCI%d_I2C_M%d_Q%d rd_done wait timeout FIFO buf_lvl: 0x%x, rc: %d",
 			cci_dev->soc_info.index, master, queue, val, rc);
 		cam_cci_flush_queue(cci_dev, master);
 		goto rel_mutex_q;
