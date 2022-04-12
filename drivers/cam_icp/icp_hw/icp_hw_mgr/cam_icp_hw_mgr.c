@@ -5432,7 +5432,10 @@ static int cam_icp_mgr_flush_req(struct cam_icp_hw_ctx_data *ctx_data,
 	bool clear_in_resource = false;
 
 	hfi_frame_process = &ctx_data->hfi_frame_process;
-	request_id = *(int64_t *)flush_args->flush_req_pending[0];
+	if (flush_args->num_req_pending)
+		request_id = *(int64_t *)flush_args->flush_req_pending[0];
+	else if (flush_args->num_req_active)
+		request_id = *(int64_t *)flush_args->flush_req_active[0];
 	for (idx = 0; idx < CAM_FRAME_CMD_MAX; idx++) {
 		if (!hfi_frame_process->request_id[idx])
 			continue;
@@ -5476,7 +5479,8 @@ static void cam_icp_mgr_flush_info_dump(
 }
 
 static int cam_icp_mgr_enqueue_abort(
-	struct cam_icp_hw_ctx_data *ctx_data)
+	struct cam_icp_hw_ctx_data *ctx_data,
+	struct cam_hw_flush_args *flush_args)
 {
 	int timeout = 1000, rc;
 	unsigned long rem_jiffies = 0;
@@ -5493,6 +5497,11 @@ static int cam_icp_mgr_enqueue_abort(
 	task_data = (struct hfi_cmd_work_data *)task->payload;
 	task_data->data = (void *)ctx_data;
 	task_data->type = ICP_WORKQ_TASK_CMD_TYPE;
+	if ((flush_args->flush_type == CAM_FLUSH_TYPE_REQ) &&
+		 (flush_args->num_req_active)) {
+		task_data->request_id = *(int32_t*)flush_args->flush_req_active[0];
+		CAM_INFO(CAM_ICP,"abort req_id = %u", task_data->request_id);
+	}
 	task->process_cb = cam_icp_mgr_abort_handle_wq;
 	cam_req_mgr_workq_enqueue_task(task, &icp_hw_mgr,
 		CRM_TASK_PRIORITY_0);
@@ -5661,7 +5670,7 @@ static int cam_icp_mgr_hw_flush(void *hw_priv, void *hw_flush_args)
 			mutex_unlock(&hw_mgr->hw_mgr_mutex);
 			cam_icp_mgr_flush_info_dump(flush_args,
 				ctx_data->ctx_id);
-			cam_icp_mgr_enqueue_abort(ctx_data);
+			cam_icp_mgr_enqueue_abort(ctx_data, flush_args);
 		} else {
 			mutex_unlock(&hw_mgr->hw_mgr_mutex);
 		}
@@ -5672,11 +5681,11 @@ static int cam_icp_mgr_hw_flush(void *hw_priv, void *hw_flush_args)
 	case CAM_FLUSH_TYPE_REQ:
 		mutex_lock(&ctx_data->ctx_mutex);
 		if (flush_args->num_req_active) {
-			CAM_ERR(CAM_ICP, "Flush request is not supported");
-			mutex_unlock(&ctx_data->ctx_mutex);
-			return -EINVAL;
+			CAM_INFO(CAM_ICP, "Enqueue abort for single flush request");
+			cam_icp_mgr_enqueue_abort(ctx_data, flush_args);
 		}
-		if (flush_args->num_req_pending)
+		if ((flush_args->num_req_pending) ||
+			(flush_args->num_req_active))
 			cam_icp_mgr_flush_req(ctx_data, flush_args);
 		mutex_unlock(&ctx_data->ctx_mutex);
 		break;
