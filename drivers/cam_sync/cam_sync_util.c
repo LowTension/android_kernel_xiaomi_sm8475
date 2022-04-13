@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2017-2018, 2020-2021 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include "cam_sync_util.h"
@@ -26,6 +27,48 @@ int cam_sync_util_find_and_set_empty_row(struct sync_device *sync_dev,
 	return rc;
 }
 
+int cam_sync_init_wait_ref(uint32_t sync_obj)
+{
+	struct sync_table_row *row = NULL;
+
+	row = sync_dev->sync_table + sync_obj;
+
+	refcount_set(&row->wait_ref_cnt, 1);
+	return 0;
+}
+
+int cam_sync_get_wait_ref(uint32_t sync_obj)
+{
+	struct sync_table_row *row = NULL;
+
+	row = sync_dev->sync_table + sync_obj;
+
+	if (row->state == CAM_SYNC_STATE_INVALID) {
+		CAM_ERR(CAM_SYNC,
+			"Error: accessing an uninitialized sync obj = %d",
+			sync_obj);
+		return -EINVAL;
+	}
+	if (!refcount_inc_not_zero(&row->wait_ref_cnt))
+		return -EINVAL;
+
+	CAM_DBG(CAM_SYNC, "get ref for obj %d", sync_obj);
+	return 0;
+}
+
+int cam_sync_put_wait_ref(uint32_t sync_obj)
+{
+	struct sync_table_row *row = NULL;
+
+	row = sync_dev->sync_table + sync_obj;
+	if (refcount_dec_and_test(&row->wait_ref_cnt))
+		cam_sync_deinit_object(sync_dev->sync_table, sync_obj);
+
+	CAM_DBG(CAM_SYNC, "put ref for obj %d", sync_obj);
+
+	return 0;
+}
+
 int cam_sync_init_row(struct sync_table_row *table,
 	uint32_t idx, const char *name, uint32_t type)
 {
@@ -47,6 +90,7 @@ int cam_sync_init_row(struct sync_table_row *table,
 	init_completion(&row->signaled);
 	INIT_LIST_HEAD(&row->callback_list);
 	INIT_LIST_HEAD(&row->user_payload_list);
+	cam_sync_init_wait_ref(idx);
 	CAM_DBG(CAM_SYNC,
 		"row name:%s sync_id:%i [idx:%u] row_state:%u ",
 		row->name, row->sync_id, idx, row->state);
@@ -165,21 +209,6 @@ int cam_sync_deinit_object(struct sync_table_row *table, uint32_t idx)
 		row->name, row->sync_id, idx, row->state);
 
 	spin_lock_bh(&sync_dev->row_spinlocks[idx]);
-	if (row->state == CAM_SYNC_STATE_INVALID) {
-		spin_unlock_bh(&sync_dev->row_spinlocks[idx]);
-		CAM_ERR(CAM_SYNC,
-			"Error: accessing an uninitialized sync obj: idx = %d name = %s",
-			idx,
-			row->name);
-		return -EINVAL;
-	}
-
-	if (row->state == CAM_SYNC_STATE_ACTIVE)
-		CAM_DBG(CAM_SYNC,
-			"Destroying an active sync object name:%s id:%i",
-			row->name, row->sync_id);
-
-	row->state = CAM_SYNC_STATE_INVALID;
 
 	/* Object's child and parent objects will be added into this list */
 	INIT_LIST_HEAD(&temp_child_list);
@@ -268,14 +297,23 @@ int cam_sync_deinit_object(struct sync_table_row *table, uint32_t idx)
 	spin_lock_bh(&sync_dev->row_spinlocks[idx]);
 	list_for_each_entry_safe(upayload_info, temp_upayload,
 			&row->user_payload_list, list) {
+		cam_sync_util_send_v4l2_event(
+			CAM_SYNC_V4L_EVENT_ID_CB_TRIG,
+			idx,
+			CAM_SYNC_STATE_SIGNALED_CANCEL,
+			upayload_info->payload_data,
+			CAM_SYNC_PAYLOAD_WORDS * sizeof(__u64),
+			CAM_SYNC_COMMON_SYNC_SIGNAL_EVENT);
 		list_del_init(&upayload_info->list);
 		kfree(upayload_info);
 	}
 
 	list_for_each_entry_safe(sync_cb, temp_cb,
 			&row->callback_list, list) {
+		sync_cb->status = CAM_SYNC_STATE_SIGNALED_CANCEL;
 		list_del_init(&sync_cb->list);
-		kfree(sync_cb);
+		queue_work(sync_dev->work_queue,
+			&sync_cb->cb_dispatch_work);
 	}
 
 	memset(row, 0, sizeof(*row));

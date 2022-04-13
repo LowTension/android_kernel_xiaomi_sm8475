@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/init.h>
@@ -395,7 +396,34 @@ int cam_sync_put_obj_ref(int32_t sync_obj)
 
 int cam_sync_destroy(int32_t sync_obj)
 {
-	return cam_sync_deinit_object(sync_dev->sync_table, sync_obj);
+	struct sync_table_row *row;
+
+	if (sync_obj <= 0 || sync_obj >= CAM_SYNC_MAX_OBJS)
+		return -EINVAL;
+
+	row = sync_dev->sync_table + sync_obj;
+
+	CAM_DBG(CAM_SYNC,
+		"row name:%s sync_id:%i [idx:%u] row_state:%u",
+		row->name, row->sync_id, sync_obj, row->state);
+
+	spin_lock_bh(&sync_dev->row_spinlocks[sync_obj]);
+	if (row->state == CAM_SYNC_STATE_INVALID) {
+		spin_unlock_bh(&sync_dev->row_spinlocks[sync_obj]);
+		CAM_ERR(CAM_SYNC,
+			"Error: accessing an uninitialized sync obj: idx = %d",
+			sync_obj);
+		return -EINVAL;
+	}
+
+	if (row->state == CAM_SYNC_STATE_ACTIVE)
+		CAM_DBG(CAM_SYNC,
+			"Destroying an active sync object name:%s id:%i",
+			row->name, row->sync_id);
+	row->state = CAM_SYNC_STATE_INVALID;
+	complete_all(&row->signaled);
+	spin_unlock_bh(&sync_dev->row_spinlocks[sync_obj]);
+	return cam_sync_put_wait_ref(sync_obj);
 }
 
 int cam_sync_check_valid(int32_t sync_obj)
@@ -435,9 +463,9 @@ int cam_sync_wait(int32_t sync_obj, uint64_t timeout_ms)
 
 	row = sync_dev->sync_table + sync_obj;
 
-	if (row->state == CAM_SYNC_STATE_INVALID) {
+	if (cam_sync_get_wait_ref(sync_obj)) {
 		CAM_ERR(CAM_SYNC,
-			"Error: accessing an uninitialized sync obj = %s[%d]",
+			"Error while getting sync obj = %s[%d]",
 			row->name,
 			sync_obj);
 		return -EINVAL;
@@ -469,7 +497,7 @@ int cam_sync_wait(int32_t sync_obj, uint64_t timeout_ms)
 			break;
 		}
 	}
-
+	cam_sync_put_wait_ref(sync_obj);
 	return rc;
 }
 
@@ -782,6 +810,8 @@ static long cam_sync_dev_ioctl(struct file *filep, void *fh,
 		return -ENOIOCTLCMD;
 
 	k_ioctl = *(struct cam_private_ioctl_arg *)arg;
+
+	CAM_DBG(CAM_SYNC, "IOCTL id: %d", k_ioctl.id);
 
 	switch (k_ioctl.id) {
 	case CAM_SYNC_CREATE:

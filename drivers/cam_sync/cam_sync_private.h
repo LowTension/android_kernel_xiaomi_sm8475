@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef __CAM_SYNC_PRIVATE_H__
@@ -140,6 +141,7 @@ struct sync_user_payload {
  * @callback_list     : Linked list of kernel callbacks registered
  * @user_payload_list : LInked list of user space payloads registered
  * @ref_cnt           : ref count of the number of usage of the fence.
+ * @wait_ref_cnt      : Ref count for active waiting threads for sync
  */
 struct sync_table_row {
 	char name[CAM_SYNC_OBJ_NAME_LEN];
@@ -155,6 +157,7 @@ struct sync_table_row {
 	struct list_head callback_list;
 	struct list_head user_payload_list;
 	atomic_t ref_cnt;
+	refcount_t wait_ref_cnt;
 };
 
 /**

@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef __CAM_SYNC_UTIL_H__
@@ -143,5 +144,31 @@ void cam_sync_util_cleanup_children_list(struct sync_table_row *row,
  */
 void cam_sync_util_cleanup_parents_list(struct sync_table_row *row,
 	uint32_t list_clean_type, uint32_t sync_obj);
+
+/**
+ * @brief: Function to initialize wait reference count
+ * @sync_obj:           : Sync object
+ *
+ * @return 0 for success or negative error value for erros
+ */
+int cam_sync_init_wait_ref(uint32_t sync_obj);
+
+/**
+ * @brief: Function to increase wait reference count
+ * @sync_obj:           : Sync object
+ *
+ * @return 0 for sucCess or negative error value for erros
+ */
+
+int cam_sync_get_wait_ref(uint32_t sync_obj);
+
+/**
+ * @brief: Function to decrease wait reference count
+ * @sync_obj:           : Sync object
+ *
+ * @return 0 for success or negative error value for erros
+ */
+
+int cam_sync_put_wait_ref(uint32_t sync_obj);
 
 #endif /* __CAM_SYNC_UTIL_H__ */
