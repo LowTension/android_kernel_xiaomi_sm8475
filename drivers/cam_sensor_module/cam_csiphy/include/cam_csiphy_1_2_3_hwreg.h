@@ -347,6 +347,8 @@ csiphy_reg_t csiphy_3ph_v1_2_3_reg[MAX_LANES][MAX_SETTINGS_PER_LANE] = {
 
 struct data_rate_settings_t data_rate_delta_table_1_2_3 = {
 	.num_data_rate_settings = 5,
+	.min_supported_datarate = 0,
+	.max_supported_datarate = 0,
 	.data_rate_settings = {
 		{
 			/* (1.9 * 10**3 * 2.28) rounded value*/

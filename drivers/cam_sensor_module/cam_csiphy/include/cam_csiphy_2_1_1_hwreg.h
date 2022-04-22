@@ -498,6 +498,8 @@ struct bist_reg_settings_t bist_setting_2_1_1 = {
 
 struct data_rate_settings_t data_rate_delta_table_2_1_1 = {
 	.num_data_rate_settings = 17,
+	.min_supported_datarate = 684000000,	/* 300 MSpS */
+	.max_supported_datarate = 10260000000,	/* 4500 MSpS */
 	.data_rate_settings = {
 		{
 			/* ((100 MSpS) * (10^6) * (2.28 bits/symbol)) rounded value*/
