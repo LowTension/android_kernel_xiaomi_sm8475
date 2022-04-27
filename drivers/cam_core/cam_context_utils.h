@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef _CAM_CONTEXT_UTILS_H_
@@ -23,6 +24,8 @@ int32_t cam_context_start_dev_to_hw(struct cam_context *ctx,
 	struct cam_start_stop_dev_cmd *cmd);
 int32_t cam_context_stop_dev_to_hw(struct cam_context *ctx);
 int32_t cam_context_flush_dev_to_hw(struct cam_context *ctx,
+	struct cam_flush_dev_cmd *cmd);
+int32_t cam_context_single_flush_dev_to_hw(struct cam_context *ctx,
 	struct cam_flush_dev_cmd *cmd);
 int32_t cam_context_flush_ctx_to_hw(struct cam_context *ctx);
 int32_t cam_context_flush_req_to_hw(struct cam_context *ctx,
