@@ -23,7 +23,7 @@ struct csiphy_reg_parms_t csiphy_v2_1_1 = {
 	.size_offset_betn_lanes = 0x400,
 	.mipi_csiphy_interrupt_clear0_addr = 0x1058,
 	.mipi_csiphy_glbl_irq_cmd_addr = 0x1028,
-	.csiphy_common_array_size = 4,
+	.csiphy_common_array_size = 7,
 	.csiphy_reset_enter_array_size = 2,
 	.csiphy_reset_exit_array_size = 3,
 	.csiphy_2ph_config_array_size = 23,
@@ -40,6 +40,9 @@ struct csiphy_reg_t csiphy_common_reg_2_1_1[] = {
 	{0x1084, 0x00, 0x00, CSIPHY_DEFAULT_PARAMS},
 	{0x1018, 0x01, 0x00, CSIPHY_DEFAULT_PARAMS},
 	{0x101C, 0x7A, 0x00, CSIPHY_DEFAULT_PARAMS},
+	{0x0294, 0x09, 0x00, CSIPHY_DEFAULT_PARAMS},
+	{0x0694, 0x09, 0x00, CSIPHY_DEFAULT_PARAMS},
+	{0x0A94, 0x09, 0x00, CSIPHY_DEFAULT_PARAMS},
 };
 
 struct csiphy_reg_t csiphy_reset_enter_reg_2_1_1[] = {
