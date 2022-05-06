@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef _CAM_CSIPHY_1_2_3_HWREG_H_
@@ -345,16 +346,18 @@ csiphy_reg_t csiphy_3ph_v1_2_3_reg[MAX_LANES][MAX_SETTINGS_PER_LANE] = {
 };
 
 struct data_rate_settings_t data_rate_delta_table_1_2_3 = {
-	.num_data_rate_settings = 3,
+	.num_data_rate_settings = 5,
 	.data_rate_settings = {
 		{
-			/* (2.5 * 10**3 * 2.28) rounded value*/
-			.bandwidth = 5700000000,
-			.data_rate_reg_array_size = 1,
+			/* (1.9 * 10**3 * 2.28) rounded value*/
+			.bandwidth = 4332000000,
+			.data_rate_reg_array_size = 2,
 			.per_lane_info = {
 				{
 					.lane_identifier = CPHY_LANE_0,
 					.csiphy_data_rate_regs = {
+						{0x144, 0x22, 0x00,
+							CSIPHY_DEFAULT_PARAMS},
 						{0x9B4, 0x08, 0x0A,
 							CSIPHY_DEFAULT_PARAMS},
 					},
@@ -362,6 +365,8 @@ struct data_rate_settings_t data_rate_delta_table_1_2_3 = {
 				{
 					.lane_identifier = CPHY_LANE_1,
 					.csiphy_data_rate_regs = {
+						{0x344, 0x22, 0x00,
+							CSIPHY_DEFAULT_PARAMS},
 						{0xAB4, 0x08, 0x0A,
 							CSIPHY_DEFAULT_PARAMS},
 					},
@@ -369,6 +374,76 @@ struct data_rate_settings_t data_rate_delta_table_1_2_3 = {
 				{
 					.lane_identifier = CPHY_LANE_2,
 					.csiphy_data_rate_regs = {
+						{0x544, 0x22, 0x00,
+							CSIPHY_DEFAULT_PARAMS},
+						{0xBB4, 0x08, 0x0A,
+							CSIPHY_DEFAULT_PARAMS},
+					},
+				},
+			},
+		},
+		{
+			/* (2.5 * 10**3 * 2.28) rounded value*/
+			.bandwidth = 5700000000,
+			.data_rate_reg_array_size = 2,
+			.per_lane_info = {
+				{
+					.lane_identifier = CPHY_LANE_0,
+					.csiphy_data_rate_regs = {
+						{0x144, 0xA2, 0x00,
+							CSIPHY_DEFAULT_PARAMS},
+						{0x9B4, 0x08, 0x0A,
+							CSIPHY_DEFAULT_PARAMS},
+					},
+				},
+				{
+					.lane_identifier = CPHY_LANE_1,
+					.csiphy_data_rate_regs = {
+						{0x344, 0xA2, 0x00,
+							CSIPHY_DEFAULT_PARAMS},
+						{0xAB4, 0x08, 0x0A,
+							CSIPHY_DEFAULT_PARAMS},
+					},
+				},
+				{
+					.lane_identifier = CPHY_LANE_2,
+					.csiphy_data_rate_regs = {
+						{0x544, 0xA2, 0x00,
+							CSIPHY_DEFAULT_PARAMS},
+						{0xBB4, 0x08, 0x0A,
+							CSIPHY_DEFAULT_PARAMS},
+					},
+				},
+			},
+		},
+		{
+			/* (3 * 10**3 * 2.28) rounded value*/
+			.bandwidth = 6840000000,
+			.data_rate_reg_array_size = 2,
+			.per_lane_info = {
+				{
+					.lane_identifier = CPHY_LANE_0,
+					.csiphy_data_rate_regs = {
+						{0x144, 0xA2, 0x00,
+							CSIPHY_DEFAULT_PARAMS},
+						{0x9B4, 0x08, 0x0A,
+							CSIPHY_DEFAULT_PARAMS},
+					},
+				},
+				{
+					.lane_identifier = CPHY_LANE_1,
+					.csiphy_data_rate_regs = {
+						{0x344, 0xA2, 0x00,
+							CSIPHY_DEFAULT_PARAMS},
+						{0xAB4, 0x08, 0x0A,
+							CSIPHY_DEFAULT_PARAMS},
+					},
+				},
+				{
+					.lane_identifier = CPHY_LANE_2,
+					.csiphy_data_rate_regs = {
+						{0x544, 0xA2, 0x00,
+							CSIPHY_DEFAULT_PARAMS},
 						{0xBB4, 0x08, 0x0A,
 							CSIPHY_DEFAULT_PARAMS},
 					},
@@ -378,11 +453,13 @@ struct data_rate_settings_t data_rate_delta_table_1_2_3 = {
 		{
 			/* (3.5 * 10**3 * 2.28) rounded value */
 			.bandwidth = 7980000000,
-			.data_rate_reg_array_size = 1,
+			.data_rate_reg_array_size = 2,
 			.per_lane_info = {
 				{
 					.lane_identifier = CPHY_LANE_0,
 					.csiphy_data_rate_regs = {
+						{0x144, 0xA2, 0x00,
+							CSIPHY_DEFAULT_PARAMS},
 						{0x9B4, 0x04, 0x0A,
 							CSIPHY_DEFAULT_PARAMS},
 					},
@@ -390,6 +467,8 @@ struct data_rate_settings_t data_rate_delta_table_1_2_3 = {
 				{
 					.lane_identifier = CPHY_LANE_1,
 					.csiphy_data_rate_regs = {
+						{0x344, 0xA2, 0x00,
+							CSIPHY_DEFAULT_PARAMS},
 						{0xAB4, 0x04, 0x0A,
 							CSIPHY_DEFAULT_PARAMS},
 					},
@@ -397,6 +476,8 @@ struct data_rate_settings_t data_rate_delta_table_1_2_3 = {
 				{
 					.lane_identifier = CPHY_LANE_2,
 					.csiphy_data_rate_regs = {
+						{0x544, 0xA2, 0x00,
+							CSIPHY_DEFAULT_PARAMS},
 						{0xBB4, 0x04, 0x0A,
 							CSIPHY_DEFAULT_PARAMS},
 					},
@@ -406,11 +487,13 @@ struct data_rate_settings_t data_rate_delta_table_1_2_3 = {
 		{
 			/* (4.5 * 10**3 * 2.28) rounded value */
 			.bandwidth = 10260000000,
-			.data_rate_reg_array_size = 1,
+			.data_rate_reg_array_size = 2,
 			.per_lane_info = {
 				{
 					.lane_identifier = CPHY_LANE_0,
 					.csiphy_data_rate_regs = {
+						{0x144, 0xA2, 0x00,
+							CSIPHY_DEFAULT_PARAMS},
 						{0x9B4, 0x04, 0x0A,
 							CSIPHY_DEFAULT_PARAMS},
 					},
@@ -418,6 +501,8 @@ struct data_rate_settings_t data_rate_delta_table_1_2_3 = {
 				{
 					.lane_identifier = CPHY_LANE_1,
 					.csiphy_data_rate_regs = {
+						{0x344, 0xA2, 0x00,
+							CSIPHY_DEFAULT_PARAMS},
 						{0xAB4, 0x04, 0x0A,
 							CSIPHY_DEFAULT_PARAMS},
 					},
@@ -425,6 +510,8 @@ struct data_rate_settings_t data_rate_delta_table_1_2_3 = {
 				{
 					.lane_identifier = CPHY_LANE_2,
 					.csiphy_data_rate_regs = {
+						{0x544, 0xA2, 0x00,
+							CSIPHY_DEFAULT_PARAMS},
 						{0xBB4, 0x04, 0x0A,
 							CSIPHY_DEFAULT_PARAMS},
 					},
