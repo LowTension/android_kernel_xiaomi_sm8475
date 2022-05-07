@@ -1655,8 +1655,6 @@ static int cam_ife_csid_ver2_ppp_bottom_half(
 	csid_reg = (struct cam_ife_csid_ver2_reg_info *)
 			csid_hw->core_info->csid_reg;
 
-	res = &csid_hw->path_res[CAM_IFE_CSID_IRQ_REG_PPP];
-
 	path_reg = csid_reg->path_reg[res->res_id];
 	err_mask = path_reg->fatal_err_mask | path_reg->non_fatal_err_mask;
 
