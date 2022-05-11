@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/debugfs.h>
@@ -143,9 +144,13 @@ static int __cam_icp_dump_dev_in_ready(
 static int __cam_icp_flush_dev_in_ready(struct cam_context *ctx,
 	struct cam_flush_dev_cmd *cmd)
 {
-	int rc;
+	int rc = 0;
 
-	rc = cam_context_flush_dev_to_hw(ctx, cmd);
+	if (cmd->flush_type == CAM_FLUSH_TYPE_REQ)
+		rc = cam_context_single_flush_dev_to_hw(ctx, cmd);
+	else
+		rc = cam_context_flush_dev_to_hw(ctx, cmd);
+
 	if (rc)
 		CAM_ERR(CAM_ICP, "Failed to flush device");
 
