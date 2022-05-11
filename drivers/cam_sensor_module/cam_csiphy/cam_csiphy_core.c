@@ -608,6 +608,41 @@ static int cam_csiphy_sanitize_lane_cnt(
 	return 0;
 }
 
+static int cam_csiphy_sanitize_datarate(
+	struct csiphy_device *csiphy_dev,
+	uint64_t required_phy_data_rate)
+{
+	struct data_rate_settings_t *settings_table = NULL;
+
+	if (csiphy_dev->ctrl_reg->data_rates_settings_table == NULL) {
+		CAM_DBG(CAM_CSIPHY,
+			"Data rate specific register table not available");
+		return 0;
+	}
+
+	settings_table = csiphy_dev->ctrl_reg->data_rates_settings_table;
+
+	if ((settings_table->min_supported_datarate != 0) &&
+		(required_phy_data_rate < settings_table->min_supported_datarate)) {
+		CAM_ERR(CAM_CSIPHY,
+			"Required datarate less than min supported value, required:%llu supported min:%llu",
+			required_phy_data_rate,
+			settings_table->min_supported_datarate);
+		return -EINVAL;
+	}
+
+	if ((settings_table->max_supported_datarate != 0) &&
+		(required_phy_data_rate > settings_table->max_supported_datarate)) {
+		CAM_ERR(CAM_CSIPHY,
+			"Required datarate more than max supported value, required:%llu supported max:%llu",
+			required_phy_data_rate,
+			settings_table->max_supported_datarate);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 int32_t cam_cmd_buf_parser(struct csiphy_device *csiphy_dev,
 	struct cam_config_dev_cmd *cfg_dev)
 {
@@ -698,6 +733,16 @@ int32_t cam_cmd_buf_parser(struct csiphy_device *csiphy_dev,
 		return rc;
 	}
 
+	if (csiphy_dev->csiphy_info[index].csiphy_3phase) {
+		rc = cam_csiphy_sanitize_datarate(csiphy_dev,
+			cam_cmd_csiphy_info->data_rate);
+		if (rc) {
+			CAM_ERR(CAM_CSIPHY,
+				"Wrong Datarate Configuration: %llu",
+				cam_cmd_csiphy_info->data_rate);
+			return rc;
+		}
+	}
 
 	preamble_en = (cam_cmd_csiphy_info->mipi_flags &
 		PREAMBLE_PATTEN_CAL_MASK);
