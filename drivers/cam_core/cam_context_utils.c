@@ -1063,40 +1063,6 @@ end:
 	return rc;
 }
 
-int32_t cam_context_single_flush_dev_to_hw(struct cam_context *ctx,
-	struct cam_flush_dev_cmd *cmd)
-{
-
-	int rc = 0;
-
-	if (!ctx || !cmd) {
-		CAM_ERR(CAM_CTXT, "Invalid input params %pK %pK", ctx, cmd);
-		rc = -EINVAL;
-		goto end;
-	}
-
-	if (!ctx->hw_mgr_intf) {
-		CAM_ERR(CAM_CTXT, "[%s][%d] HW interface is not ready",
-			ctx->dev_name, ctx->ctx_id);
-		rc = -EFAULT;
-		goto end;
-	}
-
-	if (cmd->flush_type == CAM_FLUSH_TYPE_REQ) {
-		ctx->last_flush_req = cmd->req_id;
-		CAM_INFO(CAM_CORE, "Single flush req, ctx->last_flush_req %u",
-			ctx->last_flush_req);
-		rc = cam_context_flush_ctx_to_hw(ctx);
-	} else {
-		rc = -EINVAL;
-		CAM_ERR(CAM_CORE, "[%s][%d] Invalid flush type %d",
-			ctx->dev_name, ctx->ctx_id, cmd->flush_type);
-	}
-
-end:
-	return rc;
-}
-
 int32_t cam_context_start_dev_to_hw(struct cam_context *ctx,
 	struct cam_start_stop_dev_cmd *cmd)
 {

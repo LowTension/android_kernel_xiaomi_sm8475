@@ -5661,8 +5661,6 @@ static int cam_icp_mgr_hw_flush(void *hw_priv, void *hw_flush_args)
 			mutex_unlock(&hw_mgr->hw_mgr_mutex);
 			cam_icp_mgr_flush_info_dump(flush_args,
 				ctx_data->ctx_id);
-			CAM_INFO(CAM_ICP,
-				"EnQ abort for Full flush reqt");
 			cam_icp_mgr_enqueue_abort(ctx_data);
 		} else {
 			mutex_unlock(&hw_mgr->hw_mgr_mutex);

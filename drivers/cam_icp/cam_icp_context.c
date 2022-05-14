@@ -144,13 +144,9 @@ static int __cam_icp_dump_dev_in_ready(
 static int __cam_icp_flush_dev_in_ready(struct cam_context *ctx,
 	struct cam_flush_dev_cmd *cmd)
 {
-	int rc = 0;
+	int rc;
 
-	if (cmd->flush_type == CAM_FLUSH_TYPE_REQ)
-		rc = cam_context_single_flush_dev_to_hw(ctx, cmd);
-	else
-		rc = cam_context_flush_dev_to_hw(ctx, cmd);
-
+	rc = cam_context_flush_dev_to_hw(ctx, cmd);
 	if (rc)
 		CAM_ERR(CAM_ICP, "Failed to flush device");
 
