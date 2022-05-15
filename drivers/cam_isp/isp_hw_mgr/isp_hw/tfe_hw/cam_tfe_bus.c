@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/ratelimit.h>
@@ -781,7 +782,7 @@ static int cam_tfe_bus_acquire_wm(
 			break;
 		case CAM_FORMAT_PD10:
 			rsrc_data->pack_fmt = 0x0;
-			rsrc_data->width /= 4;
+			rsrc_data->width = DIV_ROUND_UP(rsrc_data->width, 4);
 			rsrc_data->height /= 2;
 			break;
 		case CAM_FORMAT_NV21:
