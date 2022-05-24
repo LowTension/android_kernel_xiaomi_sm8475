@@ -38,6 +38,7 @@ static const char drv_name[] = "tfe_bus";
 #define MAX_REG_VAL_PAIR_SIZE    \
 	(MAX_BUF_UPDATE_REG_NUM * 2 * CAM_PACKET_MAX_PLANES)
 
+
 enum cam_tfe_bus_packer_format {
 	PACKER_FMT_PLAIN_128,
 	PACKER_FMT_PLAIN_8,
@@ -146,7 +147,7 @@ struct cam_tfe_bus_tfe_out_data {
 	uint32_t                         secure_mode;
 	void                            *priv;
 	cam_hw_mgr_event_cb_func         event_cb;
-	uint32_t                         mid;
+	uint32_t                         mid[CAM_TFE_BUS_MAX_MID_PER_PORT];
 };
 
 struct cam_tfe_bus_priv {
@@ -1637,6 +1638,7 @@ static int cam_tfe_bus_init_tfe_out_resource(uint32_t  index,
 	struct cam_tfe_bus_tfe_out_data *rsrc_data = NULL;
 	int rc = 0;
 	int32_t tfe_out_id = hw_info->tfe_out_hw_info[index].tfe_out_id;
+	int i;
 
 	if (tfe_out_id < 0 ||
 		tfe_out_id >= CAM_TFE_BUS_TFE_OUT_MAX) {
@@ -1678,7 +1680,9 @@ static int cam_tfe_bus_init_tfe_out_resource(uint32_t  index,
 	rsrc_data->max_height      =
 		hw_info->tfe_out_hw_info[index].max_height;
 	rsrc_data->secure_mode  = CAM_SECURE_MODE_NON_SECURE;
-	rsrc_data->mid = hw_info->tfe_out_hw_info[index].mid;
+
+	for (i = 0; i < CAM_TFE_BUS_MAX_MID_PER_PORT; i++)
+		rsrc_data->mid[i] = hw_info->tfe_out_hw_info[index].mid[i];
 
 	tfe_out->hw_intf = bus_priv->common_data.hw_intf;
 
@@ -2274,7 +2278,7 @@ static int cam_tfe_bus_get_res_id_for_mid(
 	struct cam_isp_hw_get_cmd_update   *cmd_update =
 		(struct cam_isp_hw_get_cmd_update   *)cmd_args;
 	struct cam_isp_hw_get_res_for_mid       *get_res = NULL;
-	int i;
+	int i, j;
 
 	get_res = (struct cam_isp_hw_get_res_for_mid *)cmd_update->data;
 	if (!get_res) {
@@ -2290,8 +2294,10 @@ static int cam_tfe_bus_get_res_id_for_mid(
 		if (!tfe_out_data)
 			continue;
 
-		if (tfe_out_data->mid == get_res->mid)
-			goto end;
+		for (j = 0; j < CAM_TFE_BUS_MAX_MID_PER_PORT; j++) {
+			if (tfe_out_data->mid[j] == get_res->mid)
+				goto end;
+		}
 	}
 
 	if (i == bus_priv->num_out) {
