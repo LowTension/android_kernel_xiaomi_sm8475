@@ -3506,6 +3506,7 @@ static int cam_icp_mgr_abort_handle_wq(
 	struct hfi_cmd_work_data   *task_data = NULL;
 	struct cam_icp_hw_ctx_data *ctx_data;
 	struct hfi_cmd_ipebps_async *abort_cmd;
+	struct hfi_cmd_abort        abort_data;
 
 	if (!data || !priv) {
 		CAM_ERR(CAM_ICP, "Invalid params %pK %pK", data, priv);
@@ -3538,13 +3539,23 @@ static int cam_icp_mgr_abort_handle_wq(
 	abort_cmd->user_data1 = PTR_TO_U64(ctx_data);
 	abort_cmd->user_data2 = (uint64_t)0x0;
 
+	if (task_data->request_id == 0) {
+		abort_data.abort.num_req_ids = 0;
+	} else {
+		abort_data.abort.num_req_ids = 1;
+		abort_data.abort.num_req_id[0] = task_data->request_id;
+	}
+	memcpy(abort_cmd->payload.direct, &abort_data,
+		sizeof(abort_data));
+
 	rc = hfi_write_cmd(abort_cmd);
 	if (rc) {
 		kfree(abort_cmd);
 		return rc;
 	}
-	CAM_DBG(CAM_ICP, "fw_handle = %x ctx_data = %pK ctx_id %d",
-		ctx_data->fw_handle, ctx_data, ctx_data->ctx_id);
+	CAM_DBG(CAM_ICP, "fw_handle = %x ctx_data = %pK ctx_id %d reqID %lld",
+		ctx_data->fw_handle, ctx_data, ctx_data->ctx_id,
+		task_data->request_id);
 
 	kfree(abort_cmd);
 	return rc;
@@ -5476,7 +5487,8 @@ static void cam_icp_mgr_flush_info_dump(
 }
 
 static int cam_icp_mgr_enqueue_abort(
-	struct cam_icp_hw_ctx_data *ctx_data)
+	struct cam_icp_hw_ctx_data *ctx_data,
+	struct cam_hw_flush_args *flush_args)
 {
 	int timeout = 1000, rc;
 	unsigned long rem_jiffies = 0;
@@ -5493,6 +5505,11 @@ static int cam_icp_mgr_enqueue_abort(
 	task_data = (struct hfi_cmd_work_data *)task->payload;
 	task_data->data = (void *)ctx_data;
 	task_data->type = ICP_WORKQ_TASK_CMD_TYPE;
+	task_data->request_id = 0;
+	if ((flush_args->flush_type == CAM_FLUSH_TYPE_REQ) &&
+		 (flush_args->num_req_active)) {
+		task_data->request_id = *(int32_t *)flush_args->flush_req_active[0];
+	}
 	task->process_cb = cam_icp_mgr_abort_handle_wq;
 	cam_req_mgr_workq_enqueue_task(task, &icp_hw_mgr,
 		CRM_TASK_PRIORITY_0);
@@ -5661,7 +5678,7 @@ static int cam_icp_mgr_hw_flush(void *hw_priv, void *hw_flush_args)
 			mutex_unlock(&hw_mgr->hw_mgr_mutex);
 			cam_icp_mgr_flush_info_dump(flush_args,
 				ctx_data->ctx_id);
-			cam_icp_mgr_enqueue_abort(ctx_data);
+			cam_icp_mgr_enqueue_abort(ctx_data, flush_args);
 		} else {
 			mutex_unlock(&hw_mgr->hw_mgr_mutex);
 		}
@@ -5670,12 +5687,14 @@ static int cam_icp_mgr_hw_flush(void *hw_priv, void *hw_flush_args)
 		mutex_unlock(&ctx_data->ctx_mutex);
 		break;
 	case CAM_FLUSH_TYPE_REQ:
-		mutex_lock(&ctx_data->ctx_mutex);
+		mutex_lock(&hw_mgr->hw_mgr_mutex);
 		if (flush_args->num_req_active) {
-			CAM_ERR(CAM_ICP, "Flush request is not supported");
-			mutex_unlock(&ctx_data->ctx_mutex);
-			return -EINVAL;
+			mutex_unlock(&hw_mgr->hw_mgr_mutex);
+			cam_icp_mgr_enqueue_abort(ctx_data, flush_args);
+		} else {
+			mutex_unlock(&hw_mgr->hw_mgr_mutex);
 		}
+		mutex_lock(&ctx_data->ctx_mutex);
 		if (flush_args->num_req_pending)
 			cam_icp_mgr_flush_req(ctx_data, flush_args);
 		mutex_unlock(&ctx_data->ctx_mutex);
