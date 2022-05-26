@@ -2169,6 +2169,59 @@ static int cam_tfe_csid_get_time_stamp(
 	return 0;
 }
 
+static int cam_tfe_csid_print_hbi_vbi(
+	struct cam_tfe_csid_hw  *csid_hw,
+	struct cam_isp_resource_node *res)
+{
+	const struct cam_tfe_csid_reg_offset       *csid_reg;
+	struct cam_hw_soc_info                     *soc_info;
+	const struct cam_tfe_csid_rdi_reg_offset   *rdi_reg;
+	uint32_t  hbi = 0, vbi = 0;
+
+	csid_reg = csid_hw->csid_info->csid_reg;
+	soc_info = &csid_hw->hw_info->soc_info;
+
+	if (res->res_type != CAM_ISP_RESOURCE_PIX_PATH ||
+		res->res_id >= CAM_TFE_CSID_PATH_RES_MAX) {
+		CAM_DBG(CAM_ISP, "CSID:%d Invalid res_type:%d res id%d",
+			csid_hw->hw_intf->hw_idx, res->res_type,
+			res->res_id);
+		return -EINVAL;
+	}
+
+	if (csid_hw->hw_info->hw_state != CAM_HW_STATE_POWER_UP) {
+		CAM_ERR(CAM_ISP, "CSID:%d Invalid dev state :%d",
+			csid_hw->hw_intf->hw_idx,
+			csid_hw->hw_info->hw_state);
+		return -EINVAL;
+	}
+
+	if (res->res_id == CAM_TFE_CSID_PATH_RES_IPP) {
+		hbi = cam_io_r_mb(soc_info->reg_map[0].mem_base +
+			csid_reg->ipp_reg->csid_pxl_format_measure1_addr);
+		vbi = cam_io_r_mb(soc_info->reg_map[0].mem_base +
+			csid_reg->ipp_reg->csid_pxl_format_measure2_addr);
+	} else if ((res->res_id >= CAM_TFE_CSID_PATH_RES_RDI_0) &&
+		(res->res_id <= CAM_TFE_CSID_PATH_RES_RDI_2)) {
+		rdi_reg = csid_reg->rdi_reg[res->res_id];
+
+		hbi = cam_io_r_mb(soc_info->reg_map[0].mem_base +
+			rdi_reg->csid_rdi_format_measure1_addr);
+		vbi = cam_io_r_mb(soc_info->reg_map[0].mem_base +
+			rdi_reg->csid_rdi_format_measure2_addr);
+	} else {
+		CAM_ERR(CAM_ISP, "CSID:%d Invalid res_type:%d res id%d",
+			csid_hw->hw_intf->hw_idx, res->res_type, res->res_id);
+		return -EINVAL;
+	}
+
+	CAM_INFO(CAM_ISP,
+		"CSID[%u] Resource[id:%d name:%s hbi 0x%x vbi 0x%x]",
+		csid_hw->hw_intf->hw_idx, res->res_id, res->res_name, hbi, vbi);
+
+	return 0;
+}
+
 static int cam_tfe_csid_set_csid_debug(struct cam_tfe_csid_hw   *csid_hw,
 	void *cmd_args)
 {
@@ -3053,6 +3106,7 @@ static int cam_tfe_csid_process_cmd(void *hw_priv,
 	int rc = 0;
 	struct cam_tfe_csid_hw               *csid_hw;
 	struct cam_hw_info                   *csid_hw_info;
+	struct cam_isp_resource_node         *res = NULL;
 
 	if (!hw_priv || !cmd_args) {
 		CAM_ERR(CAM_ISP, "CSID: Invalid arguments");
@@ -3065,6 +3119,11 @@ static int cam_tfe_csid_process_cmd(void *hw_priv,
 	switch (cmd_type) {
 	case CAM_TFE_CSID_CMD_GET_TIME_STAMP:
 		rc = cam_tfe_csid_get_time_stamp(csid_hw, cmd_args);
+
+		if (csid_hw->csid_debug & TFE_CSID_DEBUG_ENABLE_HBI_VBI_INFO) {
+			res = ((struct cam_tfe_csid_get_time_stamp_args *)cmd_args)->node_res;
+			cam_tfe_csid_print_hbi_vbi(csid_hw, res);
+		}
 		break;
 	case CAM_TFE_CSID_SET_CSID_DEBUG:
 		rc = cam_tfe_csid_set_csid_debug(csid_hw, cmd_args);
