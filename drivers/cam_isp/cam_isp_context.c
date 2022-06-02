@@ -4349,32 +4349,40 @@ static void *cam_isp_ctx_user_dump_stream_info(
 	struct cam_isp_resource_node *hw_res = NULL;
 	int hw_idx[CAM_ISP_HW_SPLIT_MAX] = { -1, -1 };
 	int sfe_hw_idx[CAM_ISP_HW_SPLIT_MAX] = { -1, -1 };
+	uint32_t camera_hw_version = 0;
 	int32_t                      *addr;
 	int                           i;
 
 	ctx = (struct cam_context *)dump_struct;
-	hw_mgr_ctx = (struct cam_ife_hw_mgr_ctx *)ctx->ctxt_to_hw_map;
 
-	if (!list_empty(&hw_mgr_ctx->res_list_ife_src)) {
-		hw_mgr_res = list_first_entry(&hw_mgr_ctx->res_list_ife_src,
-			struct cam_isp_hw_mgr_res, list);
+	cam_cpas_get_cpas_hw_version(&camera_hw_version);
 
-		for (i = 0; i < CAM_ISP_HW_SPLIT_MAX; i++) {
-			hw_res = hw_mgr_res->hw_res[i];
-			if (hw_res && hw_res->hw_intf)
-				hw_idx[i] = hw_res->hw_intf->hw_idx;
+	if (camera_hw_version != CAM_CPAS_TITAN_640_V200) {
+
+		hw_mgr_ctx = (struct cam_ife_hw_mgr_ctx *)ctx->ctxt_to_hw_map;
+
+		if (!list_empty(&hw_mgr_ctx->res_list_ife_src)) {
+			hw_mgr_res = list_first_entry(&hw_mgr_ctx->res_list_ife_src,
+				struct cam_isp_hw_mgr_res, list);
+
+			for (i = 0; i < CAM_ISP_HW_SPLIT_MAX; i++) {
+				hw_res = hw_mgr_res->hw_res[i];
+				if (hw_res && hw_res->hw_intf)
+					hw_idx[i] = hw_res->hw_intf->hw_idx;
+			}
 		}
-	}
 
-	if (!list_empty(&hw_mgr_ctx->res_list_sfe_src)) {
-		hw_mgr_res = list_first_entry(&hw_mgr_ctx->res_list_sfe_src,
-			struct cam_isp_hw_mgr_res, list);
+		if (!list_empty(&hw_mgr_ctx->res_list_sfe_src)) {
+			hw_mgr_res = list_first_entry(&hw_mgr_ctx->res_list_sfe_src,
+				struct cam_isp_hw_mgr_res, list);
 
-		for (i = 0; i < CAM_ISP_HW_SPLIT_MAX; i++) {
-			hw_res = hw_mgr_res->hw_res[i];
-			if (hw_res && hw_res->hw_intf)
-				sfe_hw_idx[i] = hw_res->hw_intf->hw_idx;
+			for (i = 0; i < CAM_ISP_HW_SPLIT_MAX; i++) {
+				hw_res = hw_mgr_res->hw_res[i];
+				if (hw_res && hw_res->hw_intf)
+					sfe_hw_idx[i] = hw_res->hw_intf->hw_idx;
+			}
 		}
+
 	}
 
 	addr = (int32_t *)addr_ptr;
@@ -4384,7 +4392,11 @@ static void *cam_isp_ctx_user_dump_stream_info(
 	*addr++ = ctx->link_hdl;
 	*addr++ = hw_idx[CAM_ISP_HW_SPLIT_LEFT];
 	*addr++ = sfe_hw_idx[CAM_ISP_HW_SPLIT_LEFT];
-	*addr++ = hw_mgr_ctx->flags.is_sfe_shdr;
+
+	if (camera_hw_version == CAM_CPAS_TITAN_640_V200)
+		*addr++ = 0;
+	else
+		*addr++ = hw_mgr_ctx->flags.is_sfe_shdr;
 
 	return addr;
 }
