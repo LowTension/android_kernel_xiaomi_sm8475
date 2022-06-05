@@ -813,6 +813,10 @@ static int cam_tfe_bus_acquire_wm(
 		rsrc_data->height = 0;
 		rsrc_data->stride = 1;
 		rsrc_data->en_cfg = (0x1 << 16) | 0x1;
+
+		/*RS state packet format*/
+		if (rsrc_data->index == 15)
+			rsrc_data->pack_fmt = 0x9;
 	} else {
 		CAM_ERR(CAM_ISP, "Invalid WM:%d requested", rsrc_data->index);
 		return -EINVAL;
