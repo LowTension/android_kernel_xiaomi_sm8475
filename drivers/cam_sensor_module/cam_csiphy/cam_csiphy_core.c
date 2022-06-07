@@ -461,12 +461,12 @@ static int32_t cam_csiphy_update_secure_info(
 
 	switch (csiphy_dev->hw_version) {
 	case CSIPHY_VERSION_V201:
+	case CSIPHY_VERSION_V123:
 	case CSIPHY_VERSION_V125:
 		phy_mask_len =
 		CAM_CSIPHY_MAX_DPHY_LANES + CAM_CSIPHY_MAX_CPHY_LANES + 1;
 		break;
 	case CSIPHY_VERSION_V121:
-	case CSIPHY_VERSION_V123:
 	case CSIPHY_VERSION_V124:
 	case CSIPHY_VERSION_V210:
 	case CSIPHY_VERSION_V211:

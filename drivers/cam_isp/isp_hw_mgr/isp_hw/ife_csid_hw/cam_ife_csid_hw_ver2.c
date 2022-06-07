@@ -2858,7 +2858,10 @@ static int cam_ife_csid_ver2_init_config_rdi_path(
 	 * Plain format
 	 * Packing format
 	 */
-	cfg1 = (path_cfg->crop_enable << path_reg->crop_h_en_shift_val) |
+
+	cfg1 = cam_io_r_mb(mem_base + path_reg->cfg1_addr);
+
+	cfg1 |= (path_cfg->crop_enable << path_reg->crop_h_en_shift_val) |
 		(path_cfg->crop_enable <<
 		 path_reg->crop_v_en_shift_val);
 
@@ -3026,6 +3029,8 @@ static int cam_ife_csid_ver2_init_config_pxl_path(
 	 * Timestamp enable and strobe selection
 	 * Pix store enable
 	 */
+
+	cfg1 = cam_io_r_mb(mem_base + path_reg->cfg1_addr);
 
 	if (csid_hw->flags.binning_enabled) {
 
