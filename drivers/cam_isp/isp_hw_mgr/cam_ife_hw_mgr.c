@@ -11385,6 +11385,59 @@ static int cam_ife_mgr_prog_default_settings(
 	return rc;
 }
 
+static void *cam_ife_mgr_user_dump_stream_info(
+	void *dump_struct, uint8_t *addr_ptr)
+{
+	struct cam_ife_hw_mgr_ctx    *hw_mgr_ctx = NULL;
+	struct cam_isp_hw_mgr_res    *hw_mgr_res = NULL;
+	struct cam_isp_resource_node *hw_res = NULL;
+	int32_t                      *addr;
+	int                           i;
+	int hw_idx[CAM_ISP_HW_SPLIT_MAX] = { -1, -1 };
+	int sfe_hw_idx[CAM_ISP_HW_SPLIT_MAX] = { -1, -1 };
+
+	hw_mgr_ctx = (struct cam_ife_hw_mgr_ctx *)dump_struct;
+
+	if (!list_empty(&hw_mgr_ctx->res_list_ife_src)) {
+		hw_mgr_res = list_first_entry(&hw_mgr_ctx->res_list_ife_src,
+			struct cam_isp_hw_mgr_res, list);
+
+		for (i = 0; i < CAM_ISP_HW_SPLIT_MAX; i++) {
+			hw_res = hw_mgr_res->hw_res[i];
+			if (hw_res && hw_res->hw_intf)
+				hw_idx[i] = hw_res->hw_intf->hw_idx;
+		}
+	}
+
+	if (!list_empty(&hw_mgr_ctx->res_list_sfe_src)) {
+		hw_mgr_res = list_first_entry(&hw_mgr_ctx->res_list_sfe_src,
+			struct cam_isp_hw_mgr_res, list);
+
+		for (i = 0; i < CAM_ISP_HW_SPLIT_MAX; i++) {
+			hw_res = hw_mgr_res->hw_res[i];
+			if (hw_res && hw_res->hw_intf)
+				sfe_hw_idx[i] = hw_res->hw_intf->hw_idx;
+		}
+	}
+
+	addr = (int32_t *)addr_ptr;
+
+	*addr++ = hw_mgr_ctx->flags.is_dual;
+	*addr++ = hw_mgr_ctx->ctx_type;
+
+	*addr++ = hw_idx[CAM_ISP_HW_SPLIT_LEFT];
+	*addr++ = hw_idx[CAM_ISP_HW_SPLIT_RIGHT];
+	*addr++ = sfe_hw_idx[CAM_ISP_HW_SPLIT_LEFT];
+	*addr++ = sfe_hw_idx[CAM_ISP_HW_SPLIT_RIGHT];
+
+	*addr++ = hw_mgr_ctx->flags.is_sfe_shdr;
+	*addr++ = hw_mgr_ctx->flags.is_sfe_fs;
+	*addr++ = hw_mgr_ctx->flags.dsp_enabled;
+	*addr++ = hw_mgr_ctx->flags.is_offline;
+
+	return addr;
+}
+
 static int cam_ife_mgr_cmd(void *hw_mgr_priv, void *cmd_args)
 {
 	int rc = 0;
@@ -11462,6 +11515,12 @@ static int cam_ife_mgr_cmd(void *hw_mgr_priv, void *cmd_args)
 				&isp_hw_cmd_args->u.sof_ts.curr,
 				&isp_hw_cmd_args->u.sof_ts.boot,
 				&isp_hw_cmd_args->u.sof_ts.prev);
+			break;
+		case CAM_ISP_HW_MGR_DUMP_STREAM_INFO:
+			rc = cam_common_user_dump_helper(
+				(void *)(isp_hw_cmd_args->cmd_data),
+				cam_ife_mgr_user_dump_stream_info, ctx,
+				sizeof(int32_t), "ISP_STREAM_INFO_FROM_IFE_HW_MGR:");
 			break;
 		default:
 			CAM_ERR(CAM_ISP, "Invalid HW mgr command:0x%x",

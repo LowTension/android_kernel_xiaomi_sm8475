@@ -4344,47 +4344,15 @@ static void *cam_isp_ctx_user_dump_stream_info(
 	void *dump_struct, uint8_t *addr_ptr)
 {
 	struct cam_context           *ctx = NULL;
-	struct cam_ife_hw_mgr_ctx    *hw_mgr_ctx = NULL;
-	struct cam_isp_hw_mgr_res    *hw_mgr_res = NULL;
-	struct cam_isp_resource_node *hw_res = NULL;
-	int hw_idx[CAM_ISP_HW_SPLIT_MAX] = { -1, -1 };
-	int sfe_hw_idx[CAM_ISP_HW_SPLIT_MAX] = { -1, -1 };
 	int32_t                      *addr;
-	int                           i;
 
 	ctx = (struct cam_context *)dump_struct;
-	hw_mgr_ctx = (struct cam_ife_hw_mgr_ctx *)ctx->ctxt_to_hw_map;
-
-	if (!list_empty(&hw_mgr_ctx->res_list_ife_src)) {
-		hw_mgr_res = list_first_entry(&hw_mgr_ctx->res_list_ife_src,
-			struct cam_isp_hw_mgr_res, list);
-
-		for (i = 0; i < CAM_ISP_HW_SPLIT_MAX; i++) {
-			hw_res = hw_mgr_res->hw_res[i];
-			if (hw_res && hw_res->hw_intf)
-				hw_idx[i] = hw_res->hw_intf->hw_idx;
-		}
-	}
-
-	if (!list_empty(&hw_mgr_ctx->res_list_sfe_src)) {
-		hw_mgr_res = list_first_entry(&hw_mgr_ctx->res_list_sfe_src,
-			struct cam_isp_hw_mgr_res, list);
-
-		for (i = 0; i < CAM_ISP_HW_SPLIT_MAX; i++) {
-			hw_res = hw_mgr_res->hw_res[i];
-			if (hw_res && hw_res->hw_intf)
-				sfe_hw_idx[i] = hw_res->hw_intf->hw_idx;
-		}
-	}
 
 	addr = (int32_t *)addr_ptr;
 
 	*addr++ = ctx->ctx_id;
 	*addr++ = ctx->dev_hdl;
 	*addr++ = ctx->link_hdl;
-	*addr++ = hw_idx[CAM_ISP_HW_SPLIT_LEFT];
-	*addr++ = sfe_hw_idx[CAM_ISP_HW_SPLIT_LEFT];
-	*addr++ = hw_mgr_ctx->flags.is_sfe_shdr;
 
 	return addr;
 }
@@ -4407,6 +4375,8 @@ static int __cam_isp_ctx_dump_in_top_state(
 	struct cam_ctx_request             *req_temp;
 	struct cam_hw_dump_args             ife_dump_args;
 	struct cam_common_hw_dump_args      dump_args;
+	struct cam_hw_cmd_args              hw_cmd_args;
+	struct cam_isp_hw_cmd_args          isp_hw_cmd_args;
 
 	spin_lock_bh(&ctx->lock);
 	list_for_each_entry_safe(req, req_temp,
@@ -4482,14 +4452,34 @@ hw_dump:
 
 	/* Dump stream info */
 	ctx->ctxt_to_hw_map = ctx_isp->hw_ctx;
-	rc = cam_common_user_dump_helper(&dump_args, cam_isp_ctx_user_dump_stream_info,
-		ctx, sizeof(int32_t), "ISP_STREAM_INFO:");
-	if (rc) {
-		CAM_ERR(CAM_ISP, "Stream info dump fail %lld, rc: %d",
-			req->request_id, rc);
-		goto end;
+	if (ctx->hw_mgr_intf->hw_dump) {
+		/* Dump first part of stream info from isp context */
+		rc = cam_common_user_dump_helper(&dump_args,
+			cam_isp_ctx_user_dump_stream_info, ctx,
+			sizeof(int32_t), "ISP_STREAM_INFO_FROM_CTX:");
+
+		if (rc) {
+			CAM_ERR(CAM_ISP, "ISP CTX stream info dump fail %lld, rc: %d",
+				req->request_id, rc);
+			goto end;
+		}
+
+		/* Dump second part of stream info from ife hw manager */
+		hw_cmd_args.ctxt_to_hw_map = ctx->ctxt_to_hw_map;
+		hw_cmd_args.cmd_type = CAM_HW_MGR_CMD_INTERNAL;
+		isp_hw_cmd_args.cmd_type = CAM_ISP_HW_MGR_DUMP_STREAM_INFO;
+		isp_hw_cmd_args.cmd_data = &dump_args;
+		hw_cmd_args.u.internal_args = (void *)&isp_hw_cmd_args;
+
+		rc = ctx->hw_mgr_intf->hw_cmd(ctx->hw_mgr_intf->hw_mgr_priv, &hw_cmd_args);
+		if (rc) {
+			CAM_ERR(CAM_ISP, "IFE HW MGR stream info dump fail %lld, rc: %d",
+				req->request_id, rc);
+			goto end;
+		}
+
+		dump_info->offset = dump_args.offset;
 	}
-	dump_info->offset = dump_args.offset;
 
 	/* Dump event record */
 	rc = __cam_isp_ctx_dump_event_record(ctx_isp, &dump_args);
