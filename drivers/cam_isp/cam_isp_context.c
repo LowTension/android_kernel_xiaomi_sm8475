@@ -1178,7 +1178,7 @@ static int __cam_isp_ctx_recover_sof_timestamp(struct cam_context *ctx)
 
 	rc = __cam_isp_ctx_get_hw_timestamp(ctx, &prev_ts, &curr_ts, &boot_ts);
 	if (rc) {
-		CAM_ERR(CAM_ISP, "ctx:%u Failed to get timestamp from HW", ctx->ctx_id);
+		CAM_ERR_RATE_LIMIT(CAM_ISP, "ctx:%u Failed to get timestamp from HW", ctx->ctx_id);
 		return rc;
 	}
 

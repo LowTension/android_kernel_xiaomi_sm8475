@@ -2086,7 +2086,7 @@ static int cam_tfe_csid_get_time_stamp(
 	struct cam_hw_soc_info                     *soc_info;
 	const struct cam_tfe_csid_rdi_reg_offset   *rdi_reg;
 	struct timespec64 ts;
-	uint32_t  id, torn;
+	uint32_t  id, torn, prev_torn;
 	uint64_t  time_delta;
 
 	time_stamp = (struct cam_tfe_csid_get_time_stamp_args  *)cmd_args;
@@ -2115,6 +2115,13 @@ static int cam_tfe_csid_get_time_stamp(
 			csid_reg->ipp_reg->csid_pxl_timestamp_curr1_sof_addr,
 			csid_reg->ipp_reg->csid_pxl_timestamp_curr0_sof_addr,
 			&time_stamp->time_stamp_val);
+		if (time_stamp->get_prev_timestamp) {
+			prev_torn = __cam_tfe_csid_read_timestamp(
+				soc_info->reg_map[0].mem_base,
+				csid_reg->ipp_reg->csid_pxl_timestamp_perv1_sof_addr,
+				csid_reg->ipp_reg->csid_pxl_timestamp_perv0_sof_addr,
+				&time_stamp->prev_time_stamp_val);
+		}
 	} else {
 		id = res->res_id;
 		rdi_reg = csid_reg->rdi_reg[id];
@@ -2123,12 +2130,26 @@ static int cam_tfe_csid_get_time_stamp(
 			rdi_reg->csid_rdi_timestamp_curr1_sof_addr,
 			rdi_reg->csid_rdi_timestamp_curr0_sof_addr,
 			&time_stamp->time_stamp_val);
+		if (time_stamp->get_prev_timestamp) {
+			prev_torn = __cam_tfe_csid_read_timestamp(
+				soc_info->reg_map[0].mem_base,
+				rdi_reg->csid_rdi_timestamp_prev1_sof_addr,
+				rdi_reg->csid_rdi_timestamp_prev0_sof_addr,
+				&time_stamp->prev_time_stamp_val);
+		}
 	}
 
 	time_stamp->time_stamp_val = mul_u64_u32_div(
 		time_stamp->time_stamp_val,
 		CAM_TFE_CSID_QTIMER_MUL_FACTOR,
 		CAM_TFE_CSID_QTIMER_DIV_FACTOR);
+
+	if (time_stamp->get_prev_timestamp) {
+		time_stamp->prev_time_stamp_val = mul_u64_u32_div(
+			time_stamp->prev_time_stamp_val,
+			CAM_TFE_CSID_QTIMER_MUL_FACTOR,
+			CAM_TFE_CSID_QTIMER_DIV_FACTOR);
+	}
 
 	if (!csid_hw->prev_boot_timestamp) {
 		ktime_get_boottime_ts64(&ts);
