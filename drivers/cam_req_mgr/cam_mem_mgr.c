@@ -1378,12 +1378,6 @@ static int cam_mem_util_unmap(int32_t idx,
 		if (cam_mem_util_unmap_hw_va(idx, region, client))
 			CAM_ERR(CAM_MEM, "Failed, dmabuf=%pK",
 				tbl.bufq[idx].dma_buf);
-		/*
-		 * Workaround as smmu driver doing put_buf without get_buf for kernel mappings
-		 * Setting NULL here so that we dont call dma_buf_pt again below
-		 */
-		if (client == CAM_SMMU_MAPPING_KERNEL)
-			tbl.bufq[idx].dma_buf = NULL;
 	}
 
 	mutex_lock(&tbl.m_lock);
