@@ -107,4 +107,7 @@
 #define CCI_MASTER_1         1
 #define CCI_MASTER_MAX       2
 
+/* Group name for common clock source*/
+#define CAM_COMMON_TFE_SRC_CLK       1
+
 #endif
