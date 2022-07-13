@@ -4330,7 +4330,7 @@ static int __cam_isp_ctx_dump_req_info(
 					"ISP_OUT_FENCE_REQUEST_ACTIVE.%s.%u.%d:",
 					__cam_isp_ife_sfe_resource_handle_id_to_type(
 						req_isp->fence_map_out[i].resource_handle),
-					&(req_isp->fence_map_out[i].image_buf_addr),
+					req_isp->fence_map_out[i].image_buf_addr[0],
 					req_isp->fence_map_out[i].sync_id);
 
 				if (rc) {
