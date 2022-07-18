@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2015-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef _CAM_SOC_UTIL_H_
@@ -206,6 +207,8 @@ struct cam_soc_gpio_data {
  * @cam_cx_ipeak_enable     cx-ipeak enable/disable flag
  * @cam_cx_ipeak_bit        cx-ipeak mask for driver
  * @soc_private:            Soc private data
+ * @aggregate_clk:          Aggregate clk group info
+ * @aggregate_clk_mask:     Mask indicating which of the clocks are aggregated
  */
 struct cam_hw_soc_info {
 	struct platform_device         *pdev;
@@ -270,6 +273,10 @@ struct cam_hw_soc_info {
 	int32_t                         cam_cx_ipeak_bit;
 
 	void                           *soc_private;
+
+	int32_t                         aggregate_clk[CAM_SOC_MAX_CLK][2];
+	uint32_t                        aggregate_clk_mask;
+
 };
 
 /**
