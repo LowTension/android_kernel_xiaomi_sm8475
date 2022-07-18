@@ -549,6 +549,7 @@ struct cam_ife_csid_ver2_reg_info {
  * @sync_mode:                Master/Slave modes
  * @mup:                      MUP for incoming VC of next frame
  * @discard_frame_per_path:   Count of paths dropping initial frames
+ * @secure_mode:              Holds secure mode state of the CSID
  *
  */
 struct cam_ife_csid_ver2_hw {
@@ -589,6 +590,7 @@ struct cam_ife_csid_ver2_hw {
 	enum cam_isp_hw_sync_mode              sync_mode;
 	uint32_t                               mup;
 	atomic_t                               discard_frame_per_path;
+	bool                                   secure_mode;
 };
 
 /*
