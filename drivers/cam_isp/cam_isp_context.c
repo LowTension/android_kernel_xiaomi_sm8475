@@ -1178,7 +1178,7 @@ static int __cam_isp_ctx_recover_sof_timestamp(struct cam_context *ctx)
 
 	rc = __cam_isp_ctx_get_hw_timestamp(ctx, &prev_ts, &curr_ts, &boot_ts);
 	if (rc) {
-		CAM_ERR(CAM_ISP, "ctx:%u Failed to get timestamp from HW", ctx->ctx_id);
+		CAM_ERR_RATE_LIMIT(CAM_ISP, "ctx:%u Failed to get timestamp from HW", ctx->ctx_id);
 		return rc;
 	}
 
@@ -4330,7 +4330,7 @@ static int __cam_isp_ctx_dump_req_info(
 					"ISP_OUT_FENCE_REQUEST_ACTIVE.%s.%u.%d:",
 					__cam_isp_ife_sfe_resource_handle_id_to_type(
 						req_isp->fence_map_out[i].resource_handle),
-					&(req_isp->fence_map_out[i].image_buf_addr),
+					req_isp->fence_map_out[i].image_buf_addr[0],
 					req_isp->fence_map_out[i].sync_id);
 
 				if (rc) {

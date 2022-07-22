@@ -868,12 +868,14 @@ int32_t cam_sensor_driver_cmd(struct cam_sensor_ctrl_t *s_ctrl,
 				CAM_SENSOR_PACKET_OPCODE_SENSOR_REG_BANK_UNLOCK);
 			if (rc < 0) {
 				CAM_ERR(CAM_SENSOR, "REG_bank unlock failed");
+				cam_sensor_power_down(s_ctrl);
 				goto free_power_settings;
 			}
 			rc = delete_request(&(s_ctrl->i2c_data.reg_bank_unlock_settings));
 			if (rc < 0) {
 				CAM_ERR(CAM_SENSOR,
 					"failed while deleting REG_bank unlock settings");
+				cam_sensor_power_down(s_ctrl);
 				goto free_power_settings;
 			}
 		}
@@ -896,12 +898,14 @@ int32_t cam_sensor_driver_cmd(struct cam_sensor_ctrl_t *s_ctrl,
 				CAM_SENSOR_PACKET_OPCODE_SENSOR_REG_BANK_LOCK);
 			if (rc < 0) {
 				CAM_ERR(CAM_SENSOR, "REG_bank lock failed");
+				cam_sensor_power_down(s_ctrl);
 				goto free_power_settings;
 			}
 			rc = delete_request(&(s_ctrl->i2c_data.reg_bank_lock_settings));
 			if (rc < 0) {
 				CAM_ERR(CAM_SENSOR,
 					"failed while deleting REG_bank lock settings");
+				cam_sensor_power_down(s_ctrl);
 				goto free_power_settings;
 			}
 		}
