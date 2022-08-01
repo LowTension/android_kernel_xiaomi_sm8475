@@ -685,7 +685,6 @@ static int cam_tfe_csid_cid_reserve(struct cam_tfe_csid_hw *csid_hw,
 		rc = -EINVAL;
 		goto end;
 	}
-
 	/* CSID  CSI2 v1.1 supports 4 vc  */
 	for (i = 0; i < cid_reserv->in_port->num_valid_vc_dt; i++) {
 		if (cid_reserv->in_port->dt[i] > 0x3f ||
@@ -785,6 +784,15 @@ static int cam_tfe_csid_path_reserve(struct cam_tfe_csid_hw *csid_hw,
 	struct cam_tfe_csid_path_cfg    *path_data;
 	struct cam_isp_resource_node    *res;
 	uint32_t          cid_value;
+
+	if (reserve->in_port->num_valid_vc_dt == 0 ||
+		reserve->in_port->num_valid_vc_dt > CAM_ISP_TFE_VC_DT_CFG) {
+		CAM_ERR(CAM_ISP, "CSID:%d invalid num_valid_vc_dt: %d",
+			csid_hw->hw_intf->hw_idx,
+			reserve->in_port->num_valid_vc_dt);
+		rc = -EINVAL;
+		goto end;
+	}
 
 	/* CSID  CSI2 v2.0 supports 4 vc */
 	for (i = 0; i < reserve->in_port->num_valid_vc_dt; i++) {
