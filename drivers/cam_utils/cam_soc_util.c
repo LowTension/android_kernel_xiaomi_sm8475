@@ -592,13 +592,20 @@ static int cam_soc_util_clk_aggregate_set_clk_rate(
 	int rc = 0;
 	int64_t final_clk_rate = 0;
 	uint32_t active_clients = 0;
-	uint32_t cmn_clk_id = soc_info->aggregate_clk[clk_idx][1];
+	uint32_t cmn_clk_id;
 
 	if (!soc_info || !clk) {
 		CAM_ERR(CAM_UTIL, "Invalid param soc_info %pK clk %pK",
 			soc_info, clk);
 		return -EINVAL;
 	}
+
+	if (clk_idx >= soc_info->num_clk) {
+		CAM_ERR(CAM_UTIL, "Invalid clk idx %d", clk_idx);
+		return -EINVAL;
+	}
+
+	cmn_clk_id = soc_info->aggregate_clk[clk_idx][1];
 
 	mutex_lock(&aggregate_lock);
 
