@@ -1497,7 +1497,8 @@ static int cam_cre_mgr_pkt_validation(struct cam_packet *packet)
 		return -EINVAL;
 	}
 
-	if (packet->num_io_configs > CRE_MAX_IO_BUFS) {
+	if (!packet->num_io_configs ||
+		packet->num_io_configs > CRE_MAX_IO_BUFS) {
 		CAM_ERR(CAM_CRE, "Invalid number of io configs: %d %d",
 			CRE_MAX_IO_BUFS, packet->num_io_configs);
 		return -EINVAL;
@@ -2147,13 +2148,13 @@ static int cam_cre_process_generic_cmd_buffer(
 		if (!cmd_desc[i].length)
 			continue;
 
-	if (cmd_desc[i].meta_data != CAM_CRE_CMD_META_GENERIC_BLOB)
-		continue;
+		if (cmd_desc[i].meta_data != CAM_CRE_CMD_META_GENERIC_BLOB)
+			continue;
 
-	rc = cam_packet_util_process_generic_cmd_buffer(&cmd_desc[i],
-		cam_cre_packet_generic_blob_handler, &cmd_generic_blob);
-	if (rc)
-		CAM_ERR(CAM_CRE, "Failed in processing blobs %d", rc);
+		rc = cam_packet_util_process_generic_cmd_buffer(&cmd_desc[i],
+				cam_cre_packet_generic_blob_handler, &cmd_generic_blob);
+		if (rc)
+			CAM_ERR(CAM_CRE, "Failed in processing blobs %d", rc);
 	}
 
 	return rc;
