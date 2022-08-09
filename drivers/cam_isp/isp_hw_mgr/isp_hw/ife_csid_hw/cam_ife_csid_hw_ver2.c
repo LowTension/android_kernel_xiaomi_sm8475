@@ -2472,6 +2472,100 @@ int cam_ife_csid_hw_ver2_hw_cfg(
 	return rc;
 }
 
+static bool cam_ife_csid_ver2_is_width_valid_by_fuse(
+	struct cam_ife_csid_ver2_hw *csid_hw,
+	uint32_t width)
+{
+	struct cam_ife_csid_ver2_reg_info *csid_reg;
+	uint32_t fuse_val                 = UINT_MAX;
+
+	cam_cpas_is_feature_supported(CAM_CPAS_MP_LIMIT_FUSE,
+		CAM_CPAS_HW_IDX_ANY, &fuse_val);
+
+	if (fuse_val == UINT_MAX) {
+		CAM_DBG(CAM_ISP, "CSID[%u] Fuse not present",
+			csid_hw->hw_intf->hw_idx);
+		return true;
+	}
+
+	csid_reg = (struct cam_ife_csid_ver2_reg_info *)
+			csid_hw->core_info->csid_reg;
+
+	if (fuse_val > csid_reg->width_fuse_max_val) {
+		CAM_ERR(CAM_ISP, "Invalid fuse value %u", fuse_val);
+		return false;
+	}
+
+	if (width > csid_reg->fused_max_width[fuse_val]) {
+		CAM_ERR(CAM_ISP,
+			"CSID[%u] Resolution not supported required_width: %d max_supported_width: %d",
+			csid_hw->hw_intf->hw_idx,
+			width, csid_reg->fused_max_width[fuse_val]);
+		return false;
+	}
+
+	return true;
+}
+
+static bool cam_ife_csid_ver2_is_width_valid_by_dt(
+	struct cam_ife_csid_ver2_hw *csid_hw,
+	uint32_t  width)
+{
+	struct cam_csid_soc_private *soc_private = NULL;
+
+	soc_private = (struct cam_csid_soc_private *)
+			csid_hw->hw_info->soc_info.soc_private;
+
+	if (!soc_private->max_width_enabled)
+		return true;
+
+	if (width > soc_private->max_width) {
+		CAM_ERR(CAM_ISP,
+			"CSID[%u] Resolution not supported required_width: %d max_supported_width: %d",
+			csid_hw->hw_intf->hw_idx,
+			width, soc_private->max_width);
+		return false;
+	}
+
+	return true;
+}
+
+bool cam_ife_csid_ver2_is_width_valid(
+	struct cam_csid_hw_reserve_resource_args  *reserve,
+	struct cam_ife_csid_ver2_hw *csid_hw)
+{
+	uint32_t width = 0;
+
+	if (reserve->res_id != CAM_IFE_PIX_PATH_RES_IPP)
+		return true;
+
+	if (reserve->sync_mode == CAM_ISP_HW_SYNC_MASTER ||
+		reserve->sync_mode == CAM_ISP_HW_SYNC_NONE)
+		width = reserve->in_port->left_stop -
+			reserve->in_port->left_start + 1;
+	else if (reserve->sync_mode == CAM_ISP_HW_SYNC_SLAVE)
+		width = reserve->in_port->right_stop -
+			reserve->in_port->right_start + 1;
+
+	if (reserve->in_port->horizontal_bin || reserve->in_port->qcfa_bin)
+		width /= 2;
+
+	if (!cam_ife_csid_ver2_is_width_valid_by_fuse(csid_hw, width)) {
+		CAM_ERR(CAM_ISP, "CSID[%u] width limited by fuse",
+			csid_hw->hw_intf->hw_idx);
+		return false;
+	}
+
+	if (!cam_ife_csid_ver2_is_width_valid_by_dt(csid_hw, width)) {
+		CAM_ERR(CAM_ISP, "CSID[%u] width limited by dt",
+			csid_hw->hw_intf->hw_idx);
+		return false;
+	}
+
+	return true;
+}
+
+
 static int cam_ife_csid_ver2_in_port_validate(
 	struct cam_csid_hw_reserve_resource_args  *reserve,
 	struct cam_ife_csid_ver2_hw     *csid_hw)
@@ -2488,6 +2582,11 @@ static int cam_ife_csid_ver2_in_port_validate(
 			csid_hw->hw_intf->hw_idx);
 		if (rc)
 			goto err;
+	}
+
+	if (!cam_ife_csid_ver2_is_width_valid(reserve, csid_hw)) {
+		rc = -EINVAL;
+		goto err;
 	}
 
 	if (csid_hw->counters.csi2_reserve_cnt) {
