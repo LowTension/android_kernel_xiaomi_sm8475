@@ -2022,7 +2022,7 @@ static int cam_tfe_bus_update_wm(void *priv, void *cmd_args,
 	struct cam_buf_io_cfg                *io_cfg;
 	struct cam_tfe_bus_tfe_out_data      *tfe_out_data = NULL;
 	struct cam_tfe_bus_wm_resource_data  *wm_data = NULL;
-	struct cam_cdm_utils_ops             *cdm_util_ops;
+	struct cam_cdm_utils_ops             *cdm_util_ops = NULL;
 	uint32_t *reg_val_pair;
 	uint32_t num_regval_pairs = 0;
 	uint32_t i, j, size = 0;
@@ -2034,12 +2034,12 @@ static int cam_tfe_bus_update_wm(void *priv, void *cmd_args,
 	tfe_out_data = (struct cam_tfe_bus_tfe_out_data *)
 		update_buf->res->res_priv;
 
-	cdm_util_ops = tfe_out_data->cdm_util_ops;
-
-	if (!tfe_out_data || !cdm_util_ops) {
-		CAM_ERR(CAM_ISP, "Failed! Invalid data");
+	if (!tfe_out_data || !(tfe_out_data->cdm_util_ops)) {
+		CAM_ERR(CAM_ISP, "Failed! invalid data");
 		return -EINVAL;
 	}
+
+	cdm_util_ops = tfe_out_data->cdm_util_ops;
 
 	if (update_buf->wm_update->num_buf != tfe_out_data->num_wm) {
 		CAM_ERR(CAM_ISP,
@@ -2143,7 +2143,7 @@ static int cam_tfe_bus_update_hfr(void *priv, void *cmd_args,
 	struct cam_isp_hw_get_cmd_update         *update_hfr;
 	struct cam_tfe_bus_tfe_out_data          *tfe_out_data = NULL;
 	struct cam_tfe_bus_wm_resource_data      *wm_data = NULL;
-	struct cam_cdm_utils_ops                 *cdm_util_ops;
+	struct cam_cdm_utils_ops                 *cdm_util_ops = NULL;
 	struct cam_isp_tfe_port_hfr_config       *hfr_cfg = NULL;
 	uint32_t *reg_val_pair;
 	uint32_t num_regval_pairs = 0;
@@ -2155,13 +2155,12 @@ static int cam_tfe_bus_update_hfr(void *priv, void *cmd_args,
 	tfe_out_data = (struct cam_tfe_bus_tfe_out_data *)
 		update_hfr->res->res_priv;
 
-	cdm_util_ops = tfe_out_data->cdm_util_ops;
-
-	if (!tfe_out_data || !cdm_util_ops) {
-		CAM_ERR(CAM_ISP, "Failed! Invalid data");
+	if (!tfe_out_data || !(tfe_out_data->cdm_util_ops)) {
+		CAM_ERR(CAM_ISP, "Failed! invalid data");
 		return -EINVAL;
 	}
 
+	cdm_util_ops = tfe_out_data->cdm_util_ops;
 	reg_val_pair = &tfe_out_data->common_data->io_buf_update[0];
 	hfr_cfg = (struct cam_isp_tfe_port_hfr_config *)update_hfr->data;
 
