@@ -1682,8 +1682,11 @@ static int __cam_isp_ctx_handle_buf_done_for_request(
 			 */
 			req_isp->num_acked++;
 			CAM_DBG(CAM_ISP,
-				"buf done with bubble state %d recovery %d",
-				bubble_state, req_isp->bubble_report);
+				"buf done with bubble state %d recovery %d for req %lld, ctx %u",
+				bubble_state,
+				req_isp->bubble_report,
+				req->request_id,
+				ctx->ctx_id);
 			continue;
 		}
 
@@ -1997,16 +2000,27 @@ static int __cam_isp_ctx_handle_buf_done_for_request_verify_addr(
 			 */
 			req_isp->num_acked++;
 			CAM_DBG(CAM_ISP,
-				"buf done with bubble state %d recovery %d",
-				bubble_state, req_isp->bubble_report);
-				/* Process deferred buf_done acks */
+				"buf done with bubble state %d recovery %d for req %lld, ctx %u",
+				bubble_state,
+				req_isp->bubble_report,
+				req->request_id,
+				ctx->ctx_id);
 
+			/* Process deferred buf_done acks */
 			if (req_isp->num_deferred_acks)
 				__cam_isp_handle_deferred_buf_done(ctx_isp, req,
 					true,
 					CAM_SYNC_STATE_SIGNALED_ERROR,
 					CAM_SYNC_ISP_EVENT_BUBBLE);
 
+			if (req_isp->num_acked == req_isp->num_fence_map_out) {
+				rc = __cam_isp_ctx_handle_buf_done_for_req_list(ctx_isp, req);
+				if (rc)
+					CAM_ERR(CAM_ISP,
+						"Error in buf done for req = %llu with rc = %d",
+						req->request_id, rc);
+				return rc;
+			}
 			continue;
 		}
 
