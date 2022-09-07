@@ -791,7 +791,7 @@ int32_t cam_context_flush_ctx_to_hw(struct cam_context *ctx)
 		}
 	}
 
-	while (true) {
+	while (num_entries) {
 
 		if (list_empty(&temp_list))
 			break;
@@ -873,10 +873,11 @@ int32_t cam_context_flush_ctx_to_hw(struct cam_context *ctx)
 				rc = -ENOMEM;
 				goto end;
 			}
-		}
-		list_for_each_entry(req, &temp_list, list) {
-			flush_args.flush_req_active[flush_args.num_req_active++]
-				= req->req_priv;
+
+			list_for_each_entry(req, &temp_list, list) {
+				flush_args.flush_req_active[flush_args.num_req_active++] =
+					req->req_priv;
+			}
 		}
 
 		if (flush_args.num_req_pending || flush_args.num_req_active) {
@@ -892,7 +893,7 @@ int32_t cam_context_flush_ctx_to_hw(struct cam_context *ctx)
 			"[%s][%d] : Moving all requests from active_list to temp_list",
 			ctx->dev_name, ctx->ctx_id);
 
-	while (true) {
+	while (num_entries) {
 
 		if (list_empty(&temp_list))
 			break;
