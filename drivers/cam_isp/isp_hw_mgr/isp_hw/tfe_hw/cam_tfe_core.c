@@ -971,6 +971,41 @@ static int cam_tfe_top_set_hw_clk_rate(
 	return rc;
 }
 
+static int cam_tfe_top_dynamic_clock_update(
+	struct cam_tfe_top_priv  *top_priv,
+	void                     *cmd_args,
+	uint32_t                 arg_size)
+{
+	struct cam_hw_soc_info   *soc_info;
+	unsigned long            *clk_rate;
+	int rc = 0;
+
+	soc_info = top_priv->common_data.soc_info;
+	clk_rate = (unsigned long *)cmd_args;
+	CAM_DBG(CAM_ISP, "TFE[%u] clock rate requested: %llu curr: %llu",
+		top_priv->common_data.hw_intf->hw_idx, *clk_rate,
+		soc_info->applied_src_clk_rate);
+
+	if (*clk_rate <= top_priv->hw_clk_rate)
+		goto end;
+
+	rc = cam_soc_util_set_src_clk_rate(soc_info, *clk_rate);
+	if (!rc) {
+		top_priv->hw_clk_rate = *clk_rate;
+	} else {
+		CAM_ERR(CAM_ISP,
+			"unable to set clock dynamically rate: %llu",
+			*clk_rate);
+		return rc;
+	}
+end:
+	*clk_rate = soc_info->applied_src_clk_rate;
+	CAM_DBG(CAM_ISP, "TFE[%u] new clock rate %llu",
+		top_priv->common_data.hw_intf->hw_idx, soc_info->applied_src_clk_rate);
+
+	return rc;
+}
+
 static struct cam_axi_vote *cam_tfe_top_delay_bw_reduction(
 	struct cam_tfe_top_priv *top_priv,
 	uint64_t *to_be_applied_bw)
@@ -2919,6 +2954,10 @@ int cam_tfe_process_cmd(void *hw_priv, uint32_t cmd_type,
 		break;
 	case CAM_ISP_HW_CMD_SET_CAMIF_DEBUG:
 		rc = cam_tfe_set_top_debug(core_info, cmd_args,
+			arg_size);
+		break;
+	case CAM_ISP_HW_CMD_DYNAMIC_CLOCK_UPDATE:
+		rc = cam_tfe_top_dynamic_clock_update(core_info->top_priv, cmd_args,
 			arg_size);
 		break;
 	case CAM_ISP_HW_CMD_GET_BUF_UPDATE:
