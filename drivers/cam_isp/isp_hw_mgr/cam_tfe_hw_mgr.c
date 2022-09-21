@@ -1682,27 +1682,31 @@ void cam_tfe_cam_cdm_callback(uint32_t handle, void *userdata,
 		return;
 	}
 
+	ctx = (struct cam_tfe_hw_mgr_ctx *)userdata;
+	hw_update_data = ctx->cdm_userdata.hw_update_data;
+
 	if (status == CAM_CDM_CB_STATUS_BL_SUCCESS) {
-		hw_update_data =
-			(struct cam_isp_prepare_hw_update_data *)userdata;
-		ctx =
-		(struct cam_tfe_hw_mgr_ctx *)hw_update_data->isp_mgr_ctx;
 		complete_all(&ctx->config_done_complete);
 		atomic_set(&ctx->cdm_done, 1);
 		ctx->last_cdm_done_req = cookie;
-		if (g_tfe_hw_mgr.debug_cfg.per_req_reg_dump)
+		if ((g_tfe_hw_mgr.debug_cfg.per_req_reg_dump) &&
+			(ctx->cdm_userdata.request_id == cookie)) {
 			cam_tfe_mgr_handle_reg_dump(ctx,
 				hw_update_data->reg_dump_buf_desc,
 				hw_update_data->num_reg_dump_buf,
 				CAM_ISP_TFE_PACKET_META_REG_DUMP_PER_REQUEST,
 				NULL, false);
+			} else {
+				CAM_INFO(CAM_ISP, "CDM delay, Skip dump req: %llu, cdm_req: %llu",
+					cookie, ctx->cdm_userdata.request_id);
+		}
 		CAM_DBG(CAM_ISP,
-			"Called by CDM hdl=%x, udata=%pK, status=%d, cookie=%llu ctx_index=%d",
-			 handle, userdata, status, cookie, ctx->ctx_index);
+			"CDM hdl=%x, udata=%pK, status=%d, cookie=%llu ctx_index=%d cdm_req=%llu",
+			 handle, userdata, status, cookie, ctx->ctx_index,
+			 ctx->cdm_userdata.request_id);
 	} else if (status == CAM_CDM_CB_STATUS_PAGEFAULT ||
 		status == CAM_CDM_CB_STATUS_INVALID_BL_CMD ||
 		status == CAM_CDM_CB_STATUS_HW_ERROR) {
-		ctx = userdata;
 		CAM_INFO(CAM_ISP,
 			"req_id =%d ctx_id =%d Bl_cmd_count =%d status=%d",
 			ctx->applied_req_id, ctx->ctx_index,
@@ -1735,8 +1739,8 @@ void cam_tfe_cam_cdm_callback(uint32_t handle, void *userdata,
 				g_tfe_hw_mgr.mgr_common.img_iommu_hdl_secure);
 	} else {
 		CAM_WARN(CAM_ISP,
-			"Called by CDM hdl=%x, udata=%pK, status=%d, cookie=%llu",
-			 handle, userdata, status, cookie);
+			"CDM hdl=%x, udata=%pK, status=%d, cookie=%llu cdm_req=%llu",
+			 handle, userdata, status, cookie, ctx->cdm_userdata.request_id);
 	}
 }
 
@@ -2699,6 +2703,8 @@ static int cam_tfe_mgr_config_hw(void *hw_mgr_priv,
 
 	hw_update_data = (struct cam_isp_prepare_hw_update_data  *) cfg->priv;
 	hw_update_data->isp_mgr_ctx = ctx;
+	ctx->cdm_userdata.request_id = cfg->request_id;
+	ctx->cdm_userdata.hw_update_data = hw_update_data;
 
 	if (cfg->reapply_type && cfg->cdm_reset_before_apply) {
 		if (ctx->last_cdm_done_req < cfg->request_id) {
@@ -2758,7 +2764,7 @@ static int cam_tfe_mgr_config_hw(void *hw_mgr_priv,
 	cdm_cmd->cmd_arrary_count     = cfg->num_hw_update_entries;
 	cdm_cmd->type                 = CAM_CDM_BL_CMD_TYPE_MEM_HANDLE;
 	cdm_cmd->flag                 = true;
-	cdm_cmd->userdata             = hw_update_data;
+	cdm_cmd->userdata             = ctx;
 	cdm_cmd->cookie               = cfg->request_id;
 	cdm_cmd->gen_irq_arb          = false;
 
