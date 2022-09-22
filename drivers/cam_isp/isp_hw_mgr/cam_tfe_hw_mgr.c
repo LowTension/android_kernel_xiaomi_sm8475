@@ -1689,16 +1689,17 @@ void cam_tfe_cam_cdm_callback(uint32_t handle, void *userdata,
 		complete_all(&ctx->config_done_complete);
 		atomic_set(&ctx->cdm_done, 1);
 		ctx->last_cdm_done_req = cookie;
-		if ((g_tfe_hw_mgr.debug_cfg.per_req_reg_dump) &&
-			(ctx->cdm_userdata.request_id == cookie)) {
-			cam_tfe_mgr_handle_reg_dump(ctx,
-				hw_update_data->reg_dump_buf_desc,
-				hw_update_data->num_reg_dump_buf,
-				CAM_ISP_TFE_PACKET_META_REG_DUMP_PER_REQUEST,
-				NULL, false);
+		if (g_tfe_hw_mgr.debug_cfg.per_req_reg_dump) {
+			if (ctx->cdm_userdata.request_id == cookie) {
+				cam_tfe_mgr_handle_reg_dump(ctx,
+					hw_update_data->reg_dump_buf_desc,
+					hw_update_data->num_reg_dump_buf,
+					CAM_ISP_TFE_PACKET_META_REG_DUMP_PER_REQUEST,
+					NULL, false);
 			} else {
 				CAM_INFO(CAM_ISP, "CDM delay, Skip dump req: %llu, cdm_req: %llu",
 					cookie, ctx->cdm_userdata.request_id);
+			}
 		}
 		CAM_DBG(CAM_ISP,
 			"CDM hdl=%x, udata=%pK, status=%d, cookie=%llu ctx_index=%d cdm_req=%llu",
