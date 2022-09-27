@@ -3300,6 +3300,8 @@ static int cam_ife_hw_mgr_acquire_res_ife_csid_pxl(
 		csid_acquire.tasklet = ife_ctx->common.tasklet_info;
 		csid_acquire.cb_priv = ife_ctx;
 		csid_acquire.cdm_ops = ife_ctx->cdm_ops;
+		if (ife_ctx->ctx_type == CAM_IFE_CTX_TYPE_SFE)
+			csid_acquire.sfe_en = true;
 
 		rc = cam_ife_hw_mgr_acquire_csid_hw(ife_ctx,
 			&csid_acquire,
