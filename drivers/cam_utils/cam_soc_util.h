@@ -557,6 +557,18 @@ int cam_soc_util_clk_disable(struct cam_hw_soc_info *soc_info,
 	bool optional_clk, int32_t clk_idx);
 
 /**
+ * cam_soc_util_dump_clk()
+ *
+ * @brief:              Dumps all the clocks of the caller hw, using
+ *                      clock api.
+ *
+ * @soc_info:           Device soc information
+ * @return:             Success or failure
+ */
+
+int cam_soc_util_dump_clk(struct cam_hw_soc_info *soc_info);
+
+/**
  * cam_soc_util_irq_enable()
  *
  * @brief:              Enable IRQ in SOC

@@ -9,6 +9,7 @@
 #include <linux/slab.h>
 #include <linux/gpio.h>
 #include <linux/of_gpio.h>
+#include <linux/clk/qcom.h>
 #include "cam_soc_util.h"
 #include "cam_debug_util.h"
 #include "cam_cx_ipeak.h"
@@ -2063,6 +2064,21 @@ int cam_soc_util_set_clk_rate_level(struct cam_hw_soc_info *soc_info,
 
 	return rc;
 };
+
+int cam_soc_util_dump_clk(struct cam_hw_soc_info *soc_info)
+{
+	int i, rc = 0;
+
+	if (!soc_info)
+		return -EINVAL;
+
+	for (i = 0; i < soc_info->num_clk; i++) {
+		CAM_INFO(CAM_UTIL, "Dumping clock = %s", soc_info->clk_name[i]);
+		qcom_clk_dump(soc_info->clk[i], NULL, false);
+	}
+
+	return rc;
+}
 
 static int cam_soc_util_get_dt_gpio_req_tbl(struct device_node *of_node,
 	struct cam_soc_gpio_data *gconf, uint16_t *gpio_array,
