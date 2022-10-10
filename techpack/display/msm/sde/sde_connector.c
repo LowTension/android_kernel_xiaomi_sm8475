@@ -181,6 +181,8 @@ static int sde_backlight_device_update_status(struct backlight_device *bd)
 	bl_lvl = mult_frac(brightness, display->panel->bl_config.bl_max_level,
 			display->panel->bl_config.brightness_max_level);
 
+	display->panel->bl_config.real_bl_level = bl_lvl;
+
 	if (!bl_lvl && brightness)
 		bl_lvl = 1;
 
