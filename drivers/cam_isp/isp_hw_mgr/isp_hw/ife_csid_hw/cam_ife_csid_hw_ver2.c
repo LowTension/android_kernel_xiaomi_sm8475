@@ -2547,7 +2547,13 @@ bool cam_ife_csid_ver2_is_width_valid(
 		width = reserve->in_port->right_stop -
 			reserve->in_port->right_start + 1;
 
-	if (reserve->in_port->horizontal_bin || reserve->in_port->qcfa_bin)
+	/**
+	 * qcfa_bin flag is not enabled for SFE only use case.
+	 * Added the sfe_en and sfe_inline_shdr flags to ensure
+	 * QCFA SFE only use case also does width correction.
+	 */
+	if (reserve->in_port->horizontal_bin || reserve->in_port->qcfa_bin ||
+		(reserve->sfe_en && !reserve->sfe_inline_shdr))
 		width /= 2;
 
 	if (!cam_ife_csid_ver2_is_width_valid_by_fuse(csid_hw, width)) {
