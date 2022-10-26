@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef _CAM_IFE_HW_MGR_H_
@@ -326,6 +326,8 @@ struct cam_ife_hw_mgr_ctx {
 	atomic_t                                   recovery_id;
 	uint32_t                                   current_mup;
 	uint32_t                                   curr_num_exp;
+	struct cam_isp_hw_comp_record             *vfe_bus_comp_grp;
+	struct cam_isp_hw_comp_record             *sfe_bus_comp_grp;
 };
 
 /**
