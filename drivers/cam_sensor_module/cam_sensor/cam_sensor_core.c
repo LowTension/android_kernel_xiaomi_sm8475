@@ -311,6 +311,11 @@ static int32_t cam_sensor_i2c_pkt_parse(struct cam_sensor_ctrl_t *s_ctrl,
 	offset = (uint32_t *)&csl_packet->payload;
 	offset += csl_packet->cmd_buf_offset / 4;
 	cmd_desc = (struct cam_cmd_buf_desc *)(offset);
+	rc = cam_packet_util_validate_cmd_desc(cmd_desc);
+	if (rc) {
+		CAM_ERR(CAM_SENSOR, "Invalid cmd desc ret: %d", rc);
+		return rc;
+	}
 
 	rc = cam_sensor_i2c_command_parser(&s_ctrl->io_master_info,
 			i2c_reg_settings, cmd_desc, 1, io_cfg);
@@ -616,10 +621,10 @@ int32_t cam_handle_mem_ptr(uint64_t handle, uint32_t cmd,
 
 	cmd_desc = (struct cam_cmd_buf_desc *)
 		((uint32_t *)&pkt->payload + pkt->cmd_buf_offset/4);
-	if (cmd_desc == NULL) {
-		CAM_ERR(CAM_SENSOR, "command descriptor pos is invalid");
-		rc = -EINVAL;
-		goto end;
+	rc = cam_packet_util_validate_cmd_desc(cmd_desc);
+	if (rc) {
+		CAM_ERR(CAM_SENSOR, "Invalid cmd desc ret: %d", rc);
+		return rc;
 	}
 
 	probe_ver = pkt->header.op_code & 0xFFFFFF;
