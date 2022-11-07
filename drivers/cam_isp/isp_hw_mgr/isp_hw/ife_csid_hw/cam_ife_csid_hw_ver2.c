@@ -620,11 +620,13 @@ static int cam_ife_csid_ver2_stop_csi2_in_err(
 	CAM_DBG(CAM_ISP, "CSID:%d Stop csi2 rx",
 		csid_hw->hw_intf->hw_idx);
 
-	/* Reset the Rx CFG registers */
-	cam_io_w_mb(0, soc_info->reg_map[0].mem_base +
-		csid_reg->csi2_reg->cfg0_addr);
-	cam_io_w_mb(0, soc_info->reg_map[0].mem_base +
-		csid_reg->csi2_reg->cfg1_addr);
+	if (!csid_hw->secure_mode) {
+		/* Reset the Rx CFG registers */
+		cam_io_w_mb(0, soc_info->reg_map[0].mem_base +
+			csid_reg->csi2_reg->cfg0_addr);
+		cam_io_w_mb(0, soc_info->reg_map[0].mem_base +
+			csid_reg->csi2_reg->cfg1_addr);
+	}
 
 	if (csid_hw->rx_cfg.irq_handle)
 		cam_irq_controller_disable_irq(
@@ -2724,9 +2726,11 @@ int cam_ife_csid_ver2_reserve(void *hw_priv,
 	path_cfg->sfe_shdr = reserve->sfe_inline_shdr;
 	csid_hw->flags.offline_mode = reserve->is_offline;
 	reserve->need_top_cfg = csid_reg->need_top_cfg;
+	csid_hw->secure_mode = reserve->secure_mode;
 
-	CAM_DBG(CAM_ISP, "CSID[%u] Resource[id: %d name:%s] state %d cid %d",
-		csid_hw->hw_intf->hw_idx, reserve->res_id, res->res_name,
+	CAM_DBG(CAM_ISP, "CSID[%u] Secure_mode %d Resource[id: %d name:%s] state %d cid %d",
+		csid_hw->hw_intf->hw_idx, csid_hw->secure_mode,
+		reserve->res_id, res->res_name,
 		res->res_state, cid);
 
 	return rc;
@@ -2812,6 +2816,7 @@ int cam_ife_csid_ver2_release(void *hw_priv,
 		csid_hw->token = NULL;
 	}
 
+	csid_hw->secure_mode = 0;
 	res->res_state = CAM_ISP_RESOURCE_STATE_AVAILABLE;
 end:
 	mutex_unlock(&csid_hw->hw_info->hw_mutex);
