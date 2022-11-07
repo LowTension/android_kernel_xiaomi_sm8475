@@ -372,11 +372,12 @@ struct cam_isp_sys_cache_info {
  * @work q                 work queue for IFE hw manager
  * @debug_cfg              debug configuration
  * @ctx_lock               context lock
+ * @isp_bus_caps           Capability of underlying SFE/IFE bus HW
+ * @path_port_map          Mapping of outport to IFE mux
+ * @csid_camif_irq_support CSID camif IRQ support
  * @hw_pid_support         hw pid support for this target
  * @csid_rup_en            Reg update at CSID side
  * @csid_global_reset_en   CSID global reset enable
- * @isp_bus_caps           Capability of underlying SFE/IFE bus HW
- * @path_port_map          Mapping of outport to IFE mux
  */
 struct cam_ife_hw_mgr {
 	struct cam_isp_hw_mgr          mgr_common;
@@ -397,14 +398,14 @@ struct cam_ife_hw_mgr {
 	struct cam_req_mgr_core_workq   *workq;
 	struct cam_ife_hw_mgr_debug      debug_cfg;
 	spinlock_t                       ctx_lock;
+	struct cam_isp_bus_hw_caps       isp_bus_caps;
+	struct cam_isp_hw_path_port_map  path_port_map;
+	struct cam_isp_sys_cache_info    sys_cache_info[CAM_LLCC_MAX];
+	uint32_t                         num_caches_found;
+	bool                             csid_camif_irq_support;
 	bool                             hw_pid_support;
 	bool                             csid_rup_en;
 	bool                             csid_global_reset_en;
-	struct cam_isp_bus_hw_caps       isp_bus_caps;
-	struct cam_isp_hw_path_port_map  path_port_map;
-
-	uint32_t                         num_caches_found;
-	struct cam_isp_sys_cache_info    sys_cache_info[CAM_LLCC_MAX];
 };
 
 /**
