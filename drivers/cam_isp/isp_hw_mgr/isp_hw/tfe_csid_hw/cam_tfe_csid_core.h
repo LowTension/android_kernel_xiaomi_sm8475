@@ -286,6 +286,8 @@ struct cam_tfe_csid_common_reg_offset {
 	uint32_t format_measure_width_mask_val;
 	bool     format_measure_support;
 	bool     sync_clk;
+	bool     tfe_pix_fuse_en;
+	int32_t  disable_pix_tfe_idx;
 };
 
 /**
