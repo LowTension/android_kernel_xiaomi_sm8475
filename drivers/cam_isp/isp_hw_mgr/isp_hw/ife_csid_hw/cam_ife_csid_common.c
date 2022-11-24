@@ -477,6 +477,16 @@ int cam_ife_csid_cid_reserve(struct cam_ife_csid_cid_data *cid_data,
 {
 	int i, j, rc = 0;
 
+	for (i = 0; i < reserve->in_port->num_valid_vc_dt; i++)
+		CAM_DBG(CAM_ISP,
+			"CSID:%d res_:0x%x Lane type:%d lane_num:%d dt:%d vc:%d",
+			hw_idx,
+			reserve->in_port->res_type,
+			reserve->in_port->lane_type,
+			reserve->in_port->lane_num,
+			reserve->in_port->dt[i],
+			reserve->in_port->vc[i]);
+
 	for (i = 0; i < CAM_IFE_CSID_CID_MAX; i++) {
 		rc = cam_ife_csid_get_cid(&cid_data[i], reserve);
 		if (!rc)
