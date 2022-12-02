@@ -3890,7 +3890,7 @@ int cam_tfe_csid_hw_probe_init(struct cam_hw_intf  *csid_hw_intf,
 	uint32_t csid_idx)
 {
 	int rc = -EINVAL;
-	uint32_t i, j, val, clk_lvl;
+	uint32_t i, j, val = 0, clk_lvl;
 	struct cam_tfe_csid_path_cfg         *path_data;
 	struct cam_hw_info                   *csid_hw_info;
 	struct cam_tfe_csid_hw               *tfe_csid_hw = NULL;
@@ -3965,13 +3965,13 @@ int cam_tfe_csid_hw_probe_init(struct cam_hw_intf  *csid_hw_intf,
 		tfe_csid_hw->cid_res[i].cnt = 0;
 	}
 
-	if (tfe_csid_hw->hw_intf->hw_idx == 2) {
+	if (tfe_csid_hw->hw_intf->hw_idx == csid_reg->cmn_reg->disable_pix_tfe_idx &&
+		csid_reg->cmn_reg->tfe_pix_fuse_en) {
 		val = cam_io_r_mb(
 			tfe_csid_hw->hw_info->soc_info.reg_map[1].mem_base +
 			csid_reg->cmn_reg->top_tfe2_fuse_reg);
 		if (val) {
 			CAM_INFO(CAM_ISP, "TFE 2 is not supported by hardware");
-
 			rc = cam_tfe_csid_disable_soc_resources(
 				&tfe_csid_hw->hw_info->soc_info);
 			if (rc)
@@ -3982,14 +3982,15 @@ int cam_tfe_csid_hw_probe_init(struct cam_hw_intf  *csid_hw_intf,
 				rc = -EINVAL;
 			goto err;
 		}
+
+		val = cam_io_r_mb(
+			tfe_csid_hw->hw_info->soc_info.reg_map[1].mem_base +
+			csid_reg->cmn_reg->top_tfe2_pix_pipe_fuse_reg);
 	}
 
-	val = cam_io_r_mb(
-		tfe_csid_hw->hw_info->soc_info.reg_map[1].mem_base +
-		csid_reg->cmn_reg->top_tfe2_pix_pipe_fuse_reg);
-
 	/* Initialize the IPP resources */
-	if (!(val && (tfe_csid_hw->hw_intf->hw_idx == 2))) {
+	if (!(val &&
+		(tfe_csid_hw->hw_intf->hw_idx == csid_reg->cmn_reg->disable_pix_tfe_idx))) {
 		CAM_DBG(CAM_ISP, "initializing the pix path");
 
 		tfe_csid_hw->ipp_res.res_type = CAM_ISP_RESOURCE_PIX_PATH;
