@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef _CAM_VFE_HW_INTF_H_
@@ -172,6 +173,7 @@ struct cam_vfe_hw_vfe_out_acquire_args {
  * @in_port:                 Input port details to acquire
  * @is_fe_enabled:           Flag to indicate if FE is enabled
  * @is_offline:              Flag to indicate Offline IFE
+ * @handle_camif_irq:        Flag to handle the cmaif irq in VFE
  */
 struct cam_vfe_hw_vfe_in_acquire_args {
 	struct cam_isp_resource_node         *rsrc_node;
@@ -183,6 +185,7 @@ struct cam_vfe_hw_vfe_in_acquire_args {
 	struct cam_isp_in_port_generic_info  *in_port;
 	bool                                  is_fe_enabled;
 	bool                                  is_offline;
+	bool                                  handle_camif_irq;
 };
 
 /*
