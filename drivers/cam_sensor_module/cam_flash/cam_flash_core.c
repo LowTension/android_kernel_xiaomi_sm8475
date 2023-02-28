@@ -984,6 +984,7 @@ int cam_flash_i2c_pkt_parser(struct cam_flash_ctrl *fctrl, void *arg)
 	uint32_t *cmd_buf =  NULL;
 	uint32_t *offset = NULL;
 	uint32_t frm_offset = 0;
+	uint32_t csl_req_id = 0;
 	size_t len_of_buffer;
 	size_t remain_len;
 	struct cam_flash_init *flash_init = NULL;
@@ -1230,6 +1231,7 @@ int cam_flash_i2c_pkt_parser(struct cam_flash_ctrl *fctrl, void *arg)
 	case CAM_FLASH_PACKET_OPCODE_SET_OPS: {
 		frm_offset = csl_packet->header.request_id %
 			MAX_PER_FRAME_ARRAY;
+		csl_req_id = csl_packet->header.request_id;
 		/* add support for handling i2c_data*/
 		i2c_reg_settings =
 			&fctrl->i2c_data.per_frame[frm_offset];
@@ -1252,7 +1254,7 @@ int cam_flash_i2c_pkt_parser(struct cam_flash_ctrl *fctrl, void *arg)
 		if ((fctrl->flash_state == CAM_FLASH_STATE_ACQUIRE) ||
 			(fctrl->flash_state == CAM_FLASH_STATE_CONFIG)) {
 			fctrl->flash_state = CAM_FLASH_STATE_CONFIG;
-			rc = fctrl->func_tbl.apply_setting(fctrl, 1);
+			rc = fctrl->func_tbl.apply_setting(fctrl, csl_req_id);
 			if (rc) {
 				CAM_ERR(CAM_FLASH, "cannot apply fire settings rc = %d", rc);
 				return rc;
@@ -1260,6 +1262,37 @@ int cam_flash_i2c_pkt_parser(struct cam_flash_ctrl *fctrl, void *arg)
 			return rc;
 		}
 		break;
+	}
+	case CAM_FLASH_PACKET_OPCODE_INIT_FIRE: {
+		frm_offset = csl_packet->header.request_id %
+			MAX_PER_FRAME_ARRAY;
+		csl_req_id = csl_packet->header.request_id;
+		CAM_DBG(CAM_FLASH, "Flash pkt init fire opcode received");
+		/* add support for handling i2c_data*/
+		i2c_reg_settings =
+			&fctrl->i2c_data.per_frame[frm_offset];
+		if (i2c_reg_settings->is_settings_valid == true) {
+			i2c_reg_settings->request_id = 0;
+			i2c_reg_settings->is_settings_valid = false;
+			goto update_req_mgr;
+		}
+		i2c_reg_settings->is_settings_valid = true;
+		i2c_reg_settings->request_id =
+			csl_packet->header.request_id;
+		rc = cam_sensor_i2c_command_parser(
+			&fctrl->io_master_info,
+			i2c_reg_settings, cmd_desc, 1, NULL);
+		if (rc) {
+			CAM_ERR(CAM_FLASH,
+			"Failed in parsing i2c packets");
+			return rc;
+		}
+
+		/* Apply the settings immediately as it is an EPR Req*/
+		rc = fctrl->func_tbl.apply_setting(fctrl, csl_req_id);
+		if (rc)
+			CAM_ERR(CAM_FLASH, "cannot apply init fire cmd rc = %d", rc);
+		return rc;
 	}
 	case CAM_FLASH_PACKET_OPCODE_NON_REALTIME_SET_OPS: {
 
