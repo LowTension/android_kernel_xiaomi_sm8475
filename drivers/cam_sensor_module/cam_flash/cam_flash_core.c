@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/module.h>
@@ -12,6 +12,80 @@
 #include "cam_common_util.h"
 #include "cam_packet_util.h"
 
+static int cam_flash_prepare(struct cam_flash_ctrl *flash_ctrl,
+	bool regulator_enable)
+{
+	int rc = 0;
+	struct cam_flash_private_soc *soc_private =
+		(struct cam_flash_private_soc *)
+		flash_ctrl->soc_info.soc_private;
+	if (!(flash_ctrl->switch_trigger)) {
+		CAM_ERR(CAM_FLASH, "Invalid argument");
+		return -EINVAL;
+	}
+	if (soc_private->is_wled_flash) {
+#if IS_REACHABLE(CONFIG_BACKLIGHT_QCOM_SPMI_WLED)
+		if (regulator_enable &&
+			flash_ctrl->is_regulator_enabled == false) {
+			rc = wled_flash_led_prepare(flash_ctrl->switch_trigger,
+				ENABLE_REGULATOR, NULL);
+			if (rc) {
+				CAM_ERR(CAM_FLASH, "enable reg failed: rc: %d",
+					rc);
+				return rc;
+			}
+			flash_ctrl->is_regulator_enabled = true;
+		} else if (!regulator_enable &&
+				flash_ctrl->is_regulator_enabled == true) {
+			rc = wled_flash_led_prepare(flash_ctrl->switch_trigger,
+				DISABLE_REGULATOR, NULL);
+			if (rc) {
+				CAM_ERR(CAM_FLASH, "disalbe reg fail: rc: %d",
+					rc);
+				return rc;
+			}
+			flash_ctrl->is_regulator_enabled = false;
+		} else {
+			CAM_ERR(CAM_FLASH, "Wrong Wled flash state: %d",
+				flash_ctrl->flash_state);
+			rc = -EINVAL;
+		}
+#else
+	return -EPERM;
+#endif
+	} else {
+#if IS_REACHABLE(CONFIG_LEDS_QPNP_FLASH_V2)
+		if (regulator_enable &&
+			(flash_ctrl->is_regulator_enabled == false)) {
+			rc = qpnp_flash_led_prepare(flash_ctrl->switch_trigger,
+				ENABLE_REGULATOR, NULL);
+			if (rc) {
+				CAM_ERR(CAM_FLASH,
+					"Regulator enable failed rc = %d", rc);
+				return rc;
+			}
+			flash_ctrl->is_regulator_enabled = true;
+		} else if (!regulator_enable &&
+				flash_ctrl->is_regulator_enabled == true) {
+			rc = qpnp_flash_led_prepare(flash_ctrl->switch_trigger,
+				DISABLE_REGULATOR, NULL);
+			if (rc) {
+				CAM_ERR(CAM_FLASH,
+					"Regulator disable failed rc = %d", rc);
+				return rc;
+			}
+			flash_ctrl->is_regulator_enabled = false;
+		} else {
+			CAM_ERR(CAM_FLASH, "Wrong Flash State : %d",
+				flash_ctrl->flash_state);
+			rc = -EINVAL;
+		}
+#else
+	return -EPERM;
+#endif
+	}
+	return rc;
+}
 int cam_flash_led_prepare(struct led_trigger *trigger, int options,
 	int *max_current, bool is_wled)
 {
@@ -137,6 +211,39 @@ free_power_settings:
 	kfree(power_info->power_setting);
 	power_info->power_setting = NULL;
 	power_info->power_setting_size = 0;
+	return rc;
+}
+
+int cam_flash_pmic_power_ops(struct cam_flash_ctrl *fctrl,
+	bool regulator_enable)
+{
+	int rc = 0;
+
+	if (!(fctrl->switch_trigger)) {
+		CAM_ERR(CAM_FLASH, "Invalid argument");
+		return -EINVAL;
+	}
+
+	if (regulator_enable) {
+		rc = cam_flash_prepare(fctrl, true);
+		if (rc) {
+			CAM_ERR(CAM_FLASH,
+				"Enable Regulator Failed rc = %d", rc);
+			return rc;
+		}
+		fctrl->last_flush_req = 0;
+	}
+
+	if (!regulator_enable) {
+		if ((fctrl->flash_state == CAM_FLASH_STATE_ACQUIRE) &&
+			(fctrl->is_regulator_enabled == true)) {
+			rc = cam_flash_prepare(fctrl, false);
+			if (rc)
+				CAM_ERR(CAM_FLASH,
+					"Disable Regulator Failed rc: %d", rc);
+		}
+	}
+
 	return rc;
 }
 
@@ -1498,7 +1605,6 @@ int cam_flash_pmic_pkt_parser(struct cam_flash_ctrl *fctrl, void *arg)
 			fctrl->flash_init_setting.cmn_attr.is_settings_valid =
 				true;
 			fctrl->flash_type = cam_flash_info->flash_type;
-			fctrl->is_regulator_enabled = false;
 			fctrl->nrt_info.cmn_attr.cmd_type =
 				CAMERA_SENSOR_FLASH_CMD_TYPE_INIT_INFO;
 
