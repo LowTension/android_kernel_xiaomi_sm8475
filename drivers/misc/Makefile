@@ -66,4 +66,5 @@ obj-$(CONFIG_QSEECOM)		+= qseecom-mod.o
 qseecom-mod-$(CONFIG_QSEECOM)  := qseecom.o
 qseecom-mod-$(CONFIG_COMPAT)	+= compat_qseecom.o
 obj-$(CONFIG_WIGIG_SENSING_SPI)	+= wigig_sensing.o
+obj-$(CONFIG_MI_GAMEKEY)        += mi_gamekey/
 obj-$(CONFIG_KINECTICS_XR_NORDIC) += kxrctrl/
