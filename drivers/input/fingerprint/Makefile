@@ -7,3 +7,4 @@
 obj-$(CONFIG_FINGERPRINT_XIAOMI_FP)     += xiaomi_fp/
 obj-$(CONFIG_FINGERPRINT_GOODIX_FOD_G3S)     += goodix_fod_G3S/
 obj-$(CONFIG_FINGERPRINT_GOODIX_FOD)	+= goodix_fod/
+obj-$(CONFIG_FINGERPRINT_GOODIX_FOD_G3)     += goodix_fod_G3/
