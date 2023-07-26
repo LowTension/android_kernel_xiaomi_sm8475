@@ -21,4 +21,5 @@ source "drivers/input/fingerprint/goodix_fod_G3S/Kconfig"
 source "drivers/input/fingerprint/goodix_fod/Kconfig"
 source "drivers/input/fingerprint/goodix_fod_G3/Kconfig"
 source "drivers/input/fingerprint/goodix_ta/Kconfig"
+source "drivers/input/fingerprint/goodix_tee/Kconfig"
 endif

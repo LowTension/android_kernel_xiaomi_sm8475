@@ -9,3 +9,4 @@ obj-$(CONFIG_FINGERPRINT_GOODIX_FOD_G3S)     += goodix_fod_G3S/
 obj-$(CONFIG_FINGERPRINT_GOODIX_FOD)	+= goodix_fod/
 obj-$(CONFIG_FINGERPRINT_GOODIX_FOD_G3)     += goodix_fod_G3/
 obj-$(CONFIG_FINGERPRINT_GOODIX_TA)     += goodix_ta/
+obj-$(CONFIG_FINGERPRINT_GOODIX_TEE)    += goodix_tee/
