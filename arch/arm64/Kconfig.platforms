@@ -425,4 +425,23 @@ config ARCH_ZYNQMP
 	help
 	  This enables support for Xilinx ZynqMP Family
 
+config BOARD_XIAOMI
+	bool "XiaoMi Family"
+	help
+	  This enables support for XiaoMi Family devices.
+
+if BOARD_XIAOMI
+
+config BOARD_XIAOMI_SM8475
+	bool
+	select ARCH_QCOM
+
+config BOARD_MONDRIAN
+	bool "mondrian platform"
+	select BOARD_XIAOMI_SM8475
+	help
+	  This enables support for Xiaomi Redmi K60 / POCO F5 Pro.
+
+endif
+
 endmenu
