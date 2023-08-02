@@ -20,6 +20,7 @@ obj-$(CONFIG_LEDS_ASIC3)		+= leds-asic3.o
 obj-$(CONFIG_LEDS_AW2013)		+= leds-aw2013.o
 obj-$(CONFIG_LEDS_AW2016)		+= leds-aw2016.o
 obj-$(CONFIG_LEDS_AW2033) 		+= leds-aw2033.o
+obj-$(CONFIG_LEDS_AW_22XXX)              += leds-aw22xxx.o
 obj-$(CONFIG_LEDS_BCM6328)		+= leds-bcm6328.o
 obj-$(CONFIG_LEDS_BCM6358)		+= leds-bcm6358.o
 obj-$(CONFIG_LEDS_BD2802)		+= leds-bd2802.o

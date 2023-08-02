@@ -981,6 +981,13 @@ config LEDS_AW2033
 		this option enables support for the AW2033 RGB LED connected
 		through I2C. Say Y to enable support for the AW2033 LED
 
+config LEDS_AW_22XXX
+	tristate "LED Support for AW22XXX"
+	depends on LEDS_CLASS && I2C
+	help
+	  this option enables support for the AW 22XXX RGB LED connected
+	  through I2C. Say Y to enable support for the AW 22XXX LED
+
 config LEDS_QPNP_VIBRATOR_LDO
 	tristate "Vibrator-LDO support for QPNP PMIC"
 	depends on LEDS_CLASS && MFD_SPMI_PMIC
