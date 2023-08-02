@@ -968,6 +968,11 @@ config MSM_JTAGV8
 	  If unsure, say 'N' here to avoid potential power, performance and
 	  memory penalty.
 
+config XM_MSM54_FSA4480
+	tristate "xm msm54 fsa4480 config"
+	help
+	  Say Y or M here to enable xm msm54 fsa4480
+
 config QCOM_FSA4480_I2C
 	tristate "Fairchild FSA4480 chip with I2C"
 	select REGMAP_I2C
