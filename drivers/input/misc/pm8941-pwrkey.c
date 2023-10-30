@@ -51,6 +51,10 @@
 #define PON_DBC_CTL			0x71
 #define  PON_DBC_DELAY_MASK		0x7
 
+#define PMIC_PWRKEY_BARK_TRIGGER	1
+#define PMIC_PWRKEY_TRIGGER		2
+#define PMIC_PWRKEY_CLOSE_BRIGHNESS		3
+
 struct pm8941_data {
 	unsigned int	pull_up_bit;
 	unsigned int	status_bit;
@@ -141,12 +145,26 @@ static int pm8941_reboot_notify(struct notifier_block *nb,
 	return NOTIFY_DONE;
 }
 
+typedef int (*mi_display_pwrkey_callback)(int);
+mi_display_pwrkey_callback mi_display_pwrkey_cb = NULL;
+void mi_display_pwrkey_callback_set(mi_display_pwrkey_callback cb)
+{
+	mi_display_pwrkey_cb = cb;
+	printk(KERN_INFO "%s: func %pF is set.\n", __func__, cb);
+	return;
+}
+EXPORT_SYMBOL(mi_display_pwrkey_callback_set);
+
 static irqreturn_t pm8941_pwrkey_irq(int irq, void *_data)
 {
 	struct pm8941_pwrkey *pwrkey = _data;
 	unsigned int sts;
 	int error;
 	u64 elapsed_us;
+
+	if(mi_display_pwrkey_cb != NULL){
+		mi_display_pwrkey_cb(PMIC_PWRKEY_BARK_TRIGGER);
+	}
 
 	if (pwrkey->sw_debounce_time_us) {
 		elapsed_us = ktime_us_delta(ktime_get(),
@@ -184,7 +202,11 @@ static irqreturn_t pm8941_pwrkey_irq(int irq, void *_data)
 
 	input_report_key(pwrkey->input, pwrkey->code, sts);
 	input_sync(pwrkey->input);
-
+	if(pwrkey->code == KEY_POWER && !sts){
+		if(mi_display_pwrkey_cb != NULL){
+			mi_display_pwrkey_cb(PMIC_PWRKEY_TRIGGER);
+		}
+	}
 	return IRQ_HANDLED;
 }
 
