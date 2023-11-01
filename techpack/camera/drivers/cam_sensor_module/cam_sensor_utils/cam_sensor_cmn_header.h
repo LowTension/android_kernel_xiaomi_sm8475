@@ -1,7 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef _CAM_SENSOR_CMN_HEADER_
@@ -31,6 +30,10 @@
 #define CAM_EEPROM_NAME    "cam-eeprom"
 #define CAM_OIS_NAME       "cam-ois"
 #define CAM_TPG_NAME       "cam-tpg"
+
+#if IS_ENABLED(CONFIG_ISPV3)
+#define CAM_ISPV3_NAME	   "cam-ispv3"
+#endif
 
 #define MAX_SYSTEM_PIPELINE_DELAY 2
 
@@ -107,6 +110,12 @@ enum msm_camera_power_seq_type {
 	SENSOR_CUSTOM_GPIO1,
 	SENSOR_CUSTOM_GPIO2,
 	SENSOR_VANA1,
+#ifdef CONFIG_WL2866D
+	SENSOR_WL2866D_DVDD1, //13
+	SENSOR_WL2866D_DVDD2,
+	SENSOR_WL2866D_AVDD1,
+	SENSOR_WL2866D_AVDD2,
+#endif
 	SENSOR_SEQ_TYPE_MAX,
 };
 
@@ -240,10 +249,9 @@ struct i2c_data_settings {
 	struct i2c_settings_array streamon_settings;
 	struct i2c_settings_array streamoff_settings;
 	struct i2c_settings_array read_settings;
+	struct i2c_settings_array parklens_settings; //xiaomi add
 	struct i2c_settings_array *per_frame;
 	struct i2c_settings_array *frame_skip;
-	struct i2c_settings_array reg_bank_unlock_settings;
-	struct i2c_settings_array reg_bank_lock_settings;
 };
 
 struct cam_sensor_power_ctrl_t {
@@ -327,9 +335,13 @@ enum msm_camera_vreg_name_t {
 	CAM_VDIG,
 	CAM_VIO,
 	CAM_VANA,
+	/* xiaomi add begin*/
+	CAM_VANA1,
+	/* xiaomi add end*/
 	CAM_VAF,
 	CAM_V_CUSTOM1,
 	CAM_V_CUSTOM2,
+	CAM_CLK,
 	CAM_VREG_MAX,
 };
 

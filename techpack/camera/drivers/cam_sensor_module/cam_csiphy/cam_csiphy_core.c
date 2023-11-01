@@ -46,7 +46,7 @@ struct g_csiphy_data {
 	void __iomem *base_address;
 	uint8_t is_3phase;
 	uint32_t cpas_handle;
-	uint64_t data_rate_aux_mask;
+        uint64_t data_rate_aux_mask;
 	bool is_configured_for_main;
 	bool enable_aon_support;
 	struct cam_csiphy_aon_sel_params_t *aon_sel_param;
@@ -1297,6 +1297,9 @@ int32_t cam_csiphy_config_dev(struct csiphy_device *csiphy_dev,
 			break;
 			}
 
+			CAM_DBG(CAM_CSIPHY, "Writing new csiphy_xph_reg setting  reg_addr: 0x%x reg_val: 0x%x",
+				reg_array[lane_pos][i].reg_addr, reg_array[lane_pos][i].reg_data);
+
 			if (reg_array[lane_pos][i].delay > 0) {
 				usleep_range(reg_array[lane_pos][i].delay,
 					reg_array[lane_pos][i].delay + 5);
@@ -1360,7 +1363,8 @@ void cam_csiphy_shutdown(struct csiphy_device *csiphy_dev)
 		cam_csiphy_reset(csiphy_dev);
 		cam_soc_util_disable_platform_resource(soc_info, true, true);
 
-		cam_cpas_stop(csiphy_dev->cpas_handle);
+		//deleted by xiaomi
+		//cam_cpas_stop(csiphy_dev->cpas_handle);
 		csiphy_dev->csiphy_state = CAM_CSIPHY_ACQUIRE;
 	}
 
@@ -1376,6 +1380,8 @@ void cam_csiphy_shutdown(struct csiphy_device *csiphy_dev)
 		}
 	}
 
+	//xiaomi: force stop cpas
+	cam_cpas_stop(csiphy_dev->cpas_handle);
 	csiphy_dev->ref_count = 0;
 	csiphy_dev->acquire_count = 0;
 	csiphy_dev->start_dev_count = 0;
@@ -1505,6 +1511,10 @@ static int __csiphy_cpas_configure_for_main_or_aon(
 		CAM_INFO(CAM_CSIPHY,
 			"Releasing MainCamera to AON Camera");
 		g_phy_data[phy_idx].is_configured_for_main = false;
+	} else {
+		CAM_DBG(CAM_CSIPHY, "Already configured for %s",
+			get_access ? "Main" : "AON");
+		return 0;
 	}
 
 	CAM_DBG(CAM_CSIPHY, "value of aon_config = %u", aon_config);
@@ -1514,7 +1524,7 @@ static int __csiphy_cpas_configure_for_main_or_aon(
 	if (rc)
 		CAM_ERR(CAM_CSIPHY, "CPAS AON sel register write failed");
 
-	cam_csiphy_cpas_ops(cpas_handle, false);
+        cam_csiphy_cpas_ops(cpas_handle, false);
 
 	return rc;
 }
@@ -1572,9 +1582,11 @@ int cam_csiphy_util_update_aon_ops(
 	rc = __csiphy_cpas_configure_for_main_or_aon(
 			get_access, phy_idx, aon_sel_params);
 	if (rc)
-		CAM_ERR(CAM_CSIPHY, "Configuration for AON ops failed: rc: %d", rc);
+		CAM_ERR(CAM_CSIPHY, "Configuration for AON ops failed: rc: %d",
+			rc);
 
-	mutex_unlock(&main_aon_selection);
+        mutex_unlock(&main_aon_selection);
+
 	return rc;
 }
 

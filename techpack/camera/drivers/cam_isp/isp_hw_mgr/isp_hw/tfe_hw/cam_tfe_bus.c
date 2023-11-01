@@ -1933,8 +1933,9 @@ static void cam_tfe_bus_error_bottom_half(
 			if (evt_payload->image_size_violation_status & BIT(i)) {
 				rsrc_data = bus_priv->bus_client[i].res_priv;
 				CAM_INFO(CAM_ISP,
-					"WM:%d width 0x%x height:0x%x format:%d stride:0x%x offset:0x%x encfg:0x%x",
+					"WM:%d client_name:%s width 0x%x height:0x%x format:%d stride:0x%x offset:0x%x encfg:0x%x",
 					i,
+					rsrc_data->hw_regs->client_name,
 					rsrc_data->acquired_width,
 					rsrc_data->acquired_height,
 					rsrc_data->format,
@@ -1943,8 +1944,9 @@ static void cam_tfe_bus_error_bottom_half(
 					rsrc_data->en_cfg);
 
 			CAM_INFO(CAM_ISP,
-				"WM:%d current width 0x%x height:0x%x stride:0x%x",
+				"WM:%d client_name %s current width 0x%x height:0x%x stride:0x%x",
 				i,
+				rsrc_data->hw_regs->client_name,
 				rsrc_data->width,
 				rsrc_data->height,
 				rsrc_data->stride);

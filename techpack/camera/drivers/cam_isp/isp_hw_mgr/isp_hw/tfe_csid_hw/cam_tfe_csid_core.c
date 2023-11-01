@@ -525,7 +525,6 @@ static int cam_tfe_csid_global_reset(struct cam_tfe_csid_hw *csid_hw)
 	} else
 		rc = 0;
 
-	usleep_range(3000, 3010);
 	val = cam_io_r_mb(soc_info->reg_map[0].mem_base +
 		csid_reg->csi2_reg->csid_csi2_rx_irq_mask_addr);
 	if (val != 0)
@@ -3340,6 +3339,73 @@ static int cam_tfe_csid_evt_bottom_half_handler(
 			evt_payload->irq_status[TFE_CSID_IRQ_REG_RDI0],
 			evt_payload->irq_status[TFE_CSID_IRQ_REG_RDI1],
 			evt_payload->irq_status[TFE_CSID_IRQ_REG_RDI2]);
+
+//add by xiaomi start
+		if(evt_payload->irq_status[TFE_CSID_IRQ_REG_RX] & TFE_CSID_CSI2_RX_ERROR_CPHY_EOT_RECEPTION){
+			CAM_ERR_RATE_LIMIT(MI_DEBUG,
+				"mipi error type: TFE_CSID_CSI2_RX_ERROR_CPHY_EOT_RECEPTION");
+		}
+
+		if(evt_payload->irq_status[TFE_CSID_IRQ_REG_RX] & TFE_CSID_CSI2_RX_ERROR_CPHY_SOT_RECEPTION){
+			CAM_ERR_RATE_LIMIT(MI_DEBUG,
+				"mipi error type: TFE_CSID_CSI2_RX_ERROR_CPHY_SOT_RECEPTION");
+		}
+
+		if(evt_payload->irq_status[TFE_CSID_IRQ_REG_RX] & TFE_CSID_CSI2_RX_ERROR_STREAM_UNDERFLOW){
+			CAM_ERR_RATE_LIMIT(MI_DEBUG,
+				"mipi error type: TFE_CSID_CSI2_RX_ERROR_STREAM_UNDERFLOW");
+		}
+
+		if(evt_payload->irq_status[TFE_CSID_IRQ_REG_RX] & TFE_CSID_CSI2_RX_ERROR_UNBOUNDED_FRAME){
+			CAM_ERR_RATE_LIMIT(MI_DEBUG,
+				"mipi error type: TFE_CSID_CSI2_RX_ERROR_UNBOUNDED_FRAME");
+		}
+
+		if(evt_payload->irq_status[TFE_CSID_IRQ_REG_RX] & TFE_CSID_CSI2_RX_ERROR_LANE0_FIFO_OVERFLOW){
+			CAM_ERR_RATE_LIMIT(MI_DEBUG,
+				"mipi error type: TFE_CSID_CSI2_RX_ERROR_LANE0_FIFO_OVERFLOW");
+		}
+
+		if(evt_payload->irq_status[TFE_CSID_IRQ_REG_RX] & TFE_CSID_CSI2_RX_ERROR_LANE1_FIFO_OVERFLOW){
+			CAM_ERR_RATE_LIMIT(MI_DEBUG,
+				"mipi error type: TFE_CSID_CSI2_RX_ERROR_LANE1_FIFO_OVERFLOW");
+		}
+
+		if(evt_payload->irq_status[TFE_CSID_IRQ_REG_RX] & TFE_CSID_CSI2_RX_ERROR_LANE2_FIFO_OVERFLOW){
+			CAM_ERR_RATE_LIMIT(MI_DEBUG,
+				"mipi error type: TFE_CSID_CSI2_RX_ERROR_LANE2_FIFO_OVERFLOW");
+		}
+
+		if(evt_payload->irq_status[TFE_CSID_IRQ_REG_RX] & TFE_CSID_CSI2_RX_ERROR_LANE3_FIFO_OVERFLOW){
+			CAM_ERR_RATE_LIMIT(MI_DEBUG,
+				"mipi error type: TFE_CSID_CSI2_RX_ERROR_LANE3_FIFO_OVERFLOW");
+		}
+
+		if(evt_payload->irq_status[TFE_CSID_IRQ_REG_RX] & TFE_CSID_CSI2_RX_ERROR_CRC){
+			CAM_ERR_RATE_LIMIT(MI_DEBUG,
+				"mipi error type: TFE_CSID_CSI2_RX_ERROR_CRC");
+		}
+
+		if(evt_payload->irq_status[TFE_CSID_IRQ_REG_RX] & TFE_CSID_CSI2_RX_ERROR_ECC){
+			CAM_ERR_RATE_LIMIT(MI_DEBUG,
+				"mipi error type: TFE_CSID_CSI2_RX_ERROR_ECC");
+		}
+
+		if(evt_payload->irq_status[TFE_CSID_IRQ_REG_RX] & TFE_CSID_CSI2_RX_ERROR_MMAPPED_VC_DT){
+			CAM_ERR_RATE_LIMIT(MI_DEBUG,
+				"mipi error type: TFE_CSID_CSI2_RX_ERROR_MMAPPED_VC_DT");
+		}
+
+		if(evt_payload->irq_status[TFE_CSID_IRQ_REG_IPP] & TFE_CSID_PATH_ERROR_FIFO_OVERFLOW){
+			CAM_ERR_RATE_LIMIT(MI_DEBUG,
+				"mipi error type: TFE_CSID_PATH_ERROR_FIFO_OVERFLOW");
+		}
+
+		if(evt_payload->irq_status[TFE_CSID_IRQ_REG_IPP] & TFE_CSID_PATH_IPP_ERROR_CCIF_VIOLATION){
+			CAM_ERR_RATE_LIMIT(MI_DEBUG,
+				"mipi error type: TFE_CSID_PATH_IPP_ERROR_CCIF_VIOLATION");
+		}
+//add by xiaomi end
 	}
 	/* this hunk can be extended to handle more cases
 	 * which we want to offload to bottom half from
@@ -3547,6 +3613,96 @@ irqreturn_t cam_tfe_csid_irq(int irq_num, void *data)
 			TFE_CSID_CSI2_RX_ERROR_MMAPPED_VC_DT)
 			is_error_irq = true;
 	}
+
+//add by xiaomi start
+	if(irq_status[TFE_CSID_IRQ_REG_RX] &
+		TFE_CSID_CSI2_RX_ERROR_CPHY_PH_CRC){
+			CAM_ERR_RATE_LIMIT(MI_DEBUG,
+				"mipi error type: TFE_CSID_CSI2_RX_ERROR_CPHY_PH_CRC");
+	}
+
+	if(irq_status[TFE_CSID_IRQ_REG_IPP] &
+		TFE_CSID_PATH_ERROR_PIX_COUNT){
+			CAM_ERR_RATE_LIMIT(MI_DEBUG,
+				"mipi error type: TFE_CSID_PATH_ERROR_PIX_COUNT");
+	}
+
+	if(irq_status[TFE_CSID_IRQ_REG_IPP] &
+		TFE_CSID_PATH_ERROR_LINE_COUNT){
+			CAM_ERR_RATE_LIMIT(MI_DEBUG,
+				"mipi error type: TFE_CSID_PATH_ERROR_LINE_COUNT");
+	}
+
+	if (csid_hw->csid_debug & TFE_CSID_DEBUG_ENABLE_EOT_IRQ){
+		if(irq_status[TFE_CSID_IRQ_REG_RX] &
+			TFE_CSID_CSI2_RX_INFO_PHY_DL0_EOT_CAPTURED){
+				CAM_ERR_RATE_LIMIT(MI_DEBUG,
+					"mipi transmission info: TFE_CSID_CSI2_RX_INFO_PHY_DL0_EOT_CAPTURED");
+		}
+		if(irq_status[TFE_CSID_IRQ_REG_RX] &
+			TFE_CSID_CSI2_RX_INFO_PHY_DL1_EOT_CAPTURED){
+				CAM_ERR_RATE_LIMIT(MI_DEBUG,
+					"mipi transmission info: TFE_CSID_CSI2_RX_INFO_PHY_DL1_EOT_CAPTURED");
+		}
+		if(irq_status[TFE_CSID_IRQ_REG_RX] &
+			TFE_CSID_CSI2_RX_INFO_PHY_DL2_EOT_CAPTURED){
+				CAM_ERR_RATE_LIMIT(MI_DEBUG,
+					"mipi transmission info: TFE_CSID_CSI2_RX_INFO_PHY_DL2_EOT_CAPTURED");
+		}
+		if(irq_status[TFE_CSID_IRQ_REG_RX] &
+			TFE_CSID_CSI2_RX_INFO_PHY_DL3_EOT_CAPTURED){
+				CAM_ERR_RATE_LIMIT(MI_DEBUG,
+					"mipi transmission info: TFE_CSID_CSI2_RX_INFO_PHY_DL3_EOT_CAPTURED");
+		}
+	}
+
+	if (csid_hw->csid_debug & TFE_CSID_DEBUG_ENABLE_SOT_IRQ){
+		if(irq_status[TFE_CSID_IRQ_REG_RX] &
+			TFE_CSID_CSI2_RX_INFO_PHY_DL0_SOT_CAPTURED){
+				CAM_ERR_RATE_LIMIT(MI_DEBUG,
+					"mipi transmission info: TFE_CSID_CSI2_RX_INFO_PHY_DL0_SOT_CAPTURED");
+		}
+		if(irq_status[TFE_CSID_IRQ_REG_RX] &
+			TFE_CSID_CSI2_RX_INFO_PHY_DL1_SOT_CAPTURED){
+				CAM_ERR_RATE_LIMIT(MI_DEBUG,
+					"mipi transmission info: TFE_CSID_CSI2_RX_INFO_PHY_DL1_SOT_CAPTURED");
+		}
+		if(irq_status[TFE_CSID_IRQ_REG_RX] &
+			TFE_CSID_CSI2_RX_INFO_PHY_DL2_SOT_CAPTURED){
+				CAM_ERR_RATE_LIMIT(MI_DEBUG,
+					"mipi transmission info: TFE_CSID_CSI2_RX_INFO_PHY_DL2_SOT_CAPTURED");
+		}
+		if(irq_status[TFE_CSID_IRQ_REG_RX] &
+			TFE_CSID_CSI2_RX_INFO_PHY_DL3_SOT_CAPTURED){
+				CAM_ERR_RATE_LIMIT(MI_DEBUG,
+					"mipi transmission info: TFE_CSID_CSI2_RX_INFO_PHY_DL3_SOT_CAPTURED");
+		}
+	}
+
+	if (csid_hw->csid_debug & TFE_CSID_DEBUG_ENABLE_LONG_PKT_CAPTURE){
+		if(irq_status[TFE_CSID_IRQ_REG_RX] &
+			TFE_CSID_DEBUG_ENABLE_LONG_PKT_CAPTURE){
+				CAM_ERR_RATE_LIMIT(MI_DEBUG,
+					"mipi transmission info: TFE_CSID_DEBUG_ENABLE_LONG_PKT_CAPTURE");
+		}
+	}
+
+	if (csid_hw->csid_debug & TFE_CSID_DEBUG_ENABLE_SHORT_PKT_CAPTURE){
+		if(irq_status[TFE_CSID_IRQ_REG_RX] &
+			TFE_CSID_DEBUG_ENABLE_SHORT_PKT_CAPTURE){
+				CAM_ERR_RATE_LIMIT(MI_DEBUG,
+					"mipi transmission info: TFE_CSID_DEBUG_ENABLE_SHORT_PKT_CAPTURE");
+		}
+	}
+
+	if (csid_hw->csid_debug & TFE_CSID_DEBUG_ENABLE_CPHY_PKT_CAPTURE){
+		if(irq_status[TFE_CSID_IRQ_REG_RX] &
+			TFE_CSID_DEBUG_ENABLE_CPHY_PKT_CAPTURE){
+				CAM_ERR_RATE_LIMIT(MI_DEBUG,
+					"mipi transmission info: TFE_CSID_DEBUG_ENABLE_CPHY_PKT_CAPTURE");
+		}
+	} //end of xiaomi add
+
 handle_fatal_error:
 	spin_unlock_irqrestore(&csid_hw->spin_lock, flags);
 

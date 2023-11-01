@@ -19,6 +19,10 @@ ifeq ($(TARGET_BOARD_PLATFORM), parrot)
 	KBUILD_OPTIONS += KBUILD_EXTRA_SYMBOLS=$(shell pwd)/$(call intermediates-dir-for,DLKM,mmrm-module-symvers)/Module.symvers
 endif
 
+ifeq ($(TARGET_BOARD_PLATFORM), thor)
+KBUILD_OPTIONS += KBUILD_EXTRA_SYMBOLS=$(shell pwd)/$(KERNEL_MODULES_OUT)/Module.symvers
+endif
+
 # Clear shell environment variables from previous android module during build
 include $(CLEAR_VARS)
 # For incremental compilation support.
@@ -55,5 +59,21 @@ include $(LOCAL_PATH)/include/uapi/Android.mk
 else
 include $(DLKM_DIR)/Build_external_kernelmodule.mk
 endif
+include $(CLEAR_VARS)
+# For incremental compilation support.
+LOCAL_SRC_FILES             :=  \
+                                $(shell find $(LOCAL_PATH)/config -L -type f)      \
+                                $(shell find $(LOCAL_PATH)/drivers -L -type f)     \
+                                $(shell find $(LOCAL_PATH)/dt-bindings -L -type f) \
+                                $(shell find $(LOCAL_PATH)/include -L -type f)     \
+                                $(LOCAL_PATH)/Android.mk \
+                                $(LOCAL_PATH)/board.mk   \
+                                $(LOCAL_PATH)/product.mk \
+                                $(LOCAL_PATH)/Kbuild
+LOCAL_MODULE_PATH           := $(KERNEL_MODULES_OUT)
+LOCAL_MODULE                := cameralog.ko
+LOCAL_MODULE_TAGS           := optional
+include $(DLKM_DIR)/Build_external_kernelmodule.mk
+
 
 endif # End of check for board platform

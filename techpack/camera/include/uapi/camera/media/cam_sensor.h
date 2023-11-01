@@ -1,6 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-only WITH Linux-syscall-note */
 /*
- * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
  * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
@@ -52,7 +51,8 @@ enum cam_actuator_packet_opcodes {
 	CAM_ACTUATOR_PACKET_OPCODE_INIT,
 	CAM_ACTUATOR_PACKET_AUTO_MOVE_LENS,
 	CAM_ACTUATOR_PACKET_MANUAL_MOVE_LENS,
-	CAM_ACTUATOR_PACKET_OPCODE_READ
+	CAM_ACTUATOR_PACKET_OPCODE_READ,
+	CAM_ACTUATOR_PACKET_OPCODE_PARKLENS // xiaomi add
 };
 
 enum cam_eeprom_packet_opcodes {
@@ -105,8 +105,10 @@ enum cam_sensor_packet_opcodes {
 	CAM_SENSOR_PACKET_OPCODE_SENSOR_PROBE_V2,
 	CAM_SENSOR_PACKET_OPCODE_SENSOR_REG_BANK_UNLOCK,
 	CAM_SENSOR_PACKET_OPCODE_SENSOR_REG_BANK_LOCK,
+	CAM_SENSOR_PACKET_OPCODE_SENSOR_ISPV3_POWERUP,
+	CAM_SENSOR_PACKET_OPCODE_SENSOR_ISPV3_POWERDOWN,
 	CAM_SENSOR_PACKET_OPCODE_SENSOR_RESCONFIG = 126,
-	CAM_SENSOR_PACKET_OPCODE_SENSOR_NOP = 127,
+	CAM_SENSOR_PACKET_OPCODE_SENSOR_NOP = 127
 };
 
 enum tpg_command_type_t {
@@ -303,6 +305,12 @@ struct cam_ois_opcode {
 	__u32 coeff;
 	__u32 pheripheral;
 	__u32 memory;
+	__u8 fw_addr_type;
+	__u8 is_addr_increase;
+	__u8 is_addr_indata;
+	__u8 fwversion;
+	__u32 fwchecksumsize;
+	__u32 fwchecksum;
 } __attribute__((packed));
 
 /**

@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include "cam_sensor_dev.h"
@@ -145,7 +144,7 @@ static int cam_sensor_init_subdev_params(struct cam_sensor_ctrl_t *s_ctrl)
 		CAM_SENSOR_DEVICE_TYPE;
 	s_ctrl->v4l2_dev_str.token = s_ctrl;
 	s_ctrl->v4l2_dev_str.close_seq_prior =
-		CAM_SD_CLOSE_MEDIUM_PRIORITY;
+		CAM_SD_CLOSE_MEDIUM_LOW_PRIORITY;
 
 	rc = cam_register_subdev(&(s_ctrl->v4l2_dev_str));
 	if (rc)
@@ -218,8 +217,6 @@ static int cam_sensor_i2c_component_bind(struct device *dev,
 	INIT_LIST_HEAD(&(s_ctrl->i2c_data.config_settings.list_head));
 	INIT_LIST_HEAD(&(s_ctrl->i2c_data.streamon_settings.list_head));
 	INIT_LIST_HEAD(&(s_ctrl->i2c_data.streamoff_settings.list_head));
-	INIT_LIST_HEAD(&(s_ctrl->i2c_data.reg_bank_unlock_settings.list_head));
-	INIT_LIST_HEAD(&(s_ctrl->i2c_data.reg_bank_lock_settings.list_head));
 	INIT_LIST_HEAD(&(s_ctrl->i2c_data.read_settings.list_head));
 
 	for (i = 0; i < MAX_PER_FRAME_ARRAY; i++) {
@@ -380,8 +377,6 @@ static int cam_sensor_component_bind(struct device *dev,
 	INIT_LIST_HEAD(&(s_ctrl->i2c_data.config_settings.list_head));
 	INIT_LIST_HEAD(&(s_ctrl->i2c_data.streamon_settings.list_head));
 	INIT_LIST_HEAD(&(s_ctrl->i2c_data.streamoff_settings.list_head));
-	INIT_LIST_HEAD(&(s_ctrl->i2c_data.reg_bank_unlock_settings.list_head));
-	INIT_LIST_HEAD(&(s_ctrl->i2c_data.reg_bank_lock_settings.list_head));
 	INIT_LIST_HEAD(&(s_ctrl->i2c_data.read_settings.list_head));
 
 	for (i = 0; i < MAX_PER_FRAME_ARRAY; i++) {

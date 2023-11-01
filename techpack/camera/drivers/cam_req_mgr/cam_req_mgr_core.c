@@ -22,6 +22,27 @@
 static struct cam_req_mgr_core_device *g_crm_core_dev;
 static struct cam_req_mgr_core_link g_links[MAXIMUM_LINKS_PER_SESSION];
 
+#if IS_ENABLED(CONFIG_ISPV3)
+static void __cam_req_mgr_reset_queue_data(struct cam_req_mgr_core_link *link)
+{
+	int pd, idx;
+
+	for (pd = 0; pd < CAM_PIPELINE_DELAY_MAX; pd++) {
+		for (idx = 0; idx < CRM_RESULT_QUEUE_SIZE; idx++) {
+			link->req.apply_data[idx][pd].req_id = -1;
+			link->req.prev_apply_data[idx][pd].req_id = -1;
+		}
+	}
+
+	for (idx = 0; idx < CRM_RESULT_QUEUE_SIZE; idx++) {
+		link->req.applied[idx] = false;
+		link->req.rd_idx[idx] = 0;
+	}
+
+	link->last_internal_applied_idx = 0;
+	link->last_external_applied_idx = 0;
+}
+#else
 static void __cam_req_mgr_reset_apply_data(struct cam_req_mgr_core_link *link)
 {
 	int pd;
@@ -31,6 +52,8 @@ static void __cam_req_mgr_reset_apply_data(struct cam_req_mgr_core_link *link)
 		link->req.prev_apply_data[pd].req_id = -1;
 	}
 }
+
+#endif
 
 void cam_req_mgr_core_link_reset(struct cam_req_mgr_core_link *link)
 {
@@ -68,8 +91,17 @@ void cam_req_mgr_core_link_reset(struct cam_req_mgr_core_link *link)
 	link->num_sync_links = 0;
 	link->last_sof_trigger_jiffies = 0;
 	link->wq_congestion = false;
+#if IS_ENABLED(CONFIG_ISPV3)
+	link->hybrid_trigger_source = false;
+	link->internal_trigger_mask = 0;
+	link->external_trigger_mask = 0;
 	atomic_set(&link->eof_event_cnt, 0);
+	__cam_req_mgr_reset_queue_data(link);
+#else
+	atomic_set(&link->eof_event_cnt, 0);
+	link->cont_empty_slots = 0;
 	__cam_req_mgr_reset_apply_data(link);
+#endif
 
 	for (i = 0; i < MAXIMUM_LINKS_PER_SESSION - 1; i++)
 		link->sync_link[i] = NULL;
@@ -255,7 +287,11 @@ static void __cam_req_mgr_find_dev_name(
  */
 static int __cam_req_mgr_notify_frame_skip(
 	struct cam_req_mgr_core_link *link,
-	uint32_t trigger)
+	uint32_t trigger
+#if IS_ENABLED(CONFIG_ISPV3)
+	,int32_t trigger_source
+#endif
+	)
 {
 	int                                  rc = 0, i, pd, idx;
 	struct cam_req_mgr_apply_request     frame_skip;
@@ -263,7 +299,16 @@ static int __cam_req_mgr_notify_frame_skip(
 	struct cam_req_mgr_connected_device *dev = NULL;
 	struct cam_req_mgr_tbl_slot         *slot = NULL;
 
+#if IS_ENABLED(CONFIG_ISPV3)
+	if (trigger_source == CAM_REQ_MGR_TRIG_SRC_INTERNAL)
+	{
+		apply_data = link->req.prev_apply_data[link->last_internal_applied_idx];
+	}else if (trigger_source == CAM_REQ_MGR_TRIG_SRC_EXTERNAL) {
+		apply_data = link->req.prev_apply_data[link->last_external_applied_idx];
+	}
+#else
 	apply_data = link->req.prev_apply_data;
+#endif
 
 	for (i = 0; i < link->num_devs; i++) {
 		dev = &link->l_dev[i];
@@ -312,7 +357,7 @@ static int __cam_req_mgr_notify_frame_skip(
 
 		CAM_DBG(CAM_REQ,
 			"Notify_frame_skip: pd %d req_id %lld",
-			link->link_hdl, pd, apply_data[pd].req_id);
+			pd, apply_data[pd].req_id);
 		if ((dev->ops) && (dev->ops->notify_frame_skip))
 			dev->ops->notify_frame_skip(&frame_skip);
 	}
@@ -370,7 +415,11 @@ static int __cam_req_mgr_send_evt(
  */
 static int __cam_req_mgr_notify_error_on_link(
 	struct cam_req_mgr_core_link    *link,
-	struct cam_req_mgr_connected_device *dev)
+	struct cam_req_mgr_connected_device *dev
+#if IS_ENABLED(CONFIG_ISPV3)
+	,int32_t result_idx
+#endif
+	)
 {
 	struct cam_req_mgr_core_session *session = NULL;
 	struct cam_req_mgr_message       msg;
@@ -400,13 +449,21 @@ static int __cam_req_mgr_notify_error_on_link(
 	msg.session_hdl = session->session_hdl;
 	msg.u.err_msg.error_type = CAM_REQ_MGR_ERROR_TYPE_RECOVERY;
 	msg.u.err_msg.request_id =
+	#if IS_ENABLED(CONFIG_ISPV3)
+		link->req.apply_data[result_idx][pd].req_id;
+	#else
 		link->req.apply_data[pd].req_id;
+	#endif
 	msg.u.err_msg.link_hdl   = link->link_hdl;
 	msg.u.err_msg.resource_size = 0;
 	msg.u.err_msg.error_code = CAM_REQ_MGR_LINK_STALLED_ERROR;
 
 	CAM_DBG(CAM_CRM, "Failed for device: %s while applying request: %lld",
+#if IS_ENABLED(CONFIG_ISPV3)
+		dev->dev_info.name, link->req.apply_data[result_idx][pd].req_id);
+#else
 		dev->dev_info.name, link->req.apply_data[pd].req_id);
+#endif
 
 	rc = cam_req_mgr_notify_message(&msg,
 		V4L_EVENT_CAM_REQ_MGR_ERROR,
@@ -590,6 +647,9 @@ static void __cam_req_mgr_tbl_set_all_skip_cnt(
 static void __cam_req_mgr_flush_req_slot(
 	struct cam_req_mgr_core_link *link)
 {
+#if IS_ENABLED(CONFIG_ISPV3)
+	uint32_t                      pd = 0;
+#endif
 	int                           idx = 0;
 	struct cam_req_mgr_slot      *slot;
 	struct cam_req_mgr_req_tbl   *tbl;
@@ -609,6 +669,9 @@ static void __cam_req_mgr_flush_req_slot(
 		slot->additional_timeout = 0;
 		slot->sync_mode = CAM_REQ_MGR_SYNC_MODE_NO_SYNC;
 		slot->status = CRM_SLOT_STATUS_NO_REQ;
+#if IS_ENABLED(CONFIG_ISPV3)
+		slot->internal_applied = false;
+#endif
 
 		/* Reset all pd table slot */
 		while (tbl != NULL) {
@@ -623,6 +686,20 @@ static void __cam_req_mgr_flush_req_slot(
 		}
 	}
 
+#if IS_ENABLED(CONFIG_ISPV3)
+	for (pd = 0; pd < CAM_PIPELINE_DELAY_MAX; pd++) {
+		for (idx = 0; idx < CRM_RESULT_QUEUE_SIZE; idx++) {
+			link->req.apply_data[idx][pd].req_id = -1;
+			link->req.prev_apply_data[idx][pd].req_id = -1;
+		}
+	}
+
+	for (idx = 0; idx < CRM_RESULT_QUEUE_SIZE; idx++) {
+		link->req.applied[idx] = false;
+		link->req.rd_idx[idx] = 0;
+	}
+#endif
+
 	atomic_set(&link->eof_event_cnt, 0);
 	in_q->wr_idx = 0;
 	in_q->rd_idx = 0;
@@ -631,6 +708,7 @@ static void __cam_req_mgr_flush_req_slot(
 	link->trigger_cnt[0][CAM_TRIGGER_POINT_EOF] = 0;
 	link->trigger_cnt[1][CAM_TRIGGER_POINT_SOF] = 0;
 	link->trigger_cnt[1][CAM_TRIGGER_POINT_EOF] = 0;
+	link->cont_empty_slots = 0;
 }
 
 /**
@@ -666,7 +744,9 @@ static void __cam_req_mgr_reset_req_slot(struct cam_req_mgr_core_link *link,
 	slot->additional_timeout = 0;
 	slot->sync_mode = CAM_REQ_MGR_SYNC_MODE_NO_SYNC;
 	slot->status = CRM_SLOT_STATUS_NO_REQ;
-
+#if IS_ENABLED(CONFIG_ISPV3)
+	slot->internal_applied = false;
+#endif
 	/* Reset all pd table slot */
 	while (tbl != NULL) {
 		CAM_DBG(CAM_CRM, "pd: %d: idx %d state %d",
@@ -791,16 +871,18 @@ static int __cam_req_mgr_check_for_lower_pd_devices(
 }
 
 /**
- * __cam_req_mgr_check_next_req_slot()
+ * __cam_req_mgr_move_to_next_req_slot()
  *
  * @brief    : While streaming if input queue does not contain any pending
  *             request, req mgr still needs to submit pending request ids to
- *             devices with lower pipeline delay value.
+ *             devices with lower pipeline delay value. But if there are
+ *             continuous max_delay empty slots, we don't need to move to
+ *             next slot since the last request is applied to all devices.
  * @in_q     : Pointer to input queue where req mgr wil peep into
  *
  * @return   : 0 for success, negative for failure
  */
-static int __cam_req_mgr_check_next_req_slot(
+static int __cam_req_mgr_move_to_next_req_slot(
 	struct cam_req_mgr_core_link *link)
 {
 	int rc = 0;
@@ -820,8 +902,8 @@ static int __cam_req_mgr_check_next_req_slot(
 	 */
 	if (slot->status == CRM_SLOT_STATUS_REQ_APPLIED) {
 		CAM_WARN(CAM_CRM,
-			"slot[%d] wasn't reset, reset it now",
-			idx);
+			"slot [idx: %d req: %lld last_applied_idx: %d] was not reset, reset it now",
+			idx, in_q->slot[idx].req_id, in_q->last_applied_idx);
 		if (in_q->last_applied_idx == idx) {
 			CAM_WARN(CAM_CRM,
 				"last_applied_idx: %d",
@@ -839,16 +921,81 @@ static int __cam_req_mgr_check_next_req_slot(
 				link->link_hdl);
 			return rc;
 		}
+
+		if (link->cont_empty_slots++ >= link->max_delay) {
+			CAM_DBG(CAM_CRM, "There are %d continuous empty slots on link 0x%x",
+				link->cont_empty_slots, link->link_hdl);
+			return -EAGAIN;
+		}
+
 		__cam_req_mgr_in_q_skip_idx(in_q, idx);
 		slot->status = CRM_SLOT_STATUS_REQ_ADDED;
 		if (in_q->wr_idx != idx)
 			CAM_WARN(CAM_CRM,
 				"CHECK here wr %d, rd %d", in_q->wr_idx, idx);
-		__cam_req_mgr_inc_idx(&in_q->wr_idx, 1, in_q->num_slots);
-	}
+		else
+			__cam_req_mgr_inc_idx(&in_q->wr_idx, 1, in_q->num_slots);
+	} else
+		link->cont_empty_slots = 0;
+
+	__cam_req_mgr_inc_idx(&in_q->rd_idx, 1, in_q->num_slots);
 
 	return rc;
 }
+
+#if IS_ENABLED(CONFIG_ISPV3)
+/**
+ * __cam_re_mgr_check_send_req_delay()
+ *
+ * @brief        : Check whether the sending req is delayed
+ * @link         : Pointer to link whose input queue and req tbl are
+ *                 traversed through
+ * @trigger_data : Pointer to the trigger data which contains the
+ *                 trigger information from the device
+ *
+ * @return       : true for delayed, otherwise, false
+ */
+static bool __cam_re_mgr_check_send_req_delay(
+	struct cam_req_mgr_core_link *link,
+	struct cam_req_mgr_trigger_notify *trigger_data)
+{
+	int                                  i = 0;
+	bool                                 delayed_send = false;
+	int64_t                              dev_frame_id = -1;
+	struct cam_req_mgr_connected_device *dev;
+
+	for (i = 0; i < link->num_devs; i++) {
+		dev = &link->l_dev[i];
+		if (!dev->ops || !dev->ops->get_dev_info) {
+			dev->ops->get_dev_info(&dev->dev_info);
+			if ((trigger_data->trigger_source ==
+				dev->dev_info.trigger_source) &&
+				(dev->dev_info.latest_frame_id != -1)) {
+				dev_frame_id = dev->dev_info.latest_frame_id;
+				break;
+			}
+		}
+	}
+
+	if ((trigger_data->frame_id != dev_frame_id) &&
+		(dev_frame_id != -1)) {
+		if (trigger_data->frame_id < dev_frame_id) {
+			delayed_send = true;
+			CAM_DBG(CAM_CRM,
+				"trigger frame id:%lld dev latest frame id:%lld",
+				trigger_data->frame_id, dev_frame_id);
+		} else {
+			/* This shouldn't happen. */
+			CAM_WARN(CAM_CRM, "Abnormal frame id");
+			CAM_WARN(CAM_CRM,
+				"trigger frame id:%lld dev latest frame id:%lld",
+				trigger_data->frame_id, dev_frame_id);
+		}
+	}
+
+	return delayed_send;
+}
+#endif
 
 /**
  * __cam_req_mgr_send_req()
@@ -861,17 +1008,42 @@ static int __cam_req_mgr_check_next_req_slot(
  * @return   : 0 for success, negative for failure
  *
  */
+#if IS_ENABLED(CONFIG_ISPV3)
+static int __cam_req_mgr_send_req(struct cam_req_mgr_core_link *link,
+	struct cam_req_mgr_req_queue *in_q,
+	struct cam_req_mgr_trigger_notify *trigger_data,
+	struct cam_req_mgr_connected_device **failed_dev)
+#else
 static int __cam_req_mgr_send_req(struct cam_req_mgr_core_link *link,
 	struct cam_req_mgr_req_queue *in_q, uint32_t trigger,
 	struct cam_req_mgr_connected_device **failed_dev)
+#endif
 {
 	int                                  rc = 0, pd, i, idx;
 	bool                                 req_applied_to_min_pd = false;
+#if IS_ENABLED(CONFIG_ISPV3)
+	bool                                 delayed_send = false;
+	uint32_t                             trigger;
+	int32_t                              trigger_mask, result_idx;
+	int64_t                              req_id = -1;
+#endif
 	struct cam_req_mgr_connected_device *dev = NULL;
 	struct cam_req_mgr_apply_request     apply_req;
 	struct cam_req_mgr_link_evt_data     evt_data;
 	struct cam_req_mgr_tbl_slot          *slot = NULL;
 	struct cam_req_mgr_apply             *apply_data = NULL;
+#if IS_ENABLED(CONFIG_ISPV3)
+	struct cam_req_mgr_flush_request      flush_req;
+
+	trigger = trigger_data->trigger;
+	if (link->hybrid_trigger_source){
+		result_idx = trigger_data->frame_id % CRM_RESULT_QUEUE_SIZE;
+		CAM_DBG(CAM_CRM, "result_idx:%d frame_id %lld trigger_src:%d",
+			result_idx, trigger_data->frame_id, trigger_data->trigger_source);
+	}else{
+		result_idx = 0;
+	}
+#endif
 
 	apply_req.link_hdl = link->link_hdl;
 	apply_req.report_if_bubble = 0;
@@ -881,7 +1053,49 @@ static int __cam_req_mgr_send_req(struct cam_req_mgr_core_link *link,
 			apply_req.re_apply = true;
 	}
 
+#if IS_ENABLED(CONFIG_ISPV3)
+	apply_data = link->req.apply_data[result_idx];
+
+	if (trigger_data->trigger_source ==
+		CAM_REQ_MGR_TRIG_SRC_EXTERNAL)
+		trigger_mask = link->external_trigger_mask;
+	else
+		trigger_mask = link->internal_trigger_mask;
+
+	CAM_DBG(CAM_CRM, "trigger_source : %s trigger_mask : 0x%x",
+		(trigger_data->trigger_source == CAM_REQ_MGR_TRIG_SRC_EXTERNAL) ?
+		"external" : "internal", trigger_mask);
+
+	delayed_send =
+		__cam_re_mgr_check_send_req_delay(
+			link, trigger_data);
+
+	if (link->hybrid_trigger_source && delayed_send &&
+		(trigger_data->trigger_source == CAM_REQ_MGR_TRIG_SRC_INTERNAL)) {
+		for (i = 0; i < link->num_devs; i++) {
+			dev = &link->l_dev[i];
+			if (dev->dev_info.trigger_source == trigger_data->trigger_source) {
+				req_id = apply_data[dev->dev_info.p_delay].req_id;
+				break;
+			}
+		}
+
+		flush_req.link_hdl = link->link_hdl;
+		flush_req.req_id = req_id;
+		flush_req.type = CAM_REQ_MGR_FLUSH_TYPE_CANCEL_REQ;
+
+		for (i = 0; i < link->num_devs; i++) {
+			dev = &link->l_dev[i];
+			flush_req.dev_hdl = dev->dev_hdl;
+			if (dev->ops && dev->ops->flush_req)
+				rc = dev->ops->flush_req(&flush_req);
+		}
+		/* Let's jump to next req, so return 0 */
+		return 0;
+	}
+#else
 	apply_data = link->req.apply_data;
+#endif
 
 	/*
 	 * This For loop is to address the special operation requested
@@ -897,6 +1111,15 @@ static int __cam_req_mgr_send_req(struct cam_req_mgr_core_link *link,
 				pd);
 			continue;
 		}
+
+#if IS_ENABLED(CONFIG_ISPV3)
+		if (!((1 << dev->dev_bit) & trigger_mask)) {
+			CAM_DBG(CAM_CRM,
+				"dev %s dev_bit %d isn't triggered by trigger_source %d",
+				dev->dev_info.name, dev->dev_bit, trigger_data->trigger_source);
+			continue;
+		}
+#endif
 
 		idx = apply_data[pd].idx;
 		slot = &dev->pd_tbl->slot[idx];
@@ -923,8 +1146,17 @@ static int __cam_req_mgr_send_req(struct cam_req_mgr_core_link *link,
 				apply_data[pd].skip_idx,
 				apply_data[pd].req_id);
 			apply_req.dev_hdl = dev->dev_hdl;
-			apply_req.request_id =
-				link->req.prev_apply_data[pd].req_id;
+		#if IS_ENABLED(CONFIG_ISPV3)
+			if (trigger_data->trigger_source == CAM_REQ_MGR_TRIG_SRC_INTERNAL)
+				apply_req.request_id =
+					link->req.prev_apply_data[link->last_internal_applied_idx][pd].req_id;
+			else
+				apply_req.request_id =
+					link->req.prev_apply_data[link->last_external_applied_idx][pd].req_id;
+		#else
+				apply_req.request_id =
+					link->req.prev_apply_data[pd].req_id;
+		#endif
 			apply_req.trigger_point = trigger;
 			apply_req.report_if_bubble = 0;
 			if ((dev->ops) && (dev->ops->notify_frame_skip))
@@ -956,7 +1188,11 @@ static int __cam_req_mgr_send_req(struct cam_req_mgr_core_link *link,
 			if (rc) {
 				*failed_dev = dev;
 				__cam_req_mgr_notify_frame_skip(link,
+			#if IS_ENABLED(CONFIG_ISPV3)
+					trigger, trigger_data->trigger_source);
+			#else
 					trigger);
+			#endif
 				return rc;
 			}
 		} else {
@@ -992,6 +1228,15 @@ static int __cam_req_mgr_send_req(struct cam_req_mgr_core_link *link,
 				continue;
 			}
 
+#if IS_ENABLED(CONFIG_ISPV3)
+			if (!((1 << dev->dev_bit) & trigger_mask)) {
+				CAM_DBG(CAM_CRM,
+					"dev %s dev_bit %d isn't triggered by trigger_source %d",
+					dev->dev_info.name, dev->dev_bit, trigger_data->trigger_source);
+				continue;
+			}
+#endif
+
 			if (!(dev->dev_info.trigger & trigger))
 				continue;
 
@@ -1003,8 +1248,17 @@ static int __cam_req_mgr_send_req(struct cam_req_mgr_core_link *link,
 					apply_data[pd].skip_idx,
 					apply_data[pd].req_id);
 				apply_req.dev_hdl = dev->dev_hdl;
+		#if IS_ENABLED(CONFIG_ISPV3)
+			if (trigger_data->trigger_source == CAM_REQ_MGR_TRIG_SRC_INTERNAL)
+				apply_req.request_id =
+					link->req.prev_apply_data[link->last_internal_applied_idx][pd].req_id;
+			else
+				apply_req.request_id =
+					link->req.prev_apply_data[link->last_external_applied_idx][pd].req_id;
+		#else
 				apply_req.request_id =
 					link->req.prev_apply_data[pd].req_id;
+		#endif
 				apply_req.trigger_point = trigger;
 				apply_req.report_if_bubble = 0;
 				if ((dev->ops) && (dev->ops->notify_frame_skip))
@@ -1020,6 +1274,10 @@ static int __cam_req_mgr_send_req(struct cam_req_mgr_core_link *link,
 			apply_req.report_if_bubble =
 				in_q->slot[idx].recover;
 
+		#if IS_ENABLED(CONFIG_ISPV3)
+			if (link->hybrid_trigger_source)
+				apply_req.report_if_bubble = 0;
+		#endif
 			/*
 			 * If it is dual trigger usecase, need to tell
 			 * devices that the req is re-applied, then the
@@ -1089,11 +1347,27 @@ static int __cam_req_mgr_send_req(struct cam_req_mgr_core_link *link,
 			if (dev->ops && dev->ops->process_evt)
 				dev->ops->process_evt(&evt_data);
 		}
+	#if IS_ENABLED(CONFIG_ISPV3)
+		__cam_req_mgr_notify_frame_skip(link, trigger, trigger_data->trigger_source);
+	#else
 		__cam_req_mgr_notify_frame_skip(link, trigger);
+	#endif
 	} else {
+	#if IS_ENABLED(CONFIG_ISPV3)
+		memcpy(link->req.prev_apply_data[result_idx], link->req.apply_data[result_idx],
+	#else
 		memcpy(link->req.prev_apply_data, link->req.apply_data,
+	#endif
 			CAM_PIPELINE_DELAY_MAX *
 			sizeof(struct cam_req_mgr_apply));
+
+#if IS_ENABLED(CONFIG_ISPV3)
+		if (trigger_data->trigger_source == CAM_REQ_MGR_TRIG_SRC_INTERNAL)
+			link->last_internal_applied_idx = result_idx;
+		else
+			link->last_external_applied_idx = result_idx;
+#endif
+
 		if (req_applied_to_min_pd) {
 			link->open_req_cnt--;
 			CAM_DBG(CAM_REQ,
@@ -1113,13 +1387,19 @@ static int __cam_req_mgr_send_req(struct cam_req_mgr_core_link *link,
  * @link     : pointer to link whose input queue and req tbl are
  *             traversed through
  * @idx      : index within input request queue
+ * @result_idx : Index within the apply data queue
  * @validate_only : Whether to validate only and/or update settings
  *
  * @return   : 0 for success, negative for failure
  *
  */
+#if IS_ENABLED(CONFIG_ISPV3)
+static int __cam_req_mgr_check_link_is_ready(struct cam_req_mgr_core_link *link,
+	int32_t idx, int32_t result_idx, bool validate_only)
+#else
 static int __cam_req_mgr_check_link_is_ready(struct cam_req_mgr_core_link *link,
 	int32_t idx, bool validate_only)
+#endif
 {
 	int                            rc;
 	struct cam_req_mgr_traverse    traverse_data;
@@ -1128,7 +1408,17 @@ static int __cam_req_mgr_check_link_is_ready(struct cam_req_mgr_core_link *link,
 
 	in_q = link->req.in_q;
 
+#if IS_ENABLED(CONFIG_ISPV3)
+	if (result_idx >= CRM_RESULT_QUEUE_SIZE) {
+		CAM_ERR(CAM_CRM, "Invalid result index:%d",
+			result_idx);
+		return -EINVAL;
+	}
+
+	apply_data = link->req.apply_data[result_idx];
+#else
 	apply_data = link->req.apply_data;
+#endif
 
 	if (validate_only == false) {
 		memset(apply_data, 0,
@@ -1234,7 +1524,11 @@ static int32_t __cam_req_mgr_find_slot_for_req(
 static int __cam_req_mgr_check_sync_for_mslave(
 	struct cam_req_mgr_core_link *link,
 	struct cam_req_mgr_core_link *sync_link,
-	struct cam_req_mgr_slot *slot)
+	struct cam_req_mgr_slot *slot
+#if IS_ENABLED(CONFIG_ISPV3)
+	,int32_t result_idx
+#endif
+	)
 {
 	struct cam_req_mgr_slot      *sync_slot = NULL;
 	int sync_slot_idx = 0, prev_idx, next_idx, rd_idx, sync_rd_idx, rc = 0;
@@ -1291,7 +1585,11 @@ static int __cam_req_mgr_check_sync_for_mslave(
 			return -EAGAIN;
 		}
 
+#if IS_ENABLED(CONFIG_ISPV3)
+		rc = __cam_req_mgr_check_link_is_ready(link, slot->idx, result_idx, true);
+#else
 		rc = __cam_req_mgr_check_link_is_ready(link, slot->idx, true);
+#endif
 		if (rc) {
 			CAM_DBG(CAM_CRM,
 				"Req: %lld [master] not ready on link: %x, rc=%d",
@@ -1333,7 +1631,11 @@ static int __cam_req_mgr_check_sync_for_mslave(
 			}
 
 			rc = __cam_req_mgr_check_link_is_ready(sync_link,
+		#if IS_ENABLED(CONFIG_ISPV3)
+				sync_slot_idx, result_idx, true);
+		#else
 				sync_slot_idx, true);
+		#endif
 			if (rc &&
 				(sync_link->req.in_q->slot[sync_slot_idx].status
 				!= CRM_SLOT_STATUS_REQ_APPLIED)) {
@@ -1348,7 +1650,11 @@ static int __cam_req_mgr_check_sync_for_mslave(
 		if (link->initial_skip)
 			link->initial_skip = false;
 
+#if IS_ENABLED(CONFIG_ISPV3)
+		rc = __cam_req_mgr_check_link_is_ready(link, slot->idx, result_idx, true);
+#else
 		rc = __cam_req_mgr_check_link_is_ready(link, slot->idx, true);
+#endif
 		if (rc) {
 			CAM_DBG(CAM_CRM,
 				"Req: %lld [slave] not ready on link: %x, rc=%d",
@@ -1391,7 +1697,11 @@ static int __cam_req_mgr_check_sync_for_mslave(
 
 			sync_slot = &sync_link->req.in_q->slot[sync_slot_idx];
 			rc = __cam_req_mgr_check_link_is_ready(sync_link,
+		#if IS_ENABLED(CONFIG_ISPV3)
+				sync_slot_idx, result_idx, true);
+		#else
 				sync_slot_idx, true);
+		#endif
 			if (rc && (sync_slot->status !=
 				CRM_SLOT_STATUS_REQ_APPLIED)) {
 				CAM_DBG(CAM_CRM,
@@ -1425,7 +1735,11 @@ static int __cam_req_mgr_check_sync_req_is_ready(
 	struct cam_req_mgr_core_link *link,
 	struct cam_req_mgr_core_link *sync_link,
 	struct cam_req_mgr_slot *slot,
-	uint32_t trigger)
+	uint32_t trigger
+#if IS_ENABLED(CONFIG_ISPV3)
+	,int32_t result_idx
+#endif
+	)
 {
 	struct cam_req_mgr_slot *sync_rd_slot = NULL;
 	int64_t req_id = 0, sync_req_id = 0;
@@ -1543,7 +1857,11 @@ static int __cam_req_mgr_check_sync_req_is_ready(
 		return -EAGAIN;
 	}
 
+#if IS_ENABLED(CONFIG_ISPV3)
+	rc = __cam_req_mgr_check_link_is_ready(link, slot->idx, result_idx, true);
+#else
 	rc = __cam_req_mgr_check_link_is_ready(link, slot->idx, true);
+#endif
 	if (rc) {
 		CAM_DBG(CAM_CRM,
 			"Req: %lld [My link] not ready on link: %x, rc=%d",
@@ -1553,7 +1871,11 @@ static int __cam_req_mgr_check_sync_req_is_ready(
 
 	if (sync_link->req.in_q) {
 		rc = __cam_req_mgr_check_link_is_ready(sync_link,
+		#if IS_ENABLED(CONFIG_ISPV3)
+			sync_slot_idx, result_idx, true);
+		#else
 			sync_slot_idx, true);
+		#endif
 		if (rc && (sync_link->req.in_q->slot[sync_slot_idx].status !=
 				CRM_SLOT_STATUS_REQ_APPLIED)) {
 			CAM_DBG(CAM_CRM,
@@ -1644,7 +1966,11 @@ static int __cam_req_mgr_check_sync_req_is_ready(
 static int __cam_req_mgr_check_multi_sync_link_ready(
 	struct cam_req_mgr_core_link *link,
 	struct cam_req_mgr_slot *slot,
-	uint32_t trigger)
+	uint32_t trigger
+#if IS_ENABLED(CONFIG_ISPV3)
+	,int32_t result_idx
+#endif
+	)
 {
 	int i, rc = 0;
 
@@ -1665,7 +1991,11 @@ static int __cam_req_mgr_check_multi_sync_link_ready(
 			if (link->max_delay == link->sync_link[i]->max_delay) {
 				rc = __cam_req_mgr_check_sync_req_is_ready(
 						link, link->sync_link[i],
+					#if IS_ENABLED(CONFIG_ISPV3)
+						slot, trigger, result_idx);
+					#else
 						slot, trigger);
+					#endif
 				if (rc < 0) {
 					CAM_DBG(CAM_CRM, "link %x not ready",
 						link->link_hdl);
@@ -1676,7 +2006,11 @@ static int __cam_req_mgr_check_multi_sync_link_ready(
 				link->is_master = true;
 				link->sync_link[i]->is_master = false;
 				rc = __cam_req_mgr_check_sync_for_mslave(
+				#if IS_ENABLED(CONFIG_ISPV3)
+					link, link->sync_link[i], slot, result_idx);
+				#else
 					link, link->sync_link[i], slot);
+				#endif
 				if (rc < 0) {
 					CAM_DBG(CAM_CRM, "link%x not ready",
 						link->link_hdl);
@@ -1686,7 +2020,11 @@ static int __cam_req_mgr_check_multi_sync_link_ready(
 				link->is_master = false;
 				link->sync_link[i]->is_master = true;
 				rc = __cam_req_mgr_check_sync_for_mslave(
+				#if IS_ENABLED(CONFIG_ISPV3)
+						link, link->sync_link[i], slot, result_idx);
+				#else
 						link, link->sync_link[i], slot);
+				#endif
 				if (rc < 0) {
 					CAM_DBG(CAM_CRM, "link %x not ready",
 						link->link_hdl);
@@ -1714,7 +2052,11 @@ static int __cam_req_mgr_check_multi_sync_link_ready(
 	 *  and we can proceed to apply the given request.
 	 *  Ideally the next call should return success.
 	 */
+#if IS_ENABLED(CONFIG_ISPV3)
+	rc = __cam_req_mgr_check_link_is_ready(link, slot->idx, result_idx, false);
+#else
 	rc = __cam_req_mgr_check_link_is_ready(link, slot->idx, false);
+#endif
 	if (rc)
 		CAM_WARN(CAM_CRM, "Unexpected return value rc: %d", rc);
 
@@ -1785,8 +2127,14 @@ enum crm_req_eof_trigger_type __cam_req_mgr_check_for_eof(
 static int __cam_req_mgr_process_req(struct cam_req_mgr_core_link *link,
 	struct cam_req_mgr_trigger_notify *trigger_data)
 {
+#if IS_ENABLED(CONFIG_ISPV3)
+	int                                  i = 0, rc = 0, idx;
+	int                                  reset_step = 0, result_idx;
+	int32_t                              rd_idx = 0;
+#else
 	int                                  rc = 0, idx, i;
 	int                                  reset_step = 0;
+#endif
 	uint32_t                             trigger = trigger_data->trigger;
 	struct cam_req_mgr_slot             *slot = NULL;
 	struct cam_req_mgr_req_queue        *in_q;
@@ -1831,11 +2179,54 @@ static int __cam_req_mgr_process_req(struct cam_req_mgr_core_link *link,
 		in_q->slot[in_q->rd_idx].status, link->link_hdl,
 		in_q->slot[in_q->rd_idx].additional_timeout, trigger);
 
+#if IS_ENABLED(CONFIG_ISPV3)
+	if (link->hybrid_trigger_source){
+		result_idx = trigger_data->frame_id % CRM_RESULT_QUEUE_SIZE;
+	}else{
+		result_idx = 0;
+	}
+
+	if (link->hybrid_trigger_source &&
+		(trigger_data->trigger_source ==
+		 CAM_REQ_MGR_TRIG_SRC_INTERNAL))
+		rd_idx = link->req.rd_idx[result_idx];
+	else
+		rd_idx = in_q->rd_idx;
+
+	slot = &in_q->slot[rd_idx];
+#else
 	slot = &in_q->slot[in_q->rd_idx];
+#endif
+
+#if IS_ENABLED(CONFIG_ISPV3)
+	CAM_DBG(CAM_CRM, "[XM_CC]hybrid:[%d,%d] result_idx:%d rd_idx:%d",
+		link->hybrid_trigger_source, trigger_data->trigger_source,
+		result_idx, rd_idx);
+#endif
 
 	if ((trigger != CAM_TRIGGER_POINT_SOF) &&
 		(trigger != CAM_TRIGGER_POINT_EOF))
 		goto end;
+
+#if IS_ENABLED(CONFIG_ISPV3)
+	if (link->hybrid_trigger_source
+	    && (trigger_data->trigger_source == CAM_REQ_MGR_TRIG_SRC_INTERNAL)) {
+		if (link->req.applied[result_idx]
+		    && ((slot->status == CRM_SLOT_STATUS_REQ_APPLIED)
+		    || (slot->status == CRM_SLOT_STATUS_REQ_PENDING))
+		    && slot->internal_applied == false) {
+			CAM_DBG(CAM_CRM,
+				"link_hdl %x frame_id %lld send_req directly",
+				link->link_hdl, trigger_data->frame_id);
+			goto send_req;
+		} else {
+			CAM_DBG(CAM_CRM,
+				"link_hdl %x frame_id %lld is skipped, slot status:%d",
+				link->link_hdl, trigger_data->frame_id, slot->status);
+			goto end;
+		}
+	}
+#endif
 
 	eof_trigger_type = __cam_req_mgr_check_for_eof(link);
 
@@ -1851,7 +2242,11 @@ static int __cam_req_mgr_process_req(struct cam_req_mgr_core_link *link,
 			CAM_DBG(CAM_CRM, "No Pending req");
 			rc = 0;
 			__cam_req_mgr_notify_frame_skip(link,
+		#if IS_ENABLED(CONFIG_ISPV3)
+				trigger, trigger_data->trigger_source);
+		#else
 				trigger);
+		#endif
 			goto end;
 		}
 
@@ -1869,12 +2264,21 @@ static int __cam_req_mgr_process_req(struct cam_req_mgr_core_link *link,
 			link->wq_congestion = true;
 		else
 			link->wq_congestion = false;
+
+#if IS_ENABLED(CONFIG_ISPV3)
+		if (link->hybrid_trigger_source)
+			link->wq_congestion = false;
+#endif
 	}
 
 	if (slot->status != CRM_SLOT_STATUS_REQ_READY) {
 		if (slot->sync_mode == CAM_REQ_MGR_SYNC_MODE_SYNC) {
 			rc = __cam_req_mgr_check_multi_sync_link_ready(
+			#if IS_ENABLED(CONFIG_ISPV3)
+					link, slot, trigger, result_idx);
+			#else
 				link, slot, trigger);
+			#endif
 		} else {
 			if (link->in_msync_mode) {
 				CAM_DBG(CAM_CRM,
@@ -1896,7 +2300,11 @@ static int __cam_req_mgr_process_req(struct cam_req_mgr_core_link *link,
 			 * checking the inject delay.
 			 */
 			rc = __cam_req_mgr_check_link_is_ready(link,
+			#if IS_ENABLED(CONFIG_ISPV3)
+				slot->idx, result_idx, true);
+			#else
 				slot->idx, true);
+			#endif
 
 			if (!rc) {
 				rc = __cam_req_mgr_inject_delay(link->req.l_tbl,
@@ -1909,7 +2317,11 @@ static int __cam_req_mgr_process_req(struct cam_req_mgr_core_link *link,
 
 				if (!rc)
 					rc = __cam_req_mgr_check_link_is_ready(link,
+					#if IS_ENABLED(CONFIG_ISPV3)
+						slot->idx, result_idx, false);
+					#else
 						slot->idx, false);
+					#endif
 			}
 		}
 
@@ -1942,8 +2354,21 @@ static int __cam_req_mgr_process_req(struct cam_req_mgr_core_link *link,
 				rc = -EPERM;
 			}
 			spin_unlock_bh(&link->link_state_spin_lock);
+		#if IS_ENABLED(CONFIG_ISPV3)
+			__cam_req_mgr_notify_frame_skip(link, trigger, trigger_data->trigger_source);
+		#else
 			__cam_req_mgr_notify_frame_skip(link, trigger);
+		#endif
 			__cam_req_mgr_validate_crm_wd_timer(link);
+		#if IS_ENABLED(CONFIG_ISPV3)
+			if ((trigger_data->trigger_source ==
+				CAM_REQ_MGR_TRIG_SRC_EXTERNAL) &&
+				link->hybrid_trigger_source) {
+				link->req.applied[result_idx] = false;
+
+				CAM_DBG(CAM_CRM, "result_idx:%d frame_id %lld", result_idx, trigger_data->frame_id);
+			}
+		#endif
 			goto end;
 		} else {
 			slot->status = CRM_SLOT_STATUS_REQ_READY;
@@ -1954,13 +2379,26 @@ static int __cam_req_mgr_process_req(struct cam_req_mgr_core_link *link,
 		}
 	}
 
+#if IS_ENABLED(CONFIG_ISPV3)
+send_req:
+	rc = __cam_req_mgr_send_req(link, link->req.in_q,
+		trigger_data, &dev);
+#else
 	rc = __cam_req_mgr_send_req(link, link->req.in_q, trigger, &dev);
+#endif
 	if (rc < 0) {
 		/* Apply req failed retry at next sof */
 		slot->status = CRM_SLOT_STATUS_REQ_PENDING;
 		max_retry = MAXIMUM_RETRY_ATTEMPTS;
 		if (link->max_delay == 1)
 			max_retry++;
+
+#if IS_ENABLED(CONFIG_ISPV3)
+		if ((trigger_data->trigger_source ==
+			CAM_REQ_MGR_TRIG_SRC_EXTERNAL) &&
+			link->hybrid_trigger_source)
+			link->req.applied[result_idx] = false;
+#endif
 
 		if (!link->wq_congestion && dev) {
 			link->retry_cnt++;
@@ -1977,8 +2415,15 @@ static int __cam_req_mgr_process_req(struct cam_req_mgr_core_link *link,
 					CAM_DEFAULT_VALUE,
 					link->link_hdl,
 					CAM_DEFAULT_VALUE, rc);
-
+#if IS_ENABLED(CONFIG_ISPV3)
+				if (link->hybrid_trigger_source) {
+					CAM_ERR(CAM_CRM, "[XM_CC] hyrid trigger skip notify error");
+				} else {
+					__cam_req_mgr_notify_error_on_link(link, dev, result_idx);
+				}
+#else
 				__cam_req_mgr_notify_error_on_link(link, dev);
+#endif
 				link->retry_cnt = 0;
 			}
 		} else
@@ -2015,12 +2460,25 @@ static int __cam_req_mgr_process_req(struct cam_req_mgr_core_link *link,
 		if (((eof_trigger_type == CAM_REQ_EOF_TRIGGER_NONE) ||
 			(eof_trigger_type == CAM_REQ_EOF_TRIGGER_APPLIED)) &&
 			(trigger == CAM_TRIGGER_POINT_SOF)) {
-			slot->status = CRM_SLOT_STATUS_REQ_APPLIED;
+		#if IS_ENABLED(CONFIG_ISPV3)
+			if (link->hybrid_trigger_source) {
+				if (trigger_data->trigger_source ==
+					CAM_REQ_MGR_TRIG_SRC_EXTERNAL) {
+					slot->status = CRM_SLOT_STATUS_REQ_APPLIED;
+					link->req.applied[result_idx] = true;
+				}
+			} else
+		#endif
+				slot->status = CRM_SLOT_STATUS_REQ_APPLIED;
 
 			CAM_DBG(CAM_CRM, "req %d is applied on link %x",
 				slot->req_id,
 				link->link_hdl);
+		#if IS_ENABLED(CONFIG_ISPV3)
+			idx = rd_idx;
+		#else
 			idx = in_q->rd_idx;
+		#endif
 			reset_step = link->max_delay;
 
 			for (i = 0; i < link->num_sync_links; i++) {
@@ -2036,12 +2494,20 @@ static int __cam_req_mgr_process_req(struct cam_req_mgr_core_link *link,
 			if (slot->req_id > 0)
 				in_q->last_applied_idx = idx;
 
-			__cam_req_mgr_dec_idx(
-				&idx, reset_step + 1,
-				in_q->num_slots);
-			__cam_req_mgr_reset_req_slot(link, idx);
+#if IS_ENABLED(CONFIG_ISPV3)
+			if (trigger_data->trigger_source !=
+				CAM_REQ_MGR_TRIG_SRC_EXTERNAL) {
+				slot->internal_applied = true;
+#endif
+				__cam_req_mgr_dec_idx(
+					&idx, reset_step + 5,
+					in_q->num_slots);
+				__cam_req_mgr_reset_req_slot(link, idx);
+			}
 		}
+#if IS_ENABLED(CONFIG_ISPV3)
 	}
+#endif
 end:
 	/*
 	 * Only update the jiffies for SOF trigger,
@@ -2632,6 +3098,9 @@ static int __cam_req_mgr_try_cancel_req(struct cam_req_mgr_core_link *link,
 	struct cam_req_mgr_slot *slot = NULL;
 	struct cam_req_mgr_req_queue *in_q = link->req.in_q;
 	int idx, pd = CAM_PIPELINE_DELAY_MAX;
+#if IS_ENABLED(CONFIG_ISPV3)
+	int result_idx;
+#endif
 
 	idx = __cam_req_mgr_find_slot_for_req(in_q, flush_info->req_id);
 	if (idx < 0) {
@@ -2650,18 +3119,39 @@ static int __cam_req_mgr_try_cancel_req(struct cam_req_mgr_core_link *link,
 			return pd;
 		}
 
+#if IS_ENABLED(CONFIG_ISPV3)
+		/* We know the IFE is a internal triggered device */
+		result_idx = link->last_internal_applied_idx;
+		if (flush_info->req_id <= link->req.prev_apply_data[result_idx][pd].req_id) {
+#else
 		if (flush_info->req_id <= link->req.prev_apply_data[pd].req_id) {
+#endif
 			CAM_WARN(CAM_CRM, "req %lld already applied to IFE on link 0x%x",
 				flush_info->req_id, flush_info->link_hdl);
 			return -EPERM;
 		}
 
+#if IS_ENABLED(CONFIG_ISPV3)
+		/*
+		 * If it is hybrid triggered usecase, the highest pd device is
+		 * triggered by external source.
+		 */
+		if (link->hybrid_trigger_source)
+			result_idx = link->last_external_applied_idx;
+		/* find highest pd device that can be flushed */
+		while (pd + 1 <= link->max_delay) {
+			if (flush_info->req_id <= link->req.prev_apply_data[result_idx][pd + 1].req_id)
+				break;
+			pd++;
+		}
+#else
 		/* find highest pd device that can be flushed */
 		while (pd + 1 <= link->max_delay) {
 			if (flush_info->req_id <= link->req.prev_apply_data[pd + 1].req_id)
 				break;
 			pd++;
 		}
+#endif
 		fallthrough;
 	case CRM_SLOT_STATUS_REQ_READY:
 	case CRM_SLOT_STATUS_REQ_ADDED:
@@ -2720,7 +3210,11 @@ int cam_req_mgr_process_flush_req(void *priv, void *data)
 		CAM_INFO(CAM_CRM, "Last request id to flush is %lld",
 			flush_info->req_id);
 		__cam_req_mgr_flush_req_slot(link);
+	#if IS_ENABLED(CONFIG_ISPV3)
+		__cam_req_mgr_reset_queue_data(link);
+	#else
 		__cam_req_mgr_reset_apply_data(link);
+	#endif
 		__cam_req_mgr_flush_dev_with_max_pd(link, flush_info, link->max_delay);
 		link->open_req_cnt = 0;
 		break;
@@ -2790,6 +3284,11 @@ int cam_req_mgr_process_sched_req(void *priv, void *data)
 	slot->sync_mode = sched_req->sync_mode;
 	slot->skip_idx = 0;
 	slot->recover = sched_req->bubble_enable;
+#if IS_ENABLED(CONFIG_ISPV3)
+	slot->internal_applied = false;
+	if (link->hybrid_trigger_source)
+		slot->recover = 0;
+#endif
 	if (sched_req->additional_timeout < 0) {
 		CAM_WARN(CAM_CRM,
 			"Requested timeout is invalid [%dms]",
@@ -2992,6 +3491,7 @@ void __cam_req_mgr_apply_on_bubble(
 int cam_req_mgr_process_error(void *priv, void *data)
 {
 	int                                  rc = 0, idx = -1;
+	int                                  i, slot_diff;
 	struct cam_req_mgr_error_notify     *err_info = NULL;
 	struct cam_req_mgr_core_link        *link = NULL;
 	struct cam_req_mgr_req_queue        *in_q = NULL;
@@ -3023,8 +3523,8 @@ int cam_req_mgr_process_error(void *priv, void *data)
 				"req_id %lld not found in input queue",
 				err_info->req_id);
 		} else {
-			CAM_DBG(CAM_CRM, "req_id %lld found at idx %d",
-				err_info->req_id, idx);
+			CAM_DBG(CAM_CRM, "req_id %lld found at idx %d last_applied %d",
+				err_info->req_id, idx, in_q->last_applied_idx);
 			slot = &in_q->slot[idx];
 			if (!slot->recover) {
 				CAM_WARN(CAM_CRM,
@@ -3058,6 +3558,42 @@ int cam_req_mgr_process_error(void *priv, void *data)
 
 			if (in_q->slot[idx].status == CRM_SLOT_STATUS_REQ_APPLIED)
 				in_q->slot[idx].status = CRM_SLOT_STATUS_REQ_ADDED;
+
+			/*
+			 * Reset till last applied, even if there are scheduling delays
+			 * we start fresh from the request on which bubble has
+			 * been reported
+			 */
+			idx = in_q->rd_idx;
+			if (in_q->last_applied_idx >= 0) {
+				slot_diff = in_q->last_applied_idx - idx;
+				if (slot_diff < 0)
+					slot_diff += link->req.l_tbl->num_slots;
+			} else {
+				/* Next req at the minimum may be applied */
+				slot_diff = 1;
+			}
+
+			for (i = 0; i < slot_diff; i++) {
+				__cam_req_mgr_inc_idx(&idx, 1,
+					link->req.l_tbl->num_slots);
+
+				CAM_DBG(CAM_CRM,
+					"Recovery on idx: %d reset slot [idx: %d status: %d]",
+					in_q->rd_idx, idx, in_q->slot[idx].status);
+				if (in_q->slot[idx].status == CRM_SLOT_STATUS_REQ_APPLIED)
+					in_q->slot[idx].status = CRM_SLOT_STATUS_REQ_ADDED;
+
+				// if the next req N+1 after bubble req N is -1, then req N+2 may also be applied
+				if (in_q->slot[idx].req_id == -1)
+				{
+					CAM_INFO(CAM_CRM, "set req N+2 to added");
+					__cam_req_mgr_inc_idx(&idx, 1,
+						link->req.l_tbl->num_slots);
+					if (in_q->slot[idx].status == CRM_SLOT_STATUS_REQ_APPLIED)
+						in_q->slot[idx].status = CRM_SLOT_STATUS_REQ_ADDED;
+				}
+			}
 
 			spin_lock_bh(&link->link_state_spin_lock);
 			link->state = CAM_CRM_LINK_STATE_ERR;
@@ -3121,6 +3657,11 @@ static int cam_req_mgr_process_trigger(void *priv, void *data)
 {
 	int                                  rc = 0;
 	int32_t                              idx = -1;
+#if IS_ENABLED(CONFIG_ISPV3)
+	int32_t                              result_idx;
+	bool                                 need_process = true;
+	bool                                 temp = false;
+#endif
 	struct cam_req_mgr_trigger_notify   *trigger_data = NULL;
 	struct cam_req_mgr_core_link        *link = NULL;
 	struct cam_req_mgr_req_queue        *in_q = NULL;
@@ -3138,16 +3679,45 @@ static int cam_req_mgr_process_trigger(void *priv, void *data)
 	task_data = (struct crm_task_payload *)data;
 	trigger_data = (struct cam_req_mgr_trigger_notify *)&task_data->u;
 
+#if IS_ENABLED(CONFIG_ISPV3)
+
+#else
 	CAM_DBG(CAM_REQ, "link_hdl %x frame_id %lld, trigger %x\n",
 		trigger_data->link_hdl,
 		trigger_data->frame_id,
 		trigger_data->trigger);
+#endif
 
 	in_q = link->req.in_q;
 
 	mutex_lock(&link->req.lock);
 
+#if IS_ENABLED(CONFIG_ISPV3)
+	if (link->hybrid_trigger_source) {
+		if (trigger_data->trigger_source ==
+			CAM_REQ_MGR_TRIG_SRC_INTERNAL)
+			need_process = false;
+	}
+
+	CAM_DBG(CAM_REQ,
+		"link_hdl %x frame_id %lld, trigger %x need_process %d, req_id:%d,triggersource:%d",
+		trigger_data->link_hdl,
+		trigger_data->frame_id,
+		trigger_data->trigger,
+		need_process,
+		trigger_data->req_id,
+		trigger_data->trigger_source);
+	if (link->hybrid_trigger_source) {
+		result_idx = trigger_data->frame_id % CRM_RESULT_QUEUE_SIZE;
+	}else {
+		result_idx = 0;
+	}
+
+	if (trigger_data->trigger == CAM_TRIGGER_POINT_SOF
+		&& need_process) {
+#else
 	if (trigger_data->trigger == CAM_TRIGGER_POINT_SOF) {
+#endif
 		idx = __cam_req_mgr_find_slot_for_req(in_q,
 			trigger_data->req_id);
 		if (idx >= 0) {
@@ -3168,7 +3738,7 @@ static int cam_req_mgr_process_trigger(void *priv, void *data)
 			}
 
 			__cam_req_mgr_dec_idx(
-				&idx, reset_step + 1,
+				&idx, reset_step + 5,
 				in_q->num_slots);
 
 			__cam_req_mgr_reset_req_slot(link, idx);
@@ -3203,7 +3773,22 @@ static int cam_req_mgr_process_trigger(void *priv, void *data)
 	 * Move to next req at SOF only in case
 	 * the rd_idx is updated at EOF.
 	 */
+#if IS_ENABLED(CONFIG_ISPV3)
+	if (link->hybrid_trigger_source) {
+		if (((in_q->slot[in_q->rd_idx].status == CRM_SLOT_STATUS_REQ_APPLIED)
+		    || (in_q->slot[in_q->rd_idx].status == CRM_SLOT_STATUS_REQ_PENDING))
+		    && need_process && (in_q->slot[in_q->rd_idx].internal_applied == true)) {
+			temp = true;
+		}
+	} else {
+		if (in_q->slot[in_q->rd_idx].status == CRM_SLOT_STATUS_REQ_APPLIED) {
+			temp = true;
+		}
+	}
+	if (temp) {
+#else
 	if (in_q->slot[in_q->rd_idx].status == CRM_SLOT_STATUS_REQ_APPLIED) {
+#endif
 		/*
 		 * Do NOT reset req q slot data here, it can not be done
 		 * here because we need to preserve the data to handle bubble.
@@ -3213,17 +3798,23 @@ static int cam_req_mgr_process_trigger(void *priv, void *data)
 		 */
 		CAM_DBG(CAM_CRM, "link[%x] Req[%lld] invalidating slot",
 			link->link_hdl, in_q->slot[in_q->rd_idx].req_id);
-		rc = __cam_req_mgr_check_next_req_slot(link);
+		rc = __cam_req_mgr_move_to_next_req_slot(link);
 		if (rc) {
 			CAM_DBG(CAM_REQ,
 				"No pending req to apply to lower pd devices");
 			rc = 0;
-			__cam_req_mgr_inc_idx(&in_q->rd_idx,
-				1, in_q->num_slots);
 			goto release_lock;
 		}
-		__cam_req_mgr_inc_idx(&in_q->rd_idx, 1, in_q->num_slots);
 	}
+
+#if IS_ENABLED(CONFIG_ISPV3)
+	if (link->hybrid_trigger_source &&
+		(trigger_data->trigger_source == CAM_REQ_MGR_TRIG_SRC_EXTERNAL)){
+		link->req.rd_idx[result_idx] = in_q->rd_idx;
+		CAM_DBG(CAM_CRM, "result_idx:[%d]  in_q->rd_idx:[%d] Req[%lld] ",
+			result_idx, in_q->rd_idx, in_q->slot[in_q->rd_idx].req_id);
+	}
+#endif
 
 	rc = __cam_req_mgr_process_req(link, trigger_data);
 
@@ -3556,8 +4147,6 @@ end:
 	return rc;
 }
 
-
-
 /**
  * cam_req_mgr_cb_notify_trigger()
  *
@@ -3570,12 +4159,12 @@ end:
 static int cam_req_mgr_cb_notify_trigger(
 	struct cam_req_mgr_trigger_notify *trigger_data)
 {
-	int32_t                          rc = 0, trigger_id = 0;
-	uint32_t                         trigger;
-	struct crm_workq_task           *task = NULL;
-	struct cam_req_mgr_core_link    *link = NULL;
-	struct cam_req_mgr_trigger_notify   *notify_trigger;
-	struct crm_task_payload         *task_data;
+	int32_t                            rc = 0, trigger_id = 0;
+	uint32_t                           trigger;
+	struct crm_workq_task             *task = NULL;
+	struct cam_req_mgr_core_link      *link = NULL;
+	struct cam_req_mgr_trigger_notify *notify_trigger;
+	struct crm_task_payload           *task_data;
 
 	if (!trigger_data) {
 		CAM_ERR(CAM_CRM, "trigger_data is NULL");
@@ -3653,6 +4242,7 @@ static int cam_req_mgr_cb_notify_trigger(
 		spin_unlock_bh(&link->link_state_spin_lock);
 		goto end;
 	}
+
 	task_data = (struct crm_task_payload *)task->payload;
 	task_data->type = (trigger_data->trigger == CAM_TRIGGER_POINT_SOF) ?
 		CRM_WORKQ_TASK_NOTIFY_SOF : CRM_WORKQ_TASK_NOTIFY_EOF;
@@ -3663,6 +4253,9 @@ static int cam_req_mgr_cb_notify_trigger(
 	notify_trigger->trigger = trigger_data->trigger;
 	notify_trigger->req_id = trigger_data->req_id;
 	notify_trigger->sof_timestamp_val = trigger_data->sof_timestamp_val;
+#if IS_ENABLED(CONFIG_ISPV3)
+	notify_trigger->trigger_source = trigger_data->trigger_source;
+#endif
 	task->process_cb = &cam_req_mgr_process_trigger;
 	rc = cam_req_mgr_workq_enqueue_task(task, link, CRM_TASK_PRIORITY_0);
 
@@ -3693,6 +4286,9 @@ static int __cam_req_mgr_setup_link_info(struct cam_req_mgr_core_link *link,
 	struct cam_req_mgr_ver_info *link_info)
 {
 	int                                     rc = 0, i = 0, num_devices = 0;
+#if IS_ENABLED(CONFIG_ISPV3)
+	int32_t                                 dev_count = 0;
+#endif
 	struct cam_req_mgr_core_dev_link_setup  link_data;
 	struct cam_req_mgr_connected_device    *dev;
 	struct cam_req_mgr_req_tbl             *pd_tbl;
@@ -3839,7 +4435,12 @@ static int __cam_req_mgr_setup_link_info(struct cam_req_mgr_core_link *link,
 			 */
 			__cam_req_mgr_add_tbl_to_link(&link->req.l_tbl, pd_tbl);
 		}
+	#if IS_ENABLED(CONFIG_ISPV3)
+		pd_tbl->dev_count++;
+		dev->dev_bit = dev_count++;
+	#else
 		dev->dev_bit = pd_tbl->dev_count++;
+	#endif
 		dev->pd_tbl = pd_tbl;
 		pd_tbl->dev_mask |= (1 << dev->dev_bit);
 		CAM_DBG(CAM_CRM, "dev_bit %u name %s pd %u mask %d",
@@ -3851,6 +4452,16 @@ static int __cam_req_mgr_setup_link_info(struct cam_req_mgr_core_link *link,
 			num_trigger_devices++;
 		}
 
+#if IS_ENABLED(CONFIG_ISPV3)
+		if (dev->dev_info.trigger_source ==
+			CAM_REQ_MGR_TRIG_SRC_EXTERNAL)
+			link->external_trigger_mask |=
+				(1 << dev->dev_bit);
+		else
+			link->internal_trigger_mask |=
+				(1 << dev->dev_bit);
+#endif
+
 		/* Communicate with dev to establish the link */
 		dev->ops->link_setup(&link_data);
 
@@ -3860,6 +4471,17 @@ static int __cam_req_mgr_setup_link_info(struct cam_req_mgr_core_link *link,
 			link->min_delay = dev->dev_info.p_delay;
 	}
 	link->num_devs = num_devices;
+
+#if IS_ENABLED(CONFIG_ISPV3)
+	if (link->external_trigger_mask &&
+		link->internal_trigger_mask)
+		link->hybrid_trigger_source = true;
+
+	CAM_DBG(CAM_CRM,
+		"hybrid_trigger:%d internal_mask:0x%x external_mask:0x%x",
+		link->hybrid_trigger_source,
+		link->internal_trigger_mask, link->external_trigger_mask);
+#endif
 
 	/* Assign id for pd tables */
 	__cam_req_mgr_tbl_set_id(link->req.l_tbl, &link->req);
@@ -4386,6 +5008,9 @@ int cam_req_mgr_sync_config(
 {
 	int                              i, j, rc = 0;
 	int                              sync_idx = 0;
+#if IS_ENABLED(CONFIG_ISPV3)
+	bool                             hybrid_trigger_source = false;
+#endif
 	struct cam_req_mgr_core_session *cam_session;
 	struct cam_req_mgr_core_link    *link[MAX_LINKS_PER_SESSION];
 
@@ -4451,6 +5076,17 @@ int cam_req_mgr_sync_config(
 
 		for (j = 0; j < sync_info->num_links-1; j++)
 			link[i]->sync_link[j] = NULL;
+
+#if IS_ENABLED(CONFIG_ISPV3)
+		hybrid_trigger_source |= link[i]->hybrid_trigger_source;
+	}
+
+	if ((sync_info->sync_mode == CAM_REQ_MGR_SYNC_MODE_SYNC) &&
+		hybrid_trigger_source) {
+		CAM_ERR(CAM_CRM,
+			"Hybird trigger source doesn't support frame sync");
+		return -EINVAL;
+#endif
 	}
 
 	if (sync_info->sync_mode == CAM_REQ_MGR_SYNC_MODE_SYNC) {

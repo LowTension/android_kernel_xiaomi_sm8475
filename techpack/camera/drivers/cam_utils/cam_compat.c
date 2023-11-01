@@ -12,6 +12,7 @@
 #include "cam_debug_util.h"
 #include "cam_cpas_api.h"
 #include "camera_main.h"
+#include "hwid.h"
 
 #if KERNEL_VERSION(5, 15, 0) <= LINUX_VERSION_CODE
 #include <soc/qcom/socinfo.h>
@@ -227,20 +228,44 @@ static inline int camera_component_compare_dev(struct device *dev, void *data)
 	return dev == data;
 }
 
+#if IS_ENABLED(CONFIG_ISPV3)
+static inline int camera_component_compare_ispv3_dev(struct device *dev, void *data)
+{
+	return !strcmp(dev_name(dev), "ispv3-cam");
+}
+#endif
+
 /* Add component matches to list for master of aggregate driver */
 int camera_component_match_add_drivers(struct device *master_dev,
 	struct component_match **match_list)
 {
+#if IS_ENABLED(CONFIG_ISPV3)
+	struct device_node *np;
+#endif
 	int i, rc = 0;
 	struct platform_device *pdev = NULL;
 	struct i2c_client *client = NULL;
 	struct device *start_dev = NULL, *match_dev = NULL;
+	uint32_t hw_platform_ver = 0;
+	uint32_t hw_country_ver = 0;
+	hw_country_ver = get_hw_country_version();
+	hw_platform_ver = get_hw_version_platform();
+	CAM_INFO(CAM_SENSOR, "debugforflashsrc  hw_country_ver:%d, hw_platform_ver %d", hw_country_ver, hw_platform_ver);
 
 	if (!master_dev || !match_list) {
 		CAM_ERR(CAM_UTIL, "Invalid parameters for component match add");
 		rc = -EINVAL;
 		goto end;
 	}
+
+#if IS_ENABLED(CONFIG_ISPV3)
+	np = of_find_node_by_path("/soc/ispv3_vdd1_ldo");
+	if(np) {
+		component_match_add(master_dev, match_list,
+				    camera_component_compare_ispv3_dev, NULL);
+
+	}
+#endif
 
 	for (i = 0; i < ARRAY_SIZE(cam_component_platform_drivers); i++) {
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
@@ -273,12 +298,34 @@ int camera_component_match_add_drivers(struct device *master_dev,
 		struct device_driver *drv = &cam_component_i2c_drivers[i]->driver;
 		void *drv_ptr = (void *)drv;
 #endif
+        if(HARDWARE_PROJECT_L9S == hw_platform_ver && (uint32_t)CountryCN == hw_country_ver){
+			if (i == 1) //flash driver
+			{
+				int flashCount = 0;
+				CAM_INFO(CAM_UTIL, "qctest start time");
+				do {
+					start_dev = NULL;
+					flashCount = 0;
+					while ((match_dev = bus_find_device(&i2c_bus_type,
+								start_dev, drv_ptr, &camera_i2c_compare_dev))) {
+						put_device(start_dev);
+						start_dev = match_dev;
+						flashCount++;
+					}
+					put_device(start_dev);
+					if (flashCount != 2)
+					{
+						msleep(1000);
+					}
+				} while(flashCount != 2);
+			}
+		}
 		start_dev = NULL;
 		while ((match_dev = bus_find_device(&i2c_bus_type,
 			start_dev, drv_ptr, &camera_i2c_compare_dev))) {
 			put_device(start_dev);
 			client = to_i2c_client(match_dev);
-			CAM_DBG(CAM_UTIL, "Adding matched component:%s", client->name);
+			CAM_INFO(CAM_UTIL, "Adding matched component:%s", client->name);
 			component_match_add(master_dev, match_list,
 				camera_component_compare_dev, match_dev);
 			start_dev = match_dev;

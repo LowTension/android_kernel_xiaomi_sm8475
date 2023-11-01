@@ -336,13 +336,16 @@ int cam_mem_get_cpu_buf(int32_t buf_handle, uintptr_t *vaddr_ptr, size_t *len)
 		return -EINVAL;
 	}
 
-	if (!buf_handle || !vaddr_ptr || !len)
+	if (!buf_handle || !vaddr_ptr || !len) {
+		CAM_ERR(CAM_MEM, "failed. invalid buf_handle");
 		return -EINVAL;
+	}
 
 	idx = CAM_MEM_MGR_GET_HDL_IDX(buf_handle);
-
-	if (idx >= CAM_MEM_BUFQ_MAX || idx <= 0)
+	if (idx >= CAM_MEM_BUFQ_MAX || idx <= 0) {
+		CAM_ERR(CAM_MEM, "invalid idx %d", idx);
 		return -EINVAL;
+	}
 
 	if (!tbl.bufq[idx].active) {
 		CAM_ERR(CAM_MEM, "Buffer at idx=%d is already unmapped,",
@@ -351,14 +354,13 @@ int cam_mem_get_cpu_buf(int32_t buf_handle, uintptr_t *vaddr_ptr, size_t *len)
 	}
 
 	if (buf_handle != tbl.bufq[idx].buf_handle) {
-		CAM_ERR(CAM_MEM, "idx: %d Invalid buf handle %d",
-				idx, buf_handle);
+		CAM_ERR(CAM_MEM, "buf_handle not match, idx %d, buf_handle %d, tbl.bufq[idx].buf_handle %d",
+			idx, buf_handle,tbl.bufq[idx].buf_handle);
 		return -EINVAL;
 	}
 
 	if (!(tbl.bufq[idx].flags & CAM_MEM_FLAG_KMD_ACCESS)) {
-		CAM_ERR(CAM_MEM, "idx: %d Invalid flag 0x%x",
-					idx, tbl.bufq[idx].flags);
+		CAM_ERR(CAM_MEM, "failed. No CAM_MEM_FLAG_KMD_ACCESS");
 		return -EINVAL;
 	}
 

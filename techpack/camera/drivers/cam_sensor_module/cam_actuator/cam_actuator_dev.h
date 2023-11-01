@@ -26,6 +26,7 @@
 #include "cam_soc_util.h"
 #include "cam_debug_util.h"
 #include "cam_context.h"
+#include "cam_actuator_parklens_thread.h" //xiaomi add
 
 #define NUM_MASTERS 2
 #define NUM_QUEUES 2
@@ -46,6 +47,7 @@ enum cam_actuator_state {
 	CAM_ACTUATOR_ACQUIRE,
 	CAM_ACTUATOR_CONFIG,
 	CAM_ACTUATOR_START,
+	CAM_ACTUATOR_PARKLENS //xiaomi add
 };
 
 /**
@@ -97,6 +99,7 @@ struct actuator_intf_params {
  * @act_info: Sensor query cap structure
  * @of_node: Node ptr
  * @last_flush_req: Last request to flush
+ * @trigger_source : Indicate the trigger source
  */
 struct cam_actuator_ctrl_t {
 	char device_name[CAM_CTX_DEV_NAME_MAX_LENGTH];
@@ -115,6 +118,10 @@ struct cam_actuator_ctrl_t {
 	struct cam_actuator_query_cap act_info;
 	struct actuator_intf_params bridge_intf;
 	uint32_t last_flush_req;
+	struct cam_actuator_parklens_ctrl_t parklens_ctrl; //xiaomi add
+#if IS_ENABLED(CONFIG_ISPV3)
+	enum cam_req_mgr_trigger_source trigger_source;
+#endif
 };
 
 /**
