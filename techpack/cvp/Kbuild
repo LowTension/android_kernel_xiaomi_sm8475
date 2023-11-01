@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-2.0-only
 
-CONFIG_BUILD_VENDORSI := true
+CVP_ROOT = $(srctree)/techpack/cvp
 
 # auto-detect subdirs
 ifneq ($(CONFIG_BUILD_VENDORSI), true)
