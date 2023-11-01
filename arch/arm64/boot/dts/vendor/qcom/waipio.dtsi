@@ -41,7 +41,6 @@
 		i2c2 = &qupv3_se15_i2c;
 		i2c3 = &qupv3_se16_i2c;
 		i2c4 = &qupv3_se19_i2c;
-		i2c5 = &qupv3_se17_i2c;
 	};
 
 	sram: sram@17D09400 {
@@ -1017,13 +1016,15 @@
 					<&adsp_smp2p_in 0 0>,
 					<&adsp_smp2p_in 2 0>,
 					<&adsp_smp2p_in 1 0>,
-					<&adsp_smp2p_in 3 0>;
+					<&adsp_smp2p_in 3 0>,
+					<&adsp_smp2p_in 7 0>;
 
 		interrupt-names = "wdog",
 				"fatal",
 				"handover",
 				"ready",
-				"stop-ack";
+				"stop-ack",
+				"shutdown-ack";
 
 		/* Outputs to turing */
 		qcom,smem-states = <&adsp_smp2p_out 0>;
@@ -1097,13 +1098,15 @@
 					<&cdsp_smp2p_in 0 0>,
 					<&cdsp_smp2p_in 2 0>,
 					<&cdsp_smp2p_in 1 0>,
-					<&cdsp_smp2p_in 3 0>;
+					<&cdsp_smp2p_in 3 0>,
+					<&cdsp_smp2p_in 7 0>;
 
 		interrupt-names = "wdog",
 				"fatal",
 				"handover",
 				"ready",
-				"stop-ack";
+				"stop-ack",
+				"shutdown-ack";
 
 		/* Outputs to turing */
 		qcom,smem-states = <&cdsp_smp2p_out 0>;
@@ -1209,6 +1212,8 @@
 				qcom,intents = <0x800  5
 						0x2000 3
 						0x4400 2>;
+
+				qcom,no-wake-svc = <0x190>;
 			};
 
 			qcom,msm_fastrpc_rpmsg {
@@ -2035,6 +2040,11 @@
 		reg-names = "crypto-base","crypto-bam-base";
 		interrupts = <GIC_SPI 272 IRQ_TYPE_LEVEL_HIGH>;
 		qcom,bam-pipe-pair = <2>;
+		qcom,offload-ops-support;
+		qcom,bam-pipe-offload-cpb-hlos = <1>;
+		qcom,bam-pipe-offload-hlos-cpb = <3>;
+		qcom,bam-pipe-offload-hlos-hlos = <4>;
+
 		qcom,ce-hw-instance = <0>;
 		qcom,ce-device = <0>;
 		qcom,ce-hw-shared;
@@ -2043,17 +2053,20 @@
 		qcom,no-clock-support;
 		interconnect-names = "data_path";
 		interconnects = <&aggre2_noc MASTER_CRYPTO &mc_virt SLAVE_EBI1>;
-		iommus = <&apps_smmu 0x0584 0x0011>;
+		iommus = <&apps_smmu 0x0584 0x0011>,
+			 <&apps_smmu 0x0582 0x0005>,
+			 <&apps_smmu 0x0588 0x0001>;
 		qcom,iommu-dma = "atomic";
 		dma-coherent;
 
 		qcom_cedev_ns_cb {
 			compatible = "qcom,qcedev,context-bank";
 			label = "ns_context";
-			iommus = <&apps_smmu 0x588 0x0>,
+			iommus = <&apps_smmu 0x593 0x0>,
+				<&apps_smmu 0x596 0x0>,
+				<&apps_smmu 0x598 0x5>,
 				<&apps_smmu 0x59A 0x0>,
-				<&apps_smmu 0x59F 0x0>,
-				<&apps_smmu 0x598 0x5>;
+				<&apps_smmu 0x59F 0x0>;
 			dma-coherent;
 		};
 
@@ -2066,6 +2079,7 @@
 				 <&apps_smmu 0x59E 0x0>;
 			qcom,iommu-vmid = <0x9>;
 			qcom,secure-context-bank;
+			dma-coherent;
 		};
 	};
 
@@ -2449,7 +2463,7 @@
 		compatible = "qcom,msm-fastrpc-compute";
 		qcom,adsp-remoteheap-vmid = <22 37>;
 		qcom,fastrpc-adsp-audio-pdr;
-		qcom,fastrpc-adsp-sensors-pdr;
+		qcom,fastrpc-slpi-sensors-pdr;
 		qcom,rpc-latency-us = <235>;
 		qcom,fastrpc-gids = <2908>;
 		qcom,qos-cores = <0 1 2 3>;
@@ -3434,7 +3448,6 @@
 #include "waipio-coresight.dtsi"
 #include "waipio-dma-heaps.dtsi"
 #include "waipio-debug.dtsi"
-#include "waipio-eva.dtsi"
 #include "waipio-pcie.dtsi"
 #include "msm-rdbg.dtsi"
 #include "waipio-gpu.dtsi"

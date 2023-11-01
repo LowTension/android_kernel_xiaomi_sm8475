@@ -615,13 +615,13 @@
 			gpu0_fail_safe1: fail_safe1 {
 				temperature = <100000>;
 				hysteresis = <5000>;
-				type = "passive";
+				type = "active";
 			};
 
 			gpu0_fail_safe2: fail_safe2 {
 				temperature = <105000>;
 				hysteresis = <5000>;
-				type = "passive";
+				type = "active";
 			};
 		};
 
@@ -690,13 +690,13 @@
 			gpu1_fail_safe1: fail_safe1 {
 				temperature = <100000>;
 				hysteresis = <5000>;
-				type = "passive";
+				type = "active";
 			};
 
 			gpu1_fail_safe2: fail_safe2 {
 				temperature = <105000>;
 				hysteresis = <5000>;
-				type = "passive";
+				type = "active";
 			};
 		};
 
@@ -753,13 +753,13 @@
 			camera0_fail_safe1: fail_safe1 {
 				temperature = <100000>;
 				hysteresis = <5000>;
-				type = "passive";
+				type = "active";
 			};
 
 			camera0_fail_safe2: fail_safe2 {
 				temperature = <105000>;
 				hysteresis = <5000>;
-				type = "passive";
+				type = "active";
 			};
 		};
 
@@ -811,13 +811,13 @@
 			camera1_fail_safe1: fail_safe1 {
 				temperature = <100000>;
 				hysteresis = <5000>;
-				type = "passive";
+				type = "active";
 			};
 
 			camera1_fail_safe2: fail_safe2 {
 				temperature = <105000>;
 				hysteresis = <5000>;
-				type = "passive";
+				type = "active";
 			};
 		};
 
@@ -1052,13 +1052,13 @@
 			nspss0_fail_safe1: fail_safe1 {
 				temperature = <100000>;
 				hysteresis = <5000>;
-				type = "passive";
+				type = "active";
 			};
 
 			nspss0_fail_safe2: fail_safe2 {
 				temperature = <105000>;
 				hysteresis = <5000>;
-				type = "passive";
+				type = "active";
 			};
 		};
 
@@ -1128,13 +1128,13 @@
 			nspss1_fail_safe1: fail_safe1 {
 				temperature = <100000>;
 				hysteresis = <5000>;
-				type = "passive";
+				type = "active";
 			};
 
 			nspss1_fail_safe2: fail_safe2 {
 				temperature = <105000>;
 				hysteresis = <5000>;
-				type = "passive";
+				type = "active";
 			};
 		};
 
@@ -1204,13 +1204,13 @@
 			nspss2_fail_safe1: fail_safe1 {
 				temperature = <100000>;
 				hysteresis = <5000>;
-				type = "passive";
+				type = "active";
 			};
 
 			nspss2_fail_safe2: fail_safe2 {
 				temperature = <105000>;
 				hysteresis = <5000>;
-				type = "passive";
+				type = "active";
 			};
 		};
 
@@ -1268,13 +1268,13 @@
 			video_fail_safe1: fail_safe1 {
 				temperature = <100000>;
 				hysteresis = <5000>;
-				type = "passive";
+				type = "active";
 			};
 
 			video_fail_safe2: fail_safe2 {
 				temperature = <105000>;
 				hysteresis = <5000>;
-				type = "passive";
+				type = "active";
 			};
 		};
 
@@ -1370,13 +1370,13 @@
 			mdmss0_fail_safe1: fail_safe1 {
 				temperature = <100000>;
 				hysteresis = <5000>;
-				type = "passive";
+				type = "active";
 			};
 
 			mdmss0_fail_safe2: fail_safe2 {
 				temperature = <105000>;
 				hysteresis = <5000>;
-				type = "passive";
+				type = "active";
 			};
 		};
 
@@ -1428,13 +1428,13 @@
 			mdmss1_fail_safe1: fail_safe1 {
 				temperature = <100000>;
 				hysteresis = <5000>;
-				type = "passive";
+				type = "active";
 			};
 
 			mdmss1_fail_safe2: fail_safe2 {
 				temperature = <105000>;
 				hysteresis = <5000>;
-				type = "passive";
+				type = "active";
 			};
 		};
 
@@ -1486,13 +1486,13 @@
 			mdmss2_fail_safe1: fail_safe1 {
 				temperature = <100000>;
 				hysteresis = <5000>;
-				type = "passive";
+				type = "active";
 			};
 
 			mdmss2_fail_safe2: fail_safe2 {
 				temperature = <105000>;
 				hysteresis = <5000>;
-				type = "passive";
+				type = "active";
 			};
 		};
 
@@ -1544,13 +1544,13 @@
 			mdmss3_fail_safe1: fail_safe1 {
 				temperature = <100000>;
 				hysteresis = <5000>;
-				type = "passive";
+				type = "active";
 			};
 
 			mdmss3_fail_safe2: fail_safe2 {
 				temperature = <105000>;
 				hysteresis = <5000>;
-				type = "passive";
+				type = "active";
 			};
 		};
 

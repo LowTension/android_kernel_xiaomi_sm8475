@@ -285,7 +285,7 @@
 		};
 	};
 
-	sys-therm-6 {
+	sys-therm-7 {
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
 		thermal-sensors =  <&pm7250b_adc_tm ADC5_AMUX_THM3_100K_PU>;
@@ -304,7 +304,7 @@
 		};
 	};
 
-	sys-therm-7 {
+	sys-therm-6 {
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
 		thermal-sensors =  <&pm7250b_adc_tm ADC5_AMUX_THM1_100K_PU>;

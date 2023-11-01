@@ -26,7 +26,7 @@
 			#thermal-sensor-cells = <0>;
 		};
 
-		qcom,power-on@800 {
+		pm8150_pon: qcom,power-on@800 {
 			compatible = "qcom,qpnp-power-on";
 			reg = <0x800>;
 			interrupts = <0x0 0x8 0x0 IRQ_TYPE_EDGE_BOTH>,
@@ -80,6 +80,14 @@
 		pm8150_sdam_2: sdam@b100 {
 			compatible = "qcom,spmi-sdam";
 			reg = <0xb100>;
+			#address-cells = <1>;
+			#size-cells = <1>;
+
+			restart_reason: restart@48 {
+				reg = <0x48 0x1>;
+				bits = <1 7>;
+			};
+
 		};
 
 		pm8150_vadc: vadc@3100 {

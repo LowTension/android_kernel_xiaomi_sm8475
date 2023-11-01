@@ -415,16 +415,16 @@
 			};
 		};
 
-	/* WSA speaker reset pins */
+		/* WSA speaker reset pins */
 		spkr_1_sd_n {
 			spkr_1_sd_n_sleep: spkr_1_sd_n_sleep {
 				mux {
-					pins = "gpio43";
+					pins = "gpio44";
 					function = "gpio";
 				};
 
 				config {
-					pins = "gpio43";
+					pins = "gpio44";
 					drive-strength = <2>;   /* 2 mA */
 					bias-pull-down;
 					input-enable;
@@ -433,12 +433,12 @@
 
 			spkr_1_sd_n_active: spkr_1_sd_n_active {
 				mux {
-					pins = "gpio43";
+					pins = "gpio44";
 					function = "gpio";
 				};
 
 				config {
-					pins = "gpio43";
+					pins = "gpio44";
 					drive-strength = <16>;   /* 16 mA */
 					bias-disable;
 					output-high;
@@ -449,12 +449,12 @@
 		spkr_2_sd_n {
 			spkr_2_sd_n_sleep: spkr_2_sd_n_sleep {
 				mux {
-					pins = "gpio44";
+					pins = "gpio43";
 					function = "gpio";
 				};
 
 				config {
-					pins = "gpio44";
+					pins = "gpio43";
 					drive-strength = <2>;   /* 2 mA */
 					bias-pull-down;
 					input-enable;
@@ -463,12 +463,12 @@
 
 			spkr_2_sd_n_active: spkr_2_sd_n_active {
 				mux {
-					pins = "gpio44";
+					pins = "gpio43";
 					function = "gpio";
 				};
 
 				config {
-					pins = "gpio44";
+					pins = "gpio43";
 					drive-strength = <16>;   /* 16 mA */
 					bias-disable;
 					output-high;
@@ -476,7 +476,7 @@
 			};
 		};
 
-	/* WCD reset pin */
+		/* WCD reset pin */
 		wcd938x_reset_active: wcd938x_reset_active {
 			mux {
 				pins = "gpio42";
@@ -535,7 +535,7 @@
 			pcie0_clkreq_default: pcie0_clkreq_default {
 				mux {
 					pins = "gpio56";
-					function = "pcie0_clkreqn";
+					function = "PCIE0_CLK_REQ_N";
 				};
 
 				config {
@@ -589,7 +589,7 @@
 			pcie1_clkreq_default: pcie1_clkreq_default {
 				mux {
 					pins = "gpio59";
-					function = "pcie1_clkreqn";
+					function = "PCIE1_CLK_REQ_N";
 				};
 
 				config {
@@ -625,6 +625,90 @@
 				};
 			};
 		};
+
+	pcie_ep {
+		pcie_ep_perst_default: pcie_ep_perst_default {
+			mux {
+				pins = "gpio58";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio58";
+				drive-strength = <2>;
+				bias-pull-down;
+			};
+		};
+
+		pcie_ep_clkreq_default: pcie_ep_clkreq_default {
+			mux {
+				pins = "gpio59";
+				function = "PCIE1_CLK_REQ_N";
+			};
+
+			config {
+				pins = "gpio59";
+				drive-strength = <2>;
+				bias-pull-up;
+			};
+		};
+
+		pcie_ep_wake_default: pcie_ep_wake_default {
+			mux {
+				pins = "gpio60";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio60";
+				drive-strength = <2>;
+				bias-pull-up;
+			};
+		};
+
+		pcie_ep_clkreq_sleep: pcie_ep_clkreq_sleep {
+			mux {
+				pins = "gpio59";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio59";
+				drive-strength = <2>;
+				bias-pull-up;
+			};
+		};
+	};
+
+	bq256xx_intr: bq256xx_intr {
+		bq256xx_intr_default: bq256xx_intr_default {
+			mux {
+				pins = "gpio6";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio6";
+				bias-pull-up;
+				input-enabled;
+			};
+		};
+	};
+
+	bq27421_intr: bq27421_intr {
+		bq27421_intr_default: bq27421_intr_default {
+			mux {
+				pins = "gpio7";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio7";
+				bias-pull-up;
+				input-enabled;
+			};
+		};
+	};
 
 	qupv3_se11_2uart_pins: qupv3_se11_2uart_pins {
 			qupv3_se11_2uart_active: qupv3_se11_2uart_active {
@@ -866,13 +950,13 @@
 			qupv3_se3_spi_active: qupv3_se3_spi_active {
 				mux {
 					pins = "gpio16", "gpio17",
-							"gpio18", "gpio19";
+							"gpio18";
 					function = "qup0_se3";
 				};
 
 				config {
 					pins = "gpio16", "gpio17",
-							"gpio18", "gpio19";
+							"gpio18";
 					drive-strength = <6>;
 					bias-disable;
 				};
@@ -881,15 +965,42 @@
 			qupv3_se3_spi_sleep: qupv3_se3_spi_sleep {
 				mux {
 					pins = "gpio16", "gpio17",
-							"gpio18", "gpio19";
+							"gpio18";
 					function = "gpio";
 				};
 
 				config {
 					pins = "gpio16", "gpio17",
-							"gpio18", "gpio19";
+							"gpio18";
 					drive-strength = <6>;
 					bias-disable;
+				};
+			};
+
+			qupv3_se3_spi_cs0_active: qupv3_se3_spi_cs0_active {
+				mux {
+					pins = "gpio19";
+					function = "qup0_se3";
+				};
+
+				config {
+					pins = "gpio19";
+					drive-strength = <6>;
+					bias-pull-up;
+				};
+			};
+
+			qupv3_se3_spi_cs0_sleep: qupv3_se3_spi_cs0_sleep {
+				mux {
+					pins = "gpio19";
+					function = "gpio";
+				};
+
+				config {
+					pins = "gpio19";
+					drive-strength = <6>;
+					/* Helios specific CS requirement. */
+					bias-pull-up;
 				};
 			};
 		};
