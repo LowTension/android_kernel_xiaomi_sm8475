@@ -44,6 +44,8 @@
 #include "msm_drv.h"
 #include "sde_vm.h"
 
+#include "mi_sde_crtc.h"
+
 #define SDE_PSTATES_MAX (SDE_STAGE_MAX * 4)
 #define SDE_MULTIRECT_PLANE_MAX (SDE_STAGE_MAX * 2)
 
@@ -2458,11 +2460,11 @@ static void _sde_crtc_frame_data_notify(struct drm_crtc *crtc,
 
 void sde_crtc_get_frame_data(struct drm_crtc *crtc)
 {
-	struct sde_crtc *sde_crtc;
-	struct drm_plane *plane;
+	struct sde_crtc *sde_crtc = NULL;
+	struct drm_plane *plane = NULL;
 	struct sde_drm_frame_data_packet frame_data_packet = {0, 0};
-	struct sde_drm_frame_data_packet *data;
-	struct sde_frame_data *frame_data;
+	struct sde_drm_frame_data_packet *data = NULL;
+	struct sde_frame_data *frame_data = NULL;
 	int i = 0;
 
 	if (!crtc || !crtc->state)
@@ -2485,8 +2487,11 @@ void sde_crtc_get_frame_data(struct drm_crtc *crtc)
 	data->frame_count = sde_crtc->fps_info.frame_count;
 
 	/* Collect plane specific data */
-	drm_for_each_plane_mask(plane, crtc->dev, sde_crtc->plane_mask_old)
+	SDE_EVT32(DRMID(crtc), frame_data->cnt, data->commit_count, data->frame_count, sde_crtc->plane_mask_old);
+	drm_for_each_plane_mask(plane, crtc->dev, sde_crtc->plane_mask_old) {
+		SDE_EVT32(DRMID(crtc), plane->base.id, sde_plane_pipe(plane) - SSPP_VIG0);
 		sde_plane_get_frame_data(plane, &data->plane_frame_data[i]);
+	}
 
 	if (frame_data->cnt)
 		_sde_crtc_frame_data_notify(crtc, data);
@@ -2518,7 +2523,7 @@ static void sde_crtc_frame_event_cb(void *data, u32 event, ktime_t ts)
 	crtc_id = drm_crtc_index(crtc);
 
 	SDE_DEBUG("crtc%d\n", crtc->base.id);
-	SDE_EVT32_VERBOSE(DRMID(crtc), event);
+	SDE_EVT32(DRMID(crtc), event);
 
 	spin_lock_irqsave(&sde_crtc->fevent_spin_lock, flags);
 	fevent = list_first_entry_or_null(&sde_crtc->frame_event_list,
@@ -4041,6 +4046,8 @@ void sde_crtc_commit_kickoff(struct drm_crtc *crtc,
 
 	idle_pc_state = sde_crtc_get_property(cstate, CRTC_PROP_IDLE_PC_STATE);
 
+	mi_sde_crtc_update_layer_state(cstate);
+
 	sde_crtc->kickoff_in_progress = true;
 	list_for_each_entry(encoder, &dev->mode_config.encoder_list, head) {
 		if (encoder->crtc != crtc)
@@ -4052,7 +4059,7 @@ void sde_crtc_commit_kickoff(struct drm_crtc *crtc,
 		 */
 		params.affected_displays = _sde_crtc_get_displays_affected(crtc,
 				crtc->state);
-		if (sde_encoder_prepare_for_kickoff(encoder, &params))
+		if (sde_encoder_prepare_for_kickoff(encoder, &params, old_state))
 			sde_crtc->needs_hw_reset = true;
 
 		if (idle_pc_state != IDLE_PC_NONE)
@@ -4079,6 +4086,7 @@ void sde_crtc_commit_kickoff(struct drm_crtc *crtc,
 	_sde_crtc_flush_frame_events(crtc);
 	SDE_ATRACE_END("flush_event_thread");
 	sde_crtc->plane_mask_old = crtc->state->plane_mask;
+	SDE_EVT32(DRMID(crtc), sde_crtc->plane_mask_old);
 
 	if (atomic_inc_return(&sde_crtc->frame_pending) == 1) {
 		/* acquire bandwidth and other resources */
@@ -4470,8 +4478,8 @@ static void _sde_crtc_reset(struct drm_crtc *crtc)
 	/* mark mixer cfgs dirty before wiping them */
 	sde_crtc_clear_cached_mixer_cfg(crtc);
 
-	memset(sde_crtc->mixers, 0, sizeof(sde_crtc->mixers));
 	sde_crtc->num_mixers = 0;
+	memset(sde_crtc->mixers, 0, sizeof(sde_crtc->mixers));
 	sde_crtc->mixers_swapped = false;
 
 	/* disable clk & bw control until clk & bw properties are set */
@@ -4738,14 +4746,13 @@ static int _sde_crtc_excl_dim_layer_check(struct drm_crtc_state *state,
 	const struct drm_plane_state *pstate;
 	struct sde_plane_state *sde_pstate;
 	int rc = 0, i;
-	bool is_fsc = sde_crtc_is_connector_fsc(cstate);
 
 	/* Check dim layer rect bounds and stage */
 	for (i = 0; i < cstate->num_dim_layers; i++) {
 		if ((CHECK_LAYER_BOUNDS(cstate->dim_layer[i].rect.y,
-			cstate->dim_layer[i].rect.h, GET_MODE_HEIGHT(is_fsc, mode))) ||
+			cstate->dim_layer[i].rect.h, mode->vdisplay)) ||
 		    (CHECK_LAYER_BOUNDS(cstate->dim_layer[i].rect.x,
-			cstate->dim_layer[i].rect.w, GET_MODE_WIDTH(is_fsc, mode))) ||
+			cstate->dim_layer[i].rect.w, mode->hdisplay)) ||
 		    (cstate->dim_layer[i].stage >= SDE_STAGE_MAX) ||
 		    (!cstate->dim_layer[i].rect.w) ||
 		    (!cstate->dim_layer[i].rect.h)) {
@@ -4755,8 +4762,8 @@ static int _sde_crtc_excl_dim_layer_check(struct drm_crtc_state *state,
 					cstate->dim_layer[i].rect.w,
 					cstate->dim_layer[i].rect.h,
 					cstate->dim_layer[i].stage);
-			SDE_ERROR("display: %dx%d\n", GET_MODE_WIDTH(is_fsc, mode),
-					GET_MODE_HEIGHT(is_fsc, mode));
+			SDE_ERROR("display: %dx%d\n", mode->hdisplay,
+					mode->vdisplay);
 			rc = -E2BIG;
 			goto end;
 		}
@@ -5357,8 +5364,6 @@ static int _sde_crtc_check_plane_layout(struct drm_crtc *crtc,
 
 		pstate = to_sde_plane_state(plane_state);
 		layout_split = crtc_state->mode.hdisplay >> 1;
-		if (sde_crtc_is_connector_fsc(to_sde_crtc_state(crtc_state)))
-			layout_split /= PLANAR_RGB_PACKING;
 
 		if (plane_state->crtc_x >= layout_split) {
 			plane_state->crtc_x -= layout_split;
@@ -5942,6 +5947,9 @@ static void sde_crtc_install_properties(struct drm_crtc *crtc,
 	}
 
 	sde_crtc_setup_capabilities_blob(info, catalog);
+
+	/* mi properties */
+	mi_sde_crtc_install_properties(&sde_crtc->property_info);
 
 	msm_property_install_range(&sde_crtc->property_info,
 		"input_fence_timeout", 0x0, 0,
@@ -7134,15 +7142,14 @@ void sde_crtc_static_img_control(struct drm_crtc *crtc,
 		return;
 	}
 
+	if (test_bit(SDE_MDP_LLCC_DISP_LR, &sde_kms->catalog->mdp[0].features)) {
+		SDE_DEBUG("Cache mode is directly programmed without state machine\n");
+		return;
+	}
+
 	sde_crtc = to_sde_crtc(crtc);
 	if (sde_crtc->cache_state == state)
 		return;
-
-	if (test_bit(SDE_MDP_LLCC_DISP_LR, &sde_kms->catalog->mdp[0].features)) {
-		SDE_DEBUG("Cache state is directly programmed to frame read\n");
-		state = CACHE_STATE_FRAME_READ;
-		goto end;
-	}
 
 	switch (state) {
 	case CACHE_STATE_NORMAL:
@@ -7167,7 +7174,6 @@ void sde_crtc_static_img_control(struct drm_crtc *crtc,
 		return;
 	}
 
-end:
 	sde_crtc->cache_state = state;
 	drm_atomic_crtc_for_each_plane(plane, crtc)
 		sde_plane_static_img_control(plane, state);
@@ -7530,6 +7536,7 @@ static int _sde_crtc_event_disable(struct sde_kms *kms,
 		return ret;
 	}
 
+	mutex_lock(&crtc->crtc_lock);
 	ret = node->func(crtc_drm, false, &node->irq);
 	if (ret) {
 		spin_lock_irqsave(&crtc->spin_lock, flags);
@@ -7538,6 +7545,7 @@ static int _sde_crtc_event_disable(struct sde_kms *kms,
 	} else {
 		kfree(node);
 	}
+	mutex_unlock(&crtc->crtc_lock);
 
 	pm_runtime_put_sync(crtc_drm->dev->dev);
 	return ret;
