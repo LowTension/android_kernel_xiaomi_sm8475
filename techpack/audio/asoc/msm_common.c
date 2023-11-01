@@ -3,6 +3,7 @@
  * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
+#define DEBUG
 #include <linux/gpio.h>
 #include <linux/of_gpio.h>
 #include <linux/platform_device.h>
@@ -42,8 +43,9 @@ struct snd_card_pdata {
 #define DIR_SZ 10
 
 #define MAX_CODEC_DAI 8
+//NEED CHK #define TDM_SLOT_WIDTH_BITS 32
 #define TDM_SLOT_WIDTH_BITS 32
-#define TDM_MAX_SLOTS 8
+#define TDM_MAX_SLOTS 4
 #define MI2S_NUM_CHANNELS 2
 
 #define SAMPLING_RATE_44P1KHZ   44100
@@ -412,7 +414,7 @@ int msm_common_snd_hw_params(struct snd_pcm_substream *substream,
 
 				intf_clk_cfg.clk_id = ret;
 				intf_clk_cfg.clk_freq_in_hz = rate * slot_width * slots;
-				intf_clk_cfg.clk_attri = pdata->tdm_clk_attribute[index];
+			        intf_clk_cfg.clk_attri = CLOCK_ATTRIBUTE_INVERT_COUPLE_NO;
 				intf_clk_cfg.clk_root = 0;
 
 				if (pdata->is_audio_hw_vote_required[index]  &&
@@ -426,6 +428,7 @@ int msm_common_snd_hw_params(struct snd_pcm_substream *substream,
 				}
 				pr_debug("%s: clk_id :%d clk freq %d\n", __func__,
 					intf_clk_cfg.clk_id, intf_clk_cfg.clk_freq_in_hz);
+                                pr_debug("clk_attri %d", intf_clk_cfg.clk_attri);
 				ret = audio_prm_set_lpass_clk_cfg(&intf_clk_cfg, 1);
 				if (ret < 0) {
 					pr_err("%s: prm lpass tdm clk cfg set failed ret %d\n",
@@ -601,7 +604,7 @@ void msm_common_snd_shutdown(struct snd_pcm_substream *substream)
 	}
 }
 
-static void msm_audio_add_qos_request(void)
+static void msm_audio_add_qos_request()
 {
 	int num_req = 0;
 	int cpu = 0;
@@ -642,7 +645,7 @@ static void msm_audio_add_qos_request(void)
 	}
 }
 
-static void msm_audio_remove_qos_request(void)
+static void msm_audio_remove_qos_request()
 {
 	int cpu = 0;
 	int ret = 0;

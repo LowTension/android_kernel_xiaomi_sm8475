@@ -9,7 +9,7 @@ endif
 ifeq ($(KERNEL_BUILD), 1)
 	# These are configurable via Kconfig for kernel-based builds
 	# Need to explicitly configure for Android-based builds
-	AUDIO_BLD_DIR := $(srctree)
+	AUDIO_BLD_DIR := $(shell pwd)/kernel/msm-5.4
 	AUDIO_ROOT := $(AUDIO_BLD_DIR)/techpack/audio
 endif
 
@@ -25,7 +25,7 @@ ifeq ($(CONFIG_SND_SOC_AUTO), y)
 		INCS    +=  -include $(AUDIO_ROOT)/config/sa6155autoconf.h
 	endif
 else
-ifeq (0, 0)
+ifeq ($(KERNEL_BUILD), 0)
 	ifeq ($(CONFIG_ARCH_SM8150), y)
 		ifdef CONFIG_SND_SOC_SA8155
 			include $(AUDIO_ROOT)/config/sa8155auto.conf
@@ -236,6 +236,14 @@ CDEFINES +=	-DANI_LITTLE_BYTE_ENDIAN \
 		-Werror\
 		-D__linux__
 
+ifneq (,$(filter $(TARGET_PRODUCT), ziyi))
+	CDEFINES += -DCONFIG_TARGET_PRODUCT_ZIYI
+endif
+
+ifneq (,$(filter $(TARGET_PRODUCT), yudi))
+        CDEFINES += -DCONFIG_TARGET_PRODUCT_YUDI
+endif
+
 KBUILD_CPPFLAGS += $(CDEFINES)
 
 # Currently, for versions of gcc which support it, the kernel Makefile
@@ -259,8 +267,10 @@ ifeq ($(KERNEL_BUILD), 1)
 	obj-y	+= lpass-cdc/
 	obj-y	+= wsa883x/
 	obj-y	+= rouleur/
+	obj-y	+= cs35l43/
 	obj-y	+= aw882xx/
 endif
+
 # Module information used by KBuild framework
 obj-$(CONFIG_WCD9XXX_CODEC_CORE) += wcd_core_dlkm.o
 obj-$(CONFIG_WCD9XXX_CODEC_CORE_V2) += wcd_core_dlkm.o
@@ -298,3 +308,6 @@ hdmi_dlkm-y := $(HDMICODEC_OBJS)
 
 obj-$(CONFIG_SND_SWR_HAPTICS) += swr_haptics_dlkm.o
 swr_haptics_dlkm-y := $(SWR_HAP_OBJS)
+
+# inject some build related information
+DEFINES += -DBUILD_TIMESTAMP=\"$(shell date -u +'%Y-%m-%dT%H:%M:%SZ')\"

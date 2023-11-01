@@ -6,10 +6,12 @@ else
 	KERNEL_BUILD := 0
 endif
 
+ccflags-y += -I$(srctree)/drivers/misc/hwid/
+
 ifeq ($(KERNEL_BUILD), 1)
 	# These are configurable via Kconfig for kernel-based builds
 	# Need to explicitly configure for Android-based builds
-	AUDIO_BLD_DIR := $(srctree)
+	AUDIO_BLD_DIR := $(shell pwd)/kernel/msm-5.4
 	AUDIO_ROOT := $(AUDIO_BLD_DIR)/techpack/audio
 endif
 
@@ -25,7 +27,7 @@ ifeq ($(CONFIG_SND_SOC_AUTO), y)
 		INCS    +=  -include $(AUDIO_ROOT)/config/sa6155autoconf.h
 	endif
 else
-ifeq (0, 0)
+ifeq ($(KERNEL_BUILD), 0)
 	ifeq ($(CONFIG_ARCH_SM8150), y)
 		ifdef CONFIG_SND_SOC_SA8155
 			include $(AUDIO_ROOT)/config/sa8155auto.conf
@@ -213,6 +215,58 @@ CDEFINES +=	-DANI_LITTLE_BYTE_ENDIAN \
 		-Werror\
 		-D__linux__
 
+ifneq (,$(filter $(TARGET_PRODUCT), zeus))
+	CDEFINES += -DCONFIG_TARGET_PRODUCT_ZEUS
+endif
+
+ifneq (,$(filter $(TARGET_PRODUCT), thor))
+	CDEFINES += -DCONFIG_TARGET_PRODUCT_THOR
+endif
+
+ifneq (,$(filter $(TARGET_PRODUCT), cupid))
+	CDEFINES += -DCONFIG_TARGET_PRODUCT_CUPID
+endif
+
+ifneq (,$(filter $(TARGET_PRODUCT), ingres))
+	CDEFINES += -DCONFIG_TARGET_PRODUCT_INGRES
+endif
+
+ifneq (,$(filter $(TARGET_PRODUCT), zizhan))
+	CDEFINES += -DCONFIG_TARGET_PRODUCT_ZIZHAN
+endif
+
+ifneq (,$(filter $(TARGET_PRODUCT), unicorn))
+	CDEFINES += -DCONFIG_TARGET_PRODUCT_UNICORN
+endif
+
+ifneq (,$(filter $(TARGET_PRODUCT), ziyi))
+	CDEFINES += -DCONFIG_TARGET_PRODUCT_ZIYI
+endif
+
+ifneq (,$(filter $(TARGET_PRODUCT), mayfly))
+	CDEFINES += -DCONFIG_TARGET_PRODUCT_MAYFLY
+endif
+
+ifneq (,$(filter $(TARGET_PRODUCT), diting))
+	CDEFINES += -DCONFIG_TARGET_PRODUCT_DITING
+endif
+
+ifneq (,$(filter $(TARGET_PRODUCT), mondrian))
+	CDEFINES += -DCONFIG_TARGET_PRODUCT_MONDRIAN
+endif
+
+ifneq (,$(filter $(TARGET_PRODUCT), marble))
+	CDEFINES += -DCONFIG_TARGET_PRODUCT_MARBLE
+endif
+
+ifneq (,$(filter $(TARGET_PRODUCT), yudi))
+	CDEFINES += -DCONFIG_TARGET_PRODUCT_YUDI
+endif
+
+ifneq (,$(filter $(TARGET_PRODUCT), garnet))
+	CDEFINES += -DCONFIG_TARGET_PRODUCT_GARNET
+endif
+
 KBUILD_CPPFLAGS += $(CDEFINES)
 
 # Currently, for versions of gcc which support it, the kernel Makefile
@@ -270,3 +324,6 @@ machine_dlkm-y := $(MACHINE_OBJS)
 
 obj-$(CONFIG_SND_SOC_SDX) += machine_dlkm.o
 machine_dlkm-y := $(MACHINE_OBJS)
+
+# inject some build related information
+DEFINES += -DBUILD_TIMESTAMP=\"$(shell date -u +'%Y-%m-%dT%H:%M:%SZ')\"

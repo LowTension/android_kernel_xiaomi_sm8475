@@ -9,7 +9,7 @@ endif
 ifeq ($(KERNEL_BUILD), 1)
 	# These are configurable via Kconfig for kernel-based builds
 	# Need to explicitly configure for Android-based builds
-	AUDIO_BLD_DIR := $(srctree)
+	AUDIO_BLD_DIR := $(shell pwd)/kernel/msm-5.4
 	AUDIO_ROOT := $(AUDIO_BLD_DIR)/techpack/audio
 endif
 
@@ -25,7 +25,7 @@ ifeq ($(CONFIG_SND_SOC_AUTO), y)
 		INCS    +=  -include $(AUDIO_ROOT)/config/sa6155autoconf.h
 	endif
 else
-ifeq (0, 0)
+ifeq ($(KERNEL_BUILD), 0)
 	ifeq ($(CONFIG_ARCH_SM8150), y)
 		ifdef CONFIG_SND_SOC_SA8155
 			include $(AUDIO_ROOT)/config/sa8155auto.conf
@@ -221,3 +221,6 @@ swr_ctrl_dlkm-y := $(SWR_CTRL_OBJS)
 
 obj-$(CONFIG_WCD_SPI_AC) += wcd_spi_acc_ctl_dlkm.o
 wcd_spi_acc_ctl_dlkm-y := $(WCD_SPI_ACC_CTL_OBJS)
+
+# inject some build related information
+DEFINES += -DBUILD_TIMESTAMP=\"$(shell date -u +'%Y-%m-%dT%H:%M:%SZ')\"

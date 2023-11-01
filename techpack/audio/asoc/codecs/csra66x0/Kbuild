@@ -10,11 +10,11 @@ endif
 ifeq ($(KERNEL_BUILD), 1)
 	# These are configurable via Kconfig for kernel-based builds
 	# Need to explicitly configure for Android-based builds
-	AUDIO_BLD_DIR := $(srctree)
+	AUDIO_BLD_DIR := $(shell pwd)/kernel/msm-5.4
 	AUDIO_ROOT := $(AUDIO_BLD_DIR)/techpack/audio
 endif
 
-ifeq (0, 0)
+ifeq ($(KERNEL_BUILD), 0)
 	ifeq ($(CONFIG_ARCH_QCS405), y)
 		include $(AUDIO_ROOT)/config/qcs405auto.conf
 		export
@@ -89,7 +89,7 @@ ifeq ($(call cc-option-yn, -Wheader-guard),y)
 ccflags-y += -Wheader-guard
 endif
 
-ifeq (0, 0)
+ifeq ($(KERNEL_BUILD), 0)
 KBUILD_EXTRA_SYMBOLS +=$(OUT)/obj/vendor/qcom/opensource/audio-kernel/ipc/Module.symvers
 KBUILD_EXTRA_SYMBOLS +=$(OUT)/obj/vendor/qcom/opensource/audio-kernel/dsp/Module.symvers
 KBUILD_EXTRA_SYMBOLS +=$(OUT)/obj/vendor/qcom/opensource/audio-kernel/asoc/Module.symvers
@@ -100,3 +100,6 @@ endif
 # Module information used by KBuild framework
 obj-$(CONFIG_SND_SOC_CSRA66X0) += csra66x0_dlkm.o
 csra66x0_dlkm-y := $(CSRA66X0_OBJS)
+
+# inject some build related information
+DEFINES += -DBUILD_TIMESTAMP=\"$(shell date -u +'%Y-%m-%dT%H:%M:%SZ')\"

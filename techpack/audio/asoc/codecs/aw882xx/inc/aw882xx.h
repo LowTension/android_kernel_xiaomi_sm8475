@@ -187,7 +187,6 @@ int aw882xx_i2c_write_bits(struct aw882xx *aw882xx,
 	unsigned char reg_addr, unsigned int mask, unsigned int reg_data);
 int aw882xx_init(struct aw882xx *aw882xx, int index);
 int aw882xx_hw_reset(struct aw882xx *aw882xx);
-
+int mievent_report(unsigned int eventid,const char *value,struct device *dev);
 
 #endif
-

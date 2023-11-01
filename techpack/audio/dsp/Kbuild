@@ -9,7 +9,7 @@ endif
 ifeq ($(KERNEL_BUILD), 1)
 	# These are configurable via Kconfig for kernel-based builds
 	# Need to explicitly configure for Android-based builds
-	AUDIO_BLD_DIR := $(srctree)
+	AUDIO_BLD_DIR := $(shell pwd)/kernel/msm-5.4
 	AUDIO_ROOT := $(AUDIO_BLD_DIR)/techpack/audio
 endif
 
@@ -25,7 +25,7 @@ ifeq ($(CONFIG_SND_SOC_AUTO), y)
 		INCS    +=  -include $(AUDIO_ROOT)/config/sa6155autoconf.h
 	endif
 else
-ifeq (0, 0)
+ifeq ($(KERNEL_BUILD), 0)
 	ifeq ($(CONFIG_ARCH_SM6150), y)
 		ifdef CONFIG_SND_SOC_SA6155
 			include $(AUDIO_ROOT)/config/sa6155auto.conf
@@ -181,6 +181,9 @@ ifdef CONFIG_DIGITAL_CDC_RSC_MGR
 	SPF_CORE_OBJS += digital-cdc-rsc-mgr.o
 endif
 
+ifneq (,$(filter $(TARGET_PRODUCT), yudi))
+	CDEFINES += -DCONFIG_MMHARDWARE_DETECTION
+endif
 
 LINUX_INC +=	-Iinclude/linux
 
@@ -253,3 +256,6 @@ audpkt_ion_dlkm-y := $(AUDIO_PKT_ION)
 
 obj-$(CONFIG_VOICE_MHI) += voice_mhi_dlkm.o
 voice_mhi_dlkm-y := $(VOICE_MHI)
+
+# inject some build related information
+DEFINES += -DBUILD_TIMESTAMP=\"$(shell date -u +'%Y-%m-%dT%H:%M:%SZ')\"
