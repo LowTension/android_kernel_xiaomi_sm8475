@@ -75,3 +75,4 @@ obj-$(CONFIG_LDO_WL2866D)	+= wl2866d.o
 obj-$(CONFIG_KINECTICS_XR_NORDIC) += kxrctrl/
 obj-y				+= hwid/
 obj-$(CONFIG_MMHARDWARE_DETECTION) += mmhardware_sysfs.o
+obj-$(CONFIG_PERF_HELPER)       += perf_helper.o

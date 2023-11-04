@@ -527,6 +527,12 @@ config MMHARDWARE_DETECTION
 	help
 	  This adds support for mmhardware detection
 
+config PERF_HELPER
+	tristate "Perf helper"
+	default n
+	help
+	  this module support record perf messages.
+
 source "drivers/misc/rtimd-i2c/Kconfig"
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
