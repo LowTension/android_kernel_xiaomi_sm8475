@@ -147,6 +147,7 @@ struct gf_dev {
 #endif
 	struct pinctrl *pinctrl;
 	struct pinctrl_state *gf_default_state;
+	struct pinctrl_state *gf_rst_state;
 };
 
 int gf_parse_dts(struct gf_dev *gf_dev);

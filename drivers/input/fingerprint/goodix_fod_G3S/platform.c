@@ -24,6 +24,7 @@
 #endif
 
 #define GOODIX_FINGERPRINT_PINCTRL_DEFAULT_STATE "fingerprint_goodix_default"
+#define GOODIX_FINGERPRINT_PINCTRL_RST_STATE     "fingerprint_goodix_rst"
 
 static int gf_pinctrl_init(struct gf_dev *gf_dev)
 {
@@ -42,9 +43,15 @@ static int gf_pinctrl_init(struct gf_dev *gf_dev)
 		ret = PTR_ERR(gf_dev->gf_default_state);
 		goto err_pinctrl_lookup;
 	}
-
+	gf_dev->gf_rst_state = pinctrl_lookup_state(gf_dev->pinctrl, GOODIX_FINGERPRINT_PINCTRL_RST_STATE);
+	if (IS_ERR_OR_NULL(gf_dev->gf_rst_state)) {
+		pr_info("Pin state[rst] not found\n");
+		ret = PTR_ERR(gf_dev->gf_rst_state);
+		goto err_pinctrl_lookup;
+	}
 	pr_info("gf_pinctrl_init done\n");
 	return 0;
+
 err_pinctrl_lookup:
 	if (gf_dev->pinctrl) {
 		devm_pinctrl_put(gf_dev->pinctrl);
@@ -52,6 +59,7 @@ err_pinctrl_lookup:
 err_pinctrl_get:
 	gf_dev->pinctrl = NULL;
 	gf_dev->gf_default_state = NULL;
+	gf_dev->gf_rst_state = NULL;
 	return ret;
 }
 

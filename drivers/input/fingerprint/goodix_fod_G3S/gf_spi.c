@@ -482,6 +482,11 @@ static long gf_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 	case GF_IOC_RESET:
 		pr_debug("%s GF_IOC_RESET.\n", __func__);
+		if (gf_dev->pinctrl && gf_dev->gf_rst_state) {
+			if (pinctrl_select_state(gf_dev->pinctrl, gf_dev->gf_rst_state) < 0) {
+				pr_err("Set gf rst state error\n");
+			}
+		}
 		gf_hw_reset(gf_dev, 3);
 		if (gf_dev->pinctrl && gf_dev->gf_default_state) {
 			if (pinctrl_select_state(gf_dev->pinctrl, gf_dev->gf_default_state) < 0) {
