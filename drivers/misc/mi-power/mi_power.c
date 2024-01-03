@@ -1328,7 +1328,7 @@ register_class_err:
     return ret;
 }
 #endif
-static void __exit pm_debug_exit()
+static void __exit pm_debug_exit(void)
 {
 	int ret = 0;
 
