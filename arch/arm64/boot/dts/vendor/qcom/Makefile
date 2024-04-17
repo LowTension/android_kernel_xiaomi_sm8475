@@ -1,4 +1,20 @@
 ifneq ($(CONFIG_ARCH_QTI_VM), y)
+ifeq ($(CONFIG_BOARD_XIAOMI),y)
+ifeq ($(CONFIG_BOARD_XIAOMI_SM8475),y)
+ifeq ($(CONFIG_BUILD_ARM64_DT_OVERLAY),y)
+
+ifeq ($(CONFIG_BOARD_MONDRIAN),y)
+dtbo-$(CONFIG_BOARD_MONDRIAN) += \
+                mondrian-sm8475-pm8008-overlay.dtbo
+mondrian-sm8475-pm8008-overlay.dtbo-base := cape.dtb cape-v2.dtb capep.dtb
+endif
+
+endif
+endif
+endif
+
+else
+ifneq ($(CONFIG_ARCH_QTI_VM), y)
 ifeq ($(CONFIG_BUILD_ARM64_DT_OVERLAY),y)
 dtbo-$(CONFIG_ARCH_LAHAINA) += lahaina-rumi-overlay.dtbo \
 	lahaina-mtp-overlay.dtbo \
@@ -284,7 +300,6 @@ dtbo-$(CONFIG_ARCH_CAPE) += cape-mtp-pm8008-overlay.dtbo \
 	thor-sm8475-pm8008-overlay.dtbo \
 	zizhan-sm8475-pm8008-overlay.dtbo \
 	mayfly-sm8475-pm8008-overlay.dtbo \
-	mondrian-sm8475-pm8008-overlay.dtbo \
 	yudi-sm8475-pm8008-overlay.dtbo \
 	ukee-mtp-pm8008-overlay.dtbo \
 	ukee-mtp-120fps-pm8008-overlay.dtbo \
@@ -300,7 +315,6 @@ unicorn-sm8475-pm8008-overlay.dtbo-base := cape.dtb cape-v2.dtb capep.dtb
 zizhan-sm8475-pm8008-overlay.dtbo-base := cape.dtb cape-v2.dtb capep.dtb
 thor-sm8475-pm8008-overlay.dtbo-base := cape.dtb cape-v2.dtb capep.dtb
 mayfly-sm8475-pm8008-overlay.dtbo-base := cape.dtb cape-v2.dtb capep.dtb
-mondrian-sm8475-pm8008-overlay.dtbo-base := cape.dtb cape-v2.dtb capep.dtb
 yudi-sm8475-pm8008-overlay.dtbo-base := cape.dtb cape-v2.dtb capep.dtb
 ukee-mtp-pm8008-overlay.dtbo-base := ukee.dtb
 ukee-mtp-120fps-pm8008-overlay.dtbo-base := ukee.dtb
@@ -547,6 +561,7 @@ dtb-$(CONFIG_ARCH_SM8150)       += sm8150-cdp.dtb \
         sa8155p-v2-adp-star.dtb \
         sa8155-v2-adp-air.dtb \
         sa8155p-v2-adp-air.dtb
+endif
 endif
 endif
 
