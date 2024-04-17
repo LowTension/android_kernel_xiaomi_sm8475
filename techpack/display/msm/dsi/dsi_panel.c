@@ -616,7 +616,7 @@ static int dsi_panel_wled_register(struct dsi_panel *panel,
 	return 0;
 }
 
-static int mipi_dsi_dcs_subtype_set_display_brightness(struct mipi_dsi_device *dsi,
+int mipi_dsi_dcs_subtype_set_display_brightness(struct mipi_dsi_device *dsi,
 	u32 bl_lvl, u32 bl_dcs_subtype)
 {
 	u16 brightness = (u16)bl_lvl;
@@ -631,7 +631,7 @@ static int mipi_dsi_dcs_subtype_set_display_brightness(struct mipi_dsi_device *d
 	return mipi_dsi_dcs_write(dsi, bl_dcs_subtype, payload, sizeof(payload));
 }
 
-static int dsi_panel_update_backlight(struct dsi_panel *panel,
+int dsi_panel_update_backlight(struct dsi_panel *panel,
 	u32 bl_lvl)
 {
 	int rc = 0;
