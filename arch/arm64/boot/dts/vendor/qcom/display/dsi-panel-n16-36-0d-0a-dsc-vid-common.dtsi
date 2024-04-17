@@ -1,0 +1,121 @@
+			qcom,mdss-dsi-off-command = [
+				05 00 00 00 15 00 02 28 00
+				05 00 00 00 78 00 02 10 00
+			];
+			qcom,mdss-dsi-off-command-state = "dsi_lp_mode";
+
+			mi,mdss-dsi-hbm-on-command = [
+				39 00 00 00 00 00 03 51 0F FF
+			];
+			mi,mdss-dsi-hbm-on-command-state = "dsi_hs_mode";
+
+			mi,mdss-dsi-hbm-off-command = [
+				39 00 00 00 00 00 03 51 07 FF
+			];
+			mi,mdss-dsi-hbm-off-command-state = "dsi_hs_mode";
+
+			mi,mdss-dsi-flat-mode-on-command = [
+				39 00 00 40 00 00 03 F0 AA 11
+				39 00 00 40 00 00 02 D5 13
+				39 00 00 00 00 00 03 F0 AA 00
+			];
+			mi,mdss-dsi-flat-mode-on-command-state = "dsi_hs_mode";
+
+			mi,mdss-dsi-flat-mode-off-command = [
+				39 00 00 40 00 00 03 F0 AA 11
+				39 00 00 40 00 00 02 D5 12
+				39 00 00 00 00 00 03 F0 AA 00
+			];
+			mi,mdss-dsi-flat-mode-off-command-state = "dsi_hs_mode";
+
+			mi,mdss-dsi-doze-hbm-command = [
+				15 00 00 00 00 00 02 6D 01
+			];
+			mi,mdss-dsi-doze-hbm-command-state = "dsi_hs_mode";
+
+			mi,mdss-dsi-doze-lbm-command = [
+				15 00 00 00 00 00 02 6D 00
+			];
+			mi,mdss-dsi-doze-lbm-command-state = "dsi_hs_mode";
+
+			mi,mdss-dsi-aod-enter-command = [
+				05 00 00 10 00 00 01 39
+			];
+			mi,mdss-dsi-aod-enter-command-state = "dsi_hs_mode";
+
+			mi,mdss-dsi-doze-hbm-nolp-command = [
+				39 00 00 00 00 00 03 51 00 FC
+			];
+			mi,mdss-dsi-doze-hbm-nolp-command-state = "dsi_hs_mode";
+
+			mi,mdss-dsi-doze-lbm-nolp-command = [
+				39 00 00 00 00 00 03 51 00 14
+			];
+			mi,mdss-dsi-doze-lbm-nolp-command-state = "dsi_hs_mode";
+
+			qcom,mdss-dsi-nolp-command = [
+				39 00 00 00 00 00 03 51 00 00
+			];
+			qcom,mdss-dsi-nolp-command-state = "dsi_hs_mode";
+
+			mi,mdss-dsi-local-hbm-normal-white-1000nit-command = [
+				39 00 00 00 00 00 03 51 07 FF
+				39 00 00 40 00 00 03 F0 AA 13
+				39 00 00 40 00 00 13 C5 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+				39 00 00 40 00 00 05 63 10 00 00 00
+				39 00 00 40 00 00 02 62 03
+				39 00 00 00 00 00 03 F0 AA 00
+			];
+			mi,mdss-dsi-local-hbm-normal-white-1000nit-command-update = <0x51 0 2>, <0xC5 2 18>, <0x63 3 4>;
+			mi,mdss-dsi-local-hbm-normal-white-1000nit-command-state = "dsi_hs_mode";
+
+			mi,mdss-dsi-local-hbm-normal-white-110nit-command = [
+				39 00 00 40 00 00 03 F0 AA 13
+				39 00 00 40 00 00 13 C5 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+				39 00 00 40 00 00 05 63 10 00 00 00
+				39 00 00 40 00 00 02 62 03
+				39 00 00 00 00 00 03 F0 AA 00
+			];
+			mi,mdss-dsi-local-hbm-normal-white-110nit-command-update = <0xC5 1 18>, <0x63 2 4>;
+			mi,mdss-dsi-local-hbm-normal-white-110nit-command-state = "dsi_hs_mode";
+
+			mi,mdss-dsi-local-hbm-normal-green-500nit-command = [
+				39 00 00 40 00 00 03 F0 AA 13
+				39 00 00 40 00 00 13 C5 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+				39 00 00 40 00 00 05 63 10 00 00 00
+				39 00 00 40 00 00 02 62 03
+				39 00 00 00 00 00 03 F0 AA 00
+			];
+			mi,mdss-dsi-local-hbm-normal-green-500nit-command-update = <0xC5 1 18>, <0x63 2 4>;
+			mi,mdss-dsi-local-hbm-normal-green-500nit-command-state = "dsi_hs_mode";
+
+			mi,mdss-dsi-local-hbm-off-to-normal-command = [
+				39 00 00 00 00 00 02 62 00
+			];
+			mi,mdss-dsi-local-hbm-off-to-normal-command-state = "dsi_hs_mode";
+
+			mi,mdss-dsi-local-hbm-hlpm-white-1000nit-command = [
+				/* nolp */
+				05 00 00 00 00 00 01 38
+				/* lhbm setting */
+				39 00 00 40 00 00 03 F0 AA 13
+				39 00 00 40 00 00 13 C5 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+				39 00 00 40 00 00 05 63 10 00 00 00
+				39 00 00 40 00 00 02 62 03
+				39 00 00 00 00 00 03 F0 AA 00
+			];
+			mi,mdss-dsi-local-hbm-hlpm-white-1000nit-command-update = <0xC5 2 18>, <0x63 3 4>;
+			mi,mdss-dsi-local-hbm-hlpm-white-1000nit-command-state = "dsi_hs_mode";
+
+			mi,mdss-dsi-local-hbm-hlpm-white-110nit-command = [
+				/* nolp */
+				05 00 00 00 00 00 01 38
+				/* lhbm setting */
+				39 00 00 40 00 00 03 F0 AA 13
+				39 00 00 40 00 00 13 C5 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+				39 00 00 40 00 00 05 63 10 00 00 00
+				39 00 00 40 00 00 02 62 03
+				39 00 00 00 00 00 03 F0 AA 00
+			];
+			mi,mdss-dsi-local-hbm-hlpm-white-110nit-command-update = <0xC5 2 18>, <0x63 3 4>;
+			mi,mdss-dsi-local-hbm-hlpm-white-110nit-command-state = "dsi_hs_mode";

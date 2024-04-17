@@ -1,0 +1,87 @@
+#include "cape-sde-display.dtsi"
+
+&dsi_m16t_36_02_0a_dsc_vid {
+	qcom,panel-supply-entries = <&dsi_panel_pwr_supply_m16t>;
+	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_dcs";
+	qcom,mdss-dsi-bl-min-level = <4>;
+	qcom,mdss-dsi-bl-max-level = <4095>;
+	qcom,mdss-brightness-max-level = <4095>;
+	qcom,mdss-brightness-init-level = <307>;
+	qcom,mdss-dsi-bl-inverted-dbv;
+	qcom,platform-reset-gpio = <&tlmm 0 0>;
+};
+
+&dsi_m16t_36_0d_0b_dsc_vid {
+	qcom,panel-supply-entries = <&dsi_panel_pwr_supply_0b_m16t>;
+	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_dcs";
+	qcom,mdss-dsi-bl-min-level = <4>;
+	qcom,mdss-dsi-bl-max-level = <4095>;
+	qcom,mdss-brightness-max-level = <4095>;
+	qcom,mdss-brightness-init-level = <307>;
+	qcom,mdss-dsi-bl-inverted-dbv;
+	qcom,platform-reset-gpio = <&tlmm 0 0>;
+};
+
+&L1D {
+    regulator-max-microvolt = <1250000>;
+};
+
+&dsi_r66451_amoled_video {
+	qcom,panel-supply-entries = <&dsi_panel_pwr_supply_m16t>;
+	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_dcs";
+	qcom,mdss-dsi-bl-min-level = <1>;
+	qcom,mdss-dsi-bl-max-level = <4095>;
+	qcom,mdss-brightness-max-level = <255>;
+	qcom,mdss-dsi-bl-inverted-dbv;
+	qcom,platform-reset-gpio = <&tlmm 0 0>;
+};
+
+&sde_dsi {
+	qcom,dsi-default-panel = <&dsi_r66451_amoled_video>;
+	vddio-supply = <&L12C>;
+	vddd-supply = <&L1D>;
+	vci-supply = <&L13C>;
+};
+
+&mdss_dsi0 {
+	mi,support-max-hs-timer;
+};
+
+&qupv3_se4_spi {
+	m16t-touch@0 {
+		panel = <&dsi_m16t_36_02_0a_dsc_vid &dsi_m16t_36_0d_0b_dsc_vid
+			&dsi_r66451_amoled_video>;
+	};
+};
+
+&soc {
+	thermal-message {
+		board-sensor = "VIRTUAL-SENSOR0";
+	};
+	thermal_screen: thermal-screen {
+		panel = <&dsi_m16t_36_02_0a_dsc_vid &dsi_m16t_36_0d_0b_dsc_vid
+		&dsi_r66451_amoled_video>;
+	};
+	charge_screen: charge-screen {
+		panel = <&dsi_m16t_36_02_0a_dsc_vid &dsi_m16t_36_0d_0b_dsc_vid
+		&dsi_r66451_amoled_video>;
+	};
+	fingerprint_screen: fingerprint-screen {
+		panel = <&dsi_m16t_36_02_0a_dsc_vid &dsi_m16t_36_0d_0b_dsc_vid
+		&dsi_r66451_amoled_video>;
+	};
+};
+
+&spmi_bus {
+	qcom,pm8350b@3 {
+		qcom,amoled-ecm@f900 {
+			display-panels = <&dsi_m16t_36_02_0a_dsc_vid &dsi_m16t_36_0d_0b_dsc_vid
+			&dsi_r66451_amoled_video>;
+		};
+	};
+};
+
+&mdss_mdp {
+        connectors = <&sde_dsi &smmu_sde_unsec &smmu_sde_sec &sde_wb &sde_rscc>;
+};
+
