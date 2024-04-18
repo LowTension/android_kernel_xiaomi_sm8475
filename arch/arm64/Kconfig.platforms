@@ -448,6 +448,12 @@ config BOARD_DITING
 	help
 	  This enables support for Xiaomi 12T Pro / Redmi K50 Ultra.
 
+config BOARD_UNICORN
+	bool "unicorn platform"
+	select BOARD_XIAOMI_SM8475
+	help
+	  This enables support for Xiaomi 12S Pro.
+
 endif
 
 endmenu
