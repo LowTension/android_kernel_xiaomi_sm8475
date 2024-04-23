@@ -15,6 +15,12 @@ dtbo-$(CONFIG_BOARD_DITING) += \
 diting-sm8475-pm8008-overlay.dtbo-base := cape.dtb cape-v2.dtb capep.dtb
 endif
 
+ifeq ($(CONFIG_BOARD_UNICORN),y)
+dtbo-$(CONFIG_BOARD_UNICORN) += \
+                unicorn-sm8475-pm8008-overlay.dtbo
+unicorn-sm8475-pm8008-overlay.dtbo-base := cape.dtb cape-v2.dtb capep.dtb
+endif
+
 endif
 endif
 endif
@@ -301,7 +307,6 @@ ifeq ($(CONFIG_BUILD_ARM64_DT_OVERLAY),y)
 dtbo-$(CONFIG_ARCH_CAPE) += cape-mtp-pm8008-overlay.dtbo \
         cape-mtp-120fps-pm8008-overlay.dtbo \
         cape-qrd-pm8008-overlay.dtbo \
-	unicorn-sm8475-pm8008-overlay.dtbo \
 	thor-sm8475-pm8008-overlay.dtbo \
 	zizhan-sm8475-pm8008-overlay.dtbo \
 	mayfly-sm8475-pm8008-overlay.dtbo \
@@ -315,7 +320,6 @@ dtbo-$(CONFIG_ARCH_CAPE) += cape-mtp-pm8008-overlay.dtbo \
 cape-mtp-pm8008-overlay.dtbo-base := cape.dtb cape-v2.dtb capep.dtb
 cape-mtp-120fps-pm8008-overlay.dtbo-base := cape.dtb cape-v2.dtb capep.dtb
 cape-qrd-pm8008-overlay.dtbo-base := cape.dtb cape-v2.dtb capep.dtb
-unicorn-sm8475-pm8008-overlay.dtbo-base := cape.dtb cape-v2.dtb capep.dtb
 zizhan-sm8475-pm8008-overlay.dtbo-base := cape.dtb cape-v2.dtb capep.dtb
 thor-sm8475-pm8008-overlay.dtbo-base := cape.dtb cape-v2.dtb capep.dtb
 mayfly-sm8475-pm8008-overlay.dtbo-base := cape.dtb cape-v2.dtb capep.dtb
