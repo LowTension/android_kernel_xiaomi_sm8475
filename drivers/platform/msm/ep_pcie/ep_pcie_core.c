@@ -85,6 +85,8 @@ static struct ep_pcie_clk_info_t
 	{NULL, "pcie_pipe_clk_mux", 0, false},
 	{NULL, "pcie_pipe_clk_ext_src", 0, false},
 	{NULL, "pcie_0_ref_clk_src", 0, false},
+	{NULL, "pcie_aggre_noc_pcie_sf_axi_clk", 0, false},
+	{NULL, "pcie_cfg_noc_pcie_anoc_ahb_clk", 0, false},
 };
 
 static struct ep_pcie_clk_info_t
