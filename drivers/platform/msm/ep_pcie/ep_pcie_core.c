@@ -90,6 +90,7 @@ static struct ep_pcie_clk_info_t
 static struct ep_pcie_clk_info_t
 	ep_pcie_pipe_clk_info[EP_PCIE_MAX_PIPE_CLK] = {
 	{NULL, "pcie_pipe_clk", 62500000, true},
+	{NULL, "pcie_pipe_div2_clk", 0, false},
 };
 
 static struct ep_pcie_reset_info_t
