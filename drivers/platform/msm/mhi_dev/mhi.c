@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /* Copyright (c) 2015-2021, The Linux Foundation. All rights reserved.*/
-/* Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved.*/
+/* Copyright (c) 2024-2025 Qualcomm Innovation Center, Inc. All rights reserved.*/
 
 /*
  * MSM MHI device core driver.
@@ -4158,6 +4158,11 @@ static void mhi_dev_cap_init(struct mhi_dev *dev)
 
 	if (!cap_populated)
 		mhi_dev_configure_time_sync_cap(dev, mhi_first_cap_offs);
+
+	cap_populated = mhi_dev_is_cap_populated(dev, mhi_first_cap_offs,
+						 MHI_DEV_MAX_TRB_LEN_CAP_ID);
+	if (!cap_populated)
+		mhi_dev_configure_max_trb_len(dev);
 }
 
 static int mhi_deinit(struct mhi_dev *mhi)

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /* Copyright (c) 2015,2017-2021, The Linux Foundation. All rights reserved.*/
-/* Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved.*/
+/* Copyright (c) 2024-2025 Qualcomm Innovation Center, Inc. All rights reserved.*/
 
 #include <linux/kernel.h>
 #include <linux/of.h>
@@ -745,6 +745,16 @@ void mhi_dev_configure_time_sync_cap(struct mhi_dev *dev, u32 mhi_first_cap_offs
 				MHI_DEV_QTIMER_TIME_SYNC_CAP_ID) + TIME_CFG_OFFSET, 0);
 }
 EXPORT_SYMBOL_GPL(mhi_dev_configure_time_sync_cap);
+
+void mhi_dev_configure_max_trb_len(struct mhi_dev *dev)
+{
+	u32 mhi_first_cap_offs;
+
+	mhi_dev_mmio_read(dev, MISCOFF, &mhi_first_cap_offs);
+	mhi_dev_mmio_write(dev, mhi_dev_add_cap(dev, MHI_ABS_OFFSET(mhi_first_cap_offs),
+			   MHI_DEV_MAX_TRB_LEN_CAP_ID) + MAX_TRB_LEN_CFG_OFFS, MAX_TRB_LEN);
+}
+EXPORT_SYMBOL_GPL(mhi_dev_configure_max_trb_len);
 
 int mhi_dev_backup_mmio(struct mhi_dev *dev)
 {

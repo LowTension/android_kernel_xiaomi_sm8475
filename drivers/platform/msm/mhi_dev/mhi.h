@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /* Copyright (c) 2015-2021, The Linux Foundation. All rights reserved.*/
-/* Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved.*/
+/* Copyright (c) 2024-2025 Qualcomm Innovation Center, Inc. All rights reserved.*/
 
 #ifndef __MHI_H
 #define __MHI_H
@@ -274,6 +274,9 @@ struct mhi_config {
 #define MHI_NEXT_PTR_MASK		GENMASK(23, 12)
 #define TIME_CFG_OFFSET			4
 #define PER_CAPABILITY_OFFSET		0x10
+#define MAX_TRB_LEN_BITS		24
+#define MAX_TRB_LEN			((0x1 << MAX_TRB_LEN_BITS) - 1)
+#define MAX_TRB_LEN_CFG_OFFS		0x4
 
 /* Returns the offset from BAR address to the MHI register */
 #define MHI_BAR_OFFSET(x)		(x - 0x100)
@@ -1101,6 +1104,14 @@ bool mhi_dev_is_cap_populated(struct mhi_dev *dev, u32 mhi_first_cap_offs,
  * @mhi_first_cap_offs: First capability offset
  */
 void mhi_dev_configure_time_sync_cap(struct mhi_dev *dev, u32 mhi_first_cap_offs);
+
+/**
+ * mhi_dev_configure_max_trb_len - Configure max TRB length, if not programmed
+ * by PBL.
+ *
+ * @dev:	MHI Dev structure.
+ */
+void mhi_dev_configure_max_trb_len(struct mhi_dev *dev);
 
 /**
  * mhi_dev_update_ner() - Update the number of event rings (NER) programmed by
