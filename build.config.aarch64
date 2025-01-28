@@ -1,4 +1,3 @@
-# set arch to arm64
 ARCH=arm64
 
 LLVM_IAS=1
