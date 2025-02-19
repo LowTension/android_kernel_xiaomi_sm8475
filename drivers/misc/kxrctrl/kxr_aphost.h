@@ -7,7 +7,7 @@
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  *
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/pinctrl/consumer.h>
@@ -53,7 +53,9 @@ struct kxr_aphost {
 #endif
 	struct mutex power_mutex;
 	struct mutex gpio_mutex;
+	struct completion sync_completion;
 	spinlock_t lock;
+	u32 busy;
 	unsigned long flags;
 	bool pwr_enabled;
 	bool qtimer_enable;

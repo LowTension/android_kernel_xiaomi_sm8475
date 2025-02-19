@@ -7,13 +7,17 @@
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  *
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include "kxr_aphost.h"
 #include <linux/regulator/consumer.h>
 #include <linux/spinlock.h>
 #include <asm/arch_timer.h>
+
+#define QC_TIME_SYNC_TIMEOUT_MS		800
+#define QC_TIME_SYNC_TIMEOUT_US		(QC_TIME_SYNC_TIMEOUT_MS * 1000UL)
+#define QC_TIME_SYNC_TIMEOUT_NS		(QC_TIME_SYNC_TIMEOUT_US * 1000UL)
 
 #define KXR_APHOST_DRV_NAME			"nordic,spicontroller"
 //#define CONFIG_QTIMER
@@ -210,9 +214,10 @@ enum kxr_spi_power_mode kxr_aphost_power_mode_get(void)
 
 uint64_t kxr_aphost_gpio_unlock(struct kxr_aphost *aphost)
 {
-	spin_lock_irqsave(&aphost->lock, aphost->flags);
+	mutex_lock(&aphost->gpio_mutex);
 	gpiod_set_value(aphost->gpio_ledr, 0);
-	spin_unlock_irqrestore(&aphost->lock, aphost->flags);
+	aphost->busy = false;
+	complete(&aphost->sync_completion);
 	mutex_unlock(&aphost->gpio_mutex);
 
 	return true;
@@ -226,10 +231,31 @@ uint64_t kxr_aphost_read_time(struct kxr_aphost *aphost, void __user *buff, int 
 #else
 	uint64_t b_time;
 #endif
-	uint64_t time;
+	static uint64_t time;
+	static uint64_t delta;
 
 	if (aphost->gpio_ledr != NULL) {
 		mutex_lock(&aphost->gpio_mutex);
+
+		while (aphost->busy) {
+			delta = ktime_to_ns(ktime_get_boottime()) - time;
+
+			if (delta < QC_TIME_SYNC_TIMEOUT_NS) {
+				unsigned long timeout = nsecs_to_jiffies(
+						QC_TIME_SYNC_TIMEOUT_NS - delta);
+
+				mutex_unlock(&aphost->gpio_mutex);
+				wait_for_completion_timeout(&aphost->sync_completion, timeout);
+				mutex_lock(&aphost->gpio_mutex);
+			} else {
+				break;
+			}
+		}
+
+		WRITE_ONCE(aphost->sync_completion.done, 0);
+		gpiod_set_value(aphost->gpio_ledr, 0);
+		usleep_range(100, 200);
+
 		spin_lock_irqsave(&aphost->lock, aphost->flags);
 #ifdef CONFIG_QTIMER
 		//LINUX_VERSION_CODE < KERNEL_VERSION(5, 2, 0)
@@ -243,6 +269,8 @@ uint64_t kxr_aphost_read_time(struct kxr_aphost *aphost, void __user *buff, int 
 
 		gpiod_set_value(aphost->gpio_ledr, 1);
 		spin_unlock_irqrestore(&aphost->lock, aphost->flags);
+		aphost->busy = true;
+		mutex_unlock(&aphost->gpio_mutex);
 		rc = copy_to_user(buff, &time, length);
 		if (rc > 0) {
 			pr_err("Failed to copy_to_user: %ld\n", rc);
@@ -293,6 +321,7 @@ static int kxr_aphost_driver_probe(struct spi_device *spi)
 	aphost->xfer.spi = spi;
 	mutex_init(&(aphost->power_mutex));
 	mutex_init(&(aphost->gpio_mutex));
+	init_completion(&aphost->sync_completion);
 
 	ret = kxr_aphost_init_pinctrl(aphost);
 	if (ret < 0) {
