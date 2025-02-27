@@ -8,6 +8,7 @@
   __pmd_trans_huge_lock
   __traceiter_android_rvh_dma_buf_stats_teardown
   __traceiter_android_vh_tune_fault_around_bytes
+  __traceiter_android_vh_io_statistics
   __traceiter_android_vh_do_swap_page_spf
   __traceiter_android_vh_should_fault_around
   __traceiter_android_vh_do_read_fault
@@ -15,6 +16,7 @@
   __traceiter_android_vh_filemap_map_pages
   __tracepoint_android_rvh_dma_buf_stats_teardown
   __tracepoint_android_vh_tune_fault_around_bytes
+  __tracepoint_android_vh_io_statistics
   __tracepoint_android_vh_do_swap_page_spf
   __tracepoint_android_vh_should_fault_around
   __tracepoint_android_vh_do_read_fault
