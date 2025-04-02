@@ -127,6 +127,14 @@ enum ep_pcie_link_status ep_pcie_get_linkstatus(struct ep_pcie_hw *phandle)
 }
 EXPORT_SYMBOL(ep_pcie_get_linkstatus);
 
+u32 ep_pcie_qtimer_cap_off(struct ep_pcie_hw *phandle)
+{
+	if (phandle)
+		return phandle->get_qtimer_off(phandle->private_data);
+	return -EINVAL;
+}
+EXPORT_SYMBOL_GPL(ep_pcie_qtimer_cap_off);
+
 int ep_pcie_config_outbound_iatu(struct ep_pcie_hw *phandle,
 				struct ep_pcie_iatu entries[],
 				u32 num_entries)

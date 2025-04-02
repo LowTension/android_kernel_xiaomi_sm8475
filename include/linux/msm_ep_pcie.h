@@ -118,6 +118,7 @@ struct ep_pcie_hw {
 	int (*register_event)(struct ep_pcie_register_event *reg);
 	int (*deregister_event)(void);
 	enum ep_pcie_link_status (*get_linkstatus)(void);
+	u32 (*get_qtimer_off)(void *dev);
 	int (*config_outbound_iatu)(struct ep_pcie_iatu entries[],
 				u32 num_entries);
 	int (*get_msi_config)(struct ep_pcie_msi_config *cfg);
@@ -198,6 +199,17 @@ int ep_pcie_deregister_event(struct ep_pcie_hw *phandle);
  * Return: status of PCIe link
  */
 enum ep_pcie_link_status ep_pcie_get_linkstatus(struct ep_pcie_hw *phandle);
+
+/*
+ * ep_pcie_qtimer_cap_off - Get qtimer offset in MHI capability.
+ * @phandle: PCIe endpoint HW driver handle
+ *
+ * This function reads PARF register to get qtimer offset in MHI
+ * capability
+ *
+ * Return: Qtimer offset in MHI capability
+ */
+u32 ep_pcie_qtimer_cap_off(struct ep_pcie_hw *phandle);
 
 /*
  * ep_pcie_config_outbound_iatu - configure outbound iATU.
