@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /* Copyright (c) 2015-2021, The Linux Foundation. All rights reserved.*/
-
+/* Copyright (c) 2025 Qualcomm Innovation Center, Inc. All rights reserved.*/
 /*
  * MSM PCIe endpoint core driver.
  */
@@ -1507,7 +1507,7 @@ static void ep_pcie_enumeration_complete(struct ep_pcie_dev_t *dev)
 	EP_PCIE_DBG(&ep_pcie_dev,
 		"PCIe V%d: register driver for device 0x%x\n",
 		ep_pcie_dev.rev, hw_drv.device_id);
-	ep_pcie_register_drv(&hw_drv);
+	ep_pcie_register_drv(&hw_drv, dev);
 	if (!dev->no_notify)
 		ep_pcie_notify_event(dev, EP_PCIE_EVENT_LINKUP);
 	else

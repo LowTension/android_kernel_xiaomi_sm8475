@@ -10,6 +10,7 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
+/* Copyright (c) 2025 Qualcomm Innovation Center, Inc. All rights reserved.*/
 
 #ifndef __MSM_EP_PCIE_H
 #define __MSM_EP_PCIE_H
@@ -113,7 +114,7 @@ struct ep_pcie_inactivity {
 struct ep_pcie_hw {
 	struct list_head node;
 	u32 device_id;
-	void **private_data;
+	void *private_data;
 	int (*register_event)(struct ep_pcie_register_event *reg);
 	int (*deregister_event)(void);
 	enum ep_pcie_link_status (*get_linkstatus)(void);
@@ -134,13 +135,13 @@ struct ep_pcie_hw {
 /*
  * ep_pcie_register_drv - register HW driver.
  * @phandle:	PCIe endpoint HW driver handle
- *
+ * @dev:	EP PCIe Global Handle
  * This function registers PCIe HW driver to PCIe endpoint service
  * layer.
  *
  * Return: 0 on success, negative value on error
  */
-int ep_pcie_register_drv(struct ep_pcie_hw *phandle);
+int ep_pcie_register_drv(struct ep_pcie_hw *phandle, void *dev);
 
 /*
  * ep_pcie_deregister_drv - deregister HW driver.
