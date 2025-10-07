@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2008-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include <uapi/linux/sched/types.h>
@@ -250,13 +250,28 @@ const char *kgsl_context_type(int type)
 	return "ANY";
 }
 
-/* Scheduled by kgsl_mem_entry_put_deferred() */
-static void _deferred_put(struct work_struct *work)
+/* Scheduled by kgsl_mem_entry_destroy_deferred() */
+static void _deferred_destroy(struct work_struct *work)
 {
 	struct kgsl_mem_entry *entry =
 		container_of(work, struct kgsl_mem_entry, work);
 
-	kgsl_mem_entry_put(entry);
+	kgsl_mem_entry_destroy(&entry->refcount);
+}
+
+static void kgsl_mem_entry_destroy_deferred(struct kref *kref)
+{
+	struct kgsl_mem_entry *entry =
+		container_of(kref, struct kgsl_mem_entry, refcount);
+
+	INIT_WORK(&entry->work, _deferred_destroy);
+	queue_work(kgsl_driver.lockless_workqueue, &entry->work);
+}
+
+void kgsl_mem_entry_put_deferred(struct kgsl_mem_entry *entry)
+{
+	if (entry)
+		kref_put(&entry->refcount, kgsl_mem_entry_destroy_deferred);
 }
 
 static struct kgsl_mem_entry *kgsl_mem_entry_create(void)
@@ -353,6 +368,7 @@ static void kgsl_destroy_ion(struct kgsl_memdesc *memdesc)
 	}
 
 	memdesc->sgt = NULL;
+	entry->priv_data = NULL;
 }
 
 static const struct kgsl_memdesc_ops kgsl_dmabuf_ops = {
@@ -677,11 +693,11 @@ int kgsl_context_init(struct kgsl_device_private *dev_priv,
 	if (id == -ENOSPC) {
 		/*
 		 * Before declaring that there are no contexts left try
-		 * flushing the event workqueue just in case there are
+		 * flushing the event worker just in case there are
 		 * detached contexts waiting to finish
 		 */
 
-		flush_workqueue(device->events_wq);
+		kthread_flush_worker(device->events_worker);
 		id = _kgsl_get_context_id(device);
 	}
 
@@ -2573,7 +2589,7 @@ static void gpumem_free_func(struct kgsl_device *device,
 			entry->memdesc.gpuaddr, entry->memdesc.size,
 			entry->memdesc.flags);
 
-	kgsl_mem_entry_put(entry);
+	kgsl_mem_entry_put_deferred(entry);
 }
 
 static long gpumem_free_entry_on_timestamp(struct kgsl_device *device,
@@ -2670,8 +2686,7 @@ static bool gpuobj_free_fence_func(void *priv)
 			entry->memdesc.gpuaddr, entry->memdesc.size,
 			entry->memdesc.flags);
 
-	INIT_WORK(&entry->work, _deferred_put);
-	queue_work(kgsl_driver.lockless_workqueue, &entry->work);
+	kgsl_mem_entry_put_deferred(entry);
 	return true;
 }
 
@@ -3877,6 +3892,8 @@ static int kgsl_update_fault_details(struct kgsl_context *context,
 		memcpy(&faults[fault.type], &fault, sizeof(fault));
 	}
 
+	mutex_lock(&context->fault_lock);
+
 	list_for_each_entry(fault_node, &context->faults, node) {
 		u32 fault_type = fault_node->type;
 
@@ -3894,11 +3911,14 @@ static int kgsl_update_fault_details(struct kgsl_context *context,
 			cur_idx[fault_type] * faults[fault_type].size),
 			fault_node->priv, size)) {
 			ret = -EFAULT;
-			goto err;
+			goto release_lock;
 		}
 
 		cur_idx[fault_type] += 1;
 	}
+
+release_lock:
+	mutex_unlock(&context->fault_lock);
 
 err:
 	kfree(faults);
@@ -3913,8 +3933,10 @@ static int kgsl_update_fault_count(struct kgsl_context *context,
 	struct kgsl_fault_node *fault_node;
 	int i, j;
 
+	mutex_lock(&context->fault_lock);
 	list_for_each_entry(fault_node, &context->faults, node)
 		faultcount[fault_node->type]++;
+	mutex_unlock(&context->fault_lock);
 
 	/* KGSL_FAULT_TYPE_NO_FAULT (i.e. 0) is not an actual fault type */
 	for (i = 0, j = 1; i < faultnents && j < KGSL_FAULT_TYPE_MAX; j++) {
@@ -5117,14 +5139,15 @@ int kgsl_device_platform_probe(struct kgsl_device *device)
 	if (status)
 		goto error;
 
-	device->events_wq = alloc_workqueue("kgsl-events",
-		WQ_UNBOUND | WQ_MEM_RECLAIM | WQ_SYSFS | WQ_HIGHPRI, 0);
+	device->events_worker = kthread_create_worker(0, "kgsl-events");
 
-	if (!device->events_wq) {
-		dev_err(device->dev, "Failed to allocate events workqueue\n");
-		status = -ENOMEM;
+	if (IS_ERR(device->events_worker)) {
+		status = PTR_ERR(device->events_worker);
+		dev_err(device->dev, "Failed to create events worker ret=%d\n", status);
 		goto error_pwrctrl_close;
 	}
+
+	sched_set_fifo(device->events_worker->task);
 
 	status = kgsl_reclaim_init();
 	if (status)
@@ -5153,10 +5176,8 @@ int kgsl_device_platform_probe(struct kgsl_device *device)
 	return 0;
 
 error_pwrctrl_close:
-	if (device->events_wq) {
-		destroy_workqueue(device->events_wq);
-		device->events_wq = NULL;
-	}
+	if (!IS_ERR(device->events_worker))
+		kthread_destroy_worker(device->events_worker);
 
 	kgsl_pwrctrl_close(device);
 error:
@@ -5168,10 +5189,7 @@ void kgsl_device_platform_remove(struct kgsl_device *device)
 {
 	del_timer(&device->work_period_timer);
 
-	if (device->events_wq) {
-		destroy_workqueue(device->events_wq);
-		device->events_wq = NULL;
-	}
+	kthread_destroy_worker(device->events_worker);
 
 	kgsl_device_snapshot_close(device);
 

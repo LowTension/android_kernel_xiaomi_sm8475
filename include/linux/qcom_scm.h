@@ -119,7 +119,13 @@ extern int qcom_scm_pas_shutdown_retry(u32 peripheral);
 extern bool qcom_scm_pas_supported(u32 peripheral);
 
 extern int qcom_scm_get_sec_dump_state(u32 *dump_state);
+extern int qcom_scm_get_llcc_missrate(phys_addr_t in_buf, size_t in_buf_size,
+				      phys_addr_t out_buf, size_t out_buf_size);
+extern int qcom_scm_get_llcc_occupancy(phys_addr_t in_buf, size_t in_buf_size,
+				phys_addr_t out_buf, size_t out_buf_size);
 extern int qcom_scm_assign_dump_table_region(bool is_assign, phys_addr_t  addr, size_t size);
+extern int qcom_scm_memory_lat_profiler(phys_addr_t in_buf, size_t in_buf_size,
+				phys_addr_t out_buf, size_t out_buf_size);
 
 extern int qcom_scm_tz_blsp_modify_owner(int food, u64 subsystem, int *out);
 
@@ -205,6 +211,7 @@ extern int qcom_scm_ice_invalidate_key(u32 index);
 extern int qcom_scm_ice_set_key(u32 index, const u8 *key, u32 key_size,
 				enum qcom_scm_ice_cipher cipher,
 				u32 data_unit_size);
+extern int qcom_scm_hibernate_exit(void);
 
 extern bool qcom_scm_hdcp_available(void);
 extern int qcom_scm_hdcp_req(struct qcom_scm_hdcp_req *req, u32 req_cnt,
@@ -391,6 +398,7 @@ static inline int qcom_scm_config_set_ice_key(uint32_t index, phys_addr_t paddr,
 		unsigned int food) { return -ENODEV; }
 static inline int qcom_scm_clear_ice_key(uint32_t index, unsigned int food)
 		{ return -ENODEV; }
+static inline int qcom_scm_hibernate_exit(uint32_t flag) { return -ENODEV; }
 static inline int qcom_scm_derive_raw_secret(phys_addr_t paddr_key,
 		size_t size_key, phys_addr_t paddr_secret,
 		size_t size_secret) { return -ENODEV; }

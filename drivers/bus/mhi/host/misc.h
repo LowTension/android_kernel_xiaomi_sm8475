@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  */
 
@@ -47,7 +48,12 @@
 
 #define MHI_BW_SCALE_RESULT(status, seq) (((status) & 0xF) << 8 | \
 					((seq) & 0xFF))
-#define MHI_BW_SCALE_NACK 0xF
+
+enum mhi_bw_scale_req_status {
+	MHI_BW_SCALE_SUCCESS = 0x0,
+	MHI_BW_SCALE_INVALID = 0x1,
+	MHI_BW_SCALE_NACK    = 0xF,
+};
 
 /* subsystem failure reason cfg command */
 #define MHI_TRE_CMD_SFR_CFG_PTR(ptr) (ptr)
@@ -160,7 +166,7 @@ struct file_info {
  * @valid - entry is valid or not
  */
 struct reg_write_info {
-	void __iomem *reg_addr;
+	u8 __iomem *reg_addr;
 	u32 val;
 	bool valid;
 };
@@ -177,7 +183,7 @@ struct mhi_private {
 	enum mhi_state saved_dev_state;
 	u32 m2_timeout_ms;
 	void *priv_data;
-	void __iomem *bw_scale_db;
+	u8 __iomem *bw_scale_db;
 	int (*bw_scale)(struct mhi_controller *mhi_cntrl,
 			struct mhi_link_info *link_info);
 	phys_addr_t base_addr;
@@ -220,12 +226,13 @@ struct mhi_timesync {
 	u64 (*time_get)(struct mhi_controller *mhi_cntrl);
 	int (*lpm_disable)(struct mhi_controller *mhi_cntrl);
 	int (*lpm_enable)(struct mhi_controller *mhi_cntrl);
-	void __iomem *time_reg;
-	void __iomem *time_db;
+	u8 __iomem *time_reg;
+	u8 __iomem *time_db;
 	u32 int_sequence;
 	u64 local_time;
 	u64 remote_time;
 	bool db_pending;
+	bool cap_en;
 	struct completion completion;
 	spinlock_t lock; /* list protection */
 	struct list_head head;

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include <linux/iommu.h>
@@ -146,11 +146,6 @@ static void log_profiling_info(struct adreno_device *adreno_dev, u32 *rcvd)
 	if (context == NULL)
 		return;
 
-	/* protected GPU work must not be reported */
-	if  (!(context->flags & KGSL_CONTEXT_SECURE))
-		kgsl_work_period_update(device, context->proc_priv->period,
-					     cmd->active);
-
 	info.timestamp = cmd->ts;
 	info.rb_id = adreno_get_level(context);
 	info.gmu_dispatch_queue = context->gmu_dispatch_queue;
@@ -162,6 +157,10 @@ static void log_profiling_info(struct adreno_device *adreno_dev, u32 *rcvd)
 	else
 		info.active = cmd->active;
 	info.retired_on_gmu = cmd->retired_on_gmu;
+
+	/* protected GPU work must not be reported */
+	if  (!(context->flags & KGSL_CONTEXT_SECURE))
+		kgsl_work_period_update(device, context->proc_priv->period, info.active);
 
 	trace_adreno_cmdbatch_retired(context, &info, 0, 0, 0);
 
@@ -1180,7 +1179,11 @@ int a6xx_hwsched_hfi_start(struct adreno_device *adreno_dev)
 	if (ret)
 		goto err;
 
-	ret = a6xx_hfi_send_feature_ctrl(adreno_dev, HFI_FEATURE_A6XX_KPROF,
+	if (adreno_is_a621(adreno_dev))
+		ret = a6xx_hfi_send_feature_ctrl(adreno_dev, HFI_FEATURE_KPROF,
+			1, 0);
+	else
+		ret = a6xx_hfi_send_feature_ctrl(adreno_dev, HFI_FEATURE_A6XX_KPROF,
 			1, 0);
 	if (ret)
 		goto err;
@@ -1452,17 +1455,24 @@ static int hfi_f2h_main(void *arg)
 {
 	struct adreno_device *adreno_dev = arg;
 	struct a6xx_hwsched_hfi *hfi = to_a6xx_hwsched_hfi(adreno_dev);
+	struct a6xx_gmu_device *gmu = to_a6xx_gmu(adreno_dev);
 
 	while (!kthread_should_stop()) {
 		wait_event_interruptible(hfi->f2h_wq, kthread_should_stop() ||
-			(!(is_queue_empty(adreno_dev, HFI_MSG_ID) &&
-			is_queue_empty(adreno_dev, HFI_DBG_ID)) &&
-			(hfi->irq_mask & HFI_IRQ_MSGQ_MASK)));
+			/* If msgq irq is enabled and msgq has messages to process */
+			(((hfi->irq_mask & HFI_IRQ_MSGQ_MASK) &&
+			!is_queue_empty(adreno_dev, HFI_MSG_ID)) ||
+			/* Trace buffer has messages to process */
+			!gmu_core_is_trace_empty(gmu->trace.md->hostptr) ||
+			/* Dbgq has messages to process */
+			!is_queue_empty(adreno_dev, HFI_DBG_ID)));
 
 		if (kthread_should_stop())
 			break;
 
 		a6xx_hwsched_process_msgq(adreno_dev);
+		gmu_core_process_trace_data(KGSL_DEVICE(adreno_dev),
+					&gmu->pdev->dev, &gmu->trace);
 		a6xx_hwsched_process_dbgq(adreno_dev, true);
 	}
 

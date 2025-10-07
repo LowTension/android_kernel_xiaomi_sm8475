@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #ifndef _KGSL_UTIL_H_
@@ -16,6 +16,7 @@
 #define KGSL_SCRATCH_ENTRY "kgsl_scratch"
 #define KGSL_MEMSTORE_ENTRY "kgsl_memstore"
 #define KGSL_GMU_LOG_ENTRY "kgsl_gmu_log"
+#define KGSL_GMU_TRACE_ENTRY "kgsl_gmu_trace"
 #define KGSL_HFIMEM_ENTRY "kgsl_hfi_mem"
 #define KGSL_GMU_DUMPMEM_ENTRY "kgsl_gmu_dump_mem"
 #define KGSL_GMU_RB_ENTRY "kgsl_gmu_rb"
@@ -27,6 +28,7 @@
 #define KGSL_ADRENO_CTX_ENTRY "kgsl_adreno_ctx"
 #define KGSL_PROC_PRIV_ENTRY "kgsl_proc_priv"
 #define KGSL_PGTABLE_ENTRY "kgsl_pgtable"
+#define KGSL_GMU_VRB_ENTRY "kgsl_gmu_vrb"
 
 #define MAX_VA_MINIDUMP_STR_LEN 32
 
@@ -136,6 +138,15 @@ int kgsl_clk_set_rate(struct clk_bulk_data *clks, int num_clks,
  * Return: 0 on success or negative on failure
  */
 int kgsl_zap_shader_load(struct device *dev, const char *name);
+
+/**
+ * kgsl_zap_shader_unload - Unload a zap shader
+ * @dev: Pointer to the struct device for the GPU platform device
+ *
+ * Unload zap_shader and shutdown the peripheral
+ * Return: 0 on success or negative on failure
+ */
+int kgsl_zap_shader_unload(struct device *dev);
 
 /**
  * kgsl_add_to_minidump - Add a physically contiguous section to minidump

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /* Copyright (c) 2015-2021, The Linux Foundation. All rights reserved.*/
+/* Copyright (c) 2024-2025 Qualcomm Innovation Center, Inc. All rights reserved.*/
 
 /*
  * MSM MHI device core driver.
@@ -2570,18 +2571,19 @@ static void mhi_dev_transfer_completion_cb(void *mreq)
 	/* Trigger client call back */
 	req->client_cb(req);
 
-	mutex_lock(&ch->ch_lock);
 	/* Flush read completions to host */
 	if (snd_cmpl && mhi_ctx->ch_ctx_cache[ch->ch_id].ch_type ==
 				MHI_DEV_CH_TYPE_OUTBOUND_CHANNEL) {
 		mhi_log(MHI_MSG_DBG, "Calling flush for ch %d\n", ch->ch_id);
+		mutex_lock(&ch->ch_lock);
 		rc = mhi_dev_flush_transfer_completion_events(mhi_ctx, ch, snd_cmpl);
+		mutex_unlock(&ch->ch_lock);
 		if (rc) {
 			mhi_log(MHI_MSG_ERROR,
 				"Failed to flush read completions to host\n");
 		}
 	}
-	mutex_unlock(&ch->ch_lock);
+
 	if (ch->state == MHI_DEV_CH_PENDING_STOP) {
 		ch->state = MHI_DEV_CH_STOPPED;
 		rc = mhi_dev_process_stop_cmd(ch->ring, ch->ch_id, mhi_ctx);
@@ -4148,6 +4150,21 @@ err:
 	return rc;
 }
 
+static void mhi_dev_cap_init(struct mhi_dev *dev)
+{
+	u32 mhi_first_cap_offs = ep_pcie_qtimer_cap_off(dev->phandle);
+	bool cap_populated = mhi_dev_is_cap_populated(dev, mhi_first_cap_offs,
+						MHI_DEV_QTIMER_TIME_SYNC_CAP_ID);
+
+	if (!cap_populated)
+		mhi_dev_configure_time_sync_cap(dev, mhi_first_cap_offs);
+
+	cap_populated = mhi_dev_is_cap_populated(dev, mhi_first_cap_offs,
+						 MHI_DEV_MAX_TRB_LEN_CAP_ID);
+	if (!cap_populated)
+		mhi_dev_configure_max_trb_len(dev);
+}
+
 static int mhi_deinit(struct mhi_dev *mhi)
 {
 
@@ -4176,6 +4193,8 @@ static int mhi_init(struct mhi_dev *mhi)
 			return rc;
 		}
 	}
+
+	mhi_dev_cap_init(mhi);
 
 	rc = mhi_dev_mmio_init(mhi);
 	if (rc) {

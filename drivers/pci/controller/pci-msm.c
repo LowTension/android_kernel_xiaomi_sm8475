@@ -70,7 +70,9 @@
 #define PCIE20_PARF_PHY_CTRL (0x40)
 #define PCIE20_PARF_TEST_BUS (0xe4)
 #define PCIE20_PARF_MHI_CLOCK_RESET_CTRL (0x174)
+#define PCIE20_PARF_AXI_MSTR_RD_ADDR_HALT (0x1a4)
 #define PCIE20_PARF_AXI_MSTR_WR_ADDR_HALT (0x1a8)
+#define PCIE20_PCIE_PARF_AXI_MSTR_WR_NS_BDF_HALT (0x4a0)
 #define PCIE20_PARF_LTSSM (0x1b0)
 #define PCIE20_PARF_INT_ALL_STATUS (0x224)
 #define PCIE20_PARF_INT_ALL_CLEAR (0x228)
@@ -710,6 +712,7 @@ struct pcie_i2c_ctrl {
 };
 
 enum i2c_client_id {
+	I2C_CLIENT_ID_INVALID,
 	I2C_CLIENT_ID_NTN3,
 	I2C_CLIENT_ID_MAX,
 };
@@ -831,7 +834,8 @@ struct msm_pcie_dev_t {
 	uint32_t link_speed_override;
 	bool lpi_enable;
 	uint32_t device_vendor_id;
-
+	bool pcie_bdf_halt_dis;
+	bool pcie_halt_feature_dis;
 	uint32_t rc_idx;
 	uint32_t phy_ver;
 	bool drv_ready;
@@ -1550,6 +1554,10 @@ static void msm_pcie_show_status(struct msm_pcie_dev_t *dev)
 		dev->wr_halt_size);
 	PCIE_DBG_FS(dev, "slv_addr_space_size: 0x%x\n",
 		dev->slv_addr_space_size);
+	PCIE_DBG_FS(dev, "PCIe: bdf_halt_dis is %d\n",
+		dev->pcie_bdf_halt_dis);
+	PCIE_DBG_FS(dev, "PCIe: halt_feature_dis is %d\n",
+		dev->pcie_halt_feature_dis);
 	PCIE_DBG_FS(dev, "phy_status_offset: 0x%x\n",
 		dev->phy_status_offset);
 	PCIE_DBG_FS(dev, "phy_status_bit: %u\n",
@@ -4802,6 +4810,10 @@ static int msm_pcie_enable(struct msm_pcie_dev_t *dev)
 		goto out;
 	}
 
+	ret = msm_pcie_gpio_init(dev);
+	if (ret)
+		goto out;
+
 	/* assert PCIe reset link to keep EP in reset */
 
 	PCIE_INFO(dev, "PCIe: Assert the reset of endpoint of RC%d.\n",
@@ -4814,7 +4826,7 @@ static int msm_pcie_enable(struct msm_pcie_dev_t *dev)
 	/* enable power */
 	ret = msm_pcie_vreg_init(dev);
 	if (ret)
-		goto out;
+		goto vreg_fail;
 
 	/* enable clocks */
 	ret = msm_pcie_clk_init(dev);
@@ -4869,10 +4881,28 @@ static int msm_pcie_enable(struct msm_pcie_dev_t *dev)
 	msm_pcie_write_reg(dev->parf, PCIE20_PARF_SLV_ADDR_SPACE_SIZE,
 				dev->slv_addr_space_size);
 
-	val = dev->wr_halt_size ? dev->wr_halt_size :
-		readl_relaxed(dev->parf + PCIE20_PARF_AXI_MSTR_WR_ADDR_HALT);
-	msm_pcie_write_reg(dev->parf, PCIE20_PARF_AXI_MSTR_WR_ADDR_HALT,
+	if (dev->pcie_halt_feature_dis) {
+		/* Disable PCIe Wr halt window */
+		val = readl_relaxed(dev->parf + PCIE20_PARF_AXI_MSTR_WR_ADDR_HALT);
+		msm_pcie_write_reg(dev->parf, PCIE20_PARF_AXI_MSTR_WR_ADDR_HALT,
+				(~BIT(31)) & val);
+
+		/* Disable PCIe Rd halt window */
+		val = readl_relaxed(dev->parf + PCIE20_PARF_AXI_MSTR_RD_ADDR_HALT);
+		msm_pcie_write_reg(dev->parf, PCIE20_PARF_AXI_MSTR_RD_ADDR_HALT,
+			(~BIT(0)) & val);
+	} else {
+		val = dev->wr_halt_size ? dev->wr_halt_size :
+			readl_relaxed(dev->parf + PCIE20_PARF_AXI_MSTR_WR_ADDR_HALT);
+		msm_pcie_write_reg(dev->parf, PCIE20_PARF_AXI_MSTR_WR_ADDR_HALT,
 				BIT(31) | val);
+	}
+
+	if (dev->pcie_bdf_halt_dis) {
+		val = readl_relaxed(dev->parf + PCIE20_PCIE_PARF_AXI_MSTR_WR_NS_BDF_HALT);
+		msm_pcie_write_reg(dev->parf, PCIE20_PCIE_PARF_AXI_MSTR_WR_NS_BDF_HALT,
+				(~BIT(0)) & val);
+	}
 
 	/* init PCIe PHY */
 	ret = pcie_phy_init(dev);
@@ -5030,6 +5060,8 @@ link_fail:
 	msm_pcie_clk_deinit(dev);
 clk_fail:
 	msm_pcie_vreg_deinit(dev);
+vreg_fail:
+	msm_pcie_gpio_deinit(dev);
 out:
 	mutex_unlock(&dev->setup_lock);
 
@@ -5083,6 +5115,8 @@ static void msm_pcie_disable(struct msm_pcie_dev_t *dev)
 	if (dev->gpio[MSM_PCIE_GPIO_EP].num)
 		gpio_set_value(dev->gpio[MSM_PCIE_GPIO_EP].num,
 				1 - dev->gpio[MSM_PCIE_GPIO_EP].on);
+
+	msm_pcie_gpio_deinit(dev);
 
 	mutex_unlock(&dev->setup_lock);
 
@@ -6612,6 +6646,16 @@ static int msm_pcie_probe(struct platform_device *pdev)
 	PCIE_DBG(pcie_dev, "RC%d: num-parf-testbus-sel: 0x%x.\n",
 		pcie_dev->rc_idx, pcie_dev->num_parf_testbus_sel);
 
+	pcie_dev->pcie_bdf_halt_dis = of_property_read_bool(of_node,
+			"qcom,bdf-halt-dis");
+	PCIE_DBG(pcie_dev, "PCIe BDF halt feature is %s enabled.\n",
+			pcie_dev->pcie_bdf_halt_dis ? "not" : "");
+
+	pcie_dev->pcie_halt_feature_dis = of_property_read_bool(of_node,
+			"qcom,pcie-halt-feature-dis");
+	PCIE_DBG(pcie_dev, "PCIe halt feature is %s enabled.\n",
+			pcie_dev->pcie_halt_feature_dis ? "not" : "");
+
 	of_property_read_u32(of_node, "qcom,phy-status-offset",
 				&pcie_dev->phy_status_offset);
 	PCIE_DBG(pcie_dev, "RC%d: phy-status-offset: 0x%x.\n", pcie_dev->rc_idx,
@@ -6754,16 +6798,9 @@ static int msm_pcie_probe(struct platform_device *pdev)
 		}
 	}
 
-	ret = msm_pcie_gpio_init(pcie_dev);
-	if (ret) {
-		msm_pcie_release_resources(pcie_dev);
-		goto decrease_rc_num;
-	}
-
 	ret = msm_pcie_irq_init(pcie_dev);
 	if (ret) {
 		msm_pcie_release_resources(pcie_dev);
-		msm_pcie_gpio_deinit(pcie_dev);
 		goto decrease_rc_num;
 	}
 
@@ -8043,7 +8080,7 @@ static int pcie_i2c_ctrl_probe(struct i2c_client *client,
 				    const struct i2c_device_id *id)
 {
 	int rc_index = -EINVAL;
-	enum i2c_client_id client_id;
+	enum i2c_client_id client_id = I2C_CLIENT_ID_INVALID;
 	struct pcie_i2c_ctrl *i2c_ctrl;
 	const struct of_device_id *match;
 	struct i2c_driver_data *data;

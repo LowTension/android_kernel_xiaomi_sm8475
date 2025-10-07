@@ -1034,13 +1034,13 @@ int synx_merge(struct synx_session *session,
 			kfree(h_child_list);
 			goto clear;
 		}
+		kfree(h_child_list);
 	}
 
 	dprintk(SYNX_MEM,
 		"[sess :%llu] merge allocated %u, core %pK, fence %pK\n",
 		client->id, *params->h_merged_obj, synx_obj,
 		synx_obj->fence);
-	kfree(h_child_list);
 	synx_put_client(client);
 	return SYNX_SUCCESS;
 
@@ -2224,6 +2224,7 @@ static ssize_t synx_read(struct file *filep,
 
 	list_del_init(&cb->node);
 	mutex_unlock(&client->event_q_lock);
+	memset(&data, 0, sizeof(struct synx_userpayload_info_v2));
 
 	rc = size;
 	data.synx_obj = cb->kernel_cb.h_synx;
